@@ -10,7 +10,7 @@
 // stocks let it: a rich, busy town many things a year, a poor hamlet one in a few.
 //
 // Settlers are raised the same way (data/peoples.js `settlers`, as a settler in Civilization): a full town that has a
-// free spot within its reach wants them (`want` × how full it is); they take `days` of work and `goods` from the realm's
+// free spot within its reach wants them (`want` × how full it is, or how big); they take `days` of work and `goods` from the realm's
 // stocks, and when they are ready `pop` of the town's people leave with the goods and found a town of the realm there
 // (atlas/peoples.js foundFrom). That is the only way a people founds a town after it has come into the world.
 import {BUILD} from '../data/macro.js';
@@ -22,6 +22,8 @@ import {realmTaste} from './realms.js';
 import {roadAccess} from './roads.js';
 import {raiseBuilding, settleSpot, foundFrom} from './peoples.js';
 import {drawRealm} from './economy.js';
+import {realmTreasury, payWorth} from './treasury.js';
+import {TREASURY} from '../data/macro.js';
 
 const step = b => Math.min(BUILD.days.length - 1, b.tier || 0);
 // the work-days a building takes, and the materials it is raised of
@@ -49,7 +51,9 @@ export function projectOf(t, id = t.project) {
 function settlersWant(a, t) {
   const S = WORLD_PEOPLES.get(t.people).settlers;
   if (!S || t.pop < S.from) return 0;
-  const target = Math.min(t.wants.feeds, room(townFx(t))), full = Math.max(0, Math.min(1, (t.pop / Math.max(1, target) - 0.6) / 0.3));
+  const target = Math.min(t.wants.feeds, room(townFx(t)));
+  // a town wants settlers as it fills its room — or simply grows big: twice `from` and more wants them fully
+  const full = Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, target) - 0.6) / 0.3, (t.pop - S.from) / S.from)));
   if (full <= 0) return 0;
   if (t.spot?.year !== a.hist.year) t.spot = {year: a.hist.year, i: settleSpot(a, t)};   // looked for once a year
   return t.spot.i >= 0 ? S.want * full : 0;
@@ -91,7 +95,12 @@ function work(a, t, rnd, say) {
   }
   let labour = Math.max(1, t.pop * BUILD.crew) * SEASON_DAYS;
   const use = Math.min(labour, P.days - w.done);
-  w.done += use; labour -= use;
+  // the masters of a village's building and up are paid from the treasury; unpaid, the work goes at half speed
+  // (TREASURY.wage); settlers gather for themselves
+  let done = use;
+  const R = (P.b?.tier || 0) >= 1 ? realmTreasury(a, t.realm) : null;
+  if (R && use > 0) { const due = use * TREASURY.wage, paid = payWorth(R, due, 'wage'); done = use * (0.5 + 0.5 * paid / due); }
+  w.done += done; labour -= use;
   // what the realm neither makes nor holds, what has not come for two seasons, and the rest once the work itself is
   // done — the builders, idle else, gather by hand
   const left = Object.entries(w.mat).filter(([, v]) => v > 1e-6), idle = w.done >= P.days - 1e-6;

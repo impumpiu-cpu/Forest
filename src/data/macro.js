@@ -26,7 +26,9 @@ export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.
 //   packMin    the fewest days of food to march at all: a realm that cannot feed its army musters fewer, or none
 //   desert     share of the men that leave a day when unpaid (× the unpaid share)
 //   unarmed    might lost without arms or armour (each, × the share missing)
-export const ARMY_KEEP = {pack: 60, packMin: 20, desert: 0.004, unarmed: 0.25};
+//   reach      the realm's towns within so many cells (of a 192-cell world) of the mustering town send their levy too
+//   pro        the trained core: the men of these buildings (their jobs) march among the levy and count `might` times
+export const ARMY_KEEP = {pack: 60, packMin: 20, desert: 0.004, unarmed: 0.25, reach: 30, pro: {at: ['barracks', 'warcamp'], might: 2}};
 const NO_KEEP = {gold: 0, arms: 0, armor: 0, food: 1, eats: ['food']};
 const armyOf = people => (WORLD_PEOPLES.has(people) && WORLD_PEOPLES.get(people).army) || NO_KEEP;
 // what a fighter takes a day: {gold, arms, armor, food} (food in rations, whatever it eats)
@@ -41,3 +43,22 @@ export const armyEats = people => armyOf(people).eats || ['food'];
 //   haul       share of what is sent that arrives
 //   pay        goods a realm pays with, in order
 export const TRADE = {perRoute: 40, keep: 60, haul: 0.85, pay: ['gold', 'lux']};
+
+// The realm's treasury (atlas/treasury.js, docs/WORLD.md «Казна»): a store of the realm in its seat — no people, it only
+// takes and gives goods. Every season the towns pay their dues into it; its council pays the armies, the builders, the
+// upkeep of the buildings and the court, and gives the towns what they lack of what it holds.
+//   tax        share of the worth of a town's net making a season, by the edict «подати» (data/kingdom.js EDICTS taxes):
+//              light, usual, high — paid in gold as far as the town has it, the rest in the goods that keep (rot slower
+//              than `keeps` a day)
+//   corrupt    of what is paid, corruption (data/kingdom.js RUINS) takes `corrupt` × its points, no more than corruptMax
+//   duty       share of the goods that come into a realm by its trade routes that its customs take (atlas/trade.js)
+//   loot       share of the keeping stock of a town taken by storm (seat: of the treasury too) or raided, to the winner's
+//   wage       gold a work-day for the builders of a building of the village step and up; unpaid, they work at half speed
+//   court      gold a day for each office held (data/kingdom.js OFFICES), per 1000 people of the realm
+//   payIn      what the treasury pays gold's worth in when gold is short, in order; then any other good that keeps, dearest first
+//   reserve    seasons of the realm's armies and court the treasury keeps before it gives to the towns
+//   help       share of a town's lack of a season the treasury gives it, as far as it has to spare
+//   econ       the kingdom's economy (data/kingdom.js REALM_STATS) from the treasury: × the worth a day of its dues per
+//              100 people; the buildings' trade and craft count `fx` of what they did
+export const TREASURY = {tax: {light: 0.05, usual: 0.1, high: 0.15}, keeps: 0.001, corrupt: 0.03, corruptMax: 0.5, duty: 0.05,
+  loot: {seat: 0.5, assault: 0.3, raid: 0.1}, wage: 0.05, court: 0.15, payIn: ['gold', 'silver', 'lux', 'gems'], reserve: 2, help: 0.5, econ: 0.5, fx: 0.5};

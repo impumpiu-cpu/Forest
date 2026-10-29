@@ -45,14 +45,15 @@ expect(JSON.stringify(loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))).realms
   expect(holds({below: {loyalty: 0.2}}, {stats: {loyalty: 0.1}, ruin: {}}) && !holds({above: {corruption: 1}}, {stats: {}, ruin: {corruption: 0.5}}), 'условие показателя и разрухи');
 }
 
-// feedback: 1 while 0, more with strife once a number is set
+// feedback: strife and low loyalty raise a contender's chance (data/kingdom.js FEEDBACK), more with strife set higher
 {
-  const r = {kingdom: {stats: {loyalty: 0.2}, ruin: {strife: 4}}};
-  expect(schismFactor(r) === 1, 'раскол при нулевой обратной связи не 1');
+  const r = {kingdom: {stats: {loyalty: 0.2}, ruin: {strife: 4}}}, d = {...FEEDBACK};
+  const want = (s, l) => (1 + s * 4) * (1 + l * 0.8), near = (x, y) => Math.abs(x - y) < 1e-9;
+  expect(near(schismFactor(r), want(d.schismByStrife, d.schismByLoyalty)), `раскол при раздорах 4 и лояльности 0,2: ×${schismFactor(r)}`);
   E.setCell('kingdomRules', 'feedback.schismByStrife', 'value', 0.5);
-  expect(schismFactor(r) === 3, `раскол при раздорах 4 и 0,5: ×${schismFactor(r)}`);
+  expect(near(schismFactor(r), want(0.5, d.schismByLoyalty)), `раскол при раздорах 4 и 0,5: ×${schismFactor(r)}`);
   E.resetAll();
-  expect(FEEDBACK.schismByStrife === 0, 'сброс не вернул обратную связь');
+  expect(FEEDBACK.schismByStrife === d.schismByStrife, 'сброс не вернул обратную связь');
 }
 
 // edits: a condition or a level that cannot be read is refused

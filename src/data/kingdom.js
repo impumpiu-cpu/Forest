@@ -13,7 +13,7 @@ import {Registry} from '../core/registry.js';
 export const REALM_STATS = new Registry('realmStat');
 REALM_STATS.registerAll([
   {id: 'culture', label: 'культура', from: {lore: 1, faith: 0.5, prestige: 1}, compass: {}, note: 'знание, вера, слава: чем держава гордится'},
-  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5}, compass: {}, note: 'ремесло, торговля, хлеб'},
+  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5}, compass: {}, note: 'доход казны на 100 жителей и, долей, ремесло, торговля, хлеб (data/macro.js TREASURY)'},
   {id: 'loyalty', label: 'лояльность', from: {faith: 1, prestige: 0.5}, compass: {mercy: 0.05}, note: 'вера и слава; добрая держава милее подданным'},
   {id: 'stability', label: 'стабильность', from: {defence: 1, health: 0.5}, compass: {order: 0.05}, note: 'оборона и здоровье; закон держит порядок'},
 ]);
@@ -21,13 +21,14 @@ REALM_STATS.registerAll([
 // Ruin grows by its sources every year and falls by the attribute that holds it back (× `fall`); never below 0.
 //   towns — per town of the realm;  crowd — what its towns breed by their size, each people its own (data/peoples.js
 //   `crime`: per × (people of the town / 1000) ^ pow — humans' crowded towns breed more);  upkeep — per point of upkeep over the economy;
+//   unpaid — the share of what the treasury owed the court and the armies and did not pay this year (atlas/treasury.js);
 //   wars — per war the realm is in;  raided — per town of it raided this year
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {towns: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше держава, тем больше рук, что берут'},
   {id: 'crime', label: 'преступность', grows: {crowd: 1}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража; у людей — сильнее с размером города'},
-  {id: 'decay', label: 'упадок', grows: {upkeep: 0.5}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика'},
+  {id: 'decay', label: 'упадок', grows: {unpaid: 3}, fall: 'economy', eats: 'stability', note: 'казна не платит двору и войску'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
 export const RUIN_RULES = {fall: 0.1, penalty: 0.05, max: 20};
@@ -83,9 +84,9 @@ REALM_EVENTS.registerAll([
 ]);
 export const EVENTS_RULE = {chance: 0.35};
 
-// What the kingdom does back to the world (0 — nothing yet). schismByStrife: a contender's chance to break away
+// What the kingdom does back to the world. schismByStrife: a contender's chance to break away
 // × (1 + value × strife); schismByLoyalty: × (1 + value × (1 − loyalty)) while loyalty is under 1
-export const FEEDBACK = {schismByStrife: 0, schismByLoyalty: 0};
+export const FEEDBACK = {schismByStrife: 0.05, schismByLoyalty: 0.3};
 
 // The market of a town by its step (campaign/town.js), as the base value and purchase limit of a Pathfinder settlement:
 // `maxPrice` — the dearest thing it sells, `purse` — the gold it pays for the caravan's goods in one visit. Empty — no

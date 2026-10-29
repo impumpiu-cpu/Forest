@@ -6,7 +6,7 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, CATEGORIES, CHAINS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, CATEGORIES, CHAINS, goodPrice} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
@@ -78,6 +78,19 @@ function deedsHtml(list) {
   return `<p class="deeds">${list.map(id => { const d = DEEDS.get(id); return `<span class="deed lane-${d.band}" title="${esc(d.note)}">${esc(id)} <small>${esc(DEED_BAND_LABELS[d.band])}</small></span>`; }).join(' ')}</p>`;
 }
 
+// the realm's treasury in its seat (atlas/treasury.js): what it holds, and the last season's ledger
+const LEDGER = {tax: 'подати', duty: 'пошлины', loot: 'добыча', army: 'войско', wage: 'мастера', upkeep: 'содержание и двор', help: 'помощь городам', corruption: 'коррупция', looted: 'разграблено'};
+function treasuryHtml(R) {
+  const T = R.treasury;
+  if (!T) return '';
+  const worth = g => goodPrice(g) || 1, held = Object.entries(T.stock).filter(([, v]) => v > 0).sort((p, q) => q[1] * worth(q[0]) - p[1] * worth(p[0]));
+  const top = held.filter(([g, v]) => v * worth(g) >= 1).slice(0, 6).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`).join(', ');
+  const total = held.reduce((s, [g, v]) => s + v * worth(g), 0);
+  const line = o => Object.entries(o || {}).filter(([, v]) => v >= 1).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${LEDGER[k] || k} ${Math.round(v)}`).join(', ');
+  return row('казна', `${Math.round(total)} зол.${top ? `: ${esc(top)}` : ''}`) +
+    (T.last ? row('за сезон', `приход: ${line(T.last.in) || '—'}; расход: ${line(T.last.out) || '—'}`) : '');
+}
+
 function realmHtml(a, R) {
   if (!R) return '';
   const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race), sub = subOf(a, R.id);
@@ -98,6 +111,7 @@ function realmHtml(a, R) {
     row('основана', R.founded != null ? `${R.founded} г.${R.from != null ? `, расколом от «${esc(realmOf(a, R.from)?.name || '…')}»` : ''}` : null) +
     row('металлы', cap ? (realmMetalWords(a, cap).join(', ') || 'только кость, дерево и камень') : null) +
     row('войска', armies || null) +
+    treasuryHtml(R) +
     row('в полоне увели', R.captives && Object.values(R.captives).some(v => v > 0) ? captiveCount(R) : null) +
     kingdom +
     (rels ? `<div class="ir"><span>отношения</span></div><ul class="rels">${rels}</ul>` : '') +

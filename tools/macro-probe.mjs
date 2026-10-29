@@ -6,6 +6,8 @@ import {canBuild, realmBuilt, townFx, room} from '../src/atlas/towns.js';
 import {needsOf} from '../src/atlas/economy.js';
 let realmTrade = () => null;
 try { ({realmTrade} = await import('../src/atlas/trade.js')); } catch {}
+let treasuryWorth = () => 0;
+try { ({treasuryWorth} = await import('../src/atlas/treasury.js')); } catch {}
 
 const N = +(process.argv[2] || 4), size = process.argv[3] || 'small';
 const worth = g => goodPrice(g) || 1;
@@ -59,7 +61,8 @@ for (let k = 0; k < N; k++) {
     realms.push({w: k, people: r.people, towns: ts.length, pop: Math.round(ts.reduce((s, t) => s + t.pop, 0)), built: ts.reduce((s, t) => s + t.built.length, 0),
       made: Math.round(ts.reduce((s, t) => s + val(t.econ?.prod), 0)), trade: realmTrade(a, r.id),
       gold: Math.round(ts.reduce((s, t) => s + (t.econ?.stock?.gold || 0), 0)), goldMade: +ts.reduce((s, t) => s + (t.econ?.prod?.gold || 0), 0).toFixed(2),
-      arms: Math.round(ts.reduce((s, t) => s + (t.econ?.stock?.arms || 0) + (t.econ?.stock?.armor || 0), 0)), kingdom: r.kingdom ? {stats: r.kingdom.stats, ruin: r.kingdom.ruin, upkeep: r.kingdom.upkeep} : null});
+      arms: Math.round(ts.reduce((s, t) => s + (t.econ?.stock?.arms || 0) + (t.econ?.stock?.armor || 0), 0)), kingdom: r.kingdom ? {stats: r.kingdom.stats, ruin: r.kingdom.ruin, upkeep: r.kingdom.upkeep, edicts: r.kingdom.edicts} : null,
+      treasury: r.treasury ? {worth: Math.round(treasuryWorth(r)), gold: Math.round(r.treasury.stock.gold || 0), year: r.treasury.year || null, last: r.treasury.last} : null});
   }
 }
 console.log(JSON.stringify({N, size, series, towns, realms, events, buildFreq, catByRace}));

@@ -43,13 +43,13 @@ const keyOf = (id, n) => `${id}#${n}`;
 const add = (o, k, v) => { if (v) o[k] = (o[k] || 0) + v; };
 
 // what a town is asked a day beyond its people's needs, met as they are (the share met is `E.met`, by good):
-//   - the armies that marched from it (data/macro.js ARMY_KEEP): their pay, the wear of arms and armour, their food;
+//   - the armies that marched from it (data/macro.js ARMY_KEEP): their food (their pay and gear: the treasury);
 //   - the building it is raising (atlas/build.js): the materials still missing, asked for within a season.
 export function ordersOf(a, t) {
   const o = {};
   for (const p of a?.parties || []) if (p.kind === 'army' && p.from === t.id && p.state !== 'gone' && p.men > 0) {
     p.eat = armyRation(a, t, p);   // what it eats this season: stores while the realm has a season of them (keepArmy reads it)
-    for (const [g, v] of Object.entries(keepOf(p.people))) if (v > 0) add(o, g === 'food' ? p.eat : g, v * p.men);
+    add(o, p.eat, (keepOf(p.people).food || 0) * p.men);   // its food; its pay, arms and armour come from the treasury (atlas/treasury.js)
   }
   const w = t.project && t.works?.[t.project];
   if (w) for (const [g, v] of Object.entries(w.mat)) if (v > 1e-6) add(o, g, v / ECONOMY.stockDays);

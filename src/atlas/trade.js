@@ -6,9 +6,10 @@
 //   - one realm's spare against the other's lack, by worth (goodPrice), the dearest first, both ways at once;
 //   - the side that takes more than it gives pays the rest in gold, then in luxury, as far as it has them;
 //   - no more than the routes carry (TRADE.perRoute × routes a day); TRADE.haul of what is sent arrives, to the towns of
-//     the buyer that lacked it.
+//     the buyer that lacked it, less the duty its customs take into its treasury (TREASURY.duty, atlas/treasury.js).
 // `r.trade` keeps the last season's worth each way (the realm's card, tools/macro-probe.mjs).
-import {TRADE} from '../data/macro.js';
+import {TRADE, TREASURY} from '../data/macro.js';
+import {realmTreasury, deposit} from './treasury.js';
 import {goodPrice} from '../data/townBuildings.js';
 import {trades} from './diplomacy.js';
 import {realmTowns, drawRealm, giveStock} from './economy.js';
@@ -51,7 +52,9 @@ function ship(a, list, worth, from, to) {
     if (left <= 1e-6) break;
     const n = drawRealm(a, from.realm, o.g, Math.min(o.n, left / price(o.g)));
     if (n <= 0) continue;
-    deliver(to, o.g, n * TRADE.haul);
+    const came = n * TRADE.haul, R = realmTreasury(a, to.realm), duty = R ? came * TREASURY.duty : 0;   // the buyer's customs take their duty
+    if (duty > 0) deposit(R, o.g, duty, 'duty');
+    deliver(to, o.g, came - duty);
     from.spare[o.g] = Math.max(0, (from.spare[o.g] || 0) - n);
     left -= n * price(o.g); sent += n * price(o.g);
   }
