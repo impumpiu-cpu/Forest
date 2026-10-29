@@ -16,7 +16,7 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
-import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, worksOf} from '../data/townBuildings.js';
 import {TIERS, CAPITAL, crowned} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -39,7 +39,13 @@ export const townGender = t => (crowned(t) ? CAPITAL.gender[t.people] : TIERS[t.
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
-  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += fxOf(b, k); }
+  // each building by its load in the household (atlas/economy.js `loads`, its nth copy): a building short of what it takes
+  // gives less; one not counted yet gives all
+  const seen = {}, L = t.econ?.loads;
+  for (const id of t.built) {
+    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1, load = L?.[`${id}#${n}`] ?? 1;
+    for (const k of KEYS) out[k] += fxOf(b, k, load);
+  }
   return out;
 }
 export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
@@ -148,6 +154,16 @@ export function townNeeds(a, t, fx, ctx) {
   };
 }
 
+// what the town's household lacks pulls toward the buildings that make it (atlas/economy.js `short`): TOWN_FX.econ for
+// each good it lacks that one of the building's ways makes, at most econ[1]
+function econPull(t, b) {
+  const short = t.econ?.short;
+  if (!short?.length) return 0;
+  const makes = new Set(worksOf(b).filter(w => !w.peoples || w.peoples.includes(t.people)).flatMap(w => Object.keys(w.out)));
+  const n = short.filter(g => makes.has(g)).length;
+  return Math.min(TF.econ[1], TF.econ[0] * n);
+}
+
 // the building the town wants most, or null
 export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
@@ -157,6 +173,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     if (!canBuild(a, t, b, inRealm)) continue;
     let v = 0;
     for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
+    v += econPull(t, b);
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }

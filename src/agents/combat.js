@@ -170,7 +170,8 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   return dmg;
 }
 
-// creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely;
+// creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
+// (a shot too, when the bow itself bites as silver: the sacred tree in its master's hands, data/kinds.js);
 // a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
 export const SILVER = COMBAT.silver;
 const silverFactor = (t, item, by = null) => {
@@ -324,7 +325,7 @@ export function shoot(w, a, t) {
   if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share) { wear(w, guard, guard.gear.coverItem); guard.flash = 3; return 'miss'; }
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
+  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
   return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

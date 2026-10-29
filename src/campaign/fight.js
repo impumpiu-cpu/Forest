@@ -242,7 +242,10 @@ function spoilsRest(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-    const m = free(K).find(x => x.role === 'squire') || free(K)[0], old = m.gear.hand[0];
+    // (nobody free to take it — all wounded or fallen in this fight: the tool stays where it lay)
+    const m = free(K).find(x => x.role === 'squire') || free(K)[0];
+    if (!m) return;
+    const old = m.gear.hand[0];
     m.gear.hand[0] = T.item;
     say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
   }

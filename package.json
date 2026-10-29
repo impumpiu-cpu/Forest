@@ -10,6 +10,8 @@
     "world": "node tools/world-check.mjs",
     "fights": "node tools/campaign-stats.mjs",
     "balance": "node tools/balance.mjs",
+    "chains": "node tools/chains.mjs",
+    "economy": "node tools/economy-report.mjs",
     "stress": "node tools/stress.mjs",
     "stress:full": "node tools/stress.mjs --full",
     "stress:check": "node tools/stress.mjs --only mixed-100 --budget 6",
