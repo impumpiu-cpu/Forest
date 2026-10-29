@@ -138,7 +138,9 @@ TOWN_GOODS.registerAll([
   {id: 'herbs', label: 'травы', unit: 'шт.', kind: 'base', chain: 'herbs', start: 5, need: 4, res: 'herbs', note: 'лечат и дубят кожи'},
   {id: 'potions', label: 'зелья', unit: 'шт.', kind: 'made', chain: 'herbs', need: 1, res: 'potion'},
   // luxury
-  {id: 'lux', label: 'роскошь', unit: 'шт.', kind: 'made', chain: 'lux', need: 1, price: 10, note: 'вина, украшения, стекло: знать, храмы и дворцы'},
+  // luxury is counted by what it is worth: a unit is a gold piece of value, so a gold-and-gems torque is many units, a carved
+  // wooden box few; the stock holds its worth, and the people and the temples use up worth, not pieces
+  {id: 'lux', label: 'роскошь', unit: 'зол. ценности', kind: 'made', chain: 'lux', need: 10, price: 1, note: 'вина, украшения, стекло, резная утварь: считается по стоимости, её ценность — от сырья'},
 ]);
 // gold for one unit of a good
 export const goodPrice = id => { const G = TOWN_GOODS.get(id); return G.res ? PRICE[G.res].price * (G.per ?? 1) : G.price; };
@@ -201,7 +203,7 @@ TOWN_BUILDINGS.registerAll([
   B('cellar', 'погреба и ледники', 'pl', 'food', 2, [...H, ...D], {food: 0.1, health: 0.05}, {jobs: 1, repair: S(5)}),
   B('apiary', 'пасека', 'f', 'food', 1, [...H, ...E], {food: 0.05, prod: 0.05}, {needsAny: ['forest', 'fertile'], needs: ['warm'], site: true, jobs: 2, cycles: 10, repair: W(2), out: {honey: 60}}),
   B('brewery', 'пивоварня', 'f', 'food', 2, [...H, ...D, ...O, ...E], {prod: 0.1, prestige: 0.05}, {requiresAny: ['field', 'garden', 'mushrooms'], jobs: 4, cycles: 10, repair: W(5), works: true}),
-  B('vineyard', 'виноградники', 'pl', 'food', 2, [...H, ...E], {trade: 0.15, prestige: 0.05}, {needs: ['warm', 'fertile'], site: true, jobs: 10, cycles: 20, repair: W(3), out: {lux: 20}}),
+  B('vineyard', 'виноградники', 'pl', 'food', 2, [...H, ...E], {trade: 0.15, prestige: 0.05}, {needs: ['warm', 'fertile'], site: true, jobs: 10, cycles: 20, repair: W(3), out: {lux: 200}}),
   // ── raw materials
   B('woodcut', 'лесосека', 'f', 'raw', 0, [...H, ...D, ...O], {prod: 0.1}, {needs: ['forest'], site: true, jobs: 8, cycles: 30, out: {wood: 600}}),
   // elves do not fell the wood: they take what it gives — deadwood and brushwood, hides, herbs, honey and wax
@@ -217,6 +219,8 @@ TOWN_BUILDINGS.registerAll([
   B('charpit', 'углежогная яма', 'f', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {needs: ['forest'], local: 'charpit', site: true, jobs: 3, cycles: 10, in: {wood: 200}, out: {coal: 150}}),
   B('coalpit', 'угольные копи', 'pl', 'raw', 1, [...H, ...D], {prod: 0.15}, {needs: ['coal'], site: true, jobs: 8, cycles: 30, repair: W(20), out: {coal: 300}}),
   B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D], {trade: 0.2, food: 0.05}, {needs: ['salt'], site: true, jobs: 5, cycles: 10, repair: W(5), fire: 120, out: {salt: 200}}),
+  // the elves' own salt: crusts gathered where a salty spring comes up — no fire, little salt
+  B('saltspring', 'соляной ручей', 'm', 'raw', 1, E, {food: 0.03}, {needs: ['salt'], site: true, jobs: 2, cycles: 5, out: {salt: 40}}),
   B('placer', 'золотой прииск', 'm', 'raw', 1, [...H, ...D, ...O], {trade: 0.2}, {needs: ['placer'], notable: true, site: true, jobs: 6, cycles: 20, repair: W(5), out: {gold: 200}}),
   // ── crafts
   B('loom', 'ткацкая', 'f', 'craft', 1, ALL, {prod: 0.1}, {local: 'loom', jobs: 4, cycles: 10, repair: W(3), works: true}),
@@ -230,11 +234,12 @@ TOWN_BUILDINGS.registerAll([
   B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {requires: ['smelter'], local: 'forge', notable: true, jobs: 4, cycles: 10, repair: S(5), quality: 'iron', in: {iron: 50, leather: 10}, fire: 100, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
   B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {requires: ['forge'], pop: 800, jobs: 10, cycles: 20, repair: S(10), works: true, metals: ['steel']}),
   B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, cycles: 10, repair: S(10), works: true, metals: ['mithril', 'steel']}),
-  B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {needs: ['gems'], local: 'jeweler', jobs: 3, cycles: 10, repair: W(3), in: {gems: 8, silver: 4}, out: {lux: 10}, metals: ['silver']}),
+  // fine work of any two of wood, stone, gems and the metals (TOWN_WORKS, LUX): its worth is that of what went into it
+  B('jeweler', 'мастерская роскоши', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {local: 'jeweler', jobs: 3, cycles: 10, repair: W(3), works: true, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2, repair: W(5)}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {needs: ['forest'], jobs: 3, cycles: 10, repair: W(3), works: true}),
   B('shipyard', 'верфь', 'f', 'craft', 2, [...H, ...E], {trade: 0.25, prod: 0.1}, {needs: ['coast', 'forest'], jobs: 15, cycles: 40, repair: W(10), in: {planks: 200, fiber: 40, cloth: 30}}),
-  B('glassworks', 'стеклодувня', 'f', 'craft', 2, [...H, ...D], {prod: 0.1, trade: 0.1, prestige: 0.05}, {needsAny: ['coast', 'clay'], pop: 800, jobs: 5, cycles: 10, repair: S(5), in: {clay: 60}, fire: 240, out: {lux: 8}}),
+  B('glassworks', 'стеклодувня', 'f', 'craft', 2, [...H, ...D], {prod: 0.1, trade: 0.1, prestige: 0.05}, {needsAny: ['coast', 'clay'], pop: 800, jobs: 5, cycles: 10, repair: S(5), in: {clay: 60}, fire: 240, out: {lux: 80}}),
   B('alchemist', 'лаборатория алхимика', 'f', 'craft', 2, [...H, ...E, ...D], {lore: 0.15, health: 0.1}, {pop: 800, jobs: 2, cycles: 10, repair: S(3), in: {herbs: 40, pots: 20}, fire: 40, out: {potions: 20}}),
   // kitchens, one for each step of a town: they cook whatever raw food there is (TOWN_WORKS, KITCHENS); a bigger one
   // cooks more and wastes less — the campfire turns 10 raw into 8 food, the common hearth 20 into 20, the cookhouse 60 into 72
@@ -253,7 +258,7 @@ TOWN_BUILDINGS.registerAll([
   B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], requiresAny: ['pier', 'shipyard'], notable: true, jobs: 10, repair: PL(20), out: {gold: 120}}),
   B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], requiresAny: ['pier', 'fishhut'], jobs: 1, repair: S(3), fire: 80}),
   B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1, food: 0.05}, {needs: ['river'], requiresAny: ['ferry', 'fishhut'], jobs: 4, repair: PL(6), in: {fiber: 5}, out: {fish: 5, gold: 20}}),
-  B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, cycles: 10, repair: S(5), in: {gold: 100, silver: 20}, out: {gold: 160}}),
+  B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, cycles: 10, repair: S(5), works: true}),
   // ── defence
   B('palisade', 'частокол', 'm', 'defence', 1, [...H, ...E, ...O], {defence: 0.25}, {needs: ['forest'], local: 'palisade', repair: W(40)}),
   B('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, {local: 'watchtower', jobs: 2, repair: W(5)}),
@@ -278,17 +283,17 @@ TOWN_BUILDINGS.registerAll([
   B('cemetery', 'кладбище', 'n', 'faith', 1, ALL, {faith: 0.05, health: 0.05}, {jobs: 1}),
   // ── lore
   B('school', 'школа', 'f', 'lore', 2, [...H, ...E, ...D], {lore: 0.15}, {jobs: 3, heat: 40, repair: W(5), in: {cloth: 5}}),
-  B('library', 'библиотека', 'f', 'lore', 2, [...H, ...E, ...D], {lore: 0.3, prestige: 0.1}, {requires: ['school'], pop: 800, jobs: 4, heat: 40, repair: S(5), in: {lux: 2}}),
+  B('library', 'библиотека', 'f', 'lore', 2, [...H, ...E, ...D], {lore: 0.3, prestige: 0.1}, {requires: ['school'], pop: 800, jobs: 4, heat: 40, repair: S(5), in: {lux: 20}}),
   // the wards of a mage tower hold the dead off (atlas/lairs.js: the undead's raids on it fail oftener, the rot around fades)
-  B('magetower', 'башня мага', 'f', 'lore', 2, [...H, ...E], {lore: 0.3, defence: 0.15, prestige: 0.15}, {pop: 800, notable: true, jobs: 3, repair: S(5), in: {potions: 5, lux: 2}}),
+  B('magetower', 'башня мага', 'f', 'lore', 2, [...H, ...E], {lore: 0.3, defence: 0.15, prestige: 0.15}, {pop: 800, notable: true, jobs: 3, repair: S(5), in: {potions: 5, lux: 20}}),
   // ── power and fame
   B('eldershall', 'дом старейшин', 'm', 'power', 0, ALL, {prestige: 0.1}, {jobs: 2, heat: 40, repair: W(5)}),
   B('townhall', 'ратуша', 'f', 'power', 2, [...H, ...D], {prestige: 0.2, trade: 0.05}, {requires: ['eldershall'], jobs: 6, heat: 60, repair: S(10)}),
-  B('palace', 'дворец', 'm', 'power', 2, [...H, ...E], {prestige: 0.4}, {requiresAny: ['townhall', 'eldershall'], pop: 800, capital: true, jobs: 20, heat: 160, repair: S(20), in: {lux: 10, food: 10}}),
+  B('palace', 'дворец', 'm', 'power', 2, [...H, ...E], {prestige: 0.4}, {requiresAny: ['townhall', 'eldershall'], pop: 800, capital: true, jobs: 20, heat: 160, repair: S(20), in: {lux: 100, food: 10}}),
   B('arena', 'бойцовская яма', 'f', 'power', 2, [...O, ...H], {prestige: 0.15, defence: 0.05}, {jobs: 4, repair: W(5), in: {food: 5, drink: 100}}),
   B('monument', 'памятник', 'm', 'power', 2, ALL, {prestige: 0.15}, {pop: 800, repair: S(20)}),
   // the throne hall crowns a people's seat: one per realm, only its capital builds it (data/peoples.js CAPITAL)
-  B('throne', 'тронный зал', 'm', 'power', 2, ALL, {prestige: 0.3, trade: 0.1, defence: 0.1}, {pop: 800, capital: true, unique: true, requiresAny: ['eldershall', 'townhall', 'ancestorhall', 'warcamp'], notable: true, jobs: 10, heat: 120, repair: S(10), in: {lux: 15}}),
+  B('throne', 'тронный зал', 'm', 'power', 2, ALL, {prestige: 0.3, trade: 0.1, defence: 0.1}, {pop: 800, capital: true, unique: true, requiresAny: ['eldershall', 'townhall', 'ancestorhall', 'warcamp'], notable: true, jobs: 10, heat: 120, repair: S(10), in: {lux: 150}}),
   // ── life and health
   B('well', 'колодец', 'm', 'life', 1, ALL, {health: 0.1}, {local: 'well', repair: S(2)}),
   B('healerhut', 'хижина лекаря', 'f', 'life', 1, ALL, {health: 0.15}, {local: 'healerhut', jobs: 2, repair: W(3), in: {herbs: 20, pots: 10}, out: {potions: 10}}),
@@ -303,6 +308,29 @@ TOWN_BUILDINGS.registerAll([
 // the kitchens of the three steps of a town: raw food a year at full strength, cycles of fire for it, food out of a unit of raw
 export const KITCHENS = {campfire: {raw: 10, fire: 32, yield: 0.8}, hearth: {raw: 20, fire: 40, yield: 1}, cookhouse: {raw: 60, fire: 80, yield: 1.2}};
 const DISHES = {grain: 'каша', produce: 'похлёбка из овощей', mushrooms: 'грибная похлёбка', meat: 'мясная похлёбка', fish: 'уха', milk: 'сыр и творог'};
+// fine work of the luxury workshop: how much of each material a year goes into it (any two of them make a way), and how
+// much more the piece is worth than its makings
+export const LUX = {markup: 1.5, take: {wood: 90, stone: 90, gems: 9, bronze: 18, iron: 18, steel: 12, silver: 12, gold: 90, mithril: 3}};
+const LUX_WORDS = {wood: 'дерево', stone: 'камень', gems: 'самоцветы', bronze: 'бронза', iron: 'железо', steel: 'сталь', silver: 'серебро', gold: 'золото', mithril: 'мифрил'};
+function luxWays() {
+  const ids = Object.keys(LUX.take), out = [];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const a = ids[i], b = ids[j];
+    // (the worth follows the prices until the table «Переделы построек» sets it by hand)
+    let set = null;
+    out.push(WK('jeweler', `${a}-${b}`, `${LUX_WORDS[a]} и ${LUX_WORDS[b]}`, {[a]: LUX.take[a], [b]: LUX.take[b]},
+      {get lux() { return set ?? Math.round((goodPrice(a) * LUX.take[a] + goodPrice(b) * LUX.take[b]) * LUX.markup); }, set lux(v) { set = v; }}));
+  }
+  return out;
+}
+// a rite of so much worth a year in one good: the amount follows its price, the dearer the less (until set by hand)
+export const RITE_WORTH = {fallentemple: 20};
+function worthWay(at, id, label, good, worth, more = {}) {
+  let set = null;
+  return WK(at, id, label, {get [good]() { return set ?? Math.max(1, Math.round(worth() / goodPrice(good))); }, set [good](v) { set = v; }}, {}, more);
+}
+// the mint: what goes into a year of coin, and how much more the coin is worth
+export const MINT = {markup: 1.6, take: {gold: 100, silver: 30, gems: 25}};
 const WK = (at, id, label, inn, out, more = {}) => ({id: `${at}.${id}`, at, label, in: inn, out, ...more});
 export const TOWN_WORKS = new Registry('townWork');
 TOWN_WORKS.registerAll([
@@ -328,20 +356,28 @@ TOWN_WORKS.registerAll([
   WK('bowyer', 'leather', 'луки и стрелы', {wood: 30, leather: 8}, {arms: 20}, {quality: 'bone'}),
   WK('bowyer', 'ironwood', 'луки из железного дерева', {wood: 40, fiber: 8}, {arms: 20}, {quality: 'ironwood', peoples: E}),
   WK('bowyer', 'holywood', 'луки и клинки святого дерева', {wood: 20, fiber: 5, herbs: 10}, {arms: 8}, {quality: 'holywood', peoples: E}),
+  // fine work: any two materials; worth = their price × LUX.markup (a getter, so an edit of a price reaches it)
+  ...luxWays(),
   // rites: honey and wax for most; the dwarves give their gods gems, metal and fine work of metal, stone and gems
   WK('shrine', 'honey', 'свечи и мёд', {honey: 5}, {}),
   WK('shrine', 'gems', 'самоцветы в дар', {gems: 2}, {}, {peoples: D}),
   WK('shrine', 'metal', 'железо в дар', {iron: 5}, {}, {peoples: D}),
-  WK('shrine', 'lux', 'изделия в дар', {lux: 1}, {}, {peoples: D}),
+  WK('shrine', 'lux', 'изделия в дар', {lux: 10}, {}, {peoples: D}),
   WK('ancestorhall', 'gems', 'самоцветы предкам', {gems: 3}, {}),
   WK('ancestorhall', 'metal', 'серебро предкам', {silver: 3}, {}),
-  WK('ancestorhall', 'lux', 'изделия предкам', {lux: 1}, {}),
-  WK('temple', 'honey', 'свечи, мёд и утварь', {honey: 15, lux: 1}, {}),
-  WK('temple', 'gems', 'самоцветы и утварь', {gems: 5, lux: 1}, {}, {peoples: D}),
-  WK('temple', 'metal', 'серебро и утварь', {silver: 5, lux: 1}, {}, {peoples: D}),
+  WK('ancestorhall', 'lux', 'изделия предкам', {lux: 10}, {}),
+  WK('temple', 'honey', 'свечи, мёд и утварь', {honey: 15, lux: 10}, {}),
+  WK('temple', 'gems', 'самоцветы и утварь', {gems: 5, lux: 10}, {}, {peoples: D}),
+  WK('temple', 'metal', 'серебро и утварь', {silver: 5, lux: 10}, {}, {peoples: D}),
   WK('fallentemple', 'honey', 'свечи и мёд павшим', {honey: 10}, {}),
   WK('fallentemple', 'gems', 'самоцветы павшим', {gems: 3}, {}, {peoples: D}),
-  WK('fallentemple', 'metal', 'железо павшим', {iron: 10}, {}, {peoples: D}),
+  // any metal to the fallen, by worth: the dearer the metal, the less of it a rite takes (RITE_WORTH)
+  ...['bronze', 'iron', 'steel', 'silver', 'gold', 'mithril'].map(m => worthWay('fallentemple', m, `${LUX_WORDS[m]} павшим`, m, () => RITE_WORTH.fallentemple)),
+  // the mint strikes coin of gold, of silver or of gems, worth more than what went in (MINT)
+  ...Object.entries(MINT.take).map(([g, n]) => {
+    let set = null;
+    return WK('mint', g, `монета из: ${LUX_WORDS[g]}`, {[g]: n}, {get gold() { return set ?? Math.round(goodPrice(g) * n * MINT.markup); }, set gold(v) { set = v; }});
+  }),
   WK('smokehouse', 'meat', 'копчёное мясо', {meat: 20}, {stores: 20}, {fire: 60}),
   WK('smokehouse', 'fish', 'копчёная рыба', {fish: 20}, {stores: 20}, {fire: 60}),
   WK('dryrack', 'meat', 'солонина', {meat: 12, salt: 6}, {stores: 12}),
@@ -362,7 +398,7 @@ TOWN_WORKS.registerAll([
   WK('foundry', 'steel', 'сталь из железа', {iron: 60}, {steel: 40}, {fire: 240}),
   WK('foundry', 'forge', 'стальные орудия, оружие и броня', {steel: 40, leather: 10}, {tools: 30, arms: 10, armor: 6}, {quality: 'steel', fire: 80}),
   WK('magmaforge', 'mithril', 'мифрил из руды', {mithrilOre: 20}, {mithril: 10}),
-  WK('magmaforge', 'forge', 'мифриловое оружие и броня', {mithril: 10, steel: 10, leather: 5}, {arms: 15, armor: 5, lux: 3}, {quality: 'mithril'}),
+  WK('magmaforge', 'forge', 'мифриловое оружие и броня', {mithril: 10, steel: 10, leather: 5}, {arms: 15, armor: 5, lux: 30}, {quality: 'mithril'}),
 ]);
 // the ways of a building: its rows of TOWN_WORKS, or its own in/out as the one way
 export const worksOf = b => (b.works ? TOWN_WORKS.filter(w => w.at === b.id) : [{id: b.id, at: b.id, label: b.name, in: b.in || {}, out: b.out || {}, quality: b.quality, fire: b.fire}]);
