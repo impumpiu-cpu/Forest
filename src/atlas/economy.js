@@ -30,6 +30,9 @@ export const ECONOMY = {
   switchWay: 0.2,        // a building leaves its way for another only when that one's lacking worth is this much (gold a day) more
   stockDays: 30,         // the stock is drawn on over so many days (a season): its share of a day
   haul: 0.85,            // of what a town sends to another of its realm, this much arrives
+  reserve: 30,           // days of its people's food a town keeps in stores (smoked, salted, dried: the hungry eat them, armies
+                         // march on them, settlers carry them, a besieged town lives on them); short of it, it asks for more
+  reserveFill: 240,      // …filling what it lacks over so many days (stores come second to the daily bread)
   cold: 2, warm: 12,     // the cell's mean °C below which warmth costs climate.cold, above which climate.warm
   climate: {cold: 1.6, mild: 1, warm: 0.4},
 };
@@ -206,6 +209,10 @@ function stepTowns(a, towns, days) {
       if (met[g] < 0.99 && !short.includes(g)) short.push(g);
     }
     X.met = met;
+    // the reserve: a town wants ECONOMY.reserve days of its people's food in stores — asked for, not used up: the
+    // smokehouse and the racks work for it, trade brings it (it is not a lack: the council does not build for it)
+    const reserve = ECONOMY.reserve * (X.needs.food || 0) * X.heads, lack = reserve - (E.stock.stores || 0);
+    if (lack > 0) add(X.want, 'stores', lack / ECONOMY.reserveFill);
     // a people that trades some goods at once for another: what it makes of them goes to the market, the worth comes back
     const TU = TRADE_UP[t.people];
     if (TU) for (const g of TU.sells) {

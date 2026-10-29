@@ -21,6 +21,7 @@ import {townFx, canBuild, chooseBuilding, room} from './towns.js';
 import {realmTaste} from './realms.js';
 import {roadAccess} from './roads.js';
 import {raiseBuilding, settleSpot, foundFrom} from './peoples.js';
+import {drawRealm} from './economy.js';
 
 const step = b => Math.min(BUILD.days.length - 1, b.tier || 0);
 // the work-days a building takes, and the materials it is raised of
@@ -82,6 +83,11 @@ function work(a, t, rnd, say) {
     if (v <= 1e-6) continue;
     const got = t.econ ? v * Math.min(1, t.econ.met?.[g] ?? 0) : v;
     if (got > 1e-6) { w.mat[g] = v - got; moved = true; }
+  }
+  // what stands in for a material the household did not meet: settlers take ready food for the stores they lack
+  for (const [g, v] of Object.entries(w.mat)) for (const sub of v > 1e-6 ? BUILD.instead[g] || [] : []) {
+    const got = t.realm != null ? drawRealm(a, t.realm, sub, w.mat[g], t) : 0;
+    if (got > 1e-6) { w.mat[g] -= got; moved = true; }
   }
   let labour = Math.max(1, t.pop * BUILD.crew) * SEASON_DAYS;
   const use = Math.min(labour, P.days - w.done);

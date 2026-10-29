@@ -20,7 +20,11 @@
 //             elves and dwarves slowly, orcs fast
 //   content:  contentment 0…1 = base + Σ weight × the realm's attribute (data/kingdom.js REALM_STATS: culture, economy,
 //             loyalty, stability), × the share of their food the town got
-//   migrate:  share of a town's people ready to move in a season to a better town of the realm (fame and food draw them)
+//   migrate:  share of a town's people ready to move in a season to a better town (fame and food draw them): of their
+//             realm, or of another realm that trades with it, nearby — of their own people, or of a people that welcomes
+//             them
+//   welcome:  the other peoples whose folk this people takes into its towns (its own kin of other realms always):
+//             humans and orcs take everyone, dwarves no one; the elves keep to themselves for now
 //   settlers: a town raises settlers as it raises a building (atlas/build.js): `days` of work, `goods` from the realm's
 //             stocks, `pop` people (the town needs `from` at least); they found a town within reach × spacing of it,
 //             carrying the goods; `want` — how much the council wants them when the town is full
@@ -45,8 +49,8 @@ WORLD_PEOPLES.registerAll([
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
     spread: 0.22, growth: 0.18, spacing: 16,
-    born: 0.24, content: {base: 0.55, culture: 0.1, loyalty: 0.1}, migrate: 0.005,
-    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {produce: 600, wood: 30, tools: 3}},
+    born: 0.24, content: {base: 0.55, culture: 0.1, loyalty: 0.1}, migrate: 0.005, welcome: [],
+    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {stores: 600, wood: 30, tools: 3}},
     army: {gold: 0.08, arms: 0.02, armor: 0.01, food: 1, eats: ['produce']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
@@ -58,8 +62,8 @@ WORLD_PEOPLES.registerAll([
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
     spread: 0.18, growth: 0.16, spacing: 14,
-    born: 0.26, content: {base: 0.5, economy: 0.06, stability: 0.08}, migrate: 0.005,
-    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {food: 600, stone: 30, tools: 4}},
+    born: 0.26, content: {base: 0.5, economy: 0.06, stability: 0.08}, migrate: 0.005, welcome: [],
+    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {stores: 600, stone: 30, tools: 4}},
     army: {gold: 0.2, arms: 0.03, armor: 0.04, food: 1.2, eats: ['stores', 'food']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
@@ -71,8 +75,8 @@ WORLD_PEOPLES.registerAll([
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
     spread: 0.26, growth: 0.24, spacing: 12,
-    born: 0.34, content: {base: 0.55, economy: 0.08, loyalty: 0.12}, migrate: 0.02,
-    settlers: {pop: 30, from: 130, days: 150, reach: 2.5, want: 3, goods: {food: 600, wood: 30, tools: 3}},
+    born: 0.34, content: {base: 0.55, economy: 0.08, loyalty: 0.12}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
+    settlers: {pop: 30, from: 130, days: 150, reach: 2.5, want: 3, goods: {stores: 600, wood: 30, tools: 3}},
     army: {gold: 0.12, arms: 0.02, armor: 0.02, food: 1, eats: ['stores', 'food']},
     crime: {per: 0.03, pow: 1.6},
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
@@ -84,8 +88,8 @@ WORLD_PEOPLES.registerAll([
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
     spread: 0.3, growth: 0.26, spacing: 13,
-    born: 0.44, content: {base: 0.6, stability: 0.12, loyalty: 0.1}, migrate: 0.03,
-    settlers: {pop: 25, from: 110, days: 100, reach: 2.5, want: 3, goods: {food: 500, hide: 20, arms: 3}},
+    born: 0.44, content: {base: 0.6, stability: 0.12, loyalty: 0.1}, migrate: 0.03, welcome: ['elves', 'dwarves', 'humans'],
+    settlers: {pop: 25, from: 110, days: 100, reach: 2.5, want: 3, goods: {stores: 500, hide: 20, arms: 3}},
     army: {gold: 0, arms: 0.015, armor: 0.004, food: 0.8, eats: ['stores', 'food']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
@@ -204,8 +208,9 @@ export const ELDER_YEARS = [
 //              goes with its towns
 //   minTarget: the least a town's target is counted at (atlas/demography.js growTown); abandon — a town with fewer
 //              people is left, they go to the nearest town of the realm;  bandStores — days of stores a founding band
-//              brings with it
+//              brings with it;  abroad — how much a town of another realm draws against one of their own;  moveReach — how
+//              far folk move to another realm, in steps of their people's spacing
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  minTarget: 60, abandon: 10, bandStores: 120};
+  minTarget: 60, abandon: 10, bandStores: 120, abroad: 0.6, moveReach: 3};

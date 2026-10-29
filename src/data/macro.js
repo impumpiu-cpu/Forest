@@ -13,7 +13,9 @@ import {WORLD_PEOPLES} from './peoples.js';
 //   matDays    materials: the building's own upkeep (`repair`) × this many days — logs, boards, stone or hides
 //   hand       work-days for each gold of worth of a material the realm neither has nor makes: gathered by hand
 //   switch     how much more another building must be wanted to leave the one under way
-export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, matDays: 300, hand: 12, switch: 0.3};
+//   instead    what stands in for a material the household did not meet, taken from the realm's stocks one for one:
+//              settlers take ready food for the stores they lack
+export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, matDays: 300, hand: 12, switch: 0.3, instead: {stores: ['food', 'produce']}};
 
 // An army's keep, a day per fighter: each people's own (data/peoples.js `army`, the table «Народы мира»): gold (pay), arms
 // and armour (their wear, by worth) and rations of food, eaten of the first of `eats` the realm has a season of (stores

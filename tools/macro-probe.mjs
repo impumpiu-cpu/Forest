@@ -9,7 +9,7 @@ try { ({realmTrade} = await import('../src/atlas/trade.js')); } catch {}
 
 const N = +(process.argv[2] || 4), size = process.argv[3] || 'small';
 const worth = g => goodPrice(g) || 1;
-const val = o => Object.entries(o || {}).reduce((s, [g, v]) => s + (g === 'stores' ? 0 : Math.max(0, v) * worth(g)), 0);
+const val = o => Object.entries(o || {}).reduce((s, [g, v]) => s + Math.max(0, v) * worth(g), 0);
 const series = {};   // year → race → {towns, pop, built, sumTier}
 const towns = [], realms = [], events = {army: 0, men: 0, raid: 0, burned: 0, built: 0, years: 0, hungry: 0, trade: 0, tradeSeasons: 0, armyDays: {}};
 const buildFreq = {}, catByRace = {};

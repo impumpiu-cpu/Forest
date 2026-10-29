@@ -230,7 +230,8 @@ BEHAVIOURS.army = {
     const t = a.towns.find(t => t.id === p.target), A = ARMY, S = p.siege;
     if (!t || !t.alive) { goHome(a, p); return; }
     if (rnd() < A.burn && raidSite(a, t, rnd)) { p.burnt++; p.supplies += A.forage; }   // the besiegers eat what they take
-    if (S.stock > 0) S.stock--; else { const d = t.pop * A.starve; t.pop -= d; S.starved += d; }
+    if (S.stock > 0) S.stock--; else if (stockOf(t, 'stores') >= t.pop) t.econ.stock.stores -= t.pop;   // then the stores, a ration a head a day
+    else { const d = t.pop * A.starve; t.pop -= d; S.starved += d; }
     const fx = townFx(t), town = might(t, fx);
     const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
     if (!ready) return;
