@@ -21,7 +21,7 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, TOWN_WORKS, TOOL_USES, CHAINS, KITCHENS} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, TOWN_WORKS, TOOL_USES, CHAINS, KITCHENS, FUEL} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
@@ -353,7 +353,8 @@ export const TABLES = [
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('house', 'Жильё', 'int', {min: 0, note: 'сколько жителей вмещает; место города = 120 + сумма'}),
       col('jobs', 'Рабочих', 'int', {min: 0, note: 'сколько рук берёт у города при полной работе (черновик)'}),
-      col('heat', 'Тепло', 'int', {min: 0, note: 'угля и дров в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4; тепло берёт топливо первым (черновик)'}),
+      col('heat', 'Тепло', 'int', {min: 0, note: 'циклов тепла в год, × климат: холодный 1,6, умеренный 1, тёплый 0,4; единица топлива даёт fuel.uses циклов; тепло берёт топливо первым (черновик)'}),
+      col('fire', 'Жар в работе', 'int', {min: 0, note: 'циклов жара в год для печи, горна, обжига; у переделов — свой'}),
       col('repair', 'Поддержание', 'map', {ref: 'townGoods', min: 0, note: 'в год: деревянная — брёвна или тёс, каменная — камень, шатры — шкуры (черновик)'}),
       col('cycles', 'Циклов в год', 'int', {min: 0, note: 'выпусков товара за год; каждый тратит одно использование орудия, орудие даёт столько использований, сколько его материал («Заряды орудий» в «Жизни логов и городов»)'}),
       col('herd', 'Голов', 'int', {min: 0, note: 'стадо при полной работе: молоко — от поголовья, приплод — на бойню'}),
@@ -384,6 +385,7 @@ export const TABLES = [
       col('id', 'id'), col('at', 'Постройка', 'ref', {ref: 'townBuildings'}), col('label', 'Название'),
       col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0}), col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0}),
       col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOL_USES)}),
+      col('fire', 'Жар', 'int', {min: 0, note: 'циклов жара в год; единица топлива даёт fuel.uses циклов'}),
     ]},
 
   // ── Караван
@@ -452,8 +454,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOL_USES — сколько использований даёт орудие из каждого материала; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, топливо, сколько еды с единицы сырья).',
-    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, toolUses: TOOL_USES, kitchens: KITCHENS})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOL_USES — сколько использований даёт орудие из каждого материала; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, циклы жара, сколько еды с единицы сырья; fuel.uses — сколько циклов тепла или жара даёт единица топлива).',
+    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, toolUses: TOOL_USES, kitchens: KITCHENS, fuel: FUEL})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',

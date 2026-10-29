@@ -3,7 +3,7 @@
 // buildings stand idle for want of something. The flows are drafts the towns do not run yet; this checks the table
 // before they do. `npm run chains` — the report; `node tools/chains.mjs --json file` — the model for a chain map.
 import fs from 'fs';
-import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOL_USES, worksOf, upkeepOf, townStart, townNeeds, goodPrice} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOL_USES, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const fxText = b => [b.house ? `жильё ${b.house}` : '', ...Object.entries(b.fx || {}).map(([k, v]) => `${EFFECTS[k]} +${v}`)].filter(Boolean).join(', ');
@@ -17,8 +17,9 @@ export function chainModel() {
   const procs = [];
   for (const b of TOWN_BUILDINGS.all()) {
     const keep = upkeepOf(b), ways = worksOf(b);
+    // fire: units of fuel for the cycles of fire this way burns (FUEL.uses cycles a unit)
     for (const w of ways) procs.push({id: w.id, at: b.id, building: b.name, name: ways.length > 1 ? `${b.name}: ${w.label}` : b.name, way: ways.length > 1 ? w.label : null,
-      cat: CATEGORIES[b.cat], in: w.in, out: w.out, keep, heat: b.heat || 0, repair: b.repair || {}, cycles: b.cycles || 0, herd: b.herd || 0,
+      cat: CATEGORIES[b.cat], in: w.fire ? {...w.in, coal: (w.in.coal || 0) + fuelFor(w.fire)} : w.in, fire: w.fire || 0, out: w.out, keep, heat: b.heat || 0, repair: b.repair || {}, cycles: b.cycles || 0, herd: b.herd || 0,
       quality: w.quality || null, max: b.max, jobs: b.jobs || 0, house: b.house || 0, tier: b.tier, site: !!b.site, fx: fxText(b),
       needs: [...(b.needs || []), ...(b.needsAny ? ['одно из: ' + b.needsAny.join('/')] : [])]});
   }
@@ -28,7 +29,7 @@ export function chainModel() {
     {id: 'people', name: 'Жители (100 чел. за сезон)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'}},
     {id: 'treasury', name: 'Казна державы', in: ['gold']},
   ];
-  return {goods, gates, procs, sinks, chains: CHAINS, toolUses: TOOL_USES, peoples: WORLD_PEOPLES.ids()};
+  return {goods, gates, procs, sinks, chains: CHAINS, toolUses: TOOL_USES, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};
 }
 
 // what works for a people: a process works when its building is open to the people (race and realm) and every good it
@@ -66,7 +67,8 @@ export function analyse(M, race = null) {
     const needed = consOn.filter(p => !busy.has(p.at));
     let status = 'ok';
     if (!prodOn.length && !consOn.length && !s.sinks.length) status = 'na';
-    else if ((needed.length || s.sinks.length) && !s.supplied) status = 'break';
+    // (a building of several ways that has none of them is one idle building below, not a break of each of its goods)
+    else if ((needed.some(p => !p.way) || s.sinks.length) && !s.supplied) status = 'break';
     else if (consOn.length && !s.supplied) status = 'unused';
     else if (prodOn.length && !consOn.length && !s.sinks.length) status = 'dead';
     else if (s.supplied && !s.sinks.length && !consOn.some(p => works.has(p.id))) status = 'stuck';
@@ -95,7 +97,8 @@ if (process.argv[1]?.endsWith('chains.mjs')) {
   if (j > 0) { fs.writeFileSync(process.argv[j + 1], JSON.stringify(M)); console.log(`модель цепочек: ${M.procs.length} переделов, ${M.goods.length} благ → ${process.argv[j + 1]}`); }
   else for (const race of [null, ...M.peoples]) {
     const A = analyse(M, race), cnt = k => A.issues.filter(i => i.sev === k).length;
-    console.log(`\n── ${race || 'все народы вместе'}: работает ${A.works.size} из ${M.procs.filter(A.on).length} переделов; разрывов ${cnt('break')}, тупиков ${cnt('dead')}, стоят ${cnt('stall')}`);
+    const at = l => new Set(l.map(p => p.at ?? p.id)).size;
+    console.log(`\n── ${race || 'все народы вместе'}: работает ${at(M.procs.filter(p => A.works.has(p.id)))} из ${at(M.procs.filter(A.on))} построек; разрывов ${cnt('break')}, тупиков ${cnt('dead')}, стоят ${cnt('stall')}`);
     for (const i of A.issues) console.log(`   ${i.sev === 'break' ? 'РАЗРЫВ' : i.sev === 'dead' ? 'тупик ' : 'стоит '} ${i.text}`);
   }
 }

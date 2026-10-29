@@ -21,7 +21,7 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     if (!(typeof n === 'number' && n > 0)) bad.push(`${where}.${g} = ${n}`);
   } };
   for (const b of all) {
-    for (const k of ['house', 'jobs', 'heat', 'cycles', 'herd']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
+    for (const k of ['house', 'jobs', 'heat', 'fire', 'cycles', 'herd']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
     for (const k of ['in', 'out', 'repair']) goodsOk(`${b.id}: ${k}`, b[k]);
     if (b.quality && !(b.quality in TOOL_USES)) bad.push(`${b.id}: материал изделий ${b.quality}`);
     if (b.works && (b.in || b.out)) bad.push(`${b.id}: работает переделами, но в нём самом есть in/out`);
@@ -35,10 +35,11 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     goodsOk(`передел ${w.id}: in`, w.in); goodsOk(`передел ${w.id}: out`, w.out);
     if (!Object.keys(w.out || {}).length) bad.push(`передел ${w.id}: ничего не даёт`);
     if (w.quality && !(w.quality in TOOL_USES)) bad.push(`передел ${w.id}: материал ${w.quality}`);
+    if (!isCount(w.fire)) bad.push(`передел ${w.id}: жар не целое ≥ 0`);
   }
   // a building that makes tools or arms says of what
   for (const b of all) for (const w of worksOf(b)) if ((w.out.tools || w.out.arms || w.out.armor) && !w.quality) bad.push(`${w.id}: делает орудия или оружие, а материал не указан`);
-  const used = new Set([...all.flatMap(b => [...worksOf(b).flatMap(w => [...Object.keys(w.in), ...Object.keys(w.out)]), ...Object.keys(upkeepOf(b))]),
+  const used = new Set([...all.flatMap(b => [...worksOf(b).flatMap(w => [...Object.keys(w.in), ...Object.keys(w.out), ...(w.fire ? ['coal'] : [])]), ...Object.keys(upkeepOf(b))]),
     ...TOWN_GOODS.filter(g => g.start || g.need).map(g => g.id)]);
   for (const G of TOWN_GOODS.all()) {
     if (!(goodPrice(G.id) > 0)) bad.push(`благо ${G.id}: нет цены`);
