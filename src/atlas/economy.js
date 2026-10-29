@@ -92,15 +92,19 @@ function stepTowns(a, towns, days) {
     // (a town of thousands has many fields under one «пашни»), up to maxScale. A building with no jobs (houses, walls,
     // a granary) stands once, at its own size
     const scale = jobs > 0 ? Math.min(ECONOMY.maxScale, people * ECONOMY.work / jobs) : 1;
-    return {t, E, units, climate: climateOf(a, t), needs: needsOf(t.people, t.tier ?? 0), heads: people / 100, scale};
+    // the people's own hands (TOWN_GOODS start, for each 100 of them; a hamlet counts as 100): gathering, firewood, bone
+    // tools — the base a town has before any building
+    const own = Object.fromEntries(Object.entries(start).map(([g, v]) => [g, v * Math.max(1, people / 100)]));
+    return {t, E, units, climate: climateOf(a, t), needs: needsOf(t.people, t.tier ?? 0), heads: people / 100, scale, own};
   });
   // what the realm has to hand: last season's making of its towns (or, the first time, whether anyone makes it at all), the
   // people's hands and the stocks
-  const made = new Set(Object.keys(start)), prev = {}, stockAll = {};
+  const made = new Set(Object.keys(start)), prev = {}, stockAll = {}, hands = {};
   for (const X of T) {
     for (const u of X.units) for (const w of u.ways) for (const g of Object.keys(w.out)) made.add(g);
     for (const [g, v] of Object.entries(X.E.prod || {})) add(prev, g, v);
     for (const [g, v] of Object.entries(X.E.stock)) add(stockAll, g, v);
+    for (const [g, v] of Object.entries(X.own)) add(hands, g, v);
   }
   const fresh = T.some(X => !X.E.prod);
   // the worth the realm went without last season of a good: (asked − made) × its price (the first time: all of the
@@ -108,7 +112,7 @@ function stepTowns(a, towns, days) {
   const wantPrev = {};
   for (const X of T) for (const [g, v] of Object.entries(fresh ? X.needs : X.E.want || {})) add(wantPrev, g, fresh ? v * X.heads : v);
   const unmet = g => Math.max(0, (wantPrev[g] || 0) - (fresh ? 0 : prev[g] || 0)) * goodWorth(g);
-  const avail = g => (fresh ? (made.has(g) ? Infinity : 0) : prev[g] || 0) + (start[g] || 0) * T.length + (stockAll[g] || 0) / ECONOMY.stockDays;
+  const avail = g => (fresh ? (made.has(g) ? Infinity : 0) : prev[g] || 0) + (hands[g] || 0) + (stockAll[g] || 0) / ECONOMY.stockDays;
   // the way of each unit — one at a time: of the ways of its people that have their makings (keepWay of a full load), the one
   // whose goods the realm went most without; it keeps its way unless another is wanted clearly more (ECONOMY.switchWay)
   // (each unit's choice takes its makings out of what is to hand, so that four kitchens share the raw food among them)
@@ -133,13 +137,14 @@ function stepTowns(a, towns, days) {
   for (let pass = 0; pass < ECONOMY.passes; pass++) {
     const supply = {}, demand = {};
     for (const X of T) {
-      X.supply = {...start}; X.demand = {};
+      X.supply = {...X.own}; X.demand = {};
       for (const u of X.units) if (u.way) {
         for (const [g, v] of Object.entries(u.way.out)) add(X.supply, g, v * u.load);
         for (const [g, v] of Object.entries(u.takes)) add(X.demand, g, v * u.load);
       }
       for (const [g, v] of Object.entries(X.needs)) add(X.demand, g, v * X.heads);
-      if (pass === 0) X.want = {...X.demand};   // what is asked at full load (the yardstick of balance: tools/economy-report.mjs)
+      // what is asked and what could be made at full load (the yardstick of balance: tools/economy-balance.mjs, economy-report.mjs)
+      if (pass === 0) { X.want = {...X.demand}; X.cap = {...X.supply}; }
       for (const [g, v] of Object.entries(X.supply)) add(supply, g, v);
       for (const [g, v] of Object.entries(X.demand)) add(demand, g, v);
     }
@@ -152,7 +157,7 @@ function stepTowns(a, towns, days) {
   }
   // each town's rates: what it makes, what its buildings take, what its people use up
   for (const X of T) {
-    const {t, E} = X, rate = {...start}, short = [];
+    const {t, E} = X, rate = {...X.own}, short = [];
     for (const u of X.units) if (u.way) {
       for (const [g, v] of Object.entries(u.way.out)) add(rate, g, v * u.load);
       for (const [g, v] of Object.entries(u.takes)) add(rate, g, -v * u.load);
@@ -197,6 +202,12 @@ function stepTowns(a, towns, days) {
       });
     }
   }
+  // what the carts did not cover was not there to use: the town used up only what it had (its rate is cut to it) and it
+  // ran short of the good
+  for (const X of T) for (const [g, v] of Object.entries(X.next)) if (v < 0) {
+    add(X.rate, g, -v / days); X.next[g] = 0;
+    if (v < -1e-6 * days && !X.short.includes(g)) X.short.push(g);
+  }
   // the stock: what is left, less what rots (a granary or a cellar keeps some)
   const r3 = v => Math.round(v * 1000) / 1000, r = o => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => Math.abs(v) > 1e-6).map(([g, v]) => [g, r3(v)]));
   T.forEach((X, k) => {
@@ -215,12 +226,14 @@ function stepTowns(a, towns, days) {
     E.rate = r(X.rate);
     E.trade = r(trade[k]);
     E.short = X.short;
-    E.prod = r(X.supply); E.want = r(X.want);
+    E.prod = r(X.supply); E.want = r(X.want); E.cap = r(X.cap);
     // what the town's own buildings make now: the gate of a purchase (campaign/town.js canMake)
     E.made = [...new Set(X.units.filter(u => u.way && u.load > 0).flatMap(u => Object.keys(u.way.out)))];
     // the load: how far the buildings work for want of nothing but hands (their makings); the scale: how wide hands make them
     const working = X.units.filter(u => u.way);
     E.load = working.length ? Math.round(working.reduce((s, u) => s + u.load / (u.full || 1), 0) / working.length * 100) / 100 : 1;
+    // each building's load (its makings, not its hands): its effects in the town go by it (atlas/towns.js townFx)
+    E.loads = Object.fromEntries(X.units.map(u => [u.key, u.way ? Math.round(u.load / (u.full || 1) * 100) / 100 : 1]));
     E.scale = Math.round(X.scale * 100) / 100;
   });
   return T.map(X => X.E);

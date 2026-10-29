@@ -23,7 +23,7 @@ export function chainModel() {
       quality: w.quality || null, wayPeoples: w.peoples || null, max: b.max, jobs: b.jobs || 0, house: b.house || 0, tier: b.tier, site: !!b.site, fx: fxText(b),
       needs: [...(b.needs || []), ...(b.needsAny ? ['одно из: ' + b.needsAny.join('/')] : [])]});
   }
-  procs.push({id: 'start', at: null, building: 'руки жителей', name: 'руки жителей (старт)', way: null, cat: 'старт', in: {}, out: townStart(), keep: {}, heat: 0, repair: {}, tools: 0, herd: 0,
+  procs.push({id: 'start', at: null, building: 'руки жителей', name: 'руки жителей (на 100 чел.)', way: null, cat: 'старт', in: {}, out: townStart(), keep: {}, heat: 0, repair: {}, tools: 0, herd: 0,
     max: 1, jobs: 0, house: 0, tier: 0, site: false, fx: '', needs: [], note: 'город делает сам, без построек: на первые постройки'});
   const sinks = [
     {id: 'people', name: 'Жители (100 чел. в день)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},

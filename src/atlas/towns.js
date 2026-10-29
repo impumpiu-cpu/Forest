@@ -39,7 +39,13 @@ export const townGender = t => (crowned(t) ? CAPITAL.gender[t.people] : TIERS[t.
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
-  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += fxOf(b, k); }
+  // each building by its load in the household (atlas/economy.js `loads`, its nth copy): a building short of what it takes
+  // gives less; one not counted yet gives all
+  const seen = {}, L = t.econ?.loads;
+  for (const id of t.built) {
+    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1, load = L?.[`${id}#${n}`] ?? 1;
+    for (const k of KEYS) out[k] += fxOf(b, k, load);
+  }
   return out;
 }
 export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
