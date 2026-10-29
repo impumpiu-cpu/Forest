@@ -184,7 +184,7 @@ function stepTowns(a, towns, days) {
       for (const [g, v] of Object.entries(u.way.out)) add(rate, g, v * u.load);
       for (const [g, v] of Object.entries(u.takes)) add(rate, g, -v * u.load);
     }
-    const eatsRaw = TOWN_GOODS.filter(g => g.eaten?.includes(t.people)).map(g => g.id);
+    const eatsRaw = ['stores', ...TOWN_GOODS.filter(g => g.eaten?.includes(t.people)).map(g => g.id)];   // short of ready food: the stores first, then what this people eats raw
     for (const [g, v] of Object.entries(X.needs)) {
       const want = v * X.heads, got = want * (ratio[g] ?? 0);
       add(rate, g, -got);
@@ -196,6 +196,7 @@ function stepTowns(a, towns, days) {
         add(rate, r, -take); left -= take;
       }
       if (left > want * 0.01) short.push(g);
+      if (g === 'food') X.fed = want > 0 ? Math.max(0, Math.min(1, 1 - left / want)) : 1;   // the share of their food the people got
     }
     // the armies' keep: what the realm meets of it goes to them (the army reads E.met)
     const met = {};
@@ -258,6 +259,7 @@ function stepTowns(a, towns, days) {
     E.short = X.short;
     E.prod = r(X.supply); E.want = r(X.want); E.cap = r(X.cap);
     E.met = X.met; if (!Object.keys(E.met).length) delete E.met;
+    E.fed = Math.round((X.fed ?? 1) * 1000) / 1000;
     // what the town's own buildings make now: the gate of a purchase (campaign/town.js canMake)
     E.made = [...new Set(X.units.filter(u => u.way && u.load > 0).flatMap(u => Object.keys(u.way.out)))];
     // the load: how far the buildings work for want of nothing but hands (their makings); the scale: how wide hands make them

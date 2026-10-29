@@ -13,7 +13,7 @@ import {seasonLabel} from '../atlas/history.js';
 import {alignLabel} from '../data/values.js';
 import {townAt, townLabel} from '../atlas/peoples.js';
 import {townFx, room, realmMetalWords} from '../atlas/towns.js';
-import {buildDays} from '../atlas/build.js';
+import {projectOf} from '../atlas/build.js';
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
@@ -107,10 +107,10 @@ function realmHtml(a, R) {
 
 // the building under way (atlas/build.js): its work done and the materials it still waits for
 function buildingHtml(t) {
-  const w = t.project && t.works?.[t.project];
-  if (!w) return null;
-  const b = TOWN_BUILDINGS.get(t.project), wait = Object.entries(w.mat).filter(([, v]) => v > 0.5).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`);
-  return `${esc(b.name)}: работа ${Math.min(100, Math.round(100 * w.done / buildDays(b)))}%${wait.length ? `, ждёт: ${esc(wait.join(', '))}` : ''}`;
+  const w = t.project && t.works?.[t.project], P = w && projectOf(t);
+  if (!P) return null;
+  const wait = Object.entries(w.mat).filter(([, v]) => v > 0.5).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`);
+  return `${esc(P.name)}: работа ${Math.min(100, Math.round(100 * w.done / P.days))}%${wait.length ? `, ждёт: ${esc(wait.join(', '))}` : ''}`;
 }
 
 function townHtml(a, t) {
@@ -125,7 +125,7 @@ function townHtml(a, t) {
   const sieged = (a.parties || []).find(p => p.kind === 'army' && p.state === 'stay' && p.target === t.id);
   const head = sec(`${townLabel(t).replace(/^./, c => c.toUpperCase())} ${t.name}`,
     row('народ', `${esc(P.label)}${folk ? `, среди них ${esc(folk)}` : ''}`) +
-    row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}`) +
+    row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}${t.content != null ? `, довольство ${Math.round(t.content * 100)}%` : ''}`) +
     row('основан', `${t.founded} г.${t.capital ? ', столица' : ''}`) +
     row('угодья', `в ${siteRadius(a, t)} клетках; ${feed || ''}`) +
     row('даёт', gives || 'ничего сверх жилья') +

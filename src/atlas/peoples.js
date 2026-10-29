@@ -25,6 +25,7 @@ import {seaAccess} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
 import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
+import {growTown, abandonEmpty} from './demography.js';
 import {DIRS8} from './heap.js';
 import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
@@ -113,7 +114,9 @@ function bestSite(a, pe, j, rnd) {
 
 export {townLabel} from './towns.js';
 
-function foundTown(a, pe, i, rnd, pop, say) {
+// a founding band comes with its supplies: TOWN_LIFE.bandStores days of stores
+const withStores = t => { t.econ = {ways: {}, stock: {stores: Math.round(t.pop * TL.bandStores)}, rate: {}, short: [], load: 1}; return t; };
+export function foundTown(a, pe, i, rnd, pop, say) {
   const P = pe.P, H = a.hist;
   const t = {id: (H.nextTown = (H.nextTown || 0) + 1), people: P.id, name: townName(P, rnd, H.names), i, x: i % a.w, y: (i / a.w) | 0,
     founded: H.year, pop, tier: 0, built: [], alive: true};
@@ -151,7 +154,7 @@ export function arrive(a, era, rnd, say) {
           const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
           if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = TL.band;
         }
-        const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t, sub?.id);
+        const t = withStores(foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd())), r = foundRealm(a, t, sub?.id);
         say(`${cap1(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
         break;
       }
@@ -177,7 +180,7 @@ export function landBand(a, peopleId, i, subId, rnd, say) {
     const x = jc % F.W + dx, y = ((jc / F.W) | 0) + dy;
     if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = Math.max(pe.u[y * F.W + x], TL.band);
   }
-  const t = foundTown(a, pe, best, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), sub = subId ? worldSubs(P.race).find(s => s.id === subId) : null, r = foundRealm(a, t, sub?.id);
+  const t = withStores(foundTown(a, pe, best, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd())), sub = subId ? worldSubs(P.race).find(s => s.id === subId) : null, r = foundRealm(a, t, sub?.id);
   const S = sub || worldSubs(P.race).find(s => s.id === r.sub);
   say?.(`${cap1(S?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, best)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
   return {town: t, realm: r};
@@ -200,7 +203,7 @@ function holdField(a, pe) {
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
   // towns are the hearths the fields grow from
-  for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, TL.hearth[0] + TL.hearth[1] * t.tier + TL.hearth[2] * townFx(t).prestige)); }
+  for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, TL.hearth[0] + TL.hearth[1] * t.tier)); }
   // every people sees the others as they were at the start of the year, whatever the order
   const was = a.peoples.map(pe => Float32Array.from(pe.u));
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
@@ -229,19 +232,7 @@ export function stepPeoples(a, rnd, say) {
     const hit = s.role === 'predator' ? TL.hunt.predator : TL.hunt.other;
     for (let j = 0; j < N; j++) if (occ[j] > 0) s.N[j] *= 1 - hit * Math.min(1, occ[j]);
   }
-  // new towns where the field is dense and no town is near
-  for (const pe of a.peoples) {
-    const cand = [...pe.u.keys()].filter(j => pe.u[j] >= pe.P.found && pe.K[j] >= TL.foundLand).sort((p, q) => pe.u[q] * pe.K[q] - pe.u[p] * pe.K[p]);
-    let made = 0;
-    for (const j of cand) {
-      if (made >= TL.foundMax || rnd() > TL.foundChance) continue;
-      const i = bestSite(a, pe, j, rnd);
-      if (i < 0) continue;
-      const t = foundTown(a, pe, i, rnd, TL.newPop[0] + TL.newPop[1] * rnd());
-      joinRealm(a, t); made++;
-      say(`${cap1(realmLabel(a, t.realm))} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
-    }
-  }
+  // (new towns: a town raises settlers and they found one within its reach — atlas/build.js, foundFrom below)
   // what each town's land and living works feed (people), then the net: the surplus of one town
   // flows to the towns it is linked with that lack (atlas/sites.js)
   fadeScourge(a);
@@ -264,7 +255,7 @@ export function stepPeoples(a, rnd, say) {
     const fx = townFx(t);
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
-    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
+    growTown(a, t, target);   // born, starved — the people are counted, not made (atlas/demography.js)
     // what the town needs, for its council (atlas/build.js: every season it raises what it needs most)
     t.wants = {feeds, threat: threatAt(a, t)};
     // the step the town has earned by its people and buildings; it falls one when the people are gone
@@ -276,6 +267,7 @@ export function stepPeoples(a, rnd, say) {
       t.tier = tier;
     }
   }
+  abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
   for (const r of a.realms) for (const q of a.realms) {
@@ -297,6 +289,39 @@ export function stepPeoples(a, rnd, say) {
     return mine ? both / mine : 0;
   };
   stepDiplomacy(a, rnd, say, overlap);
+}
+
+// ── settlers (atlas/build.js raises them; data/peoples.js `settlers`): the best free spot within the town's reach — on
+// the people's land, at least `spacing` from every town, worth a band's settling (TL.siteBar); nearer is better
+export function settleSpot(a, t) {
+  const pe = a.peoples?.find(p => p.id === t.people), S = pe?.P.settlers;
+  if (!S) return -1;
+  const k = scaleOf(a), sp = pe.P.spacing * k, R = S.reach * sp, F = a.fauna;
+  const cand = [];
+  for (let y = Math.max(0, Math.floor(t.y - R)); y <= Math.min(a.h - 1, Math.ceil(t.y + R)); y++) for (let x = Math.max(0, Math.floor(t.x - R)); x <= Math.min(a.w - 1, Math.ceil(t.x + R)); x++) {
+    const d = Math.hypot(x - t.x, y - t.y);
+    if (d > R || d < sp) continue;
+    const i = y * a.w + x, v = pe.site[i];
+    if (!(v > TL.siteBar) || pe.K[faunaCell(a, i)] < TL.foundLand) continue;
+    cand.push([i, v - 0.2 * d / R]);
+  }
+  cand.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
+  for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp)) return i;
+  return -1;
+}
+// the settlers of a town found a new one: they and the goods they carried leave it; the new town is of the same realm
+export function foundFrom(a, from, rnd, say, goods = {}) {
+  const pe = a.peoples.find(p => p.id === from.people), S = pe.P.settlers;
+  const i = settleSpot(a, from);
+  if (i < 0 || from.pop < S.pop + TL.abandon) return null;
+  const t = foundTown(a, pe, i, rnd, S.pop);
+  from.pop -= S.pop;
+  t.realm = from.realm;
+  if (t.realm == null) joinRealm(a, t);
+  t.from = from.id;
+  t.econ = {ways: {}, stock: Object.fromEntries(Object.entries(goods).filter(([, v]) => v > 0)), rate: {}, short: [], load: 1};
+  say(`Поселенцы ${townLabel(from, 2)} ${from.name} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+  return t;
 }
 
 // a building is finished in a town (atlas/build.js): an outlying work takes its own cell (atlas/sites.js) — false when there

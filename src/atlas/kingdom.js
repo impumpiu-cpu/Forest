@@ -100,7 +100,9 @@ export function stepKingdom(a, say) {
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
-    const src = {towns: towns.length, pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    const C = WORLD_PEOPLES.get(realm.people).crime || {per: 0.02, pow: 1};
+    const crowd = towns.reduce((s, t) => s + C.per * Math.pow(Math.max(0, t.pop) / 1000, C.pow), 0);
+    const src = {towns: towns.length, pop, crowd, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
       for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w;

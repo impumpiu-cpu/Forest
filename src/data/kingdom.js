@@ -19,13 +19,14 @@ REALM_STATS.registerAll([
 ]);
 
 // Ruin grows by its sources every year and falls by the attribute that holds it back (× `fall`); never below 0.
-//   towns — per town of the realm;  pop — per 1000 people;  upkeep — per point of upkeep over the economy;
+//   towns — per town of the realm;  crowd — what its towns breed by their size, each people its own (data/peoples.js
+//   `crime`: per × (people of the town / 1000) ^ pow — humans' crowded towns breed more);  upkeep — per point of upkeep over the economy;
 //   wars — per war the realm is in;  raided — per town of it raided this year
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {towns: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше держава, тем больше рук, что берут'},
-  {id: 'crime', label: 'преступность', grows: {pop: 0.02}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража'},
+  {id: 'crime', label: 'преступность', grows: {crowd: 1}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража; у людей — сильнее с размером города'},
   {id: 'decay', label: 'упадок', grows: {upkeep: 0.5}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
