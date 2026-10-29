@@ -13,6 +13,7 @@ import {seasonLabel} from '../atlas/history.js';
 import {alignLabel} from '../data/values.js';
 import {townAt, townLabel} from '../atlas/peoples.js';
 import {townFx, room, realmMetalWords} from '../atlas/towns.js';
+import {buildDays} from '../atlas/build.js';
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
@@ -104,6 +105,14 @@ function realmHtml(a, R) {
     `<div class="ir"><span>о чём думал двор</span></div>${thoughtsHtml(R)}`);
 }
 
+// the building under way (atlas/build.js): its work done and the materials it still waits for
+function buildingHtml(t) {
+  const w = t.project && t.works?.[t.project];
+  if (!w) return null;
+  const b = TOWN_BUILDINGS.get(t.project), wait = Object.entries(w.mat).filter(([, v]) => v > 0.5).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`);
+  return `${esc(b.name)}: работа ${Math.min(100, Math.round(100 * w.done / buildDays(b)))}%${wait.length ? `, ждёт: ${esc(wait.join(', '))}` : ''}`;
+}
+
 function townHtml(a, t) {
   const P = WORLD_PEOPLES.get(t.people), fx = townFx(t), cnt = {};
   for (const id of t.built) cnt[id] = (cnt[id] || 0) + 1;
@@ -122,6 +131,7 @@ function townHtml(a, t) {
     row('даёт', gives || 'ничего сверх жилья') +
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
+    row('строится', buildingHtml(t)) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')) +
     economyHtml(t));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);

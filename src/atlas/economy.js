@@ -20,6 +20,7 @@
 // as far as the town has their worth in the stock (campaign/town.js).
 import {goodPrice} from '../data/townBuildings.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, worksOf, upkeepOf, townStart, fuelFor, STORAGE, TRADE_UP} from '../data/townBuildings.js';
+import {keepOf, armyEats} from '../data/macro.js';
 
 export const ECONOMY = {
   work: 0.5,             // share of the people who work in the buildings
@@ -37,6 +38,26 @@ const goodWorth = g => goodPrice(g) || 1;
 const raceOk = (w, people) => !w.peoples || w.peoples.includes(people);
 const keyOf = (id, n) => `${id}#${n}`;
 const add = (o, k, v) => { if (v) o[k] = (o[k] || 0) + v; };
+
+// what a town is asked a day beyond its people's needs, met as they are (the share met is `E.met`, by good):
+//   - the armies that marched from it (data/macro.js ARMY_KEEP): their pay, the wear of arms and armour, their food;
+//   - the building it is raising (atlas/build.js): the materials still missing, asked for within a season.
+export function ordersOf(a, t) {
+  const o = {};
+  for (const p of a?.parties || []) if (p.kind === 'army' && p.from === t.id && p.state !== 'gone' && p.men > 0) {
+    p.eat = armyRation(a, t, p);   // what it eats this season: stores while the realm has a season of them (keepArmy reads it)
+    for (const [g, v] of Object.entries(keepOf(p.people))) if (v > 0) add(o, g === 'food' ? p.eat : g, v * p.men);
+  }
+  const w = t.project && t.works?.[t.project];
+  if (w) for (const [g, v] of Object.entries(w.mat)) if (v > 1e-6) add(o, g, v / ECONOMY.stockDays);
+  return o;
+}
+
+// the ration an army eats: the first of its people's (data/macro.js ARMY_KEEP.eats) its realm holds a season of
+export function armyRation(a, t, p) {
+  const eats = armyEats(p.people), need = keepOf(p.people).food * p.men * ECONOMY.stockDays;
+  return eats.find(g => (t.realm != null ? realmStock(a, t.realm, g) : stockOf(t, g)) >= need) || eats[eats.length - 1];
+}
 
 // the climate's share of warmth for a town (its cell's mean temperature)
 function climateOf(a, t) {
@@ -95,7 +116,7 @@ function stepTowns(a, towns, days) {
     // the people's own hands (TOWN_GOODS start, for each 100 of them; a hamlet counts as 100): gathering, firewood, bone
     // tools — the base a town has before any building
     const own = Object.fromEntries(Object.entries(start).map(([g, v]) => [g, v * Math.max(1, people / 100)]));
-    return {t, E, units, climate: climateOf(a, t), needs: needsOf(t.people, t.tier ?? 0), heads: people / 100, scale, own};
+    return {t, E, units, climate: climateOf(a, t), needs: needsOf(t.people, t.tier ?? 0), heads: people / 100, scale, own, orders: ordersOf(a, t)};
   });
   // what the realm has to hand: last season's making of its towns (or, the first time, whether anyone makes it at all), the
   // people's hands and the stocks
@@ -143,6 +164,7 @@ function stepTowns(a, towns, days) {
         for (const [g, v] of Object.entries(u.takes)) add(X.demand, g, v * u.load);
       }
       for (const [g, v] of Object.entries(X.needs)) add(X.demand, g, v * X.heads);
+      for (const [g, v] of Object.entries(X.orders)) add(X.demand, g, v);
       // what is asked and what could be made at full load (the yardstick of balance: tools/economy-balance.mjs, economy-report.mjs)
       if (pass === 0) { X.want = {...X.demand}; X.cap = {...X.supply}; }
       for (const [g, v] of Object.entries(X.supply)) add(supply, g, v);
@@ -175,6 +197,14 @@ function stepTowns(a, towns, days) {
       }
       if (left > want * 0.01) short.push(g);
     }
+    // the armies' keep: what the realm meets of it goes to them (the army reads E.met)
+    const met = {};
+    for (const [g, want] of Object.entries(X.orders)) {
+      met[g] = ratio[g] ?? 0;
+      add(rate, g, -want * met[g]);
+      if (met[g] < 0.99 && !short.includes(g)) short.push(g);
+    }
+    X.met = met;
     // a people that trades some goods at once for another: what it makes of them goes to the market, the worth comes back
     const TU = TRADE_UP[t.people];
     if (TU) for (const g of TU.sells) {
@@ -227,6 +257,7 @@ function stepTowns(a, towns, days) {
     E.trade = r(trade[k]);
     E.short = X.short;
     E.prod = r(X.supply); E.want = r(X.want); E.cap = r(X.cap);
+    E.met = X.met; if (!Object.keys(E.met).length) delete E.met;
     // what the town's own buildings make now: the gate of a purchase (campaign/town.js canMake)
     E.made = [...new Set(X.units.filter(u => u.way && u.load > 0).flatMap(u => Object.keys(u.way.out)))];
     // the load: how far the buildings work for want of nothing but hands (their makings); the scale: how wide hands make them
@@ -246,4 +277,29 @@ export function takeStock(t, g, worth) {
   if (stockOf(t, g) + 1e-9 < worth) return false;
   t.econ.stock[g] = Math.round((stockOf(t, g) - worth) * 1000) / 1000;
   return true;
+}
+
+// the stock of a good over the towns of a realm, and taking some of it — the most from the towns that hold the most
+// (an army's packed food, a building's materials, a trade caravan's load); returns what was taken
+export const realmTowns = (a, realm) => (a.towns || []).filter(t => t.alive && t.realm === realm);
+export const realmStock = (a, realm, g) => realmTowns(a, realm).reduce((s, t) => s + stockOf(t, g), 0);
+export function drawRealm(a, realm, g, amount, first = null) {
+  if (!(amount > 0)) return 0;
+  const ts = realmTowns(a, realm);
+  if (first && ts.includes(first)) { ts.splice(ts.indexOf(first), 1); ts.unshift(first); }
+  let left = amount;
+  // the asking town takes its own first, then the others by what they hold
+  if (first?.econ) { const own = Math.min(left, stockOf(first, g)); if (own > 0) { first.econ.stock[g] = stockOf(first, g) - own; left -= own; } }
+  const rest = ts.filter(t => t !== first && t.econ && stockOf(t, g) > 0), all = rest.reduce((s, t) => s + stockOf(t, g), 0);
+  if (left > 0 && all > 0) {
+    const take = Math.min(left, all);
+    for (const t of rest) t.econ.stock[g] = stockOf(t, g) - take * stockOf(t, g) / all;
+    left -= take;
+  }
+  return amount - left;
+}
+// putting goods into a town's stock (a trade caravan's arrival)
+export function giveStock(t, g, v) {
+  if (!t.econ || !(v > 0)) return;
+  t.econ.stock[g] = (t.econ.stock[g] || 0) + v;
 }

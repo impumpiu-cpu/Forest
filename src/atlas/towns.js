@@ -164,18 +164,22 @@ function econPull(t, b) {
   return Math.min(TF.econ[1], TF.econ[0] * n);
 }
 
-// the building the town wants most, or null
-export function chooseBuilding(a, t, P, fx, ctx, rnd) {
+// how much the town wants a building now: Σ need × taste × effect, and what its household lacks (no die)
+export function wantOf(t, b, need, P) {
+  let v = 0;
+  for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
+  return v + econPull(t, b);
+}
+// the building the town wants most, or null; with `cur` (a building under way) also how much it wants that one
+// ({b, v, cv}: atlas/build.js weighs leaving it)
+export function chooseBuilding(a, t, P, fx, ctx, rnd, cur = null) {
   const need = townNeeds(a, t, fx, ctx);
   let best = null, bv = 0.02;
   const inRealm = realmBuilt(a, t);
   for (const b of TOWN_BUILDINGS.all()) {
     if (!canBuild(a, t, b, inRealm)) continue;
-    let v = 0;
-    for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
-    v += econPull(t, b);
-    v *= 0.85 + 0.3 * rnd();
+    const v = wantOf(t, b, need, P) * (0.85 + 0.3 * rnd());
     if (v > bv) { bv = v; best = b; }
   }
-  return best;
+  return {b: best, v: bv, cv: cur ? wantOf(t, cur, need, P) : 0};
 }

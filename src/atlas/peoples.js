@@ -265,19 +265,8 @@ export function stepPeoples(a, rnd, say) {
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
-    // what the town needs most gets built; a big town builds faster
-    const threat = threatAt(a, t);
-    for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
-      if (rnd() > TL.build) continue;
-      const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
-      if (!b) break;
-      const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
-      if (b.site && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js)
-      t.built.push(b.id);
-      if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
-      if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
-      else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
-    }
+    // what the town needs, for its council (atlas/build.js: every season it raises what it needs most)
+    t.wants = {feeds, threat: threatAt(a, t)};
     // the step the town has earned by its people and buildings; it falls one when the people are gone
     const tier = tierOf(t), fall = t.tier > 0 && t.pop < TIERS[t.tier].pop * TIER_FALL;
     if (tier > t.tier || (fall && tier < t.tier)) {
@@ -308,6 +297,18 @@ export function stepPeoples(a, rnd, say) {
     return mine ? both / mine : 0;
   };
   stepDiplomacy(a, rnd, say, overlap);
+}
+
+// a building is finished in a town (atlas/build.js): an outlying work takes its own cell (atlas/sites.js) — false when there
+// is none left — a bridge or a ferry eases the ford, and the chronicle tells of the notable ones
+export function raiseBuilding(a, t, b, rnd, say) {
+  const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
+  if (b.site && !placeSite(a, t, b, rnd)) return false;
+  t.built.push(b.id);
+  if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
+  if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
+  else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+  return true;
 }
 
 // a bridge (or a ferry, half as good) at a town takes the ford out of the roads' cost on the river

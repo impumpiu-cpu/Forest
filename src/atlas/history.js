@@ -24,6 +24,8 @@ import {stepCourts} from './court.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {stepEconomies} from './economy.js';
+import {stepBuilds} from './build.js';
+import {stepTrade} from './trade.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom} from './kingdom.js';
 
@@ -143,6 +145,8 @@ export function stepHistory(a, onDay = null) {
   stepCalamities(a);
   // the towns' households: a season of the flows of their buildings (no die: atlas/economy.js)
   stepEconomies(a, SEASON_DAYS);
+  stepTrade(a, SEASON_DAYS);   // what one realm has to spare for what another lacks, down the routes (atlas/trade.js)
+  if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their buildings (atlas/build.js)
   stepParties(a, rnd, t => say(a, t), onDay);
   freeVassals(a);   // the lairs that fell this season, by any hand, free their vassals (atlas/leaders.js)
   // the year's beaten raids of the tribes and the dead, in one line
