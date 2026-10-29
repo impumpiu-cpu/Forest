@@ -6,7 +6,8 @@
 //   era:      the era they come in (data/history.js ERAS)
 //   arrive:   how they come into the world: `groups` founding bands; `mode` where — the best spot of
 //             their land (default), the best coast (`coast`, from over the sea) or as far from everyone
-//             as their land lets them (`far`, out of the wild edges)
+//             as their land lets them (`far`, out of the wild edges); `free` — how much they shun land another
+//             people already lives on (0 — not at all; 1 — only empty land)
 //   home:     how much a biome suits them, 0..1 — their carrying capacity, as for the beasts; it is
 //             the race's `home` (data/races.js), so the local and the world map agree on where a
 //             race belongs; `ores`: weight of the rock's ore wealth (dwarves live off the mountains)
@@ -48,8 +49,9 @@ WORLD_PEOPLES.registerAll([
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
-    flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, stone: 0.5, clay: 0.5},
-    swaps: {metal: {to: 'wood', k: 3}},
+    flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
+    swaps: {metal: {to: 'wood', k: 3}, drink: {to: 'honey', k: 1}},   // they brew no beer: mead and honey wine of the hives
+    breed: 0.8,   // long lives, few children: their towns grow slowest (× TOWN_LIFE.growth)
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'дварфы', labelGen: 'дварфов', adj: 'дварфийский', era: 'elder', color: [220, 150, 70],
@@ -61,7 +63,9 @@ WORLD_PEOPLES.registerAll([
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
     flows: {ore: 1.5, stone: 1.5, gems: 1.5, metal: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
-    swaps: {honey: {to: 'drink', k: 1}},
+    // beer for the ancestors; leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
+    swaps: {honey: {to: 'drink', k: 1}, cloth: {to: 'leather', k: 1}, pots: {to: 'stone', k: 2}},
+    breed: 0.9,   // few children, long lives
     placeFlows: {needsAny: ['steep', 'caves'], flows: {ore: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
@@ -74,10 +78,12 @@ WORLD_PEOPLES.registerAll([
   {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
     hands: 0.5, eat: 1,
     // the middling people: no gift of their own, but every road leads to them — they take in strangers × `take` faster and
-    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `folk`)
-    folk: {take: 1.5},
-    trade: 1.25,
-    arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
+    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `folk`);
+    // they settle among the others: on shared land another people pushes them off only × (1 − `mix`), and their town may stand
+    // within `near` × their spacing of another people's town — by the elves' coast, under the dwarves' hills (atlas/peoples.js)
+    folk: {take: 1.5, mix: 0.5, near: 0.7},
+    trade: 1.25, breed: 1.1,   // many children: the middling people spread faster than the elder ones
+    arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast', free: 0.7},   // an empty shore: not the elves' coast (atlas/peoples.js arrive)
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
     spread: 0.26, growth: 0.24, found: 0.28, spacing: 12,
@@ -106,7 +112,7 @@ WORLD_PEOPLES.registerAll([
     house: 0.75, roughHome: true,
     // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
-    levy: 10 / 3, breed: 1.8, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
+    levy: 10 / 3, breed: 1.25, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
     // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
     // for pots, rough logs for boards (atlas/economy.js swaps)
     swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
@@ -122,6 +128,16 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
 ]);
+
+// a good as a people takes it (`swaps`): [the good, × how much] — the greenskins' bone for pots, the elves' wood for metal
+export const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
+// a basket of goods as a people takes it, × k: several goods may become one (the horde's wood for both salt and boards);
+// the buildings' flows, the people's needs, the materials of a building and the town's choices all read goods through this
+export function swapGoods(people, goods, k = 1) {
+  const P = typeof people === 'string' ? (WORLD_PEOPLES.has(people) ? WORLD_PEOPLES.get(people) : null) : people, out = {};
+  for (const [g, n] of Object.entries(goods || {})) { const [to, x] = swapOf(P, g); out[to] = (out[to] || 0) + n * x * k; }
+  return out;
+}
 
 // a kind's share a town must hold for a building of that kind's own (data/townBuildings.js `kin`)
 export const KIN = {least: 0.08};

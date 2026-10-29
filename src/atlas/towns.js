@@ -24,7 +24,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_
 // the buildings that make a good (once)
 const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => b.out?.[g]).map(b => b.id)); return MAKERS.get(g); };
-import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN} from '../data/peoples.js';
+import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -218,15 +218,20 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     // of the people — a building that gives food; and no hands to work it — little use
     const E = ctx.econ;
     if (E) {
-      for (const g of Object.keys(b.out || {})) v += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
-      for (const g of Object.keys(b.in || {})) v += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain
+      // what it takes, as its people takes it (data/peoples.js swaps: the elves' wood for metal); what it does without (soft)
+      const ins = Object.keys(swapGoods(t.people, b.in)), softIn = g => TOWN_GOODS.get(g).soft || (b.soft || []).some(s => swapGoods(t.people, {[s]: 1})[g]);
+      let flow = 0;
+      for (const g of Object.keys(b.out || {})) flow += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
+      for (const g of ins) if (!TF.flow.spareSkip.includes(g)) flow += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain (food is not stored: its surplus is no reason)
+      v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
       // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
       const outs = Object.keys(b.out || {}).filter(g => g !== 'food' && g !== 'grain' && g !== 'gold');
       if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
       const fed = foodNet(b); if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);   // as much as it feeds
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
-      // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore)
-      if (Object.keys(b.in || {}).some(g => !TOWN_GOODS.get(g).soft && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
+      // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
+      // is never stopped, so it is never idle
+      if (b.cat !== 'housing' && ins.some(g => !softIn(g) && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
     }
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }

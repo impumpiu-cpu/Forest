@@ -34,7 +34,7 @@
 // people's) and grants to build.
 import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {UPKEEP} from '../data/kingdom.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 import {townEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
@@ -78,15 +78,8 @@ function wants(t) {
   o.comfort = goodsFor(t.people, N.comfort, t.pop * rich * k);
   return o;
 }
-// a good as a people takes it: [the good, × how much] (data/peoples.js swaps: the greenskins' bone for pots, wood for salt)
-const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
-// Normalize first: several goods may become the same material (the horde's wood and planks).
-// The basket is shared by consumption, the safety reserve and construction reservations.
-export function goodsFor(people, goods, k = 1) {
-  const P = peopleOf(people), out = {};
-  for (const [g, n] of Object.entries(goods)) { const [to, x] = swapOf(P, g); out[to] = (out[to] || 0) + n * x * k; }
-  return out;
-}
+// a basket as the town's people takes it (data/peoples.js swapGoods): the needs, the safety reserve and the materials of a building
+export const goodsFor = (people, goods, k = 1) => swapGoods(people, goods, k);
 // the towns a town is linked with, and how well: [other, link]
 const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && (l.p === t || l.q === t)).map(l => [l.p === t ? l.q : l.p, l]);
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
@@ -94,7 +87,7 @@ const dealOf = (a, b, s) => (b.realm == null || s.realm == null ? 0 : b.realm ==
 
 export function seasonMoney(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
-  for (const t of towns) { open(t); t.trade = {...(t.carry || {})}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
+  for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }   // (at: the season's step — a town burnt later in the season still sold this season)
   const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
   const deal = (b, s) => dealOf(a, b, s);
   const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end

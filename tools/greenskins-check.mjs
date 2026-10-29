@@ -137,6 +137,6 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   muster(a, t, tg, null, () => 0.5, s => said.push(s));
   const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id);
   check('орда: в поход идёт треть города и боевые звери, скот остаётся дома; растёт почти вдвое быстрее, благ хочет вдвое меньше',
-    !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > 1.5 && P.needs < 1 && !H.levy, said.join(' '));
+    !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > (H.breed ?? 1) && P.needs < 1 && !H.levy, said.join(' '));
 }
 

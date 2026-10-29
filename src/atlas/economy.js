@@ -6,17 +6,19 @@
 //               free hands for the rest; what is short works at a share. A building gone gives its hands back
 //   goods     — what the buildings give at their staffing (× the people's `flows`) is shared out over `rounds` between the
 //               buildings that take it (a good the people never takes is its `swaps` instead); without a hard good a
-//               building stops, without a soft one it works at TOWN_FLOW.soft; a building of another people (taken)
-//               works at TOWN_FLOW.captured. Housing takes its upkeep and heat but is never stopped (people live in it)
+//               building stops, without a soft one (TOWN_GOODS `soft`, or the building's own `soft` list) it works at
+//               TOWN_FLOW.soft; a building of another people (taken) works at TOWN_FLOW.captured. Housing takes its upkeep
+//               and heat but is never stopped (people live in it). A building uses a good only as far as it works: one that
+//               stands for want of leather does not burn its wood (the rest stays for the store)
 //   food      — what the buildings give of food, grain (× TOWN_FLOW.grain) and stores, less what the buildings take of it,
 //               in people-years: the town's people and slaves eat it at their people's `eat`
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS} from '../data/townBuildings.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, swapOf} from '../data/peoples.js';
 import {placeHas} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 
-const soft = g => !!TOWN_GOODS.get(g).soft;
+const soft = (r, g) => !!TOWN_GOODS.get(g).soft || r.soft.has(g);
 
 // Pens grow ordinary livestock; meat, hides and bones come only from animals actually slaughtered.
 // Trained beasts live in t.warBeasts and never enter this stock or this flow.
@@ -65,6 +67,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   for (const r of rows) {
     r.in = {};
     for (const [g, v] of Object.entries(r.b.in || {})) { const s = swaps[g], to = s ? s.to : g; r.in[to] = (r.in[to] || 0) + v * (s ? s.k : 1) * r.n; }
+    r.soft = new Set((r.b.soft || []).map(g => swapOf(P, g)[0]));   // what this building does without (as its people takes it)
     if (r.b.heat) r.in.wood = (r.in.wood || 0) + r.b.heat * heatK * r.n;
     r.out = Object.fromEntries(Object.entries(r.b.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
@@ -88,14 +91,16 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     for (const r of rows) {
       if (r.b.cat === 'housing') { r.eff = r.staff * r.own; continue; }
       let m = 1;
-      for (const g of Object.keys(r.in)) m = Math.min(m, soft(g) ? F.soft + (1 - F.soft) * got(g) : got(g));
+      for (const g of Object.keys(r.in)) m = Math.min(m, soft(r, g) ? F.soft + (1 - F.soft) * got(g) : got(g));
       r.eff = r.staff * r.own * m;
     }
   }
   const made = {}, used = {};
+  const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
   for (const r of rows) {
     for (const [g, v] of Object.entries(r.out)) made[g] = (made[g] || 0) + v * r.eff * boat(r);
-    for (const [g, v] of Object.entries(r.in)) used[g] = (used[g] || 0) + v * r.staff * r.own * Math.min(1, dem[g] ? (sup[g] || 0) / dem[g] : 1);
+    // it uses what it got of a good, and no more than its strength lets it (housing: what it got — it is never stopped)
+    for (const [g, v] of Object.entries(r.in)) used[g] = (used[g] || 0) + v * (r.b.cat === 'housing' ? r.staff * r.own * got(g) : Math.min(r.eff, r.staff * r.own * got(g)));
   }
   const herd = herdFlow(rows, imports);
   if (herd.used > 0) { used.beasts = (used.beasts || 0) + herd.used; for (const [g, v] of Object.entries(herd.made)) made[g] = (made[g] || 0) + v; }

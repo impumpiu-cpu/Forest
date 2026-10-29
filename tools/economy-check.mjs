@@ -55,7 +55,8 @@ const T = a.towns.filter(t => t.alive);
 // the money
 {
   const rich = T.filter(t => t.gold > 0).length, traded = T.filter(t => t.trade?.bought || t.trade?.sold).length;
-  const bought = T.reduce((s, t) => s + (t.trade?.bought || 0) + (t.trade?.imported || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
+  const season = a.towns.filter(t => t.trade?.at === T[0].trade.at);   // (a town burnt later in the season still dealt this season)
+  const bought = season.reduce((s, t) => s + (t.trade?.bought || 0) + (t.trade?.imported || 0), 0), sold = season.reduce((s, t) => s + (t.trade?.sold || 0), 0);
   check('у городов казна и склад; мастерские и жители покупают у других городов — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 + 0.01 * sold && T.some(t => Object.keys(t.stock || {}).length),
     `с деньгами ${rich} из ${T.length}, торговали ${traded}, оборот ${Math.round(bought)} зол.`);
   const over = T.filter(t => !t.plunder).flatMap(t => Object.entries(t.stock || {}).filter(([g, v]) => t.econ && v > roomOf(t, g) + 0.01).map(([g]) => `${t.name}:${g}`));

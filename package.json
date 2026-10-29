@@ -52,6 +52,7 @@
     "atlas": "node tools/atlas-check.mjs",
     "atlas:save": "node tools/atlas-save-check.mjs",
     "atlas:epic": "node tools/atlas-epic.mjs",
+    "races:balance": "node tools/race-balance.mjs",
     "map": "node tools/map-check.mjs",
     "seam": "node tools/seam-check.mjs",
     "campaign": "node tools/campaign-check.mjs",
