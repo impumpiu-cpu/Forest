@@ -185,7 +185,7 @@ export function muster(a, t, target, war, rnd, say) {
   for (const [o, v] of levy) {
     const n = men * v / all;
     from[o.id] = n; o.pop -= n;
-    pros += Math.min(n, o.built.filter(id => K.pro.at.includes(id)).reduce((x, id) => x + (TOWN_BUILDINGS.get(id).jobs || 0), 0));
+    pros += Math.min(n, (o.guard ?? 1) * o.built.filter(id => K.pro.at.includes(id)).reduce((x, id) => x + (TOWN_BUILDINGS.get(id).jobs || 0), 0));   // the guard the treasury keeps (atlas/treasury.js)
   }
   const fx = townFx(t), R = realmOf(a, t.realm), might = armyMight(men + pros * (K.pro.might - 1), fx) * A.might;
   const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, levy: from, pros: Math.round(pros), target: target.id, war, men, might, loyal: 1, kit: 1, mf: 1,

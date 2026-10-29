@@ -14,8 +14,11 @@
 // Through the season the builders are paid from it (atlas/build.js), customs take their duty of the trade (atlas/trade.js),
 // and a storm or a raid carries loot into it. `r.treasury.yr` sums the year for the kingdom (atlas/kingdom.js), which
 // clears it; `r.treasury.last` is the last season, for the card.
-import {TREASURY as T, keepOf} from '../data/macro.js';
-import {TOWN_GOODS, goodPrice} from '../data/townBuildings.js';
+import {TREASURY as T, keepOf, ARMY_KEEP} from '../data/macro.js';
+import {CAPTIVE_RAID} from '../data/lairs.js';
+import {townFx, might} from './towns.js';
+import {realmLabel, realmLabelGen} from './realms.js';
+import {TOWN_GOODS, TOWN_BUILDINGS, goodPrice} from '../data/townBuildings.js';
 import {realmTowns, stockOf, giveStock} from './economy.js';
 
 const add = (o, k, v) => { if (v) o[k] = (o[k] || 0) + v; };
@@ -65,7 +68,7 @@ export const corruptShare = r => Math.min(T.corruptMax, T.corrupt * (r.kingdom?.
 function armiesOf(a, r) { return (a.parties || []).filter(p => p.kind === 'army' && p.owner === r.id && p.state !== 'gone' && p.men > 0); }
 const courtGold = (r, towns) => Object.values(r.kingdom?.court || {}).filter(Boolean).length * T.court * towns.reduce((x, t) => x + t.pop, 0) / 1000;
 
-export function stepTreasury(a, days) {
+export function stepTreasury(a, days, say = () => {}) {
   for (const r of a.realms || []) {
     if (r.fallen != null) continue;
     const towns = realmTowns(a, r.id).filter(t => t.econ);
@@ -99,8 +102,18 @@ export function stepTreasury(a, days) {
     // what the treasury owed and did not pay — the court and the armies' pay — is counted: decay grows of it
     const due = courtGold(r, towns) * days, paid = payWorth(r, due * worth('gold'), 'court') / worth('gold');
     R.yr.due += due + (ask.gold || 0); R.yr.unpaid += due - paid + (ask.gold || 0) * (1 - (share.gold ?? 1));
-    // the council: what the towns lacked this season, of what the treasury holds beyond its reserve
-    const keepGold = T.reserve * days * ((ask.gold || 0) / days + courtGold(r, towns));
+    // the standing guard (дружина): the men of the barracks and war camps are paid the year round (a half of an army's
+    // wear of arms and armour); unpaid, the guard thins out — its buildings give their share of it (t.guard)
+    const guards = towns.map(t => [t, t.built.reduce((n, id) => n + (ARMY_KEEP.pro.at.includes(id) ? TOWN_BUILDINGS.get(id).jobs || 0 : 0), 0)]).filter(([, n]) => n > 0);
+    const G = guards.reduce((x, [, n]) => x + n, 0), kp = keepOf(r.people);
+    if (G > 0) {
+      const ow = G * days * ((kp.gold || 0) * worth('gold') + T.guardWear * ((kp.arms || 0) + (kp.armor || 0)));
+      const got = ow > 0 ? payWorth(r, ow, 'guard') / ow : 1;
+      for (const [t] of guards) t.guard = Math.round(got * 100) / 100;
+      R.yr.due += ow; R.yr.unpaid += ow * (1 - got);
+    }
+    // the council's reserve: seasons of the armies, the guard and the court
+    const keepGold = T.reserve * days * ((ask.gold || 0) / days + courtGold(r, towns) + G * (kp.gold || 0));
     const keep = {gold: keepGold, arms: T.reserve * (ask.arms || 0), armor: T.reserve * (ask.armor || 0)};
     for (const g of Object.keys(R.stock)) {
       const spare = (R.stock[g] || 0) - (keep[g] || 0);
@@ -111,9 +124,69 @@ export function stepTreasury(a, days) {
       const give = withdraw(r, g, Math.min(spare, L), 'help');
       towns.forEach((t, k) => giveStock(t, g, give * lack[k] / L));
     }
+    // the realm's works: what the towns' buildings under way still wait for, the treasury gives of what it holds beyond its
+    // reserve — the realm builds with its towns (TREASURY.works of each building's missing materials a season)
+    for (const t of towns) {
+      const w = t.project && t.works?.[t.project];
+      if (!w) continue;
+      for (const [g, v] of Object.entries(w.mat)) {
+        const spare = (R.stock[g] || 0) - (keep[g] || 0);
+        if (v <= 1e-6 || spare <= 1e-6) continue;
+        w.mat[g] = v - withdraw(r, g, Math.min(spare, v * T.works), 'works');
+      }
+    }
     for (const g of Object.keys(R.stock)) R.stock[g] = r3(R.stock[g]);
   }
+  if (a.hist.season === 0) dealings(a, say);
 }
+
+// pay a worth from one treasury to another, in gold and then in kind (as payWorth); returns the worth moved
+function transfer(from, to, w, why) {
+  const R = treasuryOf(from), before = {...R.stock};
+  const paid = payWorth(from, w, why);
+  for (const [g, v] of Object.entries(before)) { const n = v - (R.stock[g] || 0); if (n > 1e-9) deposit(to, g, n, why); }
+  return paid;
+}
+const realmMight = (a, r) => realmTowns(a, r.id).reduce((x, t) => x + might(t, townFx(t)), 0);
+
+// once a year, in spring, the treasuries deal with each other:
+//   - tribute: a realm on bad terms with one far stronger (TREASURY.tribute.ratio) and not at war with it pays it `share` of
+//     its treasury to keep the peace; their standing warms by `calm`;
+//   - ransom: a realm buys its people back from the realm that holds them (realm.captives, atlas/deeds/captives.js) at
+//     `ransom` gold's worth a head, as far as it can pay; they come home to its seat
+function dealings(a, say) {
+  const D = T.tribute;
+  for (const kk of Object.keys(a.rel || {}).sort()) {
+    const rel = a.rel[kk], [p, q] = kk.split(':'), P = realmTreasury(a, p), Q = realmTreasury(a, q);
+    if (!P || !Q || rel.war || rel.att > D.below) { if (rel) rel.tribute = null; continue; }
+    const mp = realmMight(a, P), mq = realmMight(a, Q);
+    const [weak, strong, ms, mw] = mp < mq ? [P, Q, mq, mp] : [Q, P, mp, mq];
+    if (ms < D.ratio * Math.max(1e-6, mw)) { rel.tribute = null; continue; }
+    const w = transfer(weak, strong, treasuryWorth(weak) * D.share, 'tribute');
+    if (w <= 0) continue;
+    rel.att = Math.min(5, rel.att + D.calm);
+    if (!rel.tribute) say(`${cap1(realmLabel(a, weak.id))} платят дань ${realmLabelGen(a, strong.id)}, чтобы не было войны.`);
+    rel.tribute = {from: weak.id, to: strong.id, year: a.hist.year, worth: Math.round(w)};
+  }
+  for (const C of a.realms || []) for (const [people, n0] of Object.entries(C.captives || {})) {
+    const n = Math.floor(n0);
+    if (n < 1 || C.fallen != null) continue;
+    const payer = (a.realms || []).find(r => r.people === people && r.fallen == null && r.id !== C.id && a.rel?.[relKey(r.id, C.id)] && !a.rel[relKey(r.id, C.id)].war);
+    if (!payer) continue;
+    const can = Math.min(n, Math.floor(treasuryWorth(payer) / T.ransom));
+    if (can < 1) continue;
+    const w = transfer(payer, C, can * T.ransom, 'ransom');
+    const k = Math.floor(w / T.ransom);
+    if (k < 1) continue;
+    C.captives[people] = n0 - k;
+    const seat = a.towns.find(t => t.id === payer.capital && t.alive), hold = a.towns.find(t => t.id === C.capital && t.alive);
+    if (seat) seat.pop += k;
+    if (hold) hold.pop = Math.max(0, hold.pop - k * CAPTIVE_RAID.realm.grow);
+    say(`${cap1(realmLabel(a, payer.id))} выкупили у ${realmLabelGen(a, C.id)} ${k} пленных.`);
+  }
+}
+const relKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
+const cap1 = x => x[0].toUpperCase() + x.slice(1);
 
 // a town taken by storm or raided: the winner's realm carries off `share` of what keeps in its stock (and, of a seat, of
 // the treasury); returns the worth taken

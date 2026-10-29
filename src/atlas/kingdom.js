@@ -16,7 +16,7 @@ import {townFx} from './towns.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR, YEAR_DAYS} from '../data/atlas.js';
 import {TREASURY} from '../data/macro.js';
-import {treasuryOf} from './treasury.js';
+import {treasuryOf, treasuryWorth} from './treasury.js';
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
@@ -86,12 +86,14 @@ export function stepKingdom(a, say) {
       addTo(stats, K.court[O.id] ? O.adds : O.vacant);
     }
     // the edicts: the first level whose condition holds
-    const ctx = {stats, ruin: K.ruin, war};
+    // what the treasury holds against what it spends a season — for the treasury's council and the edict of dues
+    const spent = Object.values(Tr.year.out || {}).reduce((x, v) => x + v, 0) / SEASONS_PER_YEAR;
+    const ctx = {stats: {...stats, reserve: spent > 0 ? treasuryWorth(realm) / spent : 99}, ruin: K.ruin, war};
     for (const E of EDICTS.all()) {
       const L = E.levels.find(l => holds(l.when, ctx)) || E.levels[E.levels.length - 1];
       if (K.edicts[E.id] !== L.id && K.edicts[E.id] != null) tell(`${cap1(E.label)} ${name} — ${L.label}.`);
       K.edicts[E.id] = L.id;
-      addTo(stats, L.adds); addTo(K.ruin, L.ruin);
+      addTo(stats, L.adds); addTo(K.ruin, L.ruin); addTo(ctx.stats, L.adds);
     }
     // ruin eats the attributes
     for (const R of RUINS.all()) stats[R.eats] -= (K.ruin[R.id] || 0) * RUIN_RULES.penalty;

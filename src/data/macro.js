@@ -48,7 +48,7 @@ export const TRADE = {perRoute: 40, keep: 60, haul: 0.85, pay: ['gold', 'lux']};
 // takes and gives goods. Every season the towns pay their dues into it; its council pays the armies, the builders, the
 // upkeep of the buildings and the court, and gives the towns what they lack of what it holds.
 //   tax        share of the worth of a town's net making a season, by the edict «подати» (data/kingdom.js EDICTS taxes):
-//              light, usual, high — paid in gold as far as the town has it, the rest in the goods that keep (rot slower
+//              light and rich 5%, usual 10%, high and need 15% — paid in gold as far as the town has it, the rest in the goods that keep (rot slower
 //              than `keeps` a day)
 //   corrupt    of what is paid, corruption (data/kingdom.js RUINS) takes `corrupt` × its points, no more than corruptMax
 //   duty       share of the goods that come into a realm by its trade routes that its customs take (atlas/trade.js)
@@ -58,7 +58,17 @@ export const TRADE = {perRoute: 40, keep: 60, haul: 0.85, pay: ['gold', 'lux']};
 //   payIn      what the treasury pays gold's worth in when gold is short, in order; then any other good that keeps, dearest first
 //   reserve    seasons of the realm's armies and court the treasury keeps before it gives to the towns
 //   help       share of a town's lack of a season the treasury gives it, as far as it has to spare
+//   guardWear  the standing guard (the men of the barracks and war camps) wears out this share of an army's arms and armour
+//   works      share of what a town's building under way still waits for that the treasury gives a season (beyond its reserve)
+//   tribute    once a year a realm on bad terms (attitude at most `below`) with one `ratio` times mightier, not at war,
+//              pays it `share` of its treasury; their standing warms by `calm`
+//   ransom     gold's worth a head a realm pays to buy its people back from the realm that holds them
 //   econ       the kingdom's economy (data/kingdom.js REALM_STATS) from the treasury: × the worth a day of its dues per
 //              100 people; the buildings' trade and craft count `fx` of what they did
-export const TREASURY = {tax: {light: 0.05, usual: 0.1, high: 0.15}, keeps: 0.001, corrupt: 0.03, corruptMax: 0.5, duty: 0.05,
-  loot: {seat: 0.5, assault: 0.3, raid: 0.1}, wage: 0.05, court: 0.15, payIn: ['gold', 'silver', 'lux', 'gems'], reserve: 2, help: 0.5, econ: 0.5, fx: 0.5};
+export const TREASURY = {tax: {light: 0.05, rich: 0.05, usual: 0.1, high: 0.15, need: 0.15}, keeps: 0.001, corrupt: 0.03, corruptMax: 0.5, duty: 0.05,
+  loot: {seat: 0.5, assault: 0.3, raid: 0.1}, wage: 0.05, court: 0.15, payIn: ['gold', 'silver', 'lux', 'gems'], reserve: 2, help: 0.5, econ: 0.5, fx: 0.5,
+  guardWear: 0.5, works: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05, calm: 0.4}, ransom: 3};
+
+// Plots: how many buildings stand within a town (data/townBuildings.js; the outlying works — fields, mines, pastures —
+// stand in their own cells and take none): by the town's step, and more for the seat (atlas/towns.js canBuild)
+export const PLOTS = {tier: [8, 20, 45], capital: 15};

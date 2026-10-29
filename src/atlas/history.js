@@ -147,7 +147,7 @@ export function stepHistory(a, onDay = null) {
   stepCalamities(a);
   // the towns' households: a season of the flows of their buildings (no die: atlas/economy.js)
   stepEconomies(a, SEASON_DAYS);
-  stepTreasury(a, SEASON_DAYS);   // the towns' dues into the realm's treasury; it pays the armies, upkeep and court (atlas/treasury.js)
+  stepTreasury(a, SEASON_DAYS, t => say(a, t));   // the towns' dues into the realm's treasury; it pays the armies, upkeep and court (atlas/treasury.js)
   stepTrade(a, SEASON_DAYS);   // what one realm has to spare for what another lacks, down the routes (atlas/trade.js)
   if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their buildings and settlers (atlas/build.js)
   if (H.era !== 'wild') migrate(a);   // the people move to the towns they like better (atlas/demography.js)

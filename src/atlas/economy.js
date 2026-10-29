@@ -32,7 +32,12 @@ export const ECONOMY = {
   haul: 0.85,            // of what a town sends to another of its realm, this much arrives
   reserve: 30,           // days of its people's food a town keeps in stores (smoked, salted, dried: the hungry eat them, armies
                          // march on them, settlers carry them, a besieged town lives on them); short of it, it asks for more
-  reserveFill: 240,      // …filling what it lacks over so many days (stores come second to the daily bread)
+  reserveFill: 240,
+  forage: 0.6,           // rations a head a day the people get off their land by their own hands, up to what it feeds
+  hold: 120,             // a town's stores hold this many days of what it asks and makes of a good (gold aside: the treasury
+  holdStore: 2,          //   takes it); a granary or a cellar ×holdStore for its goods; at least holdMin gold's worth of any
+  holdMin: 200,          //   good; what is over goes — holdLoss of it a season (atlas/economy.js; tools/macro-probe.mjs)
+  holdLoss: 0.5,      // …filling what it lacks over so many days (stores come second to the daily bread)
   cold: 2, warm: 12,     // the cell's mean °C below which warmth costs climate.cold, above which climate.warm
   climate: {cold: 1.6, mild: 1, warm: 0.4},
 };
@@ -119,6 +124,10 @@ function stepTowns(a, towns, days) {
     // the people's own hands (TOWN_GOODS start, for each 100 of them; a hamlet counts as 100): gathering, firewood, bone
     // tools — the base a town has before any building
     const own = Object.fromEntries(Object.entries(start).map(([g, v]) => [g, v * Math.max(1, people / 100)]));
+    // and what they forage, hunt and cook at home off their land: ECONOMY.forage rations a head a day, for as many as the
+    // land feeds (atlas/peoples.js t.wants.feeds) — the land's measure and the household's are one: past what the land
+    // feeds, the fields, pens and kitchens have to make the rest
+    if (t.wants?.feeds > 0) own.food = (own.food || 0) + ECONOMY.forage * Math.min(people, t.wants.feeds);
     return {t, E, units, climate: climateOf(a, t), needs: needsOf(t.people, t.tier ?? 0), heads: people / 100, scale, own, orders: ordersOf(a, t)};
   });
   // what the realm has to hand: last season's making of its towns (or, the first time, whether anyone makes it at all), the
@@ -250,6 +259,7 @@ function stepTowns(a, towns, days) {
   const r3 = v => Math.round(v * 1000) / 1000, r = o => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => Math.abs(v) > 1e-6).map(([g, v]) => [g, r3(v)]));
   T.forEach((X, k) => {
     const {t, E} = X, stock = {}, built = new Set(t.built);
+    E.over = null;
     for (const [g, v0] of Object.entries(X.next)) {
       let v = v0;
       const G = TOWN_GOODS.has(g) ? TOWN_GOODS.get(g) : null;
@@ -257,6 +267,14 @@ function stepTowns(a, towns, days) {
         let keep = 1;
         for (const [b, S] of Object.entries(STORAGE)) if (built.has(b) && S.goods.includes(g)) keep *= S.keep;
         v *= Math.pow(1 - Math.min(1, G.spoil * keep), days);
+      }
+      // a town's stores hold so much (ECONOMY.hold days of what it asks and makes of a good, a granary or a cellar more of
+      // its goods, at least `holdMin` gold's worth): what is over is wasted, sold off or stolen — `holdLoss` of it a season
+      if (v > 0 && g !== 'gold') {
+        let d = ECONOMY.hold;
+        for (const [b, S] of Object.entries(STORAGE)) if (built.has(b) && S.goods.includes(g)) d *= ECONOMY.holdStore;
+        const cap = d * ((X.want[g] || 0) + (X.supply[g] || 0)) + ECONOMY.holdMin / goodWorth(g);
+        if (v > cap) { const lost = (v - cap) * ECONOMY.holdLoss; v -= lost; add(E.over ||= {}, g, lost); }
       }
       if (v > 1e-6) stock[g] = r3(v);
     }

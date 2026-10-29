@@ -4,11 +4,11 @@
 // come into the world from outside it.
 //
 //   growth (a year, in spring): + born × contentment × people × (1 − people / target), target = min(what the land feeds,
-//     the room the houses give); a town over its target shrinks the same way. (The household's food — atlas/economy.js
-//     E.fed — does not count yet: a young hamlet gets 20–40% of its ready food from it while its land feeds it well;
-//     hunger joins when the two agree);
-//   contentment 0…1 = base + Σ weight × the realm's attribute (data/kingdom.js: culture, economy, loyalty, stability) —
-//     each people is pleased by its own things;
+//     the room the houses give); a town over its target shrinks the same way. Hunger kills: starve × how far the share of
+//     their food the people got (atlas/economy.js E.fed — the land's forage and the household's kitchens) is below
+//     TOWN_LIFE.fedOk;
+//   contentment 0…1 = base + Σ weight × the realm's attribute (data/kingdom.js: culture, economy, loyalty, stability),
+//     × their food (full at fedOk) — each people is pleased by its own things;
 //   migration (each season): people move from the towns they like less to those they like more — fame (the towns'
 //     prestige) and food draw them, free room lets them in; a town over its room sends the surplus away. They move within
 //     their realm, and to a near town of a realm that trades with theirs (TOWN_LIFE.abroad as dear) of their own people
@@ -31,7 +31,7 @@ export function contentOf(a, t) {
   const st = realmOf(a, t)?.kingdom?.stats || {};
   let v = C.base ?? 0;
   for (const [k, w] of Object.entries(C)) if (k !== 'base') v += w * (st[k] || 0);
-  return clamp01(v);
+  return clamp01(v) * clamp01(fedOf(t) / TL.fedOk);
 }
 export const fedOf = t => t.econ?.fed ?? 1;
 
@@ -39,7 +39,8 @@ export const fedOf = t => t.econ?.fed ?? 1;
 export function growTown(a, t, target) {
   const P = WORLD_PEOPLES.get(t.people), goal = Math.max(TL.minTarget, target);
   const born = P.born * contentOf(a, t) * t.pop * (1 - t.pop / goal);
-  t.pop = Math.max(0, t.pop + born);
+  const starved = TL.starve * clamp01((TL.fedOk - fedOf(t)) / TL.fedOk) * t.pop;
+  t.pop = Math.max(0, t.pop + born - starved);
   t.content = Math.round(contentOf(a, t) * 100) / 100;
 }
 

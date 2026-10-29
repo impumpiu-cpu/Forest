@@ -27,6 +27,8 @@ import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
+import {PLOTS, ARMY_KEEP} from '../data/macro.js';
+const GUARD = new Set(ARMY_KEEP.pro.at);
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -43,7 +45,9 @@ export function townFx(t) {
   // gives less; one not counted yet gives all
   const seen = {}, L = t.econ?.loads;
   for (const id of t.built) {
-    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1, load = L?.[`${id}#${n}`] ?? 1;
+    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1;
+    // the barracks and war camps hold the standing guard: an unpaid guard thins out (atlas/treasury.js t.guard)
+    const load = (L?.[`${id}#${n}`] ?? 1) * (GUARD.has(id) ? 0.5 + 0.5 * (t.guard ?? 1) : 1);
     for (const k of KEYS) out[k] += fxOf(b, k, load);
   }
   return out;
@@ -116,6 +120,10 @@ export function placeHas(a, i, need) {
   throw new Error(`town building: unknown place need «${need}»`);
 }
 
+// the plots of a town: how many buildings stand within it (outlying works aside) and how many it can hold
+export const plotsOf = t => PLOTS.tier[Math.min(PLOTS.tier.length - 1, t.tier || 0)] + (t.capital ? PLOTS.capital : 0);
+export const plotsUsed = t => t.built.reduce((n, id) => n + (TOWN_BUILDINGS.has(id) && !TOWN_BUILDINGS.get(id).site ? 1 : 0), 0);
+
 // can this town build this now: its people, what its realm has, its size, how many it has, the place
 // (`inRealm` — realmBuilt(a, t), passed in when many buildings are asked about at once)
 export function canBuild(a, t, b, inRealm = null) {
@@ -130,6 +138,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
+  if (!b.site && plotsUsed(t) >= plotsOf(t)) return false;   // no free plot within the town (data/macro.js PLOTS)
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
   const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do

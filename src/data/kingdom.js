@@ -42,9 +42,13 @@ export const UPKEEP = {housing: 0.01, food: 0, raw: 0.01, craft: 0.02, trade: 0.
 //   when: {war: true} — at war;  {below: {stat: v}} — an attribute under v;  {above: {stat: v}} — over v
 export const EDICTS = new Registry('edict');
 EDICTS.registerAll([
+  // the treasury's council sets the dues (data/macro.js TREASURY.tax): heavy in war or with the treasury nearly empty
+  // (reserve — seasons of its spending it holds), light when the people murmur or the treasury overflows
   {id: 'taxes', label: 'подати', levels: [
     {id: 'high', label: 'тяжёлые', when: {war: true}, adds: {economy: 0.15, loyalty: -0.1}},
+    {id: 'need', label: 'тяжёлые: казна пуста', when: {below: {reserve: 2}}, adds: {economy: 0.1, loyalty: -0.1}},
     {id: 'light', label: 'лёгкие', when: {below: {loyalty: 0.2}}, adds: {economy: -0.1, loyalty: 0.1}},
+    {id: 'rich', label: 'лёгкие: казна полна', when: {above: {reserve: 12}}, adds: {loyalty: 0.15}},
     {id: 'usual', label: 'обычные', adds: {}},
   ]},
   {id: 'feasts', label: 'праздники', levels: [
@@ -100,6 +104,8 @@ MARKET_TIERS.registerAll([
 ]);
 export const marketTierOf = t => MARKET_TIERS.get(t.capital ? 'capital' : `tier${Math.min(2, t.tier ?? 0)}`);
 
+// what a condition may read besides the attributes and the ruin: reserve — the seasons of its spending the treasury holds
+export const COND_EXTRA = ['reserve'];
 // What is wrong with a condition ({war}, {below: {k: v}}, {above: {k: v}}) → [error]; k — an attribute or a ruin
 export function whenErrors(when) {
   if (when == null) return [];
@@ -109,7 +115,7 @@ export function whenErrors(when) {
     if (k === 'war') { if (typeof v !== 'boolean') errs.push('war — да или нет'); continue; }
     if (k !== 'below' && k !== 'above') { errs.push(`в условии нет «${k}» (war, below, above)`); continue; }
     for (const [s, x] of Object.entries(v || {})) {
-      if (!REALM_STATS.has(s) && !RUINS.has(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
+      if (!REALM_STATS.has(s) && !RUINS.has(s) && !COND_EXTRA.includes(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
       if (typeof x !== 'number' || !Number.isFinite(x)) errs.push(`${k}.${s}: не число`);
     }
   }
