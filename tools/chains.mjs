@@ -3,7 +3,7 @@
 // buildings stand idle for want of something. The flows are drafts the towns do not run yet; this checks the table
 // before they do. `npm run chains` — the report; `node tools/chains.mjs --json file` — the model for a chain map.
 import fs from 'fs';
-import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOLS, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOLS, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL, TRADE_UP} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const fxText = b => [b.house ? `жильё ${b.house}` : '', ...Object.entries(b.fx || {}).map(([k, v]) => `${EFFECTS[k]} +${v}`)].filter(Boolean).join(', ');
@@ -27,7 +27,10 @@ export function chainModel() {
     max: 1, jobs: 0, house: 0, tier: 0, site: false, fx: '', needs: [], note: 'город делает сам, без построек: на первые постройки'});
   const sinks = [
     {id: 'people', name: 'Жители (100 чел. в день)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},
-      raw: Object.fromEntries(TOWN_GOODS.filter(g => g.eaten).map(g => [g.id, g.eaten]))},
+      raw: Object.fromEntries(TOWN_GOODS.filter(g => g.eaten).map(g => [g.id, g.eaten])),
+      needOf: Object.fromEntries(TOWN_GOODS.filter(g => g.needOf).map(g => [g.id, g.needOf]))},
+    // a people that sells some goods at once for another (TRADE_UP: the orcs — luxury, gems, silver for arms)
+    ...Object.entries(TRADE_UP).map(([P, T]) => ({id: 'trade-' + P, name: `Рынок: ${T.sells.map(g => TOWN_GOODS.get(g).label).join(', ')} → ${TOWN_GOODS.get(T.buys).label}`, in: [], race: P, raceIn: T.sells})),
     {id: 'treasury', name: 'Казна державы', in: ['gold']},
   ];
   return {goods, gates, procs, sinks, chains: CHAINS, tools: TOOLS, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};
@@ -51,7 +54,10 @@ export function analyse(M, race = null) {
   // what the race buys at the market (and never makes) it has; what it eats raw feeds its people
   const bought = new Set(race ? M.goods.filter(g => g.buy?.includes(race)).map(g => g.id) : []);
   const supplied = new Set(bought), works = new Set();
-  const sinkTakes = (k, g) => k.in.includes(g) || !!(race && k.raw?.[g]?.includes(race));
+  const sinkTakes = (k, g) => {
+    if (k.needOf?.[g] && race && race in k.needOf[g]) return k.needOf[g][race] > 0;   // the people's own need of it
+    return k.in.includes(g) || !!(race && k.raw?.[g]?.includes(race)) || !!(race && k.race === race && k.raceIn.includes(g));
+  };
   for (let ch = true; ch;) {
     ch = false;
     for (const p of M.procs) {
@@ -72,7 +78,7 @@ export function analyse(M, race = null) {
     let status = 'ok';
     if (!prodOn.length && !consOn.length && !s.sinks.length) status = 'na';
     // (a building of several ways that has none of them is one idle building below, not a break of each of its goods)
-    else if ((needed.some(p => !p.way) || s.sinks.length) && !s.supplied) status = 'break';
+    else if ((needed.some(p => !p.way) || s.sinks.some(k => k.amounts)) && !s.supplied) status = 'break';
     else if (consOn.length && !s.supplied) status = 'unused';
     else if (prodOn.length && !consOn.length && !s.sinks.length) status = 'dead';
     else if (s.supplied && !s.sinks.length && !consOn.some(p => works.has(p.id))) status = 'stuck';

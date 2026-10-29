@@ -23,7 +23,7 @@ import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
-import {stepEconomy} from './economy.js';
+import {stepEconomies} from './economy.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom} from './kingdom.js';
 
@@ -142,7 +142,7 @@ export function stepHistory(a, onDay = null) {
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepCalamities(a);
   // the towns' households: a season of the flows of their buildings (no die: atlas/economy.js)
-  for (const t of a.towns || []) if (t.alive) stepEconomy(a, t, SEASON_DAYS);
+  stepEconomies(a, SEASON_DAYS);
   stepParties(a, rnd, t => say(a, t), onDay);
   freeVassals(a);   // the lairs that fell this season, by any hand, free their vassals (atlas/leaders.js)
   // the year's beaten raids of the tribes and the dead, in one line

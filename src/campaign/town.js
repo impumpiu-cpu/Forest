@@ -36,6 +36,15 @@ import {takeStock} from '../atlas/economy.js';
 
 // the good of a town's stock a piece of gear is counted in (data/townBuildings.js: tools, arms and armour by worth)
 const gearGood = id => { const d = gearDef(id); return !d ? null : d.slot === 'body' ? 'armor' : d.melee || d.ranged || d.block ? 'arms' : 'tools'; };
+// whether the town could have made a piece: its metal is made in its realm now or lies in a stock of the realm (a town that
+// has gathered the worth of arms on copper does not sell a mithril blade). A town that has not counted its household: yes
+const METAL_GOOD = {bronze: 'bronze', iron: 'iron', steel: 'steel', silver: 'silver', mithril: 'mithril'};
+function canMake(a, t, id) {
+  const g = METAL_GOOD[gearDef(id)?.material];
+  if (!g || !t.econ) return true;
+  const realm = (a?.towns || [t]).filter(o => o.alive && o.econ && (o === t || (t.realm != null && o.realm === t.realm)));
+  return realm.some(o => o.econ.made?.includes(g) || (o.econ.stock[g] || 0) > 0);
+}
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -236,8 +245,9 @@ export function trade(a, K, t, st) {
     if (o.kind === 'goods' && o.need === 'belt' && kindRoom(K, potionOf(o.id).potion, o.id) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
-    // a piece of gear only as far as the town's stock holds its worth of arms, tools or armour: the stock pays it out
-    if (!['beast', 'vehicle', 'goods', 'building'].includes(o.kind) && gearGood(o.id) && !takeStock(t, gearGood(o.id), gearValue(o.id))) continue;
+    // a piece of gear only if the town could have made it (its metal is made or held in the realm) and its stock holds its
+    // worth of arms, tools or armour: the stock pays it out
+    if (!['beast', 'vehicle', 'goods', 'building'].includes(o.kind) && gearGood(o.id) && (!canMake(a, t, o.id) || !takeStock(t, gearGood(o.id), gearValue(o.id)))) continue;
     K.gold = gold(K.gold - p);
     if (o.kind === 'beast') { K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`); }
     else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }

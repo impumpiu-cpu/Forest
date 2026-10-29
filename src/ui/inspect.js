@@ -138,7 +138,7 @@ function economyHtml(t) {
       const r = E.rate[g.id] || 0, s = E.stock[g.id] || 0, low = E.short.includes(g.id);
       return `<li class="${low ? 'short' : ''}"><span>${esc(g.label)}</span><b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : r < 0 ? '−' : ''}${num(Math.abs(r))}/день</b><i>${num(s)}${g.unit === 'рацион' ? ' рац.' : g.unit === 'зол. ценности' ? ' зол.' : ''}</i></li>`;
     }).join('');
-  return `<div class="ir"><span>хозяйство</span><b>загрузка ${Math.round(E.load * 100)}%, рук ${Math.round(E.hands * 100)}%${E.short.length ? `; не хватает: ${esc(E.short.map(id => TOWN_GOODS.get(id).label).join(', '))}` : ''}</b></div>
+  return `<div class="ir"><span>хозяйство</span><b>загрузка ${Math.round(E.load * 100)}%, ${E.scale < 1 ? `рук ${Math.round(E.scale * 100)}%` : `размах ×${num(E.scale)}`}${E.short.length ? `; не хватает: ${esc(E.short.map(id => TOWN_GOODS.get(id).label).join(', '))}` : ''}</b></div>
     <ul class="econ"><li class="head"><span>благо</span><b>в день</b><i>на складе</i></li>${rows}</ul>`;
 }
 
