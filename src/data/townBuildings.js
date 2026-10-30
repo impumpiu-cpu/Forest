@@ -179,6 +179,8 @@ TOWN_BUILDINGS.registerAll([
   B('firepit', 'кострище', 'n', 'food', 0, ALL, {}, {per: 100, jobs: 2, fire: 20, any: {raw: 40}, out: {food: 32}}),
   B('hearth', 'общинный очаг', 'm', 'food', 1, ALL, {health: 0.05}, {per: 200, local: 'hearth', jobs: 3, fire: 40, any: {raw: 80}, out: {food: 80}}),
   B('cookhouse', 'поварня', 'f', 'food', 2, ALL, {health: 0.05}, {per: 600, requiresAny: ['hearth'], jobs: 6, fire: 120, any: {raw: 240}, out: {food: 288}}),
+  // the slaughterhouse: the only place the herds' increase is killed (the pens and pastures only raise it) — meat, hides, bone
+  B('slaughter', 'бойня', 'f', 'food', 0, [...H, ...D, ...O], {}, {per: 400, requiresAny: ['pen', 'grpens', 'pasture'], jobs: 4, in: {beasts: 12}, out: {meat: 60, hide: 90, bone: 60}}),
   B('granary', 'амбар', 'm', 'food', 0, ALL, {food: 0.15}, {local: 'granary', jobs: 1}),
   B('cellar', 'погреба и ледники', 'pl', 'food', 2, [...H, ...D], {food: 0.1, health: 0.05}, {jobs: 1}),
   B('apiary', 'пасека', 'f', 'food', 1, [...H, ...E], {prod: 0.05}, {per: 1500, needsAny: ['forest', 'fertile'], needs: ['warm'], site: true, jobs: 2, out: {honey: 60}}),
@@ -318,9 +320,9 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 // food a building gives net: ready food and stores, raw food at what a kitchen makes of it (TOWN_FLOW.rawFood), what it
 // takes of a pool of raw food the same (a kitchen gives what it cooks over what it takes)
 const RAW_FOODS = new Set(['grain', 'meat', 'fish', 'produce', 'flour']);
-const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : RAW_FOODS.has(g) ? v * TOWN_FLOW.rawFood : 0), 0);
+const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : RAW_FOODS.has(g) ? v * TOWN_FLOW.rawFood : g === 'beasts' ? v * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0), 0);
 const POOL_FOOD = any => Object.entries(any || {}).reduce((s, [k, v]) => s + (k === 'fuel' ? 0 : v * TOWN_FLOW.rawFood), 0);
-export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) - POOL_FOOD(b.any) + (TOWN_FLOW.herd.at.includes(b.id) ? (b.out?.beasts || 0) * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0);
+export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) - POOL_FOOD(b.any);   // (a pen's increase counts as the meat it gives at the slaughterhouse)
 
 // Fuel (docs/WORLD.md «Кухни и топливо»): the warmth of homes (`heat`) and the heat of the works (`fire`) are charges of one
 // fuel; each good that burns gives so many charges a unit — a log 1, coal 3 (charcoal and stone coal alike), the herds' dried
@@ -334,8 +336,10 @@ export const POOLS = {protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, pro
 export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
-  // Livestock is raised by pens, then actually consumed for meat. Keep breeders, limit seasonal slaughter.
-  herd: {at: ['pen', 'grpens', 'pasture'], keep: 2, slaughter: 12, food: 5, hide: 7.5, bone: 5},
+  // Livestock is raised by the pens and pastures (`beasts`: their increase a year) and killed only at the slaughterhouse
+  // (its `in`): the store keeps `keep` head for each pen at work, the slaughter never takes them; `food` — the meat a head
+  // (for the town's choice: what a pen feeds through the slaughterhouse, data foodNet)
+  herd: {at: ['pen', 'grpens', 'pasture'], keep: 2, food: 5},
   sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   gather: {brush: 2},   // what a town's people gather a head a year by hand, with no building (brushwood)

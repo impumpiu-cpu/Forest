@@ -40,8 +40,11 @@ check('запас базовых нужд учитывает кость вмес
   a.net.links.set('1:2', {p: s, q: b, c: 1}); seasonMoney(a, [s, b]);
   assert.ok(s.stock.bone >= 0.19); assert.equal(b.econ.people?.bone?.got || 0, 0);
 });
-check('загон даёт мясо, шкуры и кости за реальный расход обычного скота; боевые звери целы', () => {
-  const t = town({built: ['pen'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);
+check('бойня даёт мясо, шкуры и кости за реальный расход обычного скота; загон без бойни не забивает; боевые звери целы', () => {
+  const p = town({built: ['pen'], stock: {beasts: 10}}), ap = world([p]);
+  seasonMoney(ap, [p]);
+  assert.equal(p.econ.used.beasts || 0, 0); assert.equal(p.econ.made.meat || 0, 0); assert.ok(p.stock.beasts > 10);   // (the increase goes to the store)
+  const t = town({built: ['pen', 'slaughter'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);
   seasonMoney(a, [t]);
   const e = t.econ;
   assert.ok(e.herd.slaughtered > 0); assert.ok(e.made.meat > 0 && e.made.hide > 0 && e.made.bone > 0);   // (meat: raw, the kitchens cook it)

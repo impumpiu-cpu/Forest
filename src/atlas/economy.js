@@ -10,6 +10,8 @@
 //               TOWN_FLOW.soft; a building of another people (taken) works at TOWN_FLOW.captured. Housing takes its upkeep
 //               and heat but is never stopped (people live in it). A building uses a good only as far as it works: one that
 //               stands for want of leather does not burn its wood (the rest stays for the store)
+//   herds     — the pens and pastures raise beasts (`out`), the slaughterhouse alone kills them (`in`) for meat, hides and
+//               bone; the store keeps TOWN_FLOW.herd.keep head a pen at work for breeding, out of the slaughter's reach
 //   pools     — what a building takes of any of a set of goods (its `any`: a kitchen any raw food) and the fuel of its heat and
 //               fire (data/townBuildings.js POOLS, FUEL) come out of what the buildings' own `in` left, the cheapest of the pool
 //               first; short of it, it stops as for a hard good (housing: never)
@@ -37,16 +39,6 @@ function drawPool(id, want, left) {
     left[g] -= n; by[g] = n; need -= n * w;
   }
   return [want - Math.max(0, need), by];
-}
-
-// Pens grow ordinary livestock; meat, hides and bones come only from animals actually slaughtered.
-// Trained beasts live in t.warBeasts and never enter this stock or this flow.
-function herdFlow(rows, imports) {
-  const H = F.herd, pens = rows.filter(r => H.at.includes(r.b.id)), work = pens.reduce((s, r) => s + r.n * r.eff, 0);
-  const births = rows.reduce((s, r) => s + (r.out.beasts || 0) * r.eff, 0);
-  const available = ((imports?.beasts || 0) + births) / S, keep = work * H.keep;
-  const n = Math.max(0, Math.min(available - keep, work * H.slaughter / S));
-  return {n, used: n * S, made: {meat: n * S * H.food, hide: n * S * H.hide, bone: n * S * H.bone}};
 }
 
 // the climate's weight on a town's heat: cold ×1.6 at or below TOWN_FLOW.heat.cold °C, warm ×0.4 at or above .warm, between
@@ -99,6 +91,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   const yard = rows.find(r => r.b.id === F.boats.by), boat = r => (yard && F.boats.fish.includes(r.b.id) ? 1 + (F.boats.k - 1) * yard.eff : 1);
   // the goods shared out, a few rounds: each building's strength by what it got of what it takes; what the realm's other
   // towns sent (imports: atlas/economy.js tradeGoods) adds to what the town has
+  // the herd's breeders: the store keeps TOWN_FLOW.herd.keep head for each pen at work — the slaughterhouse never has them
+  const keepHerd = rows.filter(r => F.herd.at.includes(r.b.id)).reduce((s, r) => s + r.n * r.staff * r.own, 0) * F.herd.keep * S;
   let sup = {}, dem = {}, pgot = {};
   // the pools out of what the buildings' own `in` left: what each could have (pgot), by pool
   const pools = (u = null) => {
@@ -112,13 +106,11 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   for (let k = 0; k < F.rounds; k++) {
     sup = {...(imports || {})}; dem = {};
     for (const [g, v] of Object.entries(F.gather || {})) sup[g] = (sup[g] || 0) + v * t.pop;   // gathered by hand (brushwood)
+    if (keepHerd > 0) sup.beasts = Math.max(0, (sup.beasts || 0) - keepHerd);
     for (const r of rows) {
       for (const [g, v] of Object.entries(r.out)) sup[g] = (sup[g] || 0) + v * r.eff * boat(r);
       for (const [g, v] of Object.entries(r.in)) dem[g] = (dem[g] || 0) + v * r.staff * r.own;
     }
-    const herd = herdFlow(rows, imports);
-    dem.beasts = (dem.beasts || 0) + herd.used;
-    for (const [g, v] of Object.entries(herd.made)) sup[g] = (sup[g] || 0) + v;
     const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
     const P0 = pools();
     pgot = Object.fromEntries(POOL_IDS.map(id => [id, P0.pdem[id] ? Math.min(1, P0.out[id][0] / P0.pdem[id]) : 1]));
@@ -138,8 +130,6 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     // it uses what it got of a good, and no more than its strength lets it (housing: what it got — it is never stopped)
     for (const [g, v] of Object.entries(r.in)) used[g] = (used[g] || 0) + v * (r.b.cat === 'housing' ? r.staff * r.own * got(g) : Math.min(r.eff, r.staff * r.own * got(g)));
   }
-  const herd = herdFlow(rows, imports);
-  if (herd.used > 0) { used.beasts = (used.beasts || 0) + herd.used; for (const [g, v] of Object.entries(herd.made)) made[g] = (made[g] || 0) + v; }
   // the pools: each building uses its share as far as it works (housing: as far as there was), out of what the town has
   // of each good beyond its buildings' own use, the cheapest first; what a pool asked for goes into the demand of its
   // goods (what it did not get — of the cheapest), so a town short of fuel buys logs (atlas/treasury.js)
@@ -159,7 +149,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   for (const [g, v] of Object.entries(made)) { const s = v > 0 ? 1 - Math.min(1, (used[g] || 0) / v) : 0; if (s > F.shortAt) spare[g] = s; }
   const net = g => Math.max(0, (made[g] || 0) - (used[g] || 0));
   const food = net('food') + net('stores') + (P.eatsRaw || []).reduce((s, g) => s + net(g), 0);
-  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, pools: pgot, herd: {slaughtered: herd.n}, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
+  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, pools: pgot, herd: {slaughtered: (used.beasts || 0) / S}, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, rows: rows.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems}))};
 }
 
