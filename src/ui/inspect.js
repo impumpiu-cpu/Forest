@@ -21,6 +21,8 @@ import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
+import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
+import {roseOf, townLean} from '../atlas/mind.js';
 
 const seasonWord = s => seasonLabel(s);
 const KIND = {raid: 'набег', brood: 'выводок', army: 'войско', leader: 'отряд главаря', dragon: 'дракон', caravan: 'караван'};
@@ -77,6 +79,35 @@ function deedsHtml(list) {
   return `<p class="deeds">${list.map(id => { const d = DEEDS.get(id); return `<span class="deed lane-${d.band}" title="${esc(d.note)}">${esc(id)} <small>${esc(DEED_BAND_LABELS[d.band])}</small></span>`; }).join(' ')}</p>`;
 }
 
+// the realm's council (atlas/mind.js): its people's rose, its course and wind along the three vectors, the season's needs,
+// how it shared its grants and how its towns follow
+const vnum = v => v.toFixed(2).replace('.', ',');
+const vecLine = v => VECTOR_IDS.map(k => `${VECTORS[k]} ${vnum(v?.[k] || 0)}`).join(', ');
+const FLAG_LABELS = {hunger: 'нужда', crowd: 'теснота', threat: 'угроза', short: 'нехватки', hoard: 'казна пуста'};
+function mindHtml(a, R) {
+  const M = R.mind;
+  if (!M) return '';
+  const flags = Object.entries(M.flags || {}).filter(([, v]) => v >= 0.05).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${FLAG_LABELS[k] || k} ${vnum(v)}`).join(', ');
+  const roles = {};
+  for (const t of realmTowns(a, R.id)) if (t.role) (roles[t.role] ||= []).push(t.name);
+  const spent = VECTOR_IDS.filter(k => (M.spent?.[k] || 0) >= 1).map(k => `${VECTORS[k]} ${Math.round(M.spent[k])}`).join(', ');
+  return `<div class="ir"><span>совет</span></div>` +
+    row('роза народа', vecLine(roseOf(R.people))) +
+    row('курс', vecLine(M.course)) +
+    row('ветер', `${vecLine(M.wind)}; ведёт ${VECTORS[M.lead]}`) +
+    row('нужды сезона', flags || 'спокойно') +
+    row('роли', VECTOR_IDS.filter(k => roles[k]).map(k => `${VECTORS[k]}: ${esc(roles[k].join(', '))}`).join('; ') || null) +
+    row('гранты на стройку', spent ? `${spent} зол.` : 'не давал') +
+    row('послушание', `${Math.round((M.obey ?? 1) * 100)}%`);
+}
+
+// the town's role in its realm (atlas/mind.js): the flag its council set, and how it leans
+function roleLine(t) {
+  const what = t.role ? `${VECTORS[t.role]}` : t.capital ? 'столица: по ветру державы' : 'не назначена';
+  const lean = townLean(t), against = t.role && lead(lean) !== t.role;
+  return `${what}${against ? ` (а строит больше ${VECTORS[lead(lean)]})` : ''}`;
+}
+
 function realmHtml(a, R) {
   if (!R) return '';
   const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race), sub = subOf(a, R.id);
@@ -99,6 +130,7 @@ function realmHtml(a, R) {
     row('войска', armies || null) +
     row('в полоне увели', R.captives && Object.values(R.captives).some(v => v > 0) ? captiveCount(R) : null) +
     kingdom +
+    mindHtml(a, R) +
     (rels ? `<div class="ir"><span>отношения</span></div><ul class="rels">${rels}</ul>` : '') +
     `<div class="ir"><span>нравы</span></div>${deedsHtml(sp.deeds?.realm)}` +
     `<div class="ir"><span>о чём думал двор</span></div>${thoughtsHtml(R)}`);
@@ -129,6 +161,7 @@ function townHtml(a, t) {
     row('даёт', gives || 'ничего сверх жилья') +
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
+    row('роль', t.realm != null ? roleLine(t) : null) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);
 }

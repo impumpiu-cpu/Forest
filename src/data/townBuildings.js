@@ -36,6 +36,8 @@
 //   metals        the metals its realm's smiths work and its markets sell once one stands in the realm
 //                 (data/balance/materials.js ids; a metal no building lists, everyone works)
 //   fx            what it gives, per building (EFFECTS below)
+//   vec           where it pulls its realm along the three vectors of the council (data/mind.js): {agg, grow, econ}; none —
+//                 counted from its effects and what it gives (VEC_RULES)
 //   `jobs`, `heat`, `in` and `out` are the numbers of the flows (docs/WORLD.md «Потоки построек»): drafts, in the
 //   table and checked, not yet run by the towns — the next step. `house` runs now.
 //   What some buildings do beyond their effects: a bridge or ferry takes the ford out of the road's cost
@@ -138,7 +140,7 @@ TOWN_BUILDINGS.registerAll([
   // the dwarves' deep hall: their homes under the mountain grown into one — the densest housing of the world
   B('deephall', 'подгорный чертог', 'm', 'housing', 2, D, {defence: 0.08, prestige: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hallhomes'], house: 700, heat: 30, in: {stone: 15}}),
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry'], upgrades: ['house', 'hut'], house: 400, heat: 150, in: {stone: 15}}),
-  B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], house: 100, jobs: 30, heat: 60, in: {arms: 3, armor: 1}}),
+  B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 60, in: {arms: 3, armor: 1}}),
   // ── food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {}, {per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, out: {food: 35, herbs: 10}}),
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),

@@ -32,6 +32,7 @@
 //   plunder   — a raid or a storm won carries off a share of the beaten town's goods and gold (`plunder`; the cult of war more)
 // Once a year the realm takes its tax and spends (atlas/kingdom.js): realm.gold — garrisons for its towns (their pay is the
 // people's) and grants to build.
+import {councilShares} from './mind.js';
 import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
@@ -297,15 +298,18 @@ export const townPurse = t => (t.makersGold == null ? Infinity : Math.max(0, t.m
 
 // the realm's spending (atlas/kingdom.js, after the tax): a share of its treasury on its towns' garrisons (t.garrison: men, the
 // year's; their pay goes to the town's people) and on grants to build (t.grant: gold, kept till spent) — by their people
-export function realmSpend(realm, towns, war) {
+export function realmSpend(realm, towns, war, a = null) {
   const R = M.realm, budget = Math.max(0, realm.gold || 0) * R.spend, pop = towns.reduce((s, t) => s + t.pop, 0) || 1;
   const army = budget * (war ? R.army.war : R.army.peace), men = army / R.man;
+  // the grants by the council's wind (atlas/mind.js councilShares: each vector's share to the towns of its role); a realm
+  // without a council yet (the wild era, an old save) — by their people
+  const grants = new Map(a ? councilShares(a, realm, towns, budget - army) : towns.map(t => [t, (budget - army) * t.pop / pop]));
   let build = 0;
   for (const t of towns) {
     const share = t.pop / pop;
     open(t);
     t.garrison = r2(men * share); t.peopleGold = r2(t.peopleGold + army * share); add(t.carry ||= {}, 'peopleIn', army * share);
-    const room = Math.max(0, R.build * R.hoard - (t.grant || 0)), g = Math.min(room, (budget - army) * share);
+    const room = Math.max(0, R.build * R.hoard - (t.grant || 0)), g = Math.min(room, grants.get(t) || 0);
     if (g > 0) { t.grant = r2((t.grant || 0) + g); build += g; }
   }
   realm.gold = r2(realm.gold - army - build);

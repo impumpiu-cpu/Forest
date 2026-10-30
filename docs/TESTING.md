@@ -27,7 +27,7 @@
 ```text
 check-layers · atlas-check 2 · atlas-save-check 1 · map-check 3 · seam-check 16 · campaign-check 2 ·
 check-data · check-tables · align-check · leaders-check · buildings-check · elves-check · dwarves-check · greenskins-check · humans-check · kinds-check · fight-check ·
-conditions-check · ranks-check · potions-check · checks-check · clock-check · kingdom-check · content-check · land-check · settle-check ·
+conditions-check · ranks-check · potions-check · checks-check · clock-check · kingdom-check · mind-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
@@ -80,6 +80,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run potions` | `potions-check.mjs` | зелья: лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды, горшок в каждом, запасы наполняют пояса, хижина каравана варит простое |
 | `npm run checks` | `checks-check.mjs` | лестница сложности, степени успеха (не меняют исход), таблицы случайностей тянут как прежде |
 | `npm run kingdom` | `kingdom-check.mjs` | держава: четыре показателя, разруха, указы, двор; тот же сид — те же державы; рынок по ступени города |
+| `npm run mind:check` | `mind-check.mjs` | совет державы: вектор каждой постройки — три доли; ветер и курс — доли; роль у каждого города, кроме столицы; без жребия; гранты по ветру делят ровно бюджет, чужим ролям ничего; что ушло из казны, пришло в города; таблица доходит до игры |
 | `npm run content` | `content-check.mjs` | недуги, зависимость, порча, языки, ночное зрение, слава каравана, темп похода, показатели поселения: при нуле ничего, с числами работают |
 | `npm run land` | `land-check.mjs` | «Создать землю»: без правок та же земля; поднятая плита, сдвиг плиты, кисть, климат меняют что должны; пересчёт с копии = земля целиком; сохранение земли |
 | `npm run settle` | `settle-check.mjs` | «Заселение мира»: мир без эпох; народы, логова, бедствия ставятся; те же действия — тот же мир; сохранение между отрезками |

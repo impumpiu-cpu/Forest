@@ -7,6 +7,7 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
+import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
@@ -338,13 +339,14 @@ export const TABLES = [
       col('moves', 'Проходимость', 'map', {ref: 'biomes', min: 0}), col('movesElse', 'Прочие биомы', 'num', {min: 0}),
       col('site', 'Место города', 'map', {ref: keysOf({water: 1, coast: 1, fert: 1, trees: 1, ores: 1, steep: 1})}),
       col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}),
+      col('rose', 'Роза векторов', 'map', {ref: keysOf(VECTORS), min: 0, note: 'куда народ держит курс державы годами: агрессия, рост, экономика (доли, data/mind.js); совет тянет державу к розе («Совет державы»)'}),
       col('flows', 'Потоки ×', 'map', {ref: 'townGoods', min: 0, note: 'множитель на то, что постройки народа дают этого блага (out); пусто — ×1'}),
       col('placeFlows', 'Потоки по месту', 'json', {note: 'ещё × там, где город стоит на таком месте: {needsAny: [\'steep\', \'caves\'], flows: {ore: 1.25}} — дварфы под горой'}),
       col('swaps', 'Замены благ', 'json', {note: 'благо, которого постройки народа не берут, и чем заменяют: {metal: {to: \'wood\', k: 3}}'}),
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all(),
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', ')})),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
@@ -363,6 +365,8 @@ export const TABLES = [
       col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
       col('soft', 'Обходится без', 'ids', {ref: 'townGoods', note: 'блага из «Тратит», без которых постройка работает вполсилы, а не стоит (как мягкие блага таблицы «Блага городов»)'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
+      col('vec', 'Вектор', 'map', {ref: keysOf(VECTORS), min: 0, nullable: true, note: 'куда постройка тянет державу: агрессия, рост, экономика; пусто — из эффектов и того, что она даёт («Совет державы»)'}),
+      col('vecNow', 'Вектор итог', 'text', {computed: true, note: 'вектор, с которым постройка входит в курс и роли: свой «Вектор» или посчитанный из эффектов и того, что она даёт'}),
       col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
   {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
@@ -691,6 +695,8 @@ TABLES.push(
   {id: 'realmEvents', label: 'Держава: события', group: 'Народы', key: 'id', rows: () => REALM_EVENTS.all(),
     note: 'События года — таблица случайностей «одна по весу» (data/chance.js), тянется с шансом «правила» events.chance; условие — как у указов. adds — к показателям в этот год, ruin — к разрухе, text — строка летописи ({realm} — держава).',
     columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors, nullable: true}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},
+  {id: 'mindRules', label: 'Совет державы', group: 'Народы', note: 'Мозг державы (data/mind.js, atlas/mind.js; docs/WORLD.md «Совет державы»): три вектора — агрессия, рост, экономика. vecRules — как вектор постройки считается из её эффектов и того, что она делает, если в «Постройках городов» он не задан; deedVec — вектор дел двора; mind — курс, ветер, нужды сезона, доли казны на стройку по ветру, роли городов, послушание. Роза каждого народа — в «Народах мира».',
+    ...grp({vecRules: VEC_RULES, deedVec: DEED_VEC, mind: MIND})},
   {id: 'kingdomRules', label: 'Держава: правила', group: 'Народы', ...grp({ruin: RUIN_RULES, upkeep: UPKEEP, court: COURT, events: EVENTS_RULE, feedback: FEEDBACK}),
     note: 'Разруха: ruin.fall — как показатель её гасит, ruin.penalty — сколько очко разрухи отнимает, ruin.max — потолок. upkeep — содержание постройки по категории (очки экономики в год). court.fill — шанс занять пустую должность. events.chance — шанс события в год. feedback — что держава делает с миром: 0 — ничего; schismByStrife, schismByLoyalty — шанс раскола × (1 + значение × раздоры) и × (1 + значение × нехватка лояльности).'},
   {id: 'marketTiers', label: 'Рынок по ступени города', group: 'Караван', key: 'id', rows: () => MARKET_TIERS.all(),

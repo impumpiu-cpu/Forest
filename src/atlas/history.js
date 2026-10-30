@@ -21,6 +21,7 @@ import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
+import {stepMinds} from './mind.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
@@ -135,6 +136,7 @@ export function stepHistory(a, onDay = null) {
       for (const [p, q] of sailLanes(a)) say(a, `Корабли ${townLabel(p, 2)} ${p.name} проложили морской путь в ${townLabel(q, 1)} ${q.name}.`);
   }
   if (H.era !== 'wild' && season !== 'spring') seasonTowns(a, t => say(a, t));
+  if (H.era !== 'wild') stepMinds(a, t => say(a, t));   // the realms' councils: course, wind, roles (atlas/mind.js)
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));

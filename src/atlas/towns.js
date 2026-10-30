@@ -18,6 +18,7 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
+import {vectorOf, along} from '../data/mind.js';
 import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet} from '../data/townBuildings.js';
 
@@ -233,6 +234,8 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // is never stopped, so it is never idle
       if (b.cat !== 'housing' && ins.some(g => !softIn(g) && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
     }
+    // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)
+    if (ctx.lean) v *= 1 + ctx.lean.k * along(vectorOf(b), ctx.lean.vec);
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }

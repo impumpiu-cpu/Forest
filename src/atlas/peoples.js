@@ -15,6 +15,8 @@ import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
 import {seasonMoney, planBuild, doBuild} from './treasury.js';
+import {leanOf, note} from './mind.js';
+import {vectorOf} from '../data/mind.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
@@ -296,6 +298,8 @@ export function stepPeoples(a, rnd, say) {
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
+    t.wants = {feeds, threat};   // what the town needs, for its realm's council (atlas/mind.js)
+    const lean = leanOf(a, t);   // its role in the realm, or the seat's wind (atlas/mind.js)
     // and as many more as the realm's grant pays for (atlas/treasury.js realmSpend), not left to chance
     const own = (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build), paid = Math.floor((t.grant || 0) / TOWN_MONEY.realm.build);
     for (let q = 0; q < own + paid; q++) {   // a big town builds more a year
@@ -305,7 +309,7 @@ export function stepPeoples(a, rnd, say) {
       const skip = new Set();
       let b = null, plan = null;
       for (let k = 0; k < TOWN_MONEY.build.tries && !plan; k++) {
-        b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ, skip}, rnd);
+        b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ, skip, lean}, rnd);
         if (!b) break;
         plan = planBuild(a, t, b); if (!plan) skip.add(b.id);
       }
@@ -314,6 +318,7 @@ export function stepPeoples(a, rnd, say) {
       const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
       if (b.site && !sited && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js); more of it widen it
       doBuild(plan);   // paid: the materials to their makers, the work to the people
+      note(a, t.realm, vectorOf(b), plan.cost);   // the realm's course: what it built, along the building's vector (atlas/mind.js)
       const old = upgradeOf(t, b);   // housing built in place of an older one
       if (old) t.built.splice(t.built.indexOf(old), 1);
       t.built.push(b.id);

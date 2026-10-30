@@ -104,7 +104,7 @@ export function stepKingdom(a, say) {
     }
     // the tax of the year, by last year's edict (atlas/treasury.js): the realm's treasury
     taxYear(realm, towns, K.edicts.taxes || 'usual');
-    realmSpend(realm, towns, war);   // garrisons and grants to build (atlas/treasury.js)
+    realmSpend(realm, towns, war, a);   // garrisons and grants to build, by the council's wind (atlas/treasury.js, atlas/mind.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
