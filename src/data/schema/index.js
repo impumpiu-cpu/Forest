@@ -7,7 +7,7 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
-import {FUEL, POOLS} from '../townBuildings.js';
+import {FUEL, POOLS, LUX} from '../townBuildings.js';
 import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
@@ -369,6 +369,8 @@ export const TABLES = [
       col('fire', 'Жар', 'num', {min: 0, note: 'зарядов топлива в год на жар работы: печь, горн, обжиг, кухонный огонь; любое топливо'}),
       col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
       col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('dig', 'Копает', 'json', {note: 'рудник: {n, ores} — n руды в год тех видов, что в ores (iron, bronze, silver, mithril), по богатству клетки угодья каждой рудой («Металлы по рудам»)'}),
+      col('yields', 'Даёт из взятого', 'json', {computed: true, note: 'что постройка делает из взятого из набора: горн — из каждой руды её металл; мастерская роскоши — роскошь на ценность материала × наценку (LUX)'}),
       col('any', 'Берёт любое из', 'map', {ref: keysOf(POOLS), min: 0, note: 'сколько в год берёт из набора благ (POOLS): raw — любая сырая еда (кухни), protein — мясо или рыба (коптильня), dried — мясо, рыба или плоды (вешала)'}),
       col('soft', 'Обходится без', 'ids', {ref: 'townGoods', note: 'блага из «Тратит», без которых постройка работает вполсилы, а не стоит (как мягкие блага таблицы «Блага городов»)'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
@@ -453,8 +455,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу, POOLS — что берут кухни, коптильня, вешала, жар и тепло); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
-    ...grp({fuel: FUEL, pools: POOLS, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу; LUX — мастерская роскоши: сколько каждого материала берёт в год и наценка); наборы благ (POOLS) — в коде: что берут кухни, коптильня, вешала, горн, кузня големов, мастерская роскоши, жар и тепло; как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
+    ...grp({fuel: FUEL, lux: LUX, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',

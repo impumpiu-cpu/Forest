@@ -131,6 +131,19 @@ TOWN_GOODS.registerAll([
 // gold for one unit of a good
 export const goodPrice = id => { const G = TOWN_GOODS.get(id); return G.res ? PRICE[G.res].price * (G.per ?? 1) : G.price; };
 
+// Luxury (docs/WORLD.md «Роскошь»; from the branch Elves): the luxury workshop works any two of these materials, `take` of each
+// a year (wood and stone by the cartload, gems and mithril by the handful); what it makes is worth what went into it ×
+// `markup`, in units of luxury (TOWN_GOODS lux). Read live: an edit of a price or a take reaches the workshop.
+export const LUX = {markup: 1.5, take: {wood: 90, stone: 90, gems: 9, bronze: 18, iron: 18, steel: 12, silver: 12, mithril: 3}};
+// the pool of materials: each good counts 1 / take a unit — a full `take` of it is one of the workshop's two slots
+export const FINERY = {};
+// what a unit of each gives: its worth × markup, in units of luxury
+export const LUX_YIELDS = {};
+for (const g of Object.keys(LUX.take)) {
+  Object.defineProperty(FINERY, g, {enumerable: true, get: () => 1 / LUX.take[g]});
+  Object.defineProperty(LUX_YIELDS, g, {enumerable: true, get: () => ({lux: goodPrice(g) * LUX.markup / goodPrice('lux')})});
+}
+
 export const EFFECTS = {housing: 'жильё', food: 'запасы', prod: 'ремесло', trade: 'торговля', defence: 'оборона', faith: 'вера', lore: 'знание', prestige: 'слава', health: 'здоровье'};
 
 // Conditions of the place a building can ask for (atlas/towns.js placeHas)
@@ -228,7 +241,8 @@ TOWN_BUILDINGS.registerAll([
   B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {mithrilOre: 20, steel: 20}, out: {mithril: 10, arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),   // (the magma melts mithril: it needs no fire of its own)
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
   B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, any: {metals: 40}}),
-  B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, silver: 4}, soft: ['silver'], out: {lux: 10}, metals: ['silver']}),
+  // fine work of any two materials (LUX): its luxury is worth what went into it × LUX.markup
+  B('jeweler', 'мастерская роскоши', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, local: 'jeweler', jobs: 3, any: {finery: 2}, yields: LUX_YIELDS, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 30, fiber: 16}, out: {arms: 20}}),
   // bark and withies woven over leather: the elves' armour, of the sacred tree where it grows
@@ -350,11 +364,15 @@ export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) - POOL_FOOD(b.a
 // what it has, by the cheapest charge first; the charcoal pit makes three logs' worth of heat of every log it burns.
 export const FUEL = {wood: 1, coal: 3, dung: 0.5, brush: 0.5};
 // Pools: what a building takes of any of a set of goods (its `any`), each good counted × its weight — a kitchen cooks any raw
-// food; a smokehouse meat or fish; drying racks meat, fish or fruit; heat and fire take the fuel. They take in this order,
+// food; a smokehouse meat or fish; drying racks meat, fish or fruit; heat and fire take the fuel; the luxury workshop, last,
+// its materials. They take in this order,
 // each from what the buildings' own `in` left over, the rest shared by what there is of each good.
-export const POOLS = {ores: {copperOre: 1, ironOre: 1, silverOre: 1}, metals: {bronze: 1, iron: 1, steel: 1, mithril: 1}, protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL};
+export const POOLS = {ores: {copperOre: 1, ironOre: 1, silverOre: 1}, metals: {bronze: 1, iron: 1, steel: 1, mithril: 1}, protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL, finery: FINERY};
 // (the pools that take of each good by how much there is, not the cheapest first: a smelter melts all the ores it gets)
 export const POOL_SHARE = new Set(['ores']);
+// the pools that take two goods — the two the town has most of, by what each gives the pool; a third only where those run
+// short (the luxury workshop works any two materials)
+export const POOL_PAIR = new Set(['finery']);
 export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
 // Ores (docs/WORLD.md «Металлы по рудам»): a mine digs `dig.n` ore a year of the kinds it reaches (`dig.ores`), shared by how
 // rich its cell is in each (atlas/geology.js ore fields: iron, bronze — copper and tin —, silver, mithril; a cell rich in none —

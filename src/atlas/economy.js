@@ -19,7 +19,7 @@
 //               food is not eaten: the kitchens cook it — but by a people that eats it raw, data/peoples.js eatsRaw): the
 //               town's people and slaves eat it at their people's `eat`
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, POOL_SHARE, ORE_GOODS, goodPrice} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, ORE_GOODS, goodPrice} from '../data/townBuildings.js';
 import {WORLD_PEOPLES, swapOf} from '../data/peoples.js';
 import {placeHas} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
@@ -33,6 +33,14 @@ const poolGoods = id => Object.entries(POOLS[id]).sort((p, q) => goodPrice(p[0])
 function drawPool(id, want, left) {
   let need = want;
   const by = {};
+  if (POOL_PAIR.has(id)) {   // the two the town has most of (by what each gives the pool), up to half the want each
+    const G = Object.entries(POOLS[id]).map(([g, w]) => [g, w, (left[g] || 0) * w]).filter(x => x[2] > 0).sort((p, q) => q[2] - p[2] || (p[0] < q[0] ? -1 : 1));
+    for (let k = 0; k < G.length && need > 1e-12; k++) {
+      const [g, w, has] = G[k], part = k < 2 ? Math.max(need / Math.max(1, 2 - k), 0) : need, n = Math.min(has, part) / w;
+      if (n > 0) { left[g] -= n; by[g] = n; need -= n * w; }
+    }
+    return [want - Math.max(0, need), by];
+  }
   if (POOL_SHARE.has(id)) {
     const G = Object.entries(POOLS[id]), all = G.reduce((s, [g, w]) => s + (left[g] || 0) * w, 0), k = all > 0 ? Math.min(1, want / all) : 0;
     for (const [g, w] of G) { const n = (left[g] || 0) * k; if (n > 0) { left[g] -= n; by[g] = n; need -= n * w; } }
