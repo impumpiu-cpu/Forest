@@ -7,6 +7,7 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
+import {FUEL, POOLS} from '../townBuildings.js';
 import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
@@ -345,6 +346,7 @@ export const TABLES = [
       col('rose', 'Роза векторов', 'map', {ref: keysOf(VECTORS), min: 0, note: 'куда народ держит курс державы годами: агрессия, рост, экономика (доли, data/mind.js); совет тянет державу к розе («Совет державы»)'}),
       col('flows', 'Потоки ×', 'map', {ref: 'townGoods', min: 0, note: 'множитель на то, что постройки народа дают этого блага (out); пусто — ×1'}),
       col('placeFlows', 'Потоки по месту', 'json', {note: 'ещё × там, где город стоит на таком месте: {needsAny: [\'steep\', \'caves\'], flows: {ore: 1.25}} — дварфы под горой'}),
+      col('eatsRaw', 'Ест сырым', 'ids', {ref: 'townGoods', note: 'сырая еда, которую народ ест как есть: кормит, как готовая (эльфы — овощи и плоды)'}),
       col('swaps', 'Замены благ', 'json', {note: 'благо, которого постройки народа не берут, и чем заменяют: {metal: {to: \'wood\', k: 3}}'}),
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
@@ -363,9 +365,11 @@ export const TABLES = [
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('house', 'Жильё', 'int', {min: 0, note: 'сколько жителей вмещает; место города = 120 + сумма'}),
       col('jobs', 'Рабочих', 'int', {min: 0, note: 'сколько рук берёт у города при полной работе (черновик)'}),
-      col('heat', 'Топливо', 'int', {min: 0, note: 'брёвен в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4 (черновик)'}),
+      col('heat', 'Тепло', 'num', {min: 0, note: 'зарядов топлива в год на тепло жилья, × климат: холодный 1,6, умеренный 1, тёплый 0,4; любое топливо («Кухни и топливо»: бревно — 1 заряд, уголь — 3)'}),
+      col('fire', 'Жар', 'num', {min: 0, note: 'зарядов топлива в год на жар работы: печь, горн, обжиг, кухонный огонь; любое топливо'}),
       col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
       col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('any', 'Берёт любое из', 'map', {ref: keysOf(POOLS), min: 0, note: 'сколько в год берёт из набора благ (POOLS): raw — любая сырая еда (кухни), protein — мясо или рыба (коптильня), dried — мясо, рыба или плоды (вешала)'}),
       col('soft', 'Обходится без', 'ids', {ref: 'townGoods', note: 'блага из «Тратит», без которых постройка работает вполсилы, а не стоит (как мягкие блага таблицы «Блага городов»)'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
       col('vec', 'Вектор', 'map', {ref: keysOf(VECTORS), min: 0, nullable: true, note: 'куда постройка тянет державу: агрессия, рост, экономика; пусто — из эффектов и того, что она даёт («Совет державы»)'}),
@@ -377,6 +381,7 @@ export const TABLES = [
     note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда и зерно — в человеко-годах: прокорм одного жителя на год.',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
+      col('raw', 'Сырое', 'bool', {note: 'сырую еду не едят (кроме народов с «Ест сырым»): её варят кухни, мелют мельницы'}),
       col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
     ]},
 
@@ -446,8 +451,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
-    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу, POOLS — что берут кухни, коптильня, вешала, жар и тепло); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
+    ...grp({fuel: FUEL, pools: POOLS, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',

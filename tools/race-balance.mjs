@@ -78,7 +78,7 @@ for (const id of PEOPLES) {
     fedByWorks: r2(s.fed / Math.max(1, s.towns)), roomUse: r2(pop / Math.max(1, s.room)), needs: r2(s.needs / pop), comfort: r2(s.comfort / pop), idle: r2(s.idle / Math.max(1, s.rows)), unpaid: r2(s.unpaid / Math.max(1, s.towns)),
     goldHead: r2((s.gold + s.peopleGold + s.makersGold) / pop), realmGold: Math.round(s.realmGold / k), wastedHead: r2(s.wasted / pop), lackShare: r2(s.lackV / Math.max(1, s.askV)),
     mightHead: r2(s.might / Math.sqrt(pop / Math.max(1, s.towns)) / Math.max(1, s.towns)), slaves: Math.round(s.slaves / k), golems: r2(s.golems / k), warBeastMen: Math.round(s.beasts / k),
-    craftHead: perHead(TRADES.craft), woodHead: perHead(TRADES.wood), warHead: perHead(TRADES.war), foodHead: r2(((s.made.food || 0) + (s.made.grain || 0) * 0.8) / pop),
+    craftHead: perHead(TRADES.craft), woodHead: perHead(TRADES.wood), warHead: perHead(TRADES.war), foodHead: r2((s.food || 0) / pop),
     short: top(s.short), spare: top(s.spare), peopleLack: top(s.lack),
     built: Object.entries(s.built).sort((p, q) => q[1] - p[1]).slice(0, 14).map(([g, v]) => `${g} ${r2(v / Math.max(1, s.towns))}`).join(', '),
   };

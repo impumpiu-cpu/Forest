@@ -14,6 +14,7 @@ import {spawnGroup} from '../src/settlement/migration.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {realmBand} from '../src/atlas/towns.js';
 import {stepDiplomacy} from '../src/atlas/diplomacy.js';
+import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {RUINS} from '../src/data/kingdom.js';
 import {RAID_BANDS} from '../src/data/raids.js';
@@ -34,9 +35,15 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
 // the dwarves push strangers out of their towns; the world: the humans' host by what the realm has built
 {
   const a = generateAtlas({seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north'});
-  const t = a.towns.find(x => x.alive && x.people === 'dwarves'); t.folk = {humans: 0.2};
+  // (a town on many routes with humans takes some back by trade: the push is measured against the same world without it)
+  const saved = saveAtlas(a, 'humans'), b = loadAtlas(structuredClone(saved));
+  const t = a.towns.find(x => x.alive && x.people === 'dwarves'), tb = b.towns.find(x => x.id === t.id); t.folk = {humans: 0.2}; tb.folk = {humans: 0.2};
   const lines = []; stepDiplomacy(a, mulberry(1), s => lines.push(s), () => 0);
-  check('дварфы выживают чужаков из своих городов', (t.folk.humans || 0) < 0.2, `люди ${0.2} → ${(t.folk.humans || 0).toFixed(3)}`);
+  const ex = WORLD_PEOPLES.get('dwarves').folk.expel; WORLD_PEOPLES.get('dwarves').folk.expel = 0;
+  stepDiplomacy(b, mulberry(1), () => {}, () => 0);
+  WORLD_PEOPLES.get('dwarves').folk.expel = ex;
+  const now = t.folk.humans || 0, kept = tb.folk.humans || 0;
+  check('дварфы выживают чужаков из своих городов', now < kept && Math.abs(kept - now - Math.min(ex, 0.2)) < 1e-6, `люди ${0.2} → ${now.toFixed(3)}, без выселения ${kept.toFixed(3)}`);
   const r = a.realms.find(x => x.people === 'humans'), town = a.towns.find(x => x.alive && x.realm === r.id);
   const was = [...town.built]; town.built = was.filter(id => !['tiltyard', 'hippodrome', 'den'].includes(id));
   const plain = realmBand(a, r.id, 'humans');

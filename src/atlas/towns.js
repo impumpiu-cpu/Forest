@@ -20,7 +20,7 @@
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
 import {vectorOf, along} from '../data/mind.js';
 import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet, POOLS} from '../data/townBuildings.js';
 
 // the buildings that make a good (once)
 const MAKERS = new Map();
@@ -224,6 +224,8 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       let flow = 0;
       for (const g of Object.keys(b.out || {})) flow += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
       for (const g of ins) if (!TF.flow.spareSkip.includes(g)) flow += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain (food is not stored: its surplus is no reason)
+      // of a pool (a kitchen: any raw food): what lies unused of its goods — raw food nobody cooks
+      for (const id of Object.keys(b.any || {})) flow += Object.keys(POOLS[id]).reduce((s, g) => s + (E.spare?.[g] || 0), 0) * TF.flow.spare;
       v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
       // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
       const outs = Object.keys(b.out || {}).filter(g => g !== 'food' && g !== 'grain' && g !== 'gold');
@@ -232,7 +234,10 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
       // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
       // is never stopped, so it is never idle
-      if (b.cat !== 'housing' && ins.some(g => !softIn(g) && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
+      // (so with a pool none of whose goods the town has or its realm makes: a furnace with no fuel at all)
+      const none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id));
+      const pools = [...Object.keys(b.any || {}), ...(b.fire ? ['fuel'] : [])];
+      if (b.cat !== 'housing' && (ins.some(g => !softIn(g) && none(g)) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
     }
     // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)
     if (ctx.lean) v *= 1 + ctx.lean.k * along(vectorOf(b), ctx.lean.vec);

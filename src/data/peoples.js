@@ -36,6 +36,7 @@
 //             materials of its building swap the same way (atlas/treasury.js)
 //   levy:     × the share of a town's people its army takes (data/parties.js ARMY.levy); breed — × how fast its towns grow;
 //             needs — × the goods its people want a head (atlas/treasury.js); none — ×1
+//   eatsRaw:  raw foods it eats as they are (data/townBuildings.js TOWN_GOODS `raw`): they feed it as cooked food does
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
@@ -54,6 +55,7 @@ WORLD_PEOPLES.registerAll([
     spread: 0.22, growth: 0.18, spacing: 16,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
     settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.005, welcome: [],
+    eatsRaw: ['produce'],   // the elves eat the grove's fruit as it is: it feeds them as cooked food does (atlas/economy.js)
     rose: {agg: 0.35, grow: 0.2, econ: 0.45},
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;

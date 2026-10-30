@@ -20,8 +20,8 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
 // the buildings
 {
   const B = id => TOWN_BUILDINGS.get(id);
-  check('рыбная пристань — у всех народов; гавань даёт еду и хочет свою пристань; маяк — свою пристань или хижину рыбака',
-    !B('pier').peoples && B('harbor').out.food > 0 && B('harbor').here.includes('pier') && B('lighthouse').here.includes('fishhut'));
+  check('рыбная пристань — у всех народов; гавань даёт рыбу и хочет свою пристань; маяк — свою пристань или хижину рыбака',
+    !B('pier').peoples && B('harbor').out.fish > 0 && B('harbor').here.includes('pier') && B('lighthouse').here.includes('fishhut'));
 }
 
 const a = generateAtlas({seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north'});

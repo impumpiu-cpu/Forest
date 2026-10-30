@@ -1,7 +1,7 @@
 // The table of the world's buildings (data/townBuildings.js) is the one truth about a building: who builds it, what its
 // realm must have first, what it houses, employs, takes and gives, the metals it opens; the local map reads its races
 // from it. `npm run buildings`.
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples, POOLS, TOWN_FLOW, KITCHENS} from '../src/data/townBuildings.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {MATERIALS} from '../src/data/balance/materials.js';
@@ -16,7 +16,7 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
 {
   const bad = [];
   for (const b of all) {
-    for (const k of ['house', 'jobs', 'heat']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
+    for (const k of ['house', 'jobs', 'heat', 'fire']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
     for (const k of ['in', 'out']) for (const [g, n] of Object.entries(b[k] || {})) {
       if (!TOWN_GOODS.has(g)) bad.push(`${b.id}: ${k}.${g} — нет такого блага`);
       if (!(typeof n === 'number' && n > 0)) bad.push(`${b.id}: ${k}.${g} = ${n}`);
@@ -24,7 +24,11 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     if ('housing' in (b.fx || {})) bad.push(`${b.id}: жильё в эффектах — оно задаётся полем house`);
     for (const k of Object.keys(b.fx || {})) if (!(k in EFFECTS)) bad.push(`${b.id}: эффект ${k}`);
   }
-  const used = new Set(all.flatMap(b => [...Object.keys(b.in || {}), ...Object.keys(b.out || {})]));
+  // (a good of a pool a building takes — a kitchen's raw food, the fuel of heat and fire — is used; brushwood is gathered by hand)
+  const pooled = b => [...Object.keys(b.any || {}), ...(b.heat || b.fire ? ['fuel'] : [])].flatMap(id => Object.keys(POOLS[id] || {}));
+  const used = new Set([...all.flatMap(b => [...Object.keys(b.in || {}), ...Object.keys(b.out || {}), ...pooled(b)]), ...Object.keys(TOWN_FLOW.gather || {})]);
+  for (const b of all) for (const id of Object.keys(b.any || {})) if (!POOLS[id]) bad.push(`${b.id}: any.${id} — нет такого набора`);
+  for (const [id, P] of Object.entries(POOLS)) for (const [g, w] of Object.entries(P)) { if (!TOWN_GOODS.has(g)) bad.push(`набор ${id}: нет блага ${g}`); if (!(w > 0)) bad.push(`набор ${id}: ${g} = ${w}`); }
   for (const G of TOWN_GOODS.all()) {
     if (!(goodPrice(G.id) > 0)) bad.push(`благо ${G.id}: нет цены`);
     if (!used.has(G.id)) bad.push(`благо ${G.id}: его никто не тратит и не даёт`);
@@ -32,6 +36,22 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
   const housed = all.filter(b => b.house > 0).length, working = all.filter(b => b.jobs > 0).length;
   check('потоки построек: числа целые, блага известны, у каждого блага есть цена и место', !bad.length,
     bad.length ? bad.slice(0, 5).join('; ') : `${all.length} построек: вмещают ${housed}, берут руки ${working}, благ ${TOWN_GOODS.all().length}`);
+}
+
+// the kitchens (docs/WORLD.md «Кухни и топливо»): three steps, every people's; every raw food is in the kitchens' pool and some
+// building makes ready food or stores of it; a building that burns names it as heat or fire, not as logs or coal it takes
+{
+  const bad = [], K = KITCHENS.map(id => TOWN_BUILDINGS.get(id));
+  if (K.map(b => b.tier).join() !== '0,1,2') bad.push(`ступени кухонь: ${K.map(b => b.tier).join()}`);
+  for (const b of K) { if (b.peoples) bad.push(`${b.id}: не у всех народов`); if (!b.any?.raw || !b.out?.food || !b.fire) bad.push(`${b.id}: варит сырое на огне в еду`); }
+  for (const G of TOWN_GOODS.all().filter(g => g.raw)) {
+    if (!POOLS.raw[G.id]) bad.push(`${G.id}: сырое, а кухни его не варят`);
+    if (!all.some(b => b.in?.[G.id] && (b.out?.food || b.out?.flour || b.out?.drink))) if (!['meat', 'fish', 'produce'].includes(G.id)) bad.push(`${G.id}: сырое, переделать негде, кроме кухни`);
+  }
+  for (const b of all) if (b.in?.coal) bad.push(`${b.id}: уголь в «Тратит» — топливо идёт жаром (fire)`);
+  const ratio = K.map(b => b.out.food / b.any.raw);
+  if (!(ratio[0] < ratio[1] && ratio[1] < ratio[2])) bad.push(`выход кухонь не растёт со ступенью: ${ratio.join(', ')}`);
+  check('кухни: три ступени у всех народов, сырое варится, топливо — жаром', !bad.length, bad.length ? bad.slice(0, 5).join('; ') : K.map(b => `${b.name} ${b.any.raw}→${b.out.food}`).join(', '));
 }
 
 // what a people may build it can reach: the buildings its realm must have first are open to that people too

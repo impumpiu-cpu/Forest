@@ -44,7 +44,7 @@ check('загон даёт мясо, шкуры и кости за реальн�
   const t = town({built: ['pen'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);
   seasonMoney(a, [t]);
   const e = t.econ;
-  assert.ok(e.herd.slaughtered > 0); assert.ok(e.made.food > 0 && e.made.hide > 0 && e.made.bone > 0);
+  assert.ok(e.herd.slaughtered > 0); assert.ok(e.made.meat > 0 && e.made.hide > 0 && e.made.bone > 0);   // (meat: raw, the kitchens cook it)
   assert.equal(e.used.beasts / 4, e.herd.slaughtered);
   assert.ok(Math.abs(t.stock.beasts - (10 + (e.made.beasts - e.used.beasts) / 4)) < 0.011);
   assert.deepEqual(t.warBeasts.list, {varg: 2}); assert.ok(t.stock.beasts >= 2);

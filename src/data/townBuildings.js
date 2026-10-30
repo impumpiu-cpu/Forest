@@ -27,8 +27,12 @@
 //   ── what it does
 //   house         people it houses: the town's room is TOWN_FX.room[0] + Σ house (the town does not grow past it)
 //   jobs          hands it takes from the town's people to work at full strength
-//   heat          wood a year its hearths burn, × the climate (cold ×1.6, mild ×1, warm ×0.4)
+//   heat          the warmth a year its hearths burn, × the climate (cold ×1.6, mild ×1, warm ×0.4), in charges of fuel
+//   fire          the heat a year its work burns — a furnace, a forge, a kiln, a kitchen's fire — in charges of fuel. Both burn
+//                 any fuel (FUEL: a log is 1 charge, coal 3): what the town has of it, the dearer charge last
 //   in, out       what it takes and gives a year at full strength, in TOWN_GOODS ({good: amount})
+//   any           what it takes of a pool of goods (TOWN_FLOW.pools: `raw` — any raw food, `protein` — meat or fish, `dried` —
+//                 meat, fish or produce): {raw: 40} — a kitchen cooks whatever raw food the town has
 //   soft          goods of `in` this building does without at TOWN_FLOW.soft (as a good marked `soft` in TOWN_GOODS): a
 //                 fisher's hut without twine for its nets, a craftsman's shop without bone and leather
 //   upgrades      housing built over an older one in place: one of these (the first the town has) gives way to it
@@ -73,11 +77,16 @@ export const CATEGORIES = {
 // The goods of a town's flows (`in`, `out`): what a year of a building takes and gives. `soft` — a good a building does
 // without at half its strength (tools, arms, honey, pots); any other it cannot work without (ore for a furnace). `res` — the stock resource
 // it is priced as (data/balance/prices.js), × `per` units of it in one unit of the good; `price` — gold for a good
-// with no resource of its own. Food is counted in people-years: one feeds one person a year (365 rations).
+// with no resource of its own. Food is counted in people-years: one feeds one person a year (365 rations). `raw` — food
+// nobody eats as it is (a people that does: data/peoples.js eatsRaw): the kitchens cook it (KITCHENS), the mills grind it.
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   {id: 'food', label: 'еда', unit: 'чел.-год', get price() { return CAMPAIGN.ration * 365; }},
-  {id: 'grain', label: 'зерно', unit: 'чел.-год', get price() { return CAMPAIGN.ration * 365; }, note: 'сытнее сырым на 0,8 от еды; мельница и пекарня делают из него еду'},
+  {id: 'grain', label: 'зерно', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.8; }, note: 'сырое: варят на кухне, мелют на мельнице; мельница и пекарня делают из него еду'},
+  {id: 'meat', label: 'мясо', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.6; }, note: 'сырое: варят на кухне, коптят, вялят'},
+  {id: 'fish', label: 'рыба', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.6; }, note: 'сырая: варят на кухне, коптят, вялят'},
+  {id: 'produce', label: 'овощи и плоды', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.6; }, note: 'сырые: варят на кухне, вялят; эльфы едят и так'},
+  {id: 'flour', label: 'мука', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.9; }, note: 'из зерна и грибов: пекарня печёт хлеб, кухня варит'},
   {id: 'stores', label: 'заготовки', unit: 'чел.-год', price: 150, note: 'вяленое, солёное, копчёное: не портится'},
   {id: 'wood', label: 'брёвна', unit: 'шт.', res: 'wood'},
   {id: 'planks', label: 'тёс', unit: 'шт.', res: 'planks'},
@@ -86,6 +95,8 @@ TOWN_GOODS.registerAll([
   {id: 'ore', label: 'руда', unit: 'шт.', res: 'ironore', note: 'какая — по геологии места'},
   {id: 'gems', label: 'самоцветы', unit: 'шт.', res: 'gems'},
   {id: 'coal', label: 'уголь', unit: 'шт.', res: 'coal'},
+  {id: 'brush', label: 'хворост', unit: 'вязанок', price: 0.02, note: 'жители собирают руками, без построек (TOWN_FLOW.gather): топливо бедного жилья, ползаряда; не копится'},
+  {id: 'dung', label: 'кизяк', unit: 'шт.', price: 0.05, note: 'сушёный навоз стад: топливо степи, ползаряда'},
   {id: 'metal', label: 'металл', unit: 'слитков', res: 'iron'},
   {id: 'fiber', label: 'волокно и шерсть', unit: 'шт.', price: 0.5},
   {id: 'cloth', label: 'ткань', unit: 'шт.', res: 'cloth'},
@@ -142,27 +153,32 @@ TOWN_BUILDINGS.registerAll([
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry'], upgrades: ['house', 'hut'], house: 400, heat: 150, in: {stone: 15}}),
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 60, in: {arms: 3, armor: 1}}),
   // ── food
-  B('garden', 'огороды', 'pl', 'food', 0, ALL, {}, {per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, out: {food: 35, herbs: 10}}),
+  B('garden', 'огороды', 'pl', 'food', 0, ALL, {}, {per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, out: {produce: 35, herbs: 10}}),
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),
-  B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {food: 45, wood: 40, herbs: 7, fiber: 30}}),
-  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {}, {per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
-  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D], {}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {fiber: 120, beasts: 4}}),
+  B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {produce: 45, wood: 40, herbs: 7, fiber: 30}}),
+  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {}, {per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, out: {produce: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
+  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D], {}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {fiber: 120, beasts: 4, dung: 60}}),
   // the greenskins' pens: big herds for meat and for war — more room, more food (on the local map their pen holds twice as
   // many: data/buildings.js penRoom)
-  B('grpens', 'загоны зеленокожих', 'pl', 'food', 0, O, {}, {per: 200, max: 4, needs: ['pasture'], local: 'pen', site: true, jobs: 10, out: {fiber: 100, beasts: 8}}),
+  B('grpens', 'загоны зеленокожих', 'pl', 'food', 0, O, {}, {per: 200, max: 4, needs: ['pasture'], local: 'pen', site: true, jobs: 10, out: {fiber: 100, beasts: 8, dung: 100}}),
   // the kinds' own (data/peoples.js `kin`: each wants its kind in the town): the gnolls' hyena dens, the ogres' meat pots
-  B('hyenadens', 'гиеньи норы', 'pl', 'food', 0, O, {defence: 0.1}, {kin: 'gnoll', per: 600, max: 2, jobs: 4, out: {food: 15, bone: 40}}),
-  B('meatpots', 'мясные котлы', 'pl', 'food', 1, O, {}, {kin: 'ogre', per: 800, requiresAny: ['lodge', 'grpens', 'pasture'], jobs: 3, in: {wood: 30}, out: {food: 40, bone: 20}}),
-  B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {fiber: 200, beasts: 8}}),
-  B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
-  B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, soft: ['fiber'], out: {food: 30}}),
-  B('pier', 'рыбная пристань', 'f', 'food', 1, ALL, {trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, soft: ['fiber'], out: {food: 70}}),
-  B('quern', 'ручные жернова', 'pl', 'food', 0, ALL, {}, {per: 600, local: 'quern', jobs: 2, in: {grain: 12}, out: {food: 14}}),
-  B('watermill', 'водяная мельница', 'f', 'food', 2, [...H, ...D], {prod: 0.1}, {per: 1500, needs: ['river'], requiresAny: ['field', 'garden', 'mushrooms'], site: true, jobs: 4, in: {grain: 60}, out: {food: 72}}),
-  B('windmill', 'ветряная мельница', 'f', 'food', 1, H, {}, {per: 1500, needs: ['flat'], requires: ['field'], site: true, jobs: 4, in: {grain: 40}, out: {food: 48}}),
-  B('bakery', 'пекарня', 'f', 'food', 2, [...H, ...D], {health: 0.05}, {per: 1000, requiresAny: ['watermill', 'windmill'], jobs: 4, in: {food: 60, wood: 80}, out: {food: 75}}),
-  B('smokehouse', 'коптильня', 'f', 'food', 1, ALL, {food: 0.1}, {per: 800, requiresAny: ['lodge', 'fishhut', 'pen'], local: 'smokehouse', jobs: 3, in: {food: 20, wood: 40}, out: {stores: 28}}),
-  B('dryrack', 'вешала и бочки', 'pl', 'food', 0, ALL, {food: 0.05}, {per: 600, local: 'dryrack', jobs: 2, in: {food: 12, salt: 6}, out: {stores: 12}}),
+  B('hyenadens', 'гиеньи норы', 'pl', 'food', 0, O, {defence: 0.1}, {kin: 'gnoll', per: 600, max: 2, jobs: 4, out: {meat: 15, bone: 40}}),
+  B('meatpots', 'мясные котлы', 'pl', 'food', 1, O, {}, {kin: 'ogre', per: 800, requiresAny: ['lodge', 'grpens', 'pasture'], jobs: 3, fire: 30, in: {meat: 40}, out: {food: 48, bone: 20}}),
+  B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {fiber: 200, beasts: 8, dung: 120}}),
+  B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {meat: 25, hide: 80, bone: 80}}),
+  B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, soft: ['fiber'], out: {fish: 30}}),
+  B('pier', 'рыбная пристань', 'f', 'food', 1, ALL, {trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, soft: ['fiber'], out: {fish: 70}}),
+  B('quern', 'ручные жернова', 'pl', 'food', 0, ALL, {}, {per: 600, local: 'quern', jobs: 2, in: {grain: 12}, out: {flour: 14}}),
+  B('watermill', 'водяная мельница', 'f', 'food', 2, [...H, ...D], {prod: 0.1}, {per: 1500, needs: ['river'], requiresAny: ['field', 'garden', 'mushrooms'], site: true, jobs: 4, in: {grain: 60}, out: {flour: 72}}),
+  B('windmill', 'ветряная мельница', 'f', 'food', 1, H, {}, {per: 1500, needs: ['flat'], requires: ['field'], site: true, jobs: 4, in: {grain: 40}, out: {flour: 48}}),
+  B('bakery', 'пекарня', 'f', 'food', 2, [...H, ...D], {health: 0.05}, {per: 1000, requiresAny: ['watermill', 'windmill'], jobs: 4, fire: 80, in: {flour: 60}, out: {food: 84}}),
+  B('smokehouse', 'коптильня', 'f', 'food', 1, ALL, {food: 0.1}, {per: 800, requiresAny: ['lodge', 'fishhut', 'pen'], local: 'smokehouse', jobs: 3, fire: 40, any: {protein: 20}, out: {stores: 28}}),
+  B('dryrack', 'вешала и бочки', 'pl', 'food', 0, ALL, {food: 0.05}, {per: 600, local: 'dryrack', jobs: 2, any: {dried: 12}, in: {salt: 6}, out: {stores: 12}}),
+  // the kitchens (KITCHENS), all peoples': they cook whatever raw food the town has — nobody eats it raw (but the elves their
+  // fruit); the community hearth gives a warm meal for all, the cookhouse feeds a town
+  B('firepit', 'кострище', 'n', 'food', 0, ALL, {}, {per: 100, jobs: 2, fire: 20, any: {raw: 40}, out: {food: 32}}),
+  B('hearth', 'общинный очаг', 'm', 'food', 1, ALL, {health: 0.05}, {per: 200, local: 'hearth', jobs: 3, fire: 40, any: {raw: 80}, out: {food: 80}}),
+  B('cookhouse', 'поварня', 'f', 'food', 2, ALL, {health: 0.05}, {per: 600, requiresAny: ['hearth'], jobs: 6, fire: 120, any: {raw: 240}, out: {food: 288}}),
   B('granary', 'амбар', 'm', 'food', 0, ALL, {food: 0.15}, {local: 'granary', jobs: 1}),
   B('cellar', 'погреба и ледники', 'pl', 'food', 2, [...H, ...D], {food: 0.1, health: 0.05}, {jobs: 1}),
   B('apiary', 'пасека', 'f', 'food', 1, [...H, ...E], {prod: 0.05}, {per: 1500, needsAny: ['forest', 'fertile'], needs: ['warm'], site: true, jobs: 2, out: {honey: 60}}),
@@ -179,28 +195,28 @@ TOWN_BUILDINGS.registerAll([
   B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, out: {ore: 500, gems: 1.5}}),
   B('charpit', 'углежогная яма', 'f', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {per: 800, needs: ['forest'], local: 'charpit', site: true, jobs: 3, in: {wood: 200}, out: {coal: 216}}),
   B('coalpit', 'угольные копи', 'pl', 'raw', 1, [...H, ...D], {prod: 0.15}, {per: 1000, needs: ['coal'], site: true, jobs: 8, in: {tools: 3}, out: {coal: 432}}),
-  B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D, ...E], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, in: {wood: 80}, out: {salt: 200}}),
+  B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D, ...E], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, fire: 80, out: {salt: 200}}),
   B('placer', 'золотой прииск', 'm', 'raw', 1, [...H, ...D, ...O], {trade: 0.2}, {per: 1500, needs: ['placer'], notable: true, site: true, jobs: 6, in: {tools: 1}, out: {gold: 200}}),
   // ── crafts
   B('loom', 'ткацкая', 'f', 'craft', 1, ALL, {prod: 0.1}, {per: 600, local: 'loom', jobs: 4, in: {fiber: 120}, out: {cloth: 40}}),
-  B('potter', 'гончарня', 'f', 'craft', 1, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], local: 'potter', jobs: 3, in: {clay: 60, wood: 40}, out: {pots: 90}}),
+  B('potter', 'гончарня', 'f', 'craft', 1, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], local: 'potter', jobs: 3, fire: 40, in: {clay: 60}, out: {pots: 90}}),
   B('tannery', 'дубильня', 'f', 'craft', 1, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, requiresAny: ['lodge', 'pen', 'pasture'], local: 'tannery', jobs: 3, in: {hide: 60}, out: {leather: 60}}),
   B('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, {per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20}, soft: ['bone', 'leather'], out: {tools: 15, arms: 10}}),
-  B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {per: 800, requires: ['mineshaft'], local: 'smelter', jobs: 4, in: {ore: 120, coal: 60}, out: {metal: 86}, metals: ['bronze']}),
-  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, in: {metal: 50, coal: 25, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
-  B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, in: {metal: 120, coal: 100}, out: {tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
+  B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {per: 800, requires: ['mineshaft'], local: 'smelter', jobs: 4, fire: 180, in: {ore: 120}, out: {metal: 86}, metals: ['bronze']}),
+  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, fire: 75, in: {metal: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
+  B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, fire: 300, in: {metal: 120}, out: {tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
   B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {metal: 60}, out: {arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
-  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, in: {metal: 40, coal: 20}}),
+  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, in: {metal: 40}}),
   B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, metal: 4}, out: {lux: 10}, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 30, fiber: 16}, out: {arms: 20}}),
   // bark and withies woven over leather: the elves' armour, of the sacred tree where it grows
   B('barkworks', 'мастерская коры', 'f', 'craft', 1, E, {defence: 0.1}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 40, fiber: 20, leather: 10}, out: {armor: 4}}),
   B('shipyard', 'верфь', 'f', 'craft', 2, [...H, ...E], {trade: 0.25, prod: 0.1}, {needs: ['coast', 'forest'], jobs: 15, in: {planks: 200, fiber: 40, cloth: 30}}),
-  B('glassworks', 'стеклодувня', 'f', 'craft', 2, [...H, ...D], {prod: 0.1, trade: 0.1, prestige: 0.05}, {needsAny: ['coast', 'clay'], pop: 800, jobs: 5, in: {clay: 60, wood: 120}, out: {lux: 8}}),
+  B('glassworks', 'стеклодувня', 'f', 'craft', 2, [...H, ...D], {prod: 0.1, trade: 0.1, prestige: 0.05}, {needsAny: ['coast', 'clay'], pop: 800, jobs: 5, fire: 120, in: {clay: 60}, out: {lux: 8}}),
   B('alchemist', 'лаборатория алхимика', 'f', 'craft', 2, [...H, ...E, ...D], {lore: 0.15, health: 0.1}, {per: 2000, pop: 800, jobs: 2, in: {herbs: 40, pots: 20}, out: {potions: 20}}),
-  B('hearth', 'общинный очаг', 'm', 'life', 0, [...H, ...D], {health: 0.05}, {per: 1000, local: 'hearth', jobs: 2, in: {wood: 30}}),   // (a warm meal for all: health; it does not make bread of wood)
+
   // ── trade and ways
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {needs: ['river'], jobs: 2, out: {gold: 20}}),
   B('bridge', 'мост', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['river'], requires: ['quarry'], in: {stone: 10}}),
@@ -210,15 +226,15 @@ TOWN_BUILDINGS.registerAll([
   B('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, {requires: ['tiltyard'], needsAny: ['flat', 'pasture'], notable: true, jobs: 8, in: {food: 20, fiber: 40}, out: {beasts: 3}}),
   B('den', 'притон', 'm', 'trade', 1, H, {trade: 0.15}, {needs: ['road'], local: 'den', jobs: 2, in: {drink: 60}, out: {gold: 30}}),
   B('tradepost', 'торговый пост', 'm', 'trade', 1, H, {trade: 0.35}, {needs: ['road'], local: 'tradepost', notable: true, jobs: 3, in: {food: 5}, out: {gold: 40}}),
-  B('inn', 'постоялый двор', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['road'], jobs: 3, in: {food: 4, wood: 30, drink: 100}, out: {gold: 60}}),
+  B('inn', 'постоялый двор', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['road'], jobs: 3, fire: 30, in: {food: 4, drink: 100}, out: {gold: 60}}),
   B('toll', 'дорожная застава', 'f', 'trade', 1, [...H, ...D, ...O], {trade: 0.05, defence: 0.05}, {needs: ['road'], jobs: 3, out: {gold: 40}}),
   B('market', 'рынок', 'm', 'trade', 1, ALL, {trade: 0.3, prestige: 0.05}, {jobs: 4}),
   B('warehouse', 'торговые склады', 'pl', 'trade', 2, [...H, ...D], {trade: 0.15}, {requires: ['market'], jobs: 2}),
   B('caravanserai', 'караван-сарай', 'm', 'trade', 2, [...H, ...O], {trade: 0.25}, {needs: ['road', 'dry'], jobs: 4, in: {food: 6, grain: 6}, out: {gold: 80}}),
   // the harbour opens the sea lanes (atlas/sea.js): traffic to other harbours, faster than any road
-  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], here: ['pier'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120, food: 60}}),
-  B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], here: ['pier', 'fishhut'], jobs: 1, in: {wood: 40}}),
-  B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1}, {needs: ['river'], requiresAny: ['ferry', 'fishhut'], jobs: 4, in: {planks: 6}, out: {food: 5, gold: 20}}),
+  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], here: ['pier'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120, fish: 60}}),
+  B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], here: ['pier', 'fishhut'], jobs: 1, fire: 40}),
+  B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1}, {needs: ['river'], requiresAny: ['ferry', 'fishhut'], jobs: 4, in: {planks: 6}, out: {fish: 5, gold: 20}}),
   B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, in: {gold: 100}, out: {gold: 160}}),
   // ── defence
   B('palisade', 'частокол', 'm', 'defence', 1, [...H, ...O], {defence: 0.25}, {needs: ['forest'], local: 'palisade', in: {wood: 40}}),
@@ -267,7 +283,7 @@ TOWN_BUILDINGS.registerAll([
   B('well', 'колодец', 'm', 'life', 1, ALL, {health: 0.1}, {local: 'well', in: {stone: 2}}),
   B('healerhut', 'хижина лекаря', 'f', 'life', 1, ALL, {health: 0.15}, {per: 800, local: 'healerhut', jobs: 2, in: {herbs: 20, pots: 10}, out: {potions: 10}}),
   B('hospice', 'лечебница', 'f', 'life', 2, [...H, ...E], {health: 0.25}, {requires: ['healerhut'], jobs: 6, in: {herbs: 40, cloth: 10}}),
-  B('bathhouse', 'баня', 'f', 'life', 2, [...H, ...D], {health: 0.15}, {needs: ['water'], jobs: 3, in: {wood: 120}}),
+  B('bathhouse', 'баня', 'f', 'life', 2, [...H, ...D], {health: 0.15}, {needs: ['water'], jobs: 3, fire: 120}),
   B('aqueduct', 'акведук', 'm', 'life', 2, H, {health: 0.2}, {needs: ['stone'], pop: 800, house: 100, jobs: 2, in: {stone: 20}}),
 ]);
 
@@ -299,17 +315,31 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //   heat      — the climate's weight on the wood a town burns to keep warm (atlas/economy.js heatFactor)
 //   boats     — a shipyard's boats: its fishers (`fish`) give × k, as the yard works
 //   sea       — the sea around a town feeds as land would (atlas/sea.js seaFeed) × its best fishers: these shares
-// the food a building adds a year, in people-years: what it gives of food, grain (× TOWN_FLOW.grain) and stores less what it
-// takes of them (a field — its grain; a mill — the bread over the grain)
-const FOOD_GOODS = io => (io?.food || 0) + (io?.grain || 0) * TOWN_FLOW.grain + (io?.stores || 0);
-export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) + (TOWN_FLOW.herd.at.includes(b.id) ? (b.out?.beasts || 0) * TOWN_FLOW.herd.food : 0);
+// food a building gives net: ready food and stores, raw food at what a kitchen makes of it (TOWN_FLOW.rawFood), what it
+// takes of a pool of raw food the same (a kitchen gives what it cooks over what it takes)
+const RAW_FOODS = new Set(['grain', 'meat', 'fish', 'produce', 'flour']);
+const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : RAW_FOODS.has(g) ? v * TOWN_FLOW.rawFood : 0), 0);
+const POOL_FOOD = any => Object.entries(any || {}).reduce((s, [k, v]) => s + (k === 'fuel' ? 0 : v * TOWN_FLOW.rawFood), 0);
+export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) - POOL_FOOD(b.any) + (TOWN_FLOW.herd.at.includes(b.id) ? (b.out?.beasts || 0) * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0);
+
+// Fuel (docs/WORLD.md «Кухни и топливо»): the warmth of homes (`heat`) and the heat of the works (`fire`) are charges of one
+// fuel; each good that burns gives so many charges a unit — a log 1, coal 3 (charcoal and stone coal alike), the herds' dried
+// dung half (the steppe's fuel), the brushwood its people gather by hand (TOWN_FLOW.gather) half. A town burns
+// what it has, by the cheapest charge first; the charcoal pit makes three logs' worth of heat of every log it burns.
+export const FUEL = {wood: 1, coal: 3, dung: 0.5, brush: 0.5};
+// Pools: what a building takes of any of a set of goods (its `any`), each good counted × its weight — a kitchen cooks any raw
+// food; a smokehouse meat or fish; drying racks meat, fish or fruit; heat and fire take the fuel. They take in this order,
+// each from what the buildings' own `in` left over, the rest shared by what there is of each good.
+export const POOLS = {protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL};
+export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
   // Livestock is raised by pens, then actually consumed for meat. Keep breeders, limit seasonal slaughter.
   herd: {at: ['pen', 'grpens', 'pasture'], keep: 2, slaughter: 12, food: 5, hide: 7.5, bone: 5},
   sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
-  rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
+  gather: {brush: 2},   // what a town's people gather a head a year by hand, with no building (brushwood)
+  rounds: 8, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
 
 // The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a

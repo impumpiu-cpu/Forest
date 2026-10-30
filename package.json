@@ -45,6 +45,7 @@
     "mind:check": "node tools/mind-check.mjs",
     "people": "node tools/people-probe.mjs",
     "demography": "node tools/demography-check.mjs",
+    "kitchens": "node tools/kitchen-probe.mjs",
     "content": "node tools/content-check.mjs",
     "land": "node tools/land-check.mjs",
     "settle": "node tools/settle-check.mjs",

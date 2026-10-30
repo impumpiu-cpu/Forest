@@ -12,12 +12,12 @@ export const VECTOR_IDS = Object.keys(VECTORS);
 //   fx      each effect (data/townBuildings.js EFFECTS) → the vectors it leans along; housing is the building's `house` / 100
 //   cat     its category (data/townBuildings.js CATEGORIES) → a lean of its own: the food buildings feed by their flows, not
 //           by an effect, and grow the realm
-//   out     what it makes (its `out`): each good `per`, along its own vector (`goods`; food, grain, stores and herds grow) or `else`
+//   out     what it makes (its `out`): each good `per`, along its own vector (`goods`; food, raw food, stores and herds grow) or `else`
 export const VEC_RULES = {
   fx: {defence: {agg: 1}, housing: {grow: 1}, food: {grow: 1}, health: {grow: 1}, faith: {agg: 0.3, grow: 0.7}, prestige: {agg: 0.5, grow: 0.5},
     prod: {econ: 1}, trade: {econ: 1}, lore: {econ: 1}},
   cat: {food: {grow: 1}},
-  out: {per: 0.12, goods: {arms: 'agg', armor: 'agg', food: 'grow', grain: 'grow', stores: 'grow', beasts: 'grow'}, else: 'econ'},
+  out: {per: 0.12, goods: {arms: 'agg', armor: 'agg', food: 'grow', grain: 'grow', meat: 'grow', fish: 'grow', produce: 'grow', flour: 'grow', stores: 'grow', beasts: 'grow'}, else: 'econ'},
 };
 
 // The vector of each deed of the court (data/deeds.js): the deeds of a lane are drawn by
