@@ -27,6 +27,7 @@ import {stepEconomies} from './economy.js';
 import {stepBuilds} from './build.js';
 import {stepTrade} from './trade.js';
 import {stepTreasury} from './treasury.js';
+import {stepMinds} from './mind.js';
 import {migrate} from './demography.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom} from './kingdom.js';
@@ -147,6 +148,7 @@ export function stepHistory(a, onDay = null) {
   stepCalamities(a);
   // the towns' households: a season of the flows of their buildings (no die: atlas/economy.js)
   stepEconomies(a, SEASON_DAYS);
+  if (H.era !== 'wild') stepMinds(a, t => say(a, t));   // the realms' councils: course, wind, roles (atlas/mind.js)
   stepTreasury(a, SEASON_DAYS, t => say(a, t));   // the towns' dues into the realm's treasury; it pays the armies, upkeep and court (atlas/treasury.js)
   stepTrade(a, SEASON_DAYS);   // what one realm has to spare for what another lacks, down the routes (atlas/trade.js)
   if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their buildings and settlers (atlas/build.js)

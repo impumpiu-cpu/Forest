@@ -26,7 +26,7 @@ REALM_STATS.registerAll([
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
-  {id: 'corruption', label: 'коррупция', grows: {towns: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше держава, тем больше рук, что берут'},
+  {id: 'corruption', label: 'коррупция', grows: {towns: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше держава, тем больше рук, что берут: города × бюрократия народа («Народы мира»)'},
   {id: 'crime', label: 'преступность', grows: {crowd: 1}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража; у людей — сильнее с размером города'},
   {id: 'decay', label: 'упадок', grows: {unpaid: 3}, fall: 'economy', eats: 'stability', note: 'казна не платит двору и войску'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},

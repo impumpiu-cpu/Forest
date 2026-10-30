@@ -10,6 +10,8 @@
 // Fields of an entry:
 //   name, g       what it is called (the chronicle says «появилась кузня»), and the gender of the word
 //   cat           category (CATEGORIES below)
+//   vec           its lean along the realm's three vectors (data/mind.js VECTORS: aggression, growth, economy); none —
+//                 counted from its effects and what it makes (data/mind.js vectorOf)
 //   ── who and when
 //   peoples       races: the peoples that build it (data/peoples.js ids); none — anyone
 //   requires      in the realm: buildings that must stand in some town of the town's realm, all of them;
@@ -56,6 +58,7 @@
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
 import {Registry} from '../core/registry.js';
 import {RESOURCES as PRICE, CAMPAIGN} from './balance/prices.js';
+import {WORLD_PEOPLES} from './peoples.js';
 
 export const CATEGORIES = {
   housing: 'жильё', food: 'еда', raw: 'добыча', craft: 'ремесло', trade: 'торговля и пути',
@@ -82,11 +85,11 @@ export const CATEGORIES = {
 //   start   what 100 of a town's people make of it a day by their own hands, with no building (a hamlet counts as 100):
 //           gathering, firewood and dung, bone tools — the base for the first buildings, so that no chain waits for itself
 //   need    what 100 people use up of it a day (food, clothes, herbs, drink, the gentry's luxury)
-//   eaten   peoples that eat it raw (the elves live on what the grove gives as it is): for them it feeds as food does
-//   buy     peoples that only buy it (the elves do not mine silver): their towns get it at the market, never make it
+//   eaten   peoples that eat it raw — read from their rows (data/peoples.js `eatsRaw`): for them it feeds as food does
+//   buy     peoples that only buy it — from their rows (data/peoples.js `buys`): their towns never make it
 //   needFrom from which step of a town (0 hamlet, 1 village, 2 town) its people ask for it: a hamlet wants food, clothes
 //           and herbs; drink and potions come with a village, luxury with a town
-//   needOf  what 100 people of a people use up a day instead of `need` ({orcs: 0}: the orcs want no luxury, they want arms)
+//   needOf  what 100 people of a people use up a day instead of `need` — from their rows (data/peoples.js `needs`)
 //   spoil   the share of the stock that rots a day (raw food fast, stores hardly); a granary or a cellar slows it (STORAGE)
 export const CHAINS = {wood: 'дерево', fuel: 'топливо', food: 'еда', stone: 'камень и глина', metal: 'металл', tools: 'орудия и оружие',
   beasts: 'скот и охота', cloth: 'ткани и одежда', herbs: 'травы и лечение', lux: 'роскошь, вера, деньги'};
@@ -95,7 +98,7 @@ export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   // food: raw (not eaten) and ready
   {id: 'grain', label: 'зерно', unit: 'рацион', kind: 'base', raw: true, spoil: 0.002, chain: 'food', get price() { return RATION() * 0.7; }, note: 'сырое: мельница и жернова мелют его в муку, очаг варит кашу, загон кормит им скот'},
-  {id: 'produce', label: 'овощи и плоды', unit: 'рацион', kind: 'base', raw: true, eaten: ['elves'], spoil: 0.01, chain: 'food', start: 10, get price() { return RATION() * 0.7; }},
+  {id: 'produce', label: 'овощи и плоды', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', start: 10, get price() { return RATION() * 0.7; }},
   {id: 'mushrooms', label: 'грибы', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', get price() { return RATION() * 0.6; }, note: 'сырое: грибные пещеры гномов; варят похлёбку, мелют грибную муку, ставят грибное пиво'},
   {id: 'meat', label: 'мясо', unit: 'рацион', kind: 'base', raw: true, spoil: 0.02, chain: 'food', get price() { return RATION() * 0.8; }},
   {id: 'fish', label: 'рыба', unit: 'рацион', kind: 'base', raw: true, spoil: 0.03, chain: 'food', get price() { return RATION() * 0.7; }},
@@ -122,13 +125,13 @@ TOWN_GOODS.registerAll([
   {id: 'bronze', label: 'бронза', unit: 'слитков', kind: 'made', chain: 'metal', res: 'bronze'},
   {id: 'iron', label: 'железо', unit: 'слитков', kind: 'made', chain: 'metal', res: 'iron'},
   {id: 'steel', label: 'сталь', unit: 'слитков', kind: 'made', chain: 'metal', res: 'steel'},
-  {id: 'silver', label: 'серебро', unit: 'слитков', kind: 'made', chain: 'metal', buy: ['elves'], res: 'silverBar', note: 'эльфы серебро не добывают, только покупают: против нечисти у них святое дерево'},
+  {id: 'silver', label: 'серебро', unit: 'слитков', kind: 'made', chain: 'metal', res: 'silverBar', note: 'эльфы серебро не добывают, только покупают: против нечисти у них святое дерево'},
   {id: 'mithril', label: 'мифрил', unit: 'слитков', kind: 'made', chain: 'metal', price: 40},
   {id: 'gems', label: 'самоцветы', unit: 'шт.', kind: 'base', chain: 'lux', res: 'gems'},
   {id: 'gold', label: 'золото', unit: 'зол.', kind: 'base', chain: 'lux', res: 'gold'},
   // tools, arms and armour: counted by worth (a piece is TOOLS[material].price); a tool serves TOOLS[material].days at work
   {id: 'tools', label: 'орудия', unit: 'зол. ценности', kind: 'made', chain: 'tools', start: 0.075, price: 1, note: 'топоры, кирки, серпы, пилы; каменные и костяные — своими руками на старте'},
-  {id: 'arms', label: 'оружие', unit: 'зол. ценности', kind: 'made', chain: 'tools', price: 1, needOf: {orcs: 0.4}, note: 'орки ценят оружие, как прочие роскошь: оно им — нужда'},
+  {id: 'arms', label: 'оружие', unit: 'зол. ценности', kind: 'made', chain: 'tools', price: 1, note: 'орки ценят оружие, как прочие роскошь: оно им — нужда'},
   {id: 'armor', label: 'броня', unit: 'зол. ценности', kind: 'made', chain: 'tools', price: 1},
   // beasts and what they give
   {id: 'beasts', label: 'скот', unit: 'голов', kind: 'base', chain: 'beasts', get price() { return CAMPAIGN.beasts.mule; }, note: 'приплод стада: его забивают на бойне или продают'},
@@ -147,8 +150,16 @@ TOWN_GOODS.registerAll([
   // luxury
   // luxury is counted by what it is worth: a unit is a gold piece of value, so a gold-and-gems torque is many units, a carved
   // wooden box few; the stock holds its worth, and the people and the temples use up worth, not pieces
-  {id: 'lux', needFrom: 2, label: 'роскошь', unit: 'зол. ценности', kind: 'made', chain: 'lux', need: 0.333, needOf: {orcs: 0}, price: 1, note: 'вина, украшения, стекло, резная утварь: считается по стоимости, её ценность — от сырья'},
+  {id: 'lux', needFrom: 2, label: 'роскошь', unit: 'зол. ценности', kind: 'made', chain: 'lux', need: 0.333, price: 1, note: 'вина, украшения, стекло, резная утварь: считается по стоимости, её ценность — от сырья'},
 ]);
+// the peoples' own ways with each good, read from their rows each time (data/peoples.js eatsRaw, buys, needs): one place to
+// edit a people
+const peoplesWith = (key, id) => { const out = WORLD_PEOPLES.filter(P => (P[key] || []).includes(id)).map(P => P.id); return out.length ? out : undefined; };
+for (const G of TOWN_GOODS.all()) Object.defineProperties(G, {
+  eaten: {get: () => peoplesWith('eatsRaw', G.id), enumerable: true, configurable: true},
+  buy: {get: () => peoplesWith('buys', G.id), enumerable: true, configurable: true},
+  needOf: {get: () => { const o = Object.fromEntries(WORLD_PEOPLES.filter(P => P.needs && G.id in P.needs).map(P => [P.id, P.needs[G.id]])); return Object.keys(o).length ? o : undefined; }, enumerable: true, configurable: true},
+});
 // gold for one unit of a good
 export const goodPrice = id => { const G = TOWN_GOODS.get(id); return G.res ? PRICE[G.res].price * (G.per ?? 1) : G.price; };
 
@@ -161,9 +172,9 @@ export const TOOL_USES = Object.fromEntries(Object.entries(TOOLS).map(([k, v]) =
 export const FUEL = {uses: 4};
 // what a granary or a cellar keeps: the spoil of these goods × keep while one stands in the town
 export const STORAGE = {granary: {goods: ['grain', 'flour', 'produce', 'mushrooms'], keep: 0.3}, cellar: {goods: ['meat', 'fish', 'milk', 'produce', 'food'], keep: 0.4}};
-// a people that sells some goods as soon as it has them and buys another with the gold: the orcs, nomads and warriors,
-// trade luxury, gems and silver for arms at `rate` of the worth
-export const TRADE_UP = {orcs: {sells: ['lux', 'gems', 'silver'], buys: 'arms', rate: 0.8}};
+// a people that sells some goods as soon as it has them and buys another with the gold (data/peoples.js `tradeUp`: the
+// orcs, nomads and warriors, trade luxury, gems and silver for arms): {people: {sells, buys, rate}}, read each time
+export const tradeUps = () => Object.fromEntries(WORLD_PEOPLES.filter(P => P.tradeUp).map(P => [P.id, P.tradeUp]));
 // who gets the fuel first when there is not enough of it: warmth, then the kitchens, then the crafts, then the furnaces
 export const FUEL_ORDER = ['heat', 'food', 'craft', 'metal'];
 
@@ -195,7 +206,7 @@ TOWN_BUILDINGS.registerAll([
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 0.667, repair: W(0.083)}),
   B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], house: 400, heat: 0.833, repair: S(0.083)}),
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry'], house: 400, heat: 1.667, repair: S(0.125)}),
-  B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
+  B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
   // ── food: the land gives it raw, the hearth, the bakery, the smokehouse and the racks make it food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, tools: 2, repair: W(0.025), out: {produce: 128.316, herbs: 0.304}}),
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),

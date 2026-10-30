@@ -9,8 +9,10 @@ import {ECONOMY, TREASURY, TRADE, PLOTS} from '../src/data/macro.js';
 import {setCell, resetAll} from '../src/data/schema/edits.js';
 import {migrate} from '../src/atlas/demography.js';
 import {stepTreasury, treasuryOf, plunder} from '../src/atlas/treasury.js';
+import {stepMinds, spendFree, townPays} from '../src/atlas/mind.js';
+import {VECTOR_IDS} from '../src/data/mind.js';
 import {stepTrade} from '../src/atlas/trade.js';
-import {stepEconomies} from '../src/atlas/economy.js';
+import {stepEconomies, holdOf} from '../src/atlas/economy.js';
 import {foundFrom, settleSpot} from '../src/atlas/peoples.js';
 import {canBuild, plotsOf, plotsUsed} from '../src/atlas/towns.js';
 import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
@@ -40,7 +42,10 @@ check('мир сложился: города, державы, хозяйство
   check('переезд не делает и не теряет жителей', near(people(a), p0), `${p0.toFixed(3)} → ${people(a).toFixed(3)}, переехало ${Math.round(a.hist.moved - (base.hist.moved || 0))}`);
 }
 {
+  // the biggest town with a free spot in reach; in a full world it may be a hamlet: it is given people enough to send them
+  // (data/peoples.js settlers.pop + TOWN_LIFE.abandon) before the books are counted
   const a = copy(), t = live(a).filter(t => settleSpot(a, t) >= 0).sort((p, q) => q.pop - p.pop)[0];
+  if (t) t.pop = Math.max(t.pop, WORLD_PEOPLES.get(t.people).settlers.pop + TOWN_LIFE.abandon + 1);
   if (!t) check('поселенцы: есть город с местом рядом', false);
   else {
     const S = WORLD_PEOPLES.get(t.people).settlers, p0 = people(a), n0 = a.towns.length, before = t.pop;
@@ -51,10 +56,33 @@ check('мир сложился: города, державы, хозяйство
   }
 }
 
+// ── the council (atlas/mind.js): a wind of three shares, every town but the seat flagged with a role
+{
+  const a = copy();
+  a.hist.season = 0;
+  stepMinds(a, say);
+  const rs = a.realms.filter(r => r.fallen == null && live(a).some(t => t.realm === r.id));
+  const bad = rs.filter(r => !r.mind || !near(VECTOR_IDS.reduce((s, k) => s + r.mind.wind[k], 0), 1, 1e-2));
+  check('совет: у каждой державы ветер из трёх долей', rs.length > 0 && !bad.length, `держав ${rs.length}`);
+  const noRole = live(a).filter(t => t.realm != null && !t.capital && !t.role);
+  check('совет: у каждого города, кроме столицы, роль', !noRole.length, noRole.map(t => t.name).join(', '));
+  // a treasury poor in coin and rich in stone keeps its coin for its duties: the grants give no gold below MIND.reserve seasons
+  const r = rs[0], R = treasuryOf(r), ts = live(a).filter(t => t.realm === r.id);
+  R.stock = {gold: 10, stone: 1e6};
+  spendFree(a, r, ts, 10);
+  check('совет: гранты не отдают золото, отложенное на долги казны', R.stock.gold === 10, `золота ${R.stock.gold}`);
+  // the purse pays with gold and with what nothing in the town asks for, never with what its people use
+  const t = ts[0], E = t.econ;
+  E.stock = {gold: 0, lux: 5, wool: 8}; E.want = {...E.want, lux: 1, wool: 0};
+  const paid = townPays(t, 100);
+  check('кошель: город платит тем, чего никто не просит, а нужное держит', E.stock.lux === 5 && near(paid, 8 * (goodPrice('wool') || 1)), `заплачено ${paid.toFixed(2)}, роскоши ${E.stock.lux}`);
+}
+
 // ── the treasury: what the towns pay arrives less corruption; what it pays out goes where the ledger says
 {
   const a = copy();
   a.hist.season = 1;   // (no yearly dealings this season)
+  stepMinds(a, say);   // (the council's wind: its free money goes as grants)
   const s0 = stocks(a), r0 = treasuries(a);
   stepTreasury(a, SEASON_DAYS, say);
   let lost = 0, spent = 0;
@@ -62,7 +90,7 @@ check('мир сложился: города, державы, хозяйство
     const L = r.treasury?.season;
     if (!L) continue;
     lost += L.out.corruption || 0;
-    for (const k of ['army', 'court', 'guard', 'works']) spent += L.out[k] || 0;
+    for (const k of ['army', 'court', 'guard', 'works', 'grantWorks']) spent += L.out[k] || 0;
   }
   const d = s0 + r0 - stocks(a) - treasuries(a);
   check('казна: подати и помощь не делают и не теряют благ сверх коррупции и трат', near(d, lost + spent, 1e-6), `ушло ${d.toFixed(3)}, коррупция ${lost.toFixed(3)}, траты ${spent.toFixed(3)}`);
@@ -102,15 +130,18 @@ check('мир сложился: города, державы, хозяйство
 
 // ── the stock's limit: nothing is kept far over it after a season
 {
-  const a = copy();
+  // the rule itself: over a season what is over the limit loses at least `holdLoss` of itself — whatever the town held
+  // before (a forge town whose forge stopped holds many limits of arms, and sheds them season by season)
+  const a = copy(), before = new Map(live(a).map(t => [t, {...t.econ.stock}]));
   stepEconomies(a, SEASON_DAYS);
   let over = 0, worst = 0;
   for (const t of live(a)) for (const [g, v] of Object.entries(t.econ.stock)) {
     if (g === 'gold') continue;
-    const cap = ECONOMY.hold * ECONOMY.holdStore * ((t.econ.want[g] || 0) + (t.econ.prod[g] || 0)) + ECONOMY.holdMin / (goodPrice(g) || 1);
-    if (v > cap * 2) { over++; worst = Math.max(worst, v / cap); }
+    const cap = holdOf(t, g), came = (before.get(t)[g] || 0) + (Math.max(0, t.econ.prod[g] || 0, t.econ.rate[g] || 0) + Math.max(0, t.econ.trade?.[g] || 0)) * SEASON_DAYS;   // (the rate counts what the people make by hand, the buildings' prod does not)
+    const most = cap + Math.max(0, came - cap) * (1 - ECONOMY.holdLoss);
+    if (v > most * 1.01 + 1e-6) { over++; worst = Math.max(worst, v / most); }
   }
-  check('склад: после сезона нет благ сверх двух пределов', over === 0, over ? `таких ${over}, худшее ×${worst.toFixed(1)}` : '');
+  check('склад: за сезон излишок сверх предела убывает на holdLoss', over === 0, over ? `таких ${over}, худшее ×${worst.toFixed(2)}` : '');
   const forage = live(a).filter(t => t.wants?.feeds > 0).every(t => (t.econ.prod.food || 0) + 1e-6 >= ECONOMY.forage * Math.min(t.pop, t.wants.feeds));
   check('еда с земли: не меньше forage × min(жители, прокорм)', forage);
 }

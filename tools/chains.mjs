@@ -3,7 +3,7 @@
 // buildings stand idle for want of something. The flows are drafts the towns do not run yet; this checks the table
 // before they do. `npm run chains` — the report; `node tools/chains.mjs --json file` — the model for a chain map.
 import fs from 'fs';
-import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOLS, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL, TRADE_UP} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOLS, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL, tradeUps} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const fxText = b => [b.house ? `жильё ${b.house}` : '', ...Object.entries(b.fx || {}).map(([k, v]) => `${EFFECTS[k]} +${v}`)].filter(Boolean).join(', ');
@@ -29,8 +29,8 @@ export function chainModel() {
     {id: 'people', name: 'Жители (100 чел. в день)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},
       raw: Object.fromEntries(TOWN_GOODS.filter(g => g.eaten).map(g => [g.id, g.eaten])),
       needOf: Object.fromEntries(TOWN_GOODS.filter(g => g.needOf).map(g => [g.id, g.needOf]))},
-    // a people that sells some goods at once for another (TRADE_UP: the orcs — luxury, gems, silver for arms)
-    ...Object.entries(TRADE_UP).map(([P, T]) => ({id: 'trade-' + P, name: `Рынок: ${T.sells.map(g => TOWN_GOODS.get(g).label).join(', ')} → ${TOWN_GOODS.get(T.buys).label}`, in: [], race: P, raceIn: T.sells})),
+    // a people that sells some goods at once for another (data/peoples.js tradeUp: the orcs — luxury, gems, silver for arms)
+    ...Object.entries(tradeUps()).map(([P, T]) => ({id: 'trade-' + P, name: `Рынок: ${T.sells.map(g => TOWN_GOODS.get(g).label).join(', ')} → ${TOWN_GOODS.get(T.buys).label}`, in: [], race: P, raceIn: T.sells})),
     {id: 'treasury', name: 'Казна державы', in: ['gold']},
   ];
   return {goods, gates, procs, sinks, chains: CHAINS, tools: TOOLS, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};

@@ -10,8 +10,10 @@
 //   - the court is paid in gold (the buildings keep themselves: their upkeep is the timber and stone the households
 //     spend); what the treasury owed the court and the armies and did not pay is counted (`unpaid`): decay grows of it;
 //   - the council gives the towns what they lack of what it holds beyond its reserve (TREASURY.reserve seasons of the
-//     armies and the court).
-// Through the season the builders are paid from it (atlas/build.js), customs take their duty of the trade (atlas/trade.js),
+//     armies and the court);
+//   - the realm's council spends its free money — beyond MIND.reserve seasons of what it owes (`R.need`) — by its wind
+//     (atlas/mind.js spendFree).
+// Through the season it pays the builders the town cannot pay of a building the realm backs (atlas/build.js), customs take their duty of the trade (atlas/trade.js),
 // and a storm or a raid carries loot into it. `r.treasury.yr` sums the year for the kingdom (atlas/kingdom.js), which
 // clears it; `r.treasury.last` is the last season, for the card.
 import {TREASURY as T, keepOf, ARMY_KEEP} from '../data/macro.js';
@@ -20,6 +22,7 @@ import {townFx, might} from './towns.js';
 import {realmLabel, realmLabelGen} from './realms.js';
 import {TOWN_GOODS, TOWN_BUILDINGS, goodPrice} from '../data/townBuildings.js';
 import {realmTowns, stockOf, giveStock} from './economy.js';
+import {note, spendFree} from './mind.js';
 
 const add = (o, k, v) => { if (v) o[k] = (o[k] || 0) + v; };
 const worth = g => goodPrice(g) || 1;
@@ -98,6 +101,7 @@ export function stepTreasury(a, days, say = () => {}) {
     const share = {};
     for (const [g, v] of Object.entries(ask)) share[g] = v > 0 ? (g === 'gold' ? payWorth(r, v * worth(g), 'army') / (v * worth(g)) : withdraw(r, g, v, 'army') / v) : 1;
     for (const p of armies) p.paid = {gold: share.gold ?? 1, arms: share.arms ?? 1, armor: share.armor ?? 1};
+    note(a, r.id, {agg: 1}, Object.entries(ask).reduce((x, [g, v]) => x + v * (share[g] ?? 1) * worth(g), 0));   // the armies' keep: the course's aggression
     // the court in gold (the buildings keep themselves: their upkeep is the timber and stone the households spend);
     // what the treasury owed and did not pay — the court and the armies' pay — is counted: decay grows of it
     const due = courtGold(r, towns) * days, paid = payWorth(r, due * worth('gold'), 'court') / worth('gold');
@@ -111,6 +115,7 @@ export function stepTreasury(a, days, say = () => {}) {
       const got = ow > 0 ? payWorth(r, ow, 'guard') / ow : 1;
       for (const [t] of guards) t.guard = Math.round(got * 100) / 100;
       R.yr.due += ow; R.yr.unpaid += ow * (1 - got);
+      note(a, r.id, {agg: 1}, ow * got);
     }
     // the council's reserve: seasons of the armies, the guard and the court
     const keepGold = T.reserve * days * ((ask.gold || 0) / days + courtGold(r, towns) + G * (kp.gold || 0));
@@ -123,6 +128,7 @@ export function stepTreasury(a, days, say = () => {}) {
       if (L <= 0) continue;
       const give = withdraw(r, g, Math.min(spare, L), 'help');
       towns.forEach((t, k) => giveStock(t, g, give * lack[k] / L));
+      note(a, r.id, {grow: 1}, give * worth(g));
     }
     // the realm's works: what the towns' buildings under way still wait for, the treasury gives of what it holds beyond its
     // reserve — the realm builds with its towns (TREASURY.works of each building's missing materials a season)
@@ -135,6 +141,11 @@ export function stepTreasury(a, days, say = () => {}) {
         w.mat[g] = v - withdraw(r, g, Math.min(spare, v * T.works), 'works');
       }
     }
+    // what the treasury must pay a season — the armies, the guard, the court: its council keeps MIND.reserve seasons of it and
+    // spends the rest by the wind (atlas/mind.js spendFree)
+    const guardOw = G > 0 ? G * days * ((kp.gold || 0) * worth('gold') + T.guardWear * ((kp.arms || 0) + (kp.armor || 0))) : 0;
+    R.need = r3(Object.entries(ask).reduce((x, [g, v]) => x + v * worth(g), 0) + courtGold(r, towns) * days * worth('gold') + guardOw);
+    spendFree(a, r, towns, R.need);
     for (const g of Object.keys(R.stock)) R.stock[g] = r3(R.stock[g]);
   }
   if (a.hist.season === 0) dealings(a, say);

@@ -32,6 +32,15 @@
 //             `food`, eaten of `eats` — the first the realm holds a season of
 //   crime:    crime a realm's towns breed a year (data/kingdom.js): per × (people of the town / 1000) ^ pow
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
+//   needs:    what 100 of its people use up a day of a good instead of the good's own `need` (data/townBuildings.js
+//             TOWN_GOODS): the orcs want no luxury, they want arms
+//   eatsRaw:  goods it eats raw (the elves live on what the grove gives as it is): for it they feed as food does
+//   buys:     goods it only buys (the elves do not mine silver): its towns get them at the market, never make them
+//   tradeUp:  goods it sells as soon as it has them, for another at `rate` of the worth (the orcs: luxury, gems and
+//             silver for arms; atlas/economy.js)
+//   rose:     the course the people keeps its realm to over the years, along the three vectors (data/mind.js): the orcs
+//             to war, the dwarves to craft and hoard, the humans to growth, the elves to a warded, crafted home
+//   bureau:   how fast a realm of this people breeds corruption with its size (× RUINS corruption `grows`, data/kingdom.js)
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   names:    syllables of town names: first + middle (may be empty) + last
@@ -54,6 +63,8 @@ WORLD_PEOPLES.registerAll([
     army: {gold: 0.08, arms: 0.02, armor: 0.01, food: 1, eats: ['produce']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
+    eatsRaw: ['produce'], buys: ['silver'],
+    rose: {agg: 0.35, grow: 0.2, econ: 0.45}, bureau: 0.7,
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
@@ -67,6 +78,7 @@ WORLD_PEOPLES.registerAll([
     army: {gold: 0.2, arms: 0.03, armor: 0.04, food: 1.2, eats: ['stores', 'food']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
+    rose: {agg: 0.2, grow: 0.2, econ: 0.6}, bureau: 1,
     taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
@@ -80,6 +92,7 @@ WORLD_PEOPLES.registerAll([
     army: {gold: 0.12, arms: 0.02, armor: 0.02, food: 1, eats: ['stores', 'food']},
     crime: {per: 0.03, pow: 1.6},
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
+    rose: {agg: 0.25, grow: 0.45, econ: 0.3}, bureau: 1.2,
     taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
@@ -93,6 +106,8 @@ WORLD_PEOPLES.registerAll([
     army: {gold: 0, arms: 0.015, armor: 0.004, food: 0.8, eats: ['stores', 'food']},
     crime: {per: 0.02, pow: 1},
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
+    needs: {arms: 0.4, lux: 0}, tradeUp: {sells: ['lux', 'gems', 'silver'], buys: 'arms', rate: 0.8},
+    rose: {agg: 0.55, grow: 0.3, econ: 0.15}, bureau: 1.5,
     taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},

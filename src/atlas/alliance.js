@@ -1,6 +1,6 @@
 // The alliances against a calamity (data/calamities.js ALLY; docs/WORLD.md) — the world's own
 // mind: after the wild era the peoples see a boss rise, forget their quarrels and band together. The realms within
-// its reach make a truce, each musters an army at its town nearest the boss and marches on its lair; at the lair the
+// its reach make a truce, each musters an army at its town nearest the boss that can raise one and marches on its lair; at the lair the
 // armies wait for each other and storm it together. Won — the boss falls (atlas/calamity.js); beaten — they try
 // again a few years later. After the boss is gone come years of peace, then the alliance falls apart: the realms'
 // feelings go back to what they were, a member that sent no army is held worse, and the old wars come back by
@@ -84,10 +84,10 @@ function muster(a, A, c, tell) {
   A.tries++; A.armies = []; A.arrived = 0;
   const went = [];
   for (const realm of A.members) {
-    const t = (a.towns || []).filter(o => o.alive && o.realm === realm).sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y))[0];
+    // the town nearest the boss that can raise an army at all (a hamlet at the edge sends none: the next one does)
+    const t = (a.towns || []).filter(o => o.alive && o.realm === realm && Math.round(ALLY.levy * o.pop) >= ALLY.minMen).sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y))[0];
     if (!t) continue;
     const men = Math.round(ALLY.levy * t.pop);
-    if (men < ALLY.minMen) continue;
     const R = realmOf(a, realm);
     const p = sendParty(a, 'army', t.i, lair.i, {owner: realm, from: t.id, target: null, lair: lair.id, ally: A.id, war: null, men, might: armyMight(men, townFx(t)),
       supplies: ARMY.supplies * 2, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});

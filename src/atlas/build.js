@@ -24,6 +24,8 @@ import {raiseBuilding, settleSpot, foundFrom} from './peoples.js';
 import {drawRealm} from './economy.js';
 import {realmTreasury, payWorth} from './treasury.js';
 import {TREASURY} from '../data/macro.js';
+import {MIND, DEED_VEC, vectorOf, buildingVectors} from '../data/mind.js';
+import {leanOf, backed, note, townPays} from './mind.js';
 
 const step = b => Math.min(BUILD.days.length - 1, b.tier || 0);
 // the work-days a building takes, and the materials it is raised of
@@ -60,15 +62,16 @@ function settlersWant(a, t) {
 }
 
 // the council: keep the project under way or take up another
-function council(a, t, rnd) {
+function council(a, t, rnd, vecs) {
   const pe = a.peoples.find(p => p.id === t.people);
   if (!pe) return;
   const cur = t.project && t.project !== SETTLERS && TOWN_BUILDINGS.has(t.project) ? TOWN_BUILDINGS.get(t.project) : null;
   const still = cur && canBuild(a, t, cur);
   if (cur && !still) { delete t.works?.[cur.id]; t.project = null; }
-  const sw = settlersWant(a, t);
+  const L = leanOf(a, t), lean = L && {...L, vecs};
+  const sw = settlersWant(a, t) * (1 + (lean ? lean.k * (lean.vec.grow || 0) : 0));   // the realm's role or wind toward growth
   if (t.project === SETTLERS && sw <= 0) { delete t.works?.[SETTLERS]; t.project = null; }
-  const {b, v, cv} = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds: t.wants.feeds, threat: t.wants.threat, road: roadAccess(a, t.i)}, rnd, still ? cur : null);
+  const {b, v, cv} = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds: t.wants.feeds, threat: t.wants.threat, road: roadAccess(a, t.i), lean}, rnd, still ? cur : null);
   const best = sw > (b ? v : 0) ? {id: SETTLERS, v: sw} : b ? {id: b.id, v} : null;
   if (!best) return;
   const curV = t.project === SETTLERS ? sw : cv;
@@ -76,7 +79,7 @@ function council(a, t, rnd) {
 }
 
 // a season of work on the project under way; finished, the building stands or the settlers go
-function work(a, t, rnd, say) {
+function work(a, t, rnd, say, vecs) {
   const P = projectOf(t);
   if (!P) { t.project = null; return; }
   const w = (t.works ||= {})[P.id] ||= {done: 0, mat: P.mat(), stall: 0};
@@ -95,12 +98,19 @@ function work(a, t, rnd, say) {
   }
   let labour = Math.max(1, t.pop * BUILD.crew) * SEASON_DAYS;
   const use = Math.min(labour, P.days - w.done);
-  // the masters of a village's building and up are paid from the treasury; unpaid, the work goes at half speed
-  // (TREASURY.wage); settlers gather for themselves
+  // the masters of a village's building and up are paid by the town from its purse (its gold, silver, luxury, gems, then
+  // the goods nothing in the town asks for: atlas/mind.js townPays); what
+  // it cannot pay the treasury pays when the realm backs the building (the town's role, or the seat: atlas/mind.js backed);
+  // unpaid, the work goes at half speed (TREASURY.wage); settlers gather for themselves
   let done = use;
-  const R = (P.b?.tier || 0) >= 1 ? realmTreasury(a, t.realm) : null;
-  if (R && use > 0) { const due = use * TREASURY.wage, paid = payWorth(R, due, 'wage'); done = use * (TREASURY.unpaidPace + (1 - TREASURY.unpaidPace) * paid / due); }
+  if ((P.b?.tier || 0) >= 1 && use > 0) {
+    const due = use * TREASURY.wage, R = realmTreasury(a, t.realm);
+    let paid = townPays(t, due);
+    if (paid < due && R && backed(a, t, P.b)) paid += payWorth(R, due - paid, 'wage');
+    done = use * (TREASURY.unpaidPace + (1 - TREASURY.unpaidPace) * paid / due);
+  }
   w.done += done; labour -= use;
+  note(a, t.realm, P.b ? vecs?.get(P.b.id) || vectorOf(P.b) : DEED_VEC.settlers, done * MIND.dayWorth);   // the realm's course: what its builders raise
   // what the realm neither makes nor holds, what has not come for two seasons, and the rest once the work itself is
   // done — the builders, idle else, gather by hand
   const left = Object.entries(w.mat).filter(([, v]) => v > 1e-6), idle = w.done >= P.days - 1e-6;
@@ -126,9 +136,10 @@ function work(a, t, rnd, say) {
 }
 // a season of building in every living town (after the households: atlas/history.js)
 export function stepBuilds(a, rnd, say) {
+  const vecs = buildingVectors(TOWN_BUILDINGS.all());   // the buildings' vectors, once a season (data/mind.js)
   for (const t of a.towns || []) {
     if (!t.alive || !t.wants) continue;
-    if (t.project) work(a, t, rnd, say);   // the materials met this season went to the building asked for
-    council(a, t, rnd);
+    if (t.project) work(a, t, rnd, say, vecs);   // the materials met this season went to the building asked for
+    council(a, t, rnd, vecs);
   }
 }
