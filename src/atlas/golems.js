@@ -28,8 +28,9 @@ export function stepGolems(a, t) {
   const metal = golemMetal(a, t); if (!metal) return null;
   // a golem is made of the forge's work and the metal of the store (data/townBuildings.js GOLEMS.make): an idle forge, or no
   // metal, makes none this season
-  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.metal || 0) < G.make.metal) return null;
-  const pay = () => { if (t.stock) { t.stock.metal = Math.round((t.stock.metal - G.make.metal) * 100) / 100; if (t.stock.metal <= 0) delete t.stock.metal; } };
+  // (of its own metal: a bronze golem of bronze, an iron one of iron — data/townBuildings.js metal goods)
+  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.[metal] || 0) < G.make.metal) return null;
+  const pay = () => { if (t.stock) { t.stock[metal] = Math.round((t.stock[metal] - G.make.metal) * 100) / 100; if (t.stock[metal] <= 0) delete t.stock[metal]; } };
   for (const id of Object.keys(g.auto)) g.auto[id] = takersOf(t, id);   // the takers of units gone are gone with them
   const want = Math.max(1, Math.floor(t.pop / G.per));
   const taken = Object.values(g.auto).reduce((s, l) => s + l.length, 0);

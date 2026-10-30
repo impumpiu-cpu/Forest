@@ -19,7 +19,7 @@
 //               food is not eaten: the kitchens cook it — but by a people that eats it raw, data/peoples.js eatsRaw): the
 //               town's people and slaves eat it at their people's `eat`
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, goodPrice} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, POOL_SHARE, ORE_GOODS, goodPrice} from '../data/townBuildings.js';
 import {WORLD_PEOPLES, swapOf} from '../data/peoples.js';
 import {placeHas} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
@@ -28,10 +28,16 @@ const soft = (r, g) => !!TOWN_GOODS.get(g).soft || r.soft.has(g);
 // the goods of each pool, the cheapest a unit of its weight first (a log's charge before coal's)
 const POOL_IDS = Object.keys(POOLS);
 const poolGoods = id => Object.entries(POOLS[id]).sort((p, q) => goodPrice(p[0]) / p[1] - goodPrice(q[0]) / q[1] || (p[0] < q[0] ? -1 : 1));
-// take `want` of a pool out of what is left of its goods (`left`, by good, changed): → [took, {good: units}]
+// take `want` of a pool out of what is left of its goods (`left`, by good, changed): → [took, {good: units}]. The cheapest
+// first — but a pool in POOL_SHARE (the smelter's ores) takes of each good by how much of it there is
 function drawPool(id, want, left) {
   let need = want;
   const by = {};
+  if (POOL_SHARE.has(id)) {
+    const G = Object.entries(POOLS[id]), all = G.reduce((s, [g, w]) => s + (left[g] || 0) * w, 0), k = all > 0 ? Math.min(1, want / all) : 0;
+    for (const [g, w] of G) { const n = (left[g] || 0) * k; if (n > 0) { left[g] -= n; by[g] = n; need -= n * w; } }
+    return [want - Math.max(0, need), by];
+  }
   for (const [g, w] of poolGoods(id)) {
     if (need <= 1e-12) break;
     const n = Math.min(left[g] || 0, need / w);
@@ -39,6 +45,15 @@ function drawPool(id, want, left) {
     left[g] -= n; by[g] = n; need -= n * w;
   }
   return [want - Math.max(0, need), by];
+}
+
+// what a mine of a town digs, by good (data/townBuildings.js `dig`, ORE_GOODS): its `n` shared by how rich the cell of its
+// work is in each ore it reaches (the town's own cell for a mine not placed yet; a cell rich in none — iron)
+export function digOf(a, t, b) {
+  const f = a?.f, site = (t.sites || []).map(id => a.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
+  const w = Object.fromEntries(b.dig.ores.map(k => [k, Math.max(0, f?.[`ore_${k}`]?.[i] || 0)]));
+  const sum = Object.values(w).reduce((s, v) => s + v, 0);
+  return Object.fromEntries(b.dig.ores.map(k => [ORE_GOODS[k], b.dig.n * (sum > 0 ? w[k] / sum : k === 'iron' ? 1 : 0)]).filter(([, v]) => v > 0));
 }
 
 // the climate's weight on a town's heat: cold ×1.6 at or below TOWN_FLOW.heat.cold °C, warm ×0.4 at or above .warm, between
@@ -83,7 +98,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     r.pool = Object.fromEntries(Object.entries(r.b.any || {}).map(([k, v]) => [k, v * r.n]));
     const fuel = ((r.b.heat || 0) * heatK + (r.b.fire || 0)) * r.n;
     if (fuel > 0) r.pool.fuel = (r.pool.fuel || 0) + fuel;
-    r.out = Object.fromEntries(Object.entries(r.b.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
+    const outs = r.b.dig ? {...digOf(a, t, r.b), ...(r.b.out || {})} : (r.b.out || {});   // a mine: the ores of its cell
+    r.out = Object.fromEntries(Object.entries(outs).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
     r.eff = r.staff * r.own;
   }
@@ -107,8 +123,21 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     for (const id of POOL_IDS) { const want = pdem[id] || 0; out[id] = drawPool(id, want, left); }
     return {pdem, out};
   };
+  // what a building makes of what it took of its pool (`yields`: the smelter's ores into their metals), by its share of the
+  // pool's demand — worked out from the last round's draw, so a chain behind a smelter fills in over the rounds
+  const yielders = rows.filter(r => r.b.yields);
+  const yieldOut = (P, use) => {
+    for (const r of yielders) r.yout = {};
+    for (const [id, [, by]] of Object.entries(P.out)) {
+      const ys = yielders.filter(r => r.pool[id]), all = ys.reduce((s, r) => s + r.pool[id] * use(r), 0);
+      if (!all) continue;
+      for (const r of ys) for (const [g, n] of Object.entries(by)) for (const [m, k] of Object.entries(r.b.yields[g] || {})) r.yout[m] = (r.yout[m] || 0) + n * k * r.pool[id] * use(r) / all * (flows[m] ?? 1) * (here[m] ?? 1);
+    }
+  };
+  for (const r of yielders) r.yout = {};
   for (let k = 0; k < F.rounds; k++) {
     sup = {...(imports || {})}; dem = {};
+    for (const r of yielders) for (const [g, v] of Object.entries(r.yout)) sup[g] = (sup[g] || 0) + v;
     for (const [g, v] of Object.entries(F.gather || {})) sup[g] = (sup[g] || 0) + v * t.pop;   // gathered by hand (brushwood)
     if (keepHerd > 0) sup.beasts = Math.max(0, (sup.beasts || 0) - keepHerd);
     for (const r of rows) {
@@ -118,6 +147,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
     const P0 = pools();
     pgot = Object.fromEntries(POOL_IDS.map(id => [id, P0.pdem[id] ? Math.min(1, P0.out[id][0] / P0.pdem[id]) : 1]));
+    yieldOut(P0, r => r.staff * r.own);
     for (const r of rows) {
       if (r.b.cat === 'housing') { r.eff = r.staff * r.own; continue; }
       let m = 1;
@@ -139,6 +169,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   // goods (what it did not get — of the cheapest), so a town short of fuel buys logs (atlas/treasury.js)
   for (const r of rows) r.use = r.b.cat === 'housing' ? r.staff * r.own : r.eff;
   const PU = pools(used), PA = pools();
+  yieldOut(PU, r => r.use);
+  for (const r of yielders) for (const [g, v] of Object.entries(r.yout)) made[g] = (made[g] || 0) + v;
   for (const id of POOL_IDS) {
     for (const [g, n] of Object.entries(PU.out[id][1])) used[g] = (used[g] || 0) + n;
     const [took, by] = PA.out[id], miss = (PA.pdem[id] || 0) - took;

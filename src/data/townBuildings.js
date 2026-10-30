@@ -31,6 +31,8 @@
 //   fire          the heat a year its work burns — a furnace, a forge, a kiln, a kitchen's fire — in charges of fuel. Both burn
 //                 any fuel (FUEL: a log is 1 charge, coal 3): what the town has of it, the dearer charge last
 //   in, out       what it takes and gives a year at full strength, in TOWN_GOODS ({good: amount})
+//   dig           a mine: {n, ores}: n ore a year of the kinds in `ores`, by how rich its cell is in each (ORE_GOODS)
+//   yields        {good of its pool: {metal: k}}: what it makes of what it took of its pool (the smelter: each ore its metal)
 //   any           what it takes of a pool of goods (TOWN_FLOW.pools: `raw` — any raw food, `protein` — meat or fish, `dried` —
 //                 meat, fish or produce): {raw: 40} — a kitchen cooks whatever raw food the town has
 //   soft          goods of `in` this building does without at TOWN_FLOW.soft (as a good marked `soft` in TOWN_GOODS): a
@@ -95,12 +97,19 @@ TOWN_GOODS.registerAll([
   {id: 'planks', label: 'тёс', unit: 'шт.', res: 'planks'},
   {id: 'stone', label: 'камень', unit: 'шт.', res: 'stone'},
   {id: 'clay', label: 'глина', unit: 'шт.', res: 'clay'},
-  {id: 'ore', label: 'руда', unit: 'шт.', res: 'ironore', note: 'какая — по геологии места'},
+  {id: 'copperOre', label: 'медно-оловянная руда', unit: 'шт.', res: 'bronzeOre', note: 'рудник даёт по геологии своей клетки (ORE_GOODS)'},
+  {id: 'ironOre', label: 'железная руда', unit: 'шт.', res: 'ironore'},
+  {id: 'silverOre', label: 'серебряная руда', unit: 'шт.', res: 'silverOre'},
+  {id: 'mithrilOre', label: 'мифриловая руда', unit: 'шт.', res: 'mithrilOre', note: 'только глубокие шахты; плавит только магмовая кузня'},
   {id: 'gems', label: 'самоцветы', unit: 'шт.', res: 'gems'},
   {id: 'coal', label: 'уголь', unit: 'шт.', res: 'coal'},
   {id: 'brush', label: 'хворост', unit: 'вязанок', price: 0.02, note: 'жители собирают руками, без построек (TOWN_FLOW.gather): топливо бедного жилья, ползаряда; не копится'},
   {id: 'dung', label: 'кизяк', unit: 'шт.', price: 0.05, note: 'сушёный навоз стад: топливо степи, ползаряда'},
-  {id: 'metal', label: 'металл', unit: 'слитков', res: 'iron'},
+  {id: 'bronze', label: 'бронза', unit: 'слитков', res: 'bronze'},
+  {id: 'iron', label: 'железо', unit: 'слитков', res: 'iron'},
+  {id: 'steel', label: 'сталь', unit: 'слитков', res: 'steel'},
+  {id: 'silver', label: 'серебро', unit: 'слитков', res: 'silverBar'},
+  {id: 'mithril', label: 'мифрил', unit: 'слитков', price: 40},
   {id: 'fiber', label: 'волокно и шерсть', unit: 'шт.', price: 0.5},
   {id: 'cloth', label: 'ткань', unit: 'шт.', res: 'cloth'},
   {id: 'hide', label: 'шкуры', unit: 'шт.', res: 'hide'},
@@ -202,8 +211,8 @@ TOWN_BUILDINGS.registerAll([
   B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D, ...E], {prod: 0.15}, {per: 600, needs: ['forest'], local: 'sawmill', site: true, jobs: 4, in: {wood: 160, tools: 1}, out: {planks: 100}}),
   B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, needs: ['stone'], local: 'quarry', site: true, jobs: 8, in: {tools: 3}, out: {stone: 500}}),
   B('claypit', 'глиняный карьер', 'm', 'raw', 0, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], site: true, jobs: 4, out: {clay: 300}}),
-  B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {per: 600, needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, out: {ore: 240, gems: 0.4}}),
-  B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, out: {ore: 500, gems: 1.5}}),
+  B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {per: 600, needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, dig: {n: 240, ores: ['iron', 'bronze', 'silver']}, out: {gems: 0.4}}),
+  B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, dig: {n: 500, ores: ['iron', 'bronze', 'silver', 'mithril']}, out: {gems: 1.5}}),
   B('charpit', 'углежогная яма', 'f', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {per: 800, needs: ['forest'], local: 'charpit', site: true, jobs: 3, in: {wood: 200}, out: {coal: 216}}),
   B('coalpit', 'угольные копи', 'pl', 'raw', 1, [...H, ...D], {prod: 0.15}, {per: 1000, needs: ['coal'], site: true, jobs: 8, in: {tools: 3}, out: {coal: 432}}),
   B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D, ...E], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, fire: 80, out: {salt: 200}}),
@@ -213,13 +222,13 @@ TOWN_BUILDINGS.registerAll([
   B('potter', 'гончарня', 'f', 'craft', 1, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], local: 'potter', jobs: 3, fire: 40, in: {clay: 60}, out: {pots: 90}}),
   B('tannery', 'дубильня', 'f', 'craft', 1, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, requiresAny: ['lodge', 'pen', 'pasture'], local: 'tannery', jobs: 3, in: {hide: 60}, out: {leather: 60}}),
   B('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, {per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20}, soft: ['bone', 'leather'], out: {tools: 15, arms: 10}}),
-  B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {per: 800, requires: ['mineshaft'], local: 'smelter', jobs: 4, fire: 180, in: {ore: 120}, out: {metal: 86}, metals: ['bronze']}),
-  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, fire: 75, in: {metal: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
-  B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, fire: 300, in: {metal: 120}, out: {tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
-  B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {metal: 60}, out: {arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),
+  B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {per: 800, requires: ['mineshaft'], local: 'smelter', jobs: 4, fire: 180, any: {ores: 120}, yields: {copperOre: {bronze: 0.36, tools: 0.12, arms: 0.12}, ironOre: {iron: 0.72}, silverOre: {silver: 0.5}}, metals: ['bronze']}),   // (bronze is cast here, at the smelter: half into tools and arms)
+  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, fire: 75, in: {iron: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
+  B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, fire: 300, in: {iron: 140}, out: {steel: 20, tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
+  B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {mithrilOre: 20, steel: 20}, out: {mithril: 10, arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),   // (the magma melts mithril: it needs no fire of its own)
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
-  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, in: {metal: 40}}),
-  B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, metal: 4}, out: {lux: 10}, metals: ['silver']}),
+  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, any: {metals: 40}}),
+  B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, silver: 4}, soft: ['silver'], out: {lux: 10}, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 30, fiber: 16}, out: {arms: 20}}),
   // bark and withies woven over leather: the elves' armour, of the sacred tree where it grows
@@ -343,8 +352,17 @@ export const FUEL = {wood: 1, coal: 3, dung: 0.5, brush: 0.5};
 // Pools: what a building takes of any of a set of goods (its `any`), each good counted × its weight — a kitchen cooks any raw
 // food; a smokehouse meat or fish; drying racks meat, fish or fruit; heat and fire take the fuel. They take in this order,
 // each from what the buildings' own `in` left over, the rest shared by what there is of each good.
-export const POOLS = {protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL};
+export const POOLS = {ores: {copperOre: 1, ironOre: 1, silverOre: 1}, metals: {bronze: 1, iron: 1, steel: 1, mithril: 1}, protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL};
+// (the pools that take of each good by how much there is, not the cheapest first: a smelter melts all the ores it gets)
+export const POOL_SHARE = new Set(['ores']);
 export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
+// Ores (docs/WORLD.md «Металлы по рудам»): a mine digs `dig.n` ore a year of the kinds it reaches (`dig.ores`), shared by how
+// rich its cell is in each (atlas/geology.js ore fields: iron, bronze — copper and tin —, silver, mithril; a cell rich in none —
+// iron). The smelter melts any ore it has into its metal (`yields`: the metal a unit of each ore gives), the magma forge
+// mithril; the forge works iron, the foundry steel of iron, the golem forge any metal.
+export const ORE_GOODS = {iron: 'ironOre', bronze: 'copperOre', silver: 'silverOre', mithril: 'mithrilOre'};
+// what a building can make at all: its `out`, the ores it digs, the metals of its yields
+export const makesOf = b => [...Object.keys(b.out || {}), ...(b.dig?.ores || []).map(k => ORE_GOODS[k]), ...Object.values(b.yields || {}).flatMap(o => Object.keys(o))];
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
   // Livestock is raised by the pens and pastures (`beasts`: their increase a year) and killed only at the slaughterhouse
@@ -415,7 +433,7 @@ export const GOLEMS = {
   order: ['mineshaft', 'deepmine', 'quarry', 'smelter', 'forge', 'foundry', 'coalpit', 'charpit', 'sawmill', 'woodcut', 'claypit', 'saltworks',
     'crafthut', 'tannery', 'loom', 'potter', 'jeweler', 'glassworks', 'mushrooms', 'watermill', 'bakery', 'brewery'],
   tiers: ['bronze', 'iron', 'steel', 'mithril'],
-  per: 400, jobs: 0.5, make: {work: 0.5, metal: 20},
+  per: 400, jobs: 0.5, make: {work: 0.5, metal: 20},   // (metal: of the golem's own metal — bronze, iron, steel, mithril)
   bonus: {bronze: 0.25, iron: 0.35, steel: 0.45, mithril: 0.6},
   men: {bronze: 4, iron: 6, steel: 8, mithril: 12},
 };

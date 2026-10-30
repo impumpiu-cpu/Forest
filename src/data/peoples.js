@@ -31,7 +31,7 @@
 //             town's buildings share out (atlas/economy.js); elves have few children and many elders, orcs put everyone to work
 //   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   placeFlows: more × where its town stands on such a place (data/townBuildings.js PLACE_NEEDS, any of `needsAny`)
-//   swaps:    a good its buildings never take, and what they take instead: {metal: {to: 'wood', k: 3}} — an elven
+//   swaps:    a good its buildings never take, and what they take instead: {silver: {to: 'wood', k: 3}} — an elven
 //             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal; its people's needs and the
 //             materials of its building swap the same way (atlas/treasury.js)
 //   levy:     × the share of a town's people its army takes (data/parties.js ARMY.levy); breed — × how fast its towns grow;
@@ -61,7 +61,7 @@ WORLD_PEOPLES.registerAll([
     // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
     flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
-    swaps: {metal: {to: 'wood', k: 3}, drink: {to: 'honey', k: 1}},   // they brew no beer: mead and honey wine of the hives
+    swaps: {silver: {to: 'wood', k: 3}, drink: {to: 'honey', k: 1}},   // they brew no beer: mead and honey wine of the hives
     breed: 0.8,   // long lives, few children: their towns grow slowest (× TOWN_LIFE.growth)
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
@@ -73,11 +73,11 @@ WORLD_PEOPLES.registerAll([
     folk: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
-    flows: {ore: 1.5, stone: 1.5, gems: 1.5, metal: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
+    flows: {ironOre: 1.5, copperOre: 1.5, silverOre: 1.5, mithrilOre: 1.5, stone: 1.5, gems: 1.5, bronze: 1.25, iron: 1.25, steel: 1.25, silver: 1.25, mithril: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
     // beer for the ancestors; leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
     swaps: {honey: {to: 'drink', k: 1}, cloth: {to: 'leather', k: 1}, pots: {to: 'stone', k: 2}},
     breed: 0.9,   // few children, long lives
-    placeFlows: {needsAny: ['steep', 'caves'], flows: {ore: 1.25, stone: 1.25}},
+    placeFlows: {needsAny: ['steep', 'caves'], flows: {ironOre: 1.25, copperOre: 1.25, silverOre: 1.25, mithrilOre: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,

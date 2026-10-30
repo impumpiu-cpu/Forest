@@ -20,11 +20,11 @@
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
 import {vectorOf, along} from '../data/mind.js';
 import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet, POOLS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet, POOLS, makesOf} from '../data/townBuildings.js';
 
 // the buildings that make a good (once)
 const MAKERS = new Map();
-const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => b.out?.[g]).map(b => b.id)); return MAKERS.get(g); };
+const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';

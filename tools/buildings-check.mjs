@@ -1,7 +1,7 @@
 // The table of the world's buildings (data/townBuildings.js) is the one truth about a building: who builds it, what its
 // realm must have first, what it houses, employs, takes and gives, the metals it opens; the local map reads its races
 // from it. `npm run buildings`.
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples, POOLS, TOWN_FLOW, KITCHENS} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples, POOLS, TOWN_FLOW, KITCHENS, makesOf} from '../src/data/townBuildings.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {MATERIALS} from '../src/data/balance/materials.js';
@@ -85,7 +85,7 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
 // swaps) one of its own buildings gives — no chain of theirs hangs on what they may not build
 const DONE = ['elves', 'dwarves', 'orcs'];
 for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
-  const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id)), made = new Set(mine.flatMap(b => Object.keys(b.out || {})));
+  const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id)), made = new Set(mine.flatMap(b => makesOf(b)));   // (a mine's ores, a smelter's metals)
   const taken = new Map();
   for (const b of mine) {
     for (const g of Object.keys(b.in || {})) { const to = P.swaps?.[g]?.to || g; (taken.get(to) || taken.set(to, []).get(to)).push(b.id); }

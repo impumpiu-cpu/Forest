@@ -9,7 +9,7 @@ import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
 import {stepGolems} from '../src/atlas/golems.js';
 import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
-import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_MONEY, foodNet, GOLEMS} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
 import {stepHistory} from '../src/atlas/history.js';
 import {SEASONS_PER_YEAR} from '../src/data/atlas.js';
@@ -151,8 +151,13 @@ const T = a.towns.filter(t => t.alive);
 // the golem forge works of the forge's work and the store's metal
 {
   const t = {built: ['golemforge', 'forge', 'smelter'], pop: 800, realm: null, stock: {}, work: {golemforge: 1}}, ar = {hist: {year: 1}};
-  stepGolems(ar, t); const none = stepGolems(ar, t); t.stock.metal = 50; const one = stepGolems(ar, t); t.work.golemforge = 0.1; t.stock.metal = 50; const idle = stepGolems(ar, t);
-  check('голема не делают без металла на складе и без работы кузни; делают — металл уходит', !none && !!one && !idle && t.stock.metal === 50, `${JSON.stringify(one)}`);
+  // (of its own metal: the forge and the smelter give iron and bronze; the store holds the golem's metal)
+  stepGolems(ar, t); const none = stepGolems(ar, t);
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;
+  const one = stepGolems(ar, t), spent = one && t.stock[one.metal] === 50 - GOLEMS.make.metal;
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;
+  t.work.golemforge = 0.1; const idle = stepGolems(ar, t);
+  check('голема не делают без металла на складе и без работы кузни; делают — его металл уходит', !none && !!one && spent && !idle, `${JSON.stringify(one)}`);
 }
 
 // Goods and purses must advance in every season, not only with the annual founding and growth.

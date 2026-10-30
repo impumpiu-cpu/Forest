@@ -60,8 +60,8 @@ export function rationPrice(t, st, terms = 1) {
   const plenty = 1 - TOWN_MONEY.price.food * Math.max(0, Math.min(1, s - 1));
   return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * plenty * STANDING[st].buy * terms;
 }
-// the town good of a stock resource (all the ores are its ore) and of an offer
-const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ore' : null);
+// the town good of a stock resource (an ore by its kind: atlas ore goods) and of an offer
+const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ironOre' : null);   // (an ore of no town good of its own — as iron ore)
 const offerGood = o => (o.kind === 'goods' ? goodOf(o.id) : o.kind === 'beast' ? 'beasts' : o.kind === 'item' ? (gearDef(o.id)?.tool ? 'tools' : gearDef(o.id)?.slot === 'body' || gearType(o.id) === 'shield' ? 'armor' : 'arms') : null);
 const sellPrice = (t, st, id) => {
   const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
