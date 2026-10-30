@@ -37,12 +37,13 @@ function pickProject(a, t, rnd) {
   const pe = a.peoples?.find(p => p.id === t.people);
   if (!pe || !t.wants) return null;
   const ctx = {...t.wants, road: roadAccess(a, t.i), econ: t.econ, skip: new Set(), lean: leanOf(a, t)};
+  t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: what it may build by its people (atlas/towns.js unitsMax) holds after
   for (let k = 0; k < B().tries; k++) {
     const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), ctx, rnd);
     if (!b) return null;
     if (t.works?.[b.id]?.paid) return b;   // begun before: paid already
     const plan = planBuild(a, t, b);
-    if (!plan || !placeWork(a, t, b, rnd)) { ctx.skip.add(b.id); continue; }   // (an outlying work takes its cell as it begins)
+    if (!plan) { ctx.skip.add(b.id); continue; }   // (an outlying work takes its cell when it stands: chooseBuilding saw one free)
     doBuild(plan);   // paid: the materials to their makers, the work to the people (atlas/treasury.js)
     note(a, t.realm, vectorOf(b), plan.cost);   // the realm's course: what it builds, along the building's vector (atlas/mind.js)
     (t.works ||= {})[b.id] = {done: 0, paid: true};
@@ -68,7 +69,9 @@ export function stepBuilds(a, rnd, say) {
       const W = t.works[P.b.id], put = Math.min(days, P.days - W.done);
       W.done += put; days -= put;
       if (W.done < P.days - 1e-9) break;
-      delete t.works[P.b.id]; t.project = null;
+      t.project = null;
+      if (!placeWork(a, t, P.b, rnd)) break;   // its cell was taken meanwhile: the work waits, paid, for the town to come back to it
+      delete t.works[P.b.id];
       raiseBuilding(a, t, P.b, say);
       if (t.econ && P.b.jobs) t.econ.freeHands -= P.b.jobs;   // its hands are taken: the next choice knows it
     }
