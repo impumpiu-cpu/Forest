@@ -5,6 +5,7 @@
 // that know it think better of it, the crown stays its relic); a lost caravan is a line of the world's
 // chronicle. When the epilogue is told, the campaign goes into the world's archive (a.campaignsDone): its
 // chronicle stays with the world, and another caravan may set out.
+import {drawTo} from '../atlas/demography.js';
 import {stepHistory} from '../atlas/history.js';
 import {townLabel} from '../atlas/towns.js';
 import {realmLabel, realmLabelGen, realmTowns} from '../atlas/realms.js';
@@ -50,9 +51,10 @@ export function finish(a, K) {
   const capital = a.towns.find(t => t.id === K.capital && t.alive);
   const used = new Set(), tellFate = (m, list) => { const w = words(a, K, m, r); m.fate = fate(r, list, used)(m, w); lines.push({text: m.fate, who: [m.id]}); };
   if (K.phase === 'won') {
-    // the crown home: the capital grows, the realms that know the realm think better of it
+    // the crown home: people of the realm's towns flock to the capital (E.pop × its people: drawn from them, not made —
+    // atlas/demography.js drawTo), the realms that know the realm think better of it
     let friends = 0;
-    if (capital) { capital.pop = Math.round(capital.pop * E.pop); capital.relic = {name: Q?.name || 'корона', year: a.hist.year}; }
+    if (capital) { drawTo(a, capital, capital.pop * (E.pop - 1)); capital.relic = {name: Q?.name || 'корона', year: a.hist.year}; }
     const R = (a.realms || []).find(x => x.id === K.realm);
     if (R) {
       R.crown = {name: Q?.name || 'корона', year: a.hist.year};

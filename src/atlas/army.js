@@ -55,9 +55,11 @@ export function armyLosses(p, share, rnd, battle = null) {
 export function returnArmy(a, p) {
   if (p.returned) return;
   p.returned = true;
-  const t = a.towns.find(t => t.id === p.from && t.alive);
+  // home, or — its town gone — to the nearest town of its realm (people are not lost by a town's fall: atlas/demography.js)
+  const home = a.towns.find(t => t.id === p.from), near = o => Math.hypot(o.x - (home?.x ?? 0), o.y - (home?.y ?? 0));
+  const t = home?.alive ? home : (a.towns || []).filter(o => o.alive && (p.owner != null ? o.realm === p.owner : o.people === p.people)).sort((x, y) => near(x) - near(y) || x.id - y.id)[0];
   if (!t) return;
-  t.pop += Math.round(p.men);
+  t.pop += Math.max(0, p.men);
   if (p.warBeasts && Object.keys(p.warBeasts).length) { const b = t.warBeasts ||= {list: {}, men: 0}; for (const [sp, n] of Object.entries(p.warBeasts)) b.list[sp] = (b.list[sp] || 0) + n; b.men = beastMen(b.list); }
   if (p.golems?.length) { t.golems ||= {auto: {}, guard: [], since: null}; t.golems.guard.push(...p.golems); }
   const survival = Math.min(1, Math.max(0, p.men / (p.men0 || p.men || 1))), wear = A.wear[p.result || 'retreat'];

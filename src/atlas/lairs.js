@@ -356,7 +356,7 @@ export function stepLairs(a, rnd, seasonId) {
     if (seasonId === 'spring' && lair.captives) for (const k of Object.keys(lair.captives)) { lair.captives[k] = Math.floor(lair.captives[k] * CAPTIVE_RAID.keep); if (!lair.captives[k]) delete lair.captives[k]; }
     if (lair.strength < LL.dies) {
       lair.alive = false; lair.died = H.year;
-      if (lair.captives && Object.values(lair.captives).some(v => v > 0)) { lines.push(`Пленные «${lair.name}» — ${captiveCount(lair)} — остались без хозяев и разбрелись по домам.`); lair.captives = null; }
+      if (lair.captives && Object.values(lair.captives).some(v => v > 0)) { lines.push(`Пленные «${lair.name}» — ${captiveCount(lair)} — остались без хозяев и разбрелись по домам.`); }   // (home: atlas/demography.js freeCaptives)
       lines.push(L.at === 'town' ? `${G[L.g].emptied} ${L.label} «${lair.name}»: ${host ? `в ${townLabel(host, 3)} ${host.name} не осталось, кого пить` : 'город сгинул'}, и вампир ушёл.`
         : L.fiend ? `Закрылся ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: демоны ушли туда, откуда пришли.`
         : L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${L.domain ? `${necroLabel(lair.race)} ушёл` : `${SPECIES.get(L.species).plural} рассыпались в прах`}.`

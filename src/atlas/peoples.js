@@ -35,6 +35,7 @@ import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
 import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
+import {abandonEmpty} from './demography.js';
 import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
 
@@ -129,6 +130,69 @@ function foundTown(a, pe, i, rnd, pop, say) {
     founded: H.year, pop, tier: 0, built: [], alive: true};
   a.towns.push(t);
   return t;
+}
+
+// ── settlers (data/peoples.js `settlers`; docs/WORLD.md «Демография»): the only way a people founds a town after its
+// arrival. The best free spot within a town's reach — on the people's land, at least `spacing` from every town, worth a
+// band's settling (TL.siteBar); nearer is better
+export function settleSpot(a, t) {
+  const pe = a.peoples?.find(p => p.id === t.people), S = pe?.P.settlers;
+  if (!S) return -1;
+  const k = scaleOf(a), sp = pe.P.spacing * k, R = S.reach * sp;
+  const cand = [];
+  for (let y = Math.max(0, Math.floor(t.y - R)); y <= Math.min(a.h - 1, Math.ceil(t.y + R)); y++) for (let x = Math.max(0, Math.floor(t.x - R)); x <= Math.min(a.w - 1, Math.ceil(t.x + R)); x++) {
+    const d = Math.hypot(x - t.x, y - t.y);
+    if (d > R || d < sp) continue;
+    const i = y * a.w + x, v = pe.site[i];
+    if (!(v > TL.siteBar) || pe.K[faunaCell(a, i)] < TL.foundLand) continue;
+    cand.push([i, v - TL.settle.near * d / R]);
+  }
+  cand.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
+  for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp, pe)) return i;
+  return -1;
+}
+// the settlers of a town found a new one: `settlers.pop` of its people leave it with what its store can spare of
+// `settlers.goods`; the new town is of the same realm → the town, or null (no spot, or too few to leave)
+export function foundFrom(a, from, rnd, say) {
+  const pe = a.peoples.find(p => p.id === from.people), S = pe?.P.settlers;
+  if (!S || from.pop - S.pop < S.keep) return null;
+  const i = settleSpot(a, from);
+  if (i < 0) return null;
+  const t = foundTown(a, pe, i, rnd, S.pop);
+  from.pop -= S.pop;
+  t.realm = from.realm;
+  if (t.realm == null) joinRealm(a, t);
+  t.from = from.id;
+  const carry = {};
+  for (const [g, v] of Object.entries(S.goods || {})) {
+    const n = Math.min(v, from.stock?.[g] || 0);
+    if (n <= 0) continue;
+    from.stock[g] -= n; if (from.stock[g] < TOWN_MONEY.dust) delete from.stock[g];
+    carry[g] = n;
+  }
+  if (Object.keys(carry).length) t.stock = carry;
+  say(`Поселенцы ${townLabel(from, 2)} ${from.name} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+  return t;
+}
+// a year of settling: each people's fullest towns (people against what feeds and houses them, from TL.settle.full, all
+// the way at full + span — or simply big: all the way at (1 + TL.settle.big) × its `from`) send settlers, each with
+// TL.settle.chance × that, a town no oftener than every
+// TL.settle.every years; at most TL.settle.max new towns a year a people
+function sendSettlers(a, rnd, say) {
+  const Z = TL.settle;
+  for (const pe of a.peoples) {
+    const S = pe.P.settlers;
+    if (!S) continue;
+    const fill = t => Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, t.target || t.pop) - Z.full) / Z.span, (t.pop - S.from) / (S.from * Z.big))));
+    const towns = a.towns.filter(t => t.alive && t.people === pe.id && t.pop >= S.from && fill(t) > 0 && !(a.hist.year - (t.settled ?? -Infinity) < Z.every))
+      .sort((p, q) => fill(q) - fill(p) || p.id - q.id);
+    let made = 0;
+    for (const t of towns) {
+      if (made >= Z.max) break;
+      if (rnd() > Z.chance * fill(t)) continue;
+      if (foundFrom(a, t, rnd, say)) { made++; t.settled = a.hist.year; }
+    }
+  }
 }
 
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
@@ -257,19 +321,7 @@ export function stepPeoples(a, rnd, say) {
     const hit = s.role === 'predator' ? TL.hunt.predator : TL.hunt.other;
     for (let j = 0; j < N; j++) if (occ[j] > 0) s.N[j] *= 1 - hit * Math.min(1, occ[j]);
   }
-  // new towns where the field is dense and no town is near
-  for (const pe of a.peoples) {
-    const cand = [...pe.u.keys()].filter(j => pe.u[j] >= pe.P.found && pe.K[j] >= TL.foundLand).sort((p, q) => pe.u[q] * pe.K[q] - pe.u[p] * pe.K[p]);
-    let made = 0;
-    for (const j of cand) {
-      if (made >= TL.foundMax || rnd() > TL.foundChance) continue;
-      const i = bestSite(a, pe, j, rnd);
-      if (i < 0) continue;
-      const t = foundTown(a, pe, i, rnd, TL.newPop[0] + TL.newPop[1] * rnd());
-      joinRealm(a, t); made++;
-      say(`${cap1(realmLabel(a, t.realm))} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
-    }
-  }
+  // (new towns: a full town sends settlers, after the growth below — sendSettlers; people come of people, atlas/demography.js)
   // what each town's land and living works feed (people), then the net: the surplus of one town
   // flows to the towns it is linked with that lack (atlas/sites.js)
   fadeScourge(a);
@@ -294,7 +346,10 @@ export function stepPeoples(a, rnd, say) {
     const fx = townFx(t);
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
-    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (pe.P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
+    // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
+    // a town too few to hold is left — atlas/demography.js abandonEmpty)
+    t.pop = Math.max(0, t.pop + TL.growth * (pe.P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)));
+    t.target = Math.round(target);   // what feeds and houses it: its settlers go when it is full (sendSettlers)
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
@@ -336,6 +391,8 @@ export function stepPeoples(a, rnd, say) {
       t.tier = tier;
     }
   }
+  sendSettlers(a, rnd, say);   // the full towns found new ones
+  abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
   for (const r of a.realms) for (const q of a.realms) {
