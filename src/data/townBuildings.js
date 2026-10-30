@@ -99,7 +99,7 @@ const RATION = () => CAMPAIGN.ration;   // the price of a ration of ready food
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   // food: raw (not eaten) and ready
-  {id: 'grain', label: 'зерно', unit: 'рацион', kind: 'base', raw: true, spoil: 0.002, chain: 'food', get price() { return RATION() * 0.7; }, note: 'сырое: мельница и жернова мелют его в муку, очаг варит кашу, загон кормит им скот'},
+  {id: 'grain', label: 'зерно', unit: 'рацион', kind: 'base', raw: true, spoil: 0.005, chain: 'food', get price() { return RATION() * 0.7; }, note: 'сырое: мельница и жернова мелют его в муку, очаг варит кашу, загон кормит им скот'},
   {id: 'produce', label: 'овощи и плоды', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', start: 10, get price() { return RATION() * 0.7; }},
   {id: 'mushrooms', label: 'грибы', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', get price() { return RATION() * 0.6; }, note: 'сырое: грибные пещеры гномов; варят похлёбку, мелют грибную муку, ставят грибное пиво'},
   {id: 'meat', label: 'мясо', unit: 'рацион', kind: 'base', raw: true, spoil: 0.02, chain: 'food', get price() { return RATION() * 0.8; }},
@@ -211,9 +211,9 @@ TOWN_BUILDINGS.registerAll([
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
   // ── food: the land gives it raw, the hearth, the bakery, the smokehouse and the racks make it food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, tools: 2, repair: W(0.025), out: {produce: 128.316, herbs: 0.304}}),
-  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 300, fiber: 27.938}}),
   // humans clear, level and dung the land: the same field on poorer, rougher ground (PLACE_AT arable)
-  B('ploughland', 'пашня', 'f', 'food', 0, H, {food: 0.3}, {max: 4, needs: ['arable'], site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  B('ploughland', 'пашня', 'f', 'food', 0, H, {food: 0.3}, {max: 4, needs: ['arable'], site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 300, fiber: 27.938}}),
   // kitchen scraps and dung: the town's fields and ploughland give more (`boost`)
   B('compost', 'компостная куча', 'f', 'food', 0, H, {food: 0.25}, {requiresAny: ['field', 'ploughland'], jobs: 2, repair: W(0.008), boost: {field: 0.25, ploughland: 0.25}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, tools: 1, out: {produce: 108.641, wood: 0.403}}),
@@ -277,6 +277,9 @@ TOWN_BUILDINGS.registerAll([
   // cooks more and wastes less — the campfire turns 10 raw into 8 food, the common hearth 20 into 20, the cookhouse 60 into 72
   B('campfire', 'кострище', 'n', 'life', 0, ALL, {food: 0.1, health: 0.02}, {max: 4, jobs: 2, works: true}),
   B('hearth', 'общинный очаг', 'm', 'life', 1, ALL, {food: 0.15, health: 0.05}, {max: 3, local: 'hearth', jobs: 3, repair: S(0.017), works: true}),
+  // the humans' tavern: folk eat and drink there off the town's surplus — any raw food, with brew if there is some
+  // (TAVERN: how much it cooks a day, the brew it pours, what a meal with brew brings in coin)
+  B('tavern', 'трактир', 'm', 'life', 1, H, {food: 0.15, trade: 0.1, prestige: 0.05, health: 0.03}, {jobs: 6, tools: 1, heat: 0.333, repair: W(0.042), works: true}),
   B('cookhouse', 'поварня', 'f', 'life', 2, ALL, {food: 0.2, health: 0.1}, {max: 3, requires: ['hearth'], jobs: 6, tools: 1, repair: S(0.042), works: true}),
   // ── trade and ways
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {needs: ['river'], jobs: 2, repair: W(0.042), out: {gold: 0.167}}),
@@ -341,6 +344,7 @@ const r3 = v => Math.round(v * 1000) / 1000;
 // the kitchens of the three steps of a town: raw food a day (rations) at full strength, cycles of fire for it, food out of a unit of raw
 // home brew of the kitchens of the hamlets and villages (campfire, hearth): raw a day, drink it gives, cycles of fire
 export const HOMEBREW = {raw: 3.951, drink: 0.985, fire: 0.195};
+export const TAVERN = {raw: 120, drink: 6, yield: 1.1, gold: 0.4, fire: 1};
 export const KITCHENS = {campfire: {raw: 13.581, fire: 0.367, yield: 0.8}, hearth: {raw: 27.163, fire: 0.449, yield: 1}, cookhouse: {raw: 81.49, fire: 0.91, yield: 1.2}};
 const DISHES = {flour: 'лепёшки', grain: 'каша', produce: 'похлёбка из овощей', mushrooms: 'грибная похлёбка', meat: 'мясная похлёбка', fish: 'уха', milk: 'сыр и творог'};
 // fine work of the luxury workshop: how much of each material a day goes into it (any two of them make a way), and how
@@ -378,6 +382,10 @@ TOWN_WORKS.registerAll([
   // the kitchens: raw to ready, any raw (KITCHENS: how much each cooks a day and how much food a unit of raw gives)
   ...Object.entries(KITCHENS).flatMap(([at, K]) => Object.entries(DISHES).map(([raw, dish]) =>
     WK(at, raw, dish, {[raw]: K.raw}, {food: r3(K.raw * K.yield * (raw === 'milk' ? 0.9 : 1))}, {fire: r3(K.fire * (raw === 'milk' ? 0.5 : 1))}))),
+  // the tavern: any raw food with brew (a meal and a mug: more food, coin) or without
+  ...Object.entries(DISHES).flatMap(([raw, dish]) => [
+    WK('tavern', raw, `${dish} с брагой`, {[raw]: TAVERN.raw, drink: TAVERN.drink}, {food: r3(TAVERN.raw * TAVERN.yield), gold: TAVERN.gold}, {fire: TAVERN.fire}),
+    WK('tavern', `${raw}Plain`, dish, {[raw]: TAVERN.raw}, {food: TAVERN.raw}, {fire: TAVERN.fire})]),
   // milling and brewing: grain, or the dwarves' mushrooms
   WK('quern', 'grain', 'мука из зерна', {grain: 175.55}, {flour: 175.55}),
   WK('quern', 'mushrooms', 'грибная мука', {mushrooms: 204.809}, {flour: 175.55}),
