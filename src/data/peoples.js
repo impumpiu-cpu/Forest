@@ -95,11 +95,11 @@ WORLD_PEOPLES.registerAll([
     // they settle among the others: on shared land another people pushes them off only × (1 − `mix`), and their town may stand
     // within `near` × their spacing of another people's town — by the elves' coast, under the dwarves' hills (atlas/peoples.js)
     folk: {take: 1.5, mix: 0.5, near: 0.7},
-    trade: 1.25, breed: 1.1,   // many children: the middling people spread faster than the elder ones
+    trade: 1.25, breed: 1.3,   // many children: the middling people spread faster than the elder ones
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast', free: 0.7},   // an empty shore: not the elves' coast (atlas/peoples.js arrive)
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
-    spread: 0.26, growth: 0.24, spacing: 12,
+    spread: 0.26, growth: 0.24, spacing: 11,
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
     settlers: {pop: 30, from: 130, keep: 80, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
     rose: {agg: 0.25, grow: 0.45, econ: 0.3},

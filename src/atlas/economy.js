@@ -87,6 +87,10 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
     r.eff = r.staff * r.own;
   }
+  // what a building boosts (data/townBuildings.js `boost`: the humans' compost heap): × (1 + share × the booster's strength)
+  const boostOf = {};
+  for (const r of rows) for (const [id, k] of Object.entries(r.b.boost || {})) boostOf[id] = (boostOf[id] || 0) + k * Math.min(1, r.staff * r.own);
+  for (const r of rows) if (boostOf[r.b.id]) for (const g of Object.keys(r.out)) r.out[g] *= 1 + boostOf[r.b.id];
   // the boats of a shipyard (TOWN_FLOW.boats): its fishers catch more, as the yard works
   const yard = rows.find(r => r.b.id === F.boats.by), boat = r => (yard && F.boats.fish.includes(r.b.id) ? 1 + (F.boats.k - 1) * yard.eff : 1);
   // the goods shared out, a few rounds: each building's strength by what it got of what it takes; what the realm's other

@@ -51,7 +51,7 @@ export function townFx(t) {
   // a building gives its effects as it works (t.work: its hands and goods, atlas/economy.js), never below TOWN_FX.work of them
   for (const id of new Set(t.built)) {
     const b = TOWN_BUILDINGS.get(id), e = t.work?.[id], k0 = (e == null ? 1 : TF.work + (1 - TF.work) * Math.min(1, e)) * (1 - TOWN_MONEY.upkeep.cut * (t.unpaid || 0));   // unpaid upkeep: worse
-    for (const k of KEYS) if (k !== 'housing') out[k] += fxOf(b, k) * k0;
+    for (const k of KEYS) if (k !== 'housing') out[k] += fxOf(b, k, t.people) * k0;   // (fxBy: what it gives its own people more)
   }
   const hk = WORLD_PEOPLES.get(t.people)?.house ?? 1;   // a people that will not crowd (data/peoples.js `house`: the greenskins)
   for (const id of t.built) out.housing += fxOf(TOWN_BUILDINGS.get(id), 'housing') * hk;
@@ -141,6 +141,7 @@ export function placeHas(a, i, need) {
     case 'clay': return f.alluvium[i] >= PA.clay || rock(i) === 'shale' || rock(i) === 'limestone';
     case 'stone': return around(a, i, PA.near, j => !f.ocean[j] && (f.flat[j] < PA.stoneFlat || (f.elev[j] - a.sea) / (1 - a.sea) > PA.stoneHigh));
     case 'fertile': return f.fert[i] >= PA.fertile;
+    case 'arable': return f.fert[i] >= PA.arableFert && f.flat[i] > PA.arableFlat;
     case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
     case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
     case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
@@ -214,7 +215,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
-    for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k)) * need[k] * (P.taste[k] ?? 1);
+    for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k, t.people)) * need[k] * (P.taste[k] ?? 1);
     // the flows (atlas/economy.js): what the town's buildings lack of a good, a building that gives it fills; food short
     // of the people — a building that gives food; and no hands to work it — little use
     const E = ctx.econ;
@@ -230,7 +231,9 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
       const outs = Object.keys(b.out || {}).filter(g => g !== 'food' && g !== 'grain' && g !== 'gold');
       if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
-      const fed = foodNet(b); if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);   // as much as it feeds
+      // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
+      const fed = foodNet(b) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id)) * t.built.filter(x => x === id).length, 0);
+      if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
       // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
       // is never stopped, so it is never idle
