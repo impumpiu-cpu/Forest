@@ -19,7 +19,7 @@
 //               food is not eaten: the kitchens cook it — but by a people that eats it raw, data/peoples.js eatsRaw): the
 //               town's people and slaves eat it at their people's `eat`
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, ORE_GOODS, goodPrice} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice} from '../data/townBuildings.js';
 import {WORLD_PEOPLES, swapOf} from '../data/peoples.js';
 import {placeHas} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
@@ -160,7 +160,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
       if (r.b.cat === 'housing') { r.eff = r.staff * r.own; continue; }
       let m = 1;
       for (const g of Object.keys(r.in)) m = Math.min(m, soft(r, g) ? F.soft + (1 - F.soft) * got(g) : got(g));
-      for (const id of Object.keys(r.pool)) m = Math.min(m, pgot[id]);
+      for (const id of Object.keys(r.pool)) m = Math.min(m, POOL_SOFT.has(id) ? F.soft + (1 - F.soft) * pgot[id] : pgot[id]);
       r.eff = r.staff * r.own * m;
     }
   }
@@ -183,7 +183,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     for (const [g, n] of Object.entries(PU.out[id][1])) used[g] = (used[g] || 0) + n;
     const [took, by] = PA.out[id], miss = (PA.pdem[id] || 0) - took;
     for (const [g, n] of Object.entries(by)) dem[g] = (dem[g] || 0) + n;
-    if (miss > 1e-9) { const g = Object.keys(POOLS[id])[0], w = POOLS[id][g]; dem[g] = (dem[g] || 0) + miss / w; }   // (fuel: logs — a woodcutter or buying)
+    if (miss > 1e-9 && !POOL_SOFT.has(id)) { const g = Object.keys(POOLS[id])[0], w = POOLS[id][g]; dem[g] = (dem[g] || 0) + miss / w; }   // (fuel: logs — a woodcutter or buying; a soft pool asks for nothing it misses)
   }
   // short: the share of what the buildings asked for and did not get, by good
   const short = {};

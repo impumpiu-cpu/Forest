@@ -7,7 +7,7 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
-import {FUEL, POOLS, LUX} from '../townBuildings.js';
+import {FUEL, POOLS, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
 import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
@@ -457,8 +457,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу; LUX — мастерская роскоши: сколько каждого материала берёт в год и наценка); наборы благ (POOLS) — в коде: что берут кухни, коптильня, вешала, горн, кузня големов, мастерская роскоши, жар и тепло; как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
-    ...grp({fuel: FUEL, lux: LUX, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу; LUX — мастерская роскоши: сколько каждого материала берёт в год и наценка; MINT — монетный двор: сколько золота, серебра, самоцветов в год и наценка монеты; RITE_WORTH — сколько золотых ценности металла в год берёт храм павших); наборы благ (POOLS) — в коде: что берут кухни, коптильня, вешала, горн, кузня големов, мастерская роскоши, жар и тепло; как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
+    ...grp({fuel: FUEL, lux: LUX, mint: MINT, rites: RITE_WORTH, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',

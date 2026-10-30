@@ -136,7 +136,7 @@ WORLD_PEOPLES.registerAll([
     levy: 10 / 3, breed: 1.45, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
     // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
     // for pots, rough logs for boards (atlas/economy.js swaps)
-    swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
+    swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'waterskins', k: 1}, planks: {to: 'wood', k: 1.5}},   // (waterskins for pots: from the branch Elves)
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
     placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, beasts: 1.25, hide: 1.25}},
     warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)

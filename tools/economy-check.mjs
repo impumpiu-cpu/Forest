@@ -80,7 +80,7 @@ const T = a.towns.filter(t => t.alive);
 // the stores, the realm back to the world, the beasts
 {
   const fed = TOWN_BUILDINGS.all().filter(b => b.fx.food).map(b => b.id), field = foodNet(TOWN_BUILDINGS.get('field'));
-  check('эффект «запасы» — только у амбара, погреба, коптильни, вешал, солеварни; пашня кормит своим зерном', fed.every(id => ['granary', 'cellar', 'smokehouse', 'dryrack', 'saltworks'].includes(id)) && field > 0, `${fed.join(', ')}; пашня ${field}`);
+  check('эффект «запасы» — только у амбара, погреба, коптильни, вешал, солеварни и соляного ручья; пашня кормит своим зерном', fed.every(id => ['granary', 'cellar', 'smokehouse', 'dryrack', 'saltworks', 'saltspring'].includes(id)) && field > 0, `${fed.join(', ')}; пашня ${field}`);
   const R = a.realms.find(r => r.kingdom && r.fallen == null), t = T.find(x => x.realm === R.id);
   check('показатели державы правят миром: рост городов от экономики, сила — от стабильности, расколы — от лояльности и раздоров',
     t.realmFx && t.realmFx.grow > 0 && t.realmFx.might > 0 && schismFactor({kingdom: {stats: {loyalty: 0}, ruin: {strife: 5}}}) > 1, JSON.stringify(t.realmFx));
@@ -143,7 +143,7 @@ const T = a.towns.filter(t => t.alive);
   const o = {pop: 200, people: 'orcs', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 60}, built: [], market: {}};
   check('у зеленокожих дом строится из брёвен вместо тёса', !!planBuild(a, o, {tier: 1, cat: 'housing'}));
   const t = T.find(x => x.people === 'orcs'), lack = Object.keys(t?.needs?.lack || {});
-  check('зеленокожим не нужны горшки и соль (кость и дерево вместо них), и благ им нужно вдвое меньше', !!t && !lack.includes('pots') && !lack.includes('salt') && (t.econ.people?.bone?.want || 0) > 0,
+  check('зеленокожим не нужны горшки и соль (бурдюки и дерево вместо них), и благ им нужно вдвое меньше', !!t && !lack.includes('pots') && !lack.includes('salt') && (t.econ.people?.waterskins?.want || 0) > 0,
     t ? `${t.name}: не хватает ${lack.join(', ') || '—'}` : 'нет города');
   check('содержание платится после налогов: неоплаченного почти нет', T.filter(x => x.unpaid > 0).length <= T.length * 0.2, `${T.filter(x => x.unpaid > 0).length} из ${T.length}`);
 }

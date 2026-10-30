@@ -117,6 +117,7 @@ TOWN_GOODS.registerAll([
   {id: 'leather', label: 'кожа', unit: 'шт.', res: 'leather'},
   {id: 'salt', label: 'соль', unit: 'шт.', res: 'salt', soft: true, note: 'вялят и без неё, но вдвое меньше'},
   {id: 'pots', label: 'горшки', unit: 'шт.', res: 'pots', soft: true},
+  {id: 'waterskins', label: 'бурдюки', unit: 'шт.', price: 0.8, soft: true, note: 'из кожи: зеленокожие держат в них питьё и зелья вместо горшков'},
   {id: 'tools', label: 'орудия', unit: 'шт.', price: 3, soft: true},
   {id: 'arms', label: 'оружие', unit: 'шт.', price: 6, soft: true},
   {id: 'armor', label: 'броня', unit: 'шт.', price: 15, soft: true},
@@ -143,6 +144,20 @@ for (const g of Object.keys(LUX.take)) {
   Object.defineProperty(FINERY, g, {enumerable: true, get: () => 1 / LUX.take[g]});
   Object.defineProperty(LUX_YIELDS, g, {enumerable: true, get: () => ({lux: goodPrice(g) * LUX.markup / goodPrice('lux')})});
 }
+
+// The mint (from the branch Elves): coin of gold, of silver or of gems, `take` of each a year, worth × `markup` more than went
+// in; it strikes of each as the store holds them (a pool shared by what there is: POOL_SHARE)
+export const MINT = {markup: 1.6, take: {gold: 100, silver: 30, gems: 25}};
+export const COIN = {}, MINT_YIELDS = {};
+for (const g of Object.keys(MINT.take)) {
+  Object.defineProperty(COIN, g, {enumerable: true, get: () => 1 / MINT.take[g]});
+  Object.defineProperty(MINT_YIELDS, g, {enumerable: true, get: () => ({gold: goodPrice(g) * MINT.markup / goodPrice('gold')})});
+}
+// The rites by worth (from the branch Elves): a temple of the fallen takes any metal, so much gold's worth of it a year — the
+// dearer the metal, the less of it; the cheapest first
+export const RITE_WORTH = {fallentemple: 20};
+export const RITE = {};
+for (const g of ['bronze', 'iron', 'steel', 'silver', 'mithril']) Object.defineProperty(RITE, g, {enumerable: true, get: () => goodPrice(g)});
 
 export const EFFECTS = {housing: 'жильё', food: 'запасы', prod: 'ремесло', trade: 'торговля', defence: 'оборона', faith: 'вера', lore: 'знание', prestige: 'слава', health: 'здоровье'};
 
@@ -200,6 +215,8 @@ TOWN_BUILDINGS.registerAll([
   B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, soft: ['fiber'], out: {fish: 30}}),
   B('pier', 'рыбная пристань', 'f', 'food', 1, ALL, {trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, soft: ['fiber'], out: {fish: 70}}),
   B('quern', 'ручные жернова', 'pl', 'food', 0, ALL, {}, {per: 600, local: 'quern', jobs: 2, in: {grain: 12}, out: {flour: 14}}),
+  // the greenskins grind bone to meal where grain is short (from the branch Elves): raw flour of the bones of the hunt and the pens
+  B('bonequern', 'костяные жернова', 'pl', 'food', 0, O, {}, {per: 600, jobs: 2, in: {bone: 40}, out: {flour: 14}}),
   B('watermill', 'водяная мельница', 'f', 'food', 2, [...H, ...D], {prod: 0.1}, {per: 1500, needs: ['river'], requiresAny: ['field', 'garden', 'mushrooms'], site: true, jobs: 4, in: {grain: 60}, out: {flour: 72}}),
   B('windmill', 'ветряная мельница', 'f', 'food', 1, H, {}, {per: 1500, needs: ['flat'], requires: ['field'], site: true, jobs: 4, in: {grain: 40}, out: {flour: 48}}),
   B('bakery', 'пекарня', 'f', 'food', 2, [...H, ...D], {health: 0.05}, {per: 1000, requiresAny: ['watermill', 'windmill'], jobs: 4, fire: 80, in: {flour: 60}, out: {food: 84}}),
@@ -228,12 +245,16 @@ TOWN_BUILDINGS.registerAll([
   B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, dig: {n: 500, ores: ['iron', 'bronze', 'silver', 'mithril']}, out: {gems: 1.5}}),
   B('charpit', 'углежогная яма', 'f', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {per: 800, needs: ['forest'], local: 'charpit', site: true, jobs: 3, in: {wood: 200}, out: {coal: 216}}),
   B('coalpit', 'угольные копи', 'pl', 'raw', 1, [...H, ...D], {prod: 0.15}, {per: 1000, needs: ['coal'], site: true, jobs: 8, in: {tools: 3}, out: {coal: 432}}),
-  B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D, ...E], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, fire: 80, out: {salt: 200}}),
+  B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, fire: 80, out: {salt: 200}}),
+  // the elves boil no brine: a spring of salt water dries in the sun at their grove, a little, with no fire (from the branch Elves)
+  B('saltspring', 'соляной ручей', 'm', 'raw', 1, E, {food: 0.03}, {needs: ['salt'], site: true, jobs: 2, out: {salt: 40}}),
   B('placer', 'золотой прииск', 'm', 'raw', 1, [...H, ...D, ...O], {trade: 0.2}, {per: 1500, needs: ['placer'], notable: true, site: true, jobs: 6, in: {tools: 1}, out: {gold: 200}}),
   // ── crafts
   B('loom', 'ткацкая', 'f', 'craft', 1, ALL, {prod: 0.1}, {per: 600, local: 'loom', jobs: 4, in: {fiber: 120}, out: {cloth: 40}}),
   B('potter', 'гончарня', 'f', 'craft', 1, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], local: 'potter', jobs: 3, fire: 40, in: {clay: 60}, out: {pots: 90}}),
   B('tannery', 'дубильня', 'f', 'craft', 1, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, requiresAny: ['lodge', 'pen', 'pasture'], local: 'tannery', jobs: 3, in: {hide: 60}, out: {leather: 60}}),
+  // the greenskins' waterskins: leather sewn into skins they carry drink and potions in, for the pots they make none of
+  B('skinworks', 'мастерская бурдюков', 'f', 'craft', 0, O, {}, {per: 800, requiresAny: ['tannery'], jobs: 2, in: {leather: 10}, out: {waterskins: 10}}),
   B('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, {per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20}, soft: ['bone', 'leather'], out: {tools: 15, arms: 10}}),
   B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {per: 800, requires: ['mineshaft'], local: 'smelter', jobs: 4, fire: 180, any: {ores: 120}, yields: {copperOre: {bronze: 0.36, tools: 0.12, arms: 0.12}, ironOre: {iron: 0.72}, silverOre: {silver: 0.5}}, metals: ['bronze']}),   // (bronze is cast here, at the smelter: half into tools and arms)
   B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, fire: 75, in: {iron: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
@@ -271,7 +292,7 @@ TOWN_BUILDINGS.registerAll([
   B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], here: ['pier'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120, fish: 60}}),
   B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], here: ['pier', 'fishhut'], jobs: 1, fire: 40}),
   B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1}, {needs: ['river'], requiresAny: ['ferry', 'fishhut'], jobs: 4, in: {planks: 6}, out: {fish: 5, gold: 20}}),
-  B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, in: {gold: 100}, out: {gold: 160}}),
+  B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, any: {coin: 1}, yields: MINT_YIELDS}),   // (coin of gold, silver or gems: MINT)
   // ── defence
   B('palisade', 'частокол', 'm', 'defence', 1, [...H, ...O], {defence: 0.25}, {needs: ['forest'], local: 'palisade', in: {wood: 40}}),
   // a hedge of thorn grown round the town instead of a palisade: it holds, slows and tears whoever comes through
@@ -299,7 +320,7 @@ TOWN_BUILDINGS.registerAll([
   B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {fxBy: {humans: {lore: 0.15}}, requires: ['shrine'], jobs: 4, in: {honey: 15, lux: 1}}),   // (the humans' temple keeps a church school: knowledge besides faith)
   B('crypt', 'усыпальница', 'f', 'faith', 2, [...H, ...D], {faith: 0.1}, {jobs: 1, in: {stone: 5}}),
   // by the barrows of old battles: the fallen are laid to rest, and the rot around fades (atlas/lairs.js stepRot)
-  B('fallentemple', 'храм павших', 'm', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, {needs: ['graves'], requires: ['shrine'], notable: true, jobs: 3, in: {honey: 10}}),
+  B('fallentemple', 'храм павших', 'm', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, {needs: ['graves'], requires: ['shrine'], notable: true, jobs: 3, in: {honey: 10}, any: {rite: RITE_WORTH.fallentemple}}),   // (any metal to the fallen, by its worth: RITE_WORTH)
   B('catacombs', 'катакомбы', 'pl', 'faith', 2, D, {faith: 0.1, health: 0.05}, {needs: ['caves'], requires: ['ancestorhall'], house: 100, jobs: 1, in: {stone: 5}}),
   B('cemetery', 'кладбище', 'n', 'faith', 1, ALL, {faith: 0.05, health: 0.05}, {jobs: 1}),
   // ── lore
@@ -367,9 +388,11 @@ export const FUEL = {wood: 1, coal: 3, dung: 0.5, brush: 0.5};
 // food; a smokehouse meat or fish; drying racks meat, fish or fruit; heat and fire take the fuel; the luxury workshop, last,
 // its materials. They take in this order,
 // each from what the buildings' own `in` left over, the rest shared by what there is of each good.
-export const POOLS = {ores: {copperOre: 1, ironOre: 1, silverOre: 1}, metals: {bronze: 1, iron: 1, steel: 1, mithril: 1}, protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL, finery: FINERY};
+export const POOLS = {ores: {copperOre: 1, ironOre: 1, silverOre: 1}, metals: {bronze: 1, iron: 1, steel: 1, mithril: 1}, protein: {meat: 1, fish: 1}, dried: {meat: 1, fish: 1, produce: 1}, raw: {meat: 1, fish: 1, produce: 1, flour: 1, grain: 1}, fuel: FUEL, rite: RITE, coin: COIN, finery: FINERY};
 // (the pools that take of each good by how much there is, not the cheapest first: a smelter melts all the ores it gets)
-export const POOL_SHARE = new Set(['ores']);
+export const POOL_SHARE = new Set(['ores', 'coin']);
+// the pools a building does without at TOWN_FLOW.soft, as a soft good (a temple of the fallen with no metal for its rites)
+export const POOL_SOFT = new Set(['rite']);
 // the pools that take two goods — the two the town has most of, by what each gives the pool; a third only where those run
 // short (the luxury workshop works any two materials)
 export const POOL_PAIR = new Set(['finery']);
