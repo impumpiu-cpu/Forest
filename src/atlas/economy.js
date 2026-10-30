@@ -254,9 +254,7 @@ function stepTowns(a, towns, days) {
       // a town's stores hold so much (ECONOMY.hold days of what it asks and makes of a good, a granary or a cellar more of
       // its goods, at least `holdMin` gold's worth): what is over is wasted, sold off or stolen — `holdLoss` of it a season
       if (v > 0 && g !== 'gold') {
-        let d = ECONOMY.hold;
-        for (const [b, S] of Object.entries(STORAGE)) if (built.has(b) && S.goods.includes(g)) d *= ECONOMY.holdStore;
-        const cap = d * ((X.want[g] || 0) + (X.supply[g] || 0)) + ECONOMY.holdMin / goodWorth(g);
+        const cap = holdCap(built, g, X.want[g], X.supply[g]);
         if (v > cap) { const lost = (v - cap) * ECONOMY.holdLoss; v -= lost; add(E.over ||= {}, g, lost); }
       }
       if (v > 1e-6) stock[g] = r3(v);
@@ -309,15 +307,16 @@ export function drawRealm(a, realm, g, amount, first = null) {
   return amount - left;
 }
 // putting goods into a town's stock (a trade caravan's arrival)
-// how much of a good a town's stores hold (as its household caps them: ECONOMY.hold days of what it asks and makes, a
-// granary's or a cellar's goods more, at least holdMin gold's worth); gold has no limit
-export function holdOf(t, g) {
+// how much of a good a town's stores hold: ECONOMY.hold days of what it asks and makes a day, a granary's or a cellar's
+// goods ECONOMY.holdStore times more, at least holdMin gold's worth (`built` — a Set of its buildings); gold has no limit
+function holdCap(built, g, want = 0, made = 0) {
   if (g === 'gold') return Infinity;
-  const E = t.econ || {}, built = new Set(t.built);
   let d = ECONOMY.hold;
   for (const [b, S] of Object.entries(STORAGE)) if (built.has(b) && S.goods.includes(g)) d *= ECONOMY.holdStore;
-  return d * ((E.want?.[g] || 0) + (E.prod?.[g] || 0)) + ECONOMY.holdMin / goodWorth(g);
+  return d * ((want || 0) + (made || 0)) + ECONOMY.holdMin / goodWorth(g);
 }
+// the same for a town as its last season left it (the council's grants: atlas/mind.js)
+export const holdOf = (t, g) => holdCap(new Set(t.built), g, t.econ?.want?.[g], t.econ?.prod?.[g]);
 export function giveStock(t, g, v) {
   if (!t.econ || !(v > 0)) return;
   t.econ.stock[g] = (t.econ.stock[g] || 0) + v;

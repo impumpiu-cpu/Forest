@@ -73,7 +73,12 @@ export function vectorOf(b) {
   }
   return norm(v);
 }
+// every building's vector, counted afresh (a season of building asks it once: atlas/build.js; an edit of the tables
+// reaches the next season)
+export const buildingVectors = buildings => new Map(buildings.map(b => [b.id, vectorOf(b)]));
 // a deed's vector (null — it leans nowhere: a lair's deed)
 export const deedVector = id => (DEED_VEC[id] ? norm(DEED_VEC[id]) : null);
+// the vector a lean leads along (the first of VECTOR_IDS on a tie)
+export const leadOf = v => VECTOR_IDS.reduce((m, k) => ((v?.[k] || 0) > (v?.[m] || 0) ? k : m), VECTOR_IDS[0]);
 // the dot of a vector and a wind, 0 … 1
 export const along = (v, w) => VECTOR_IDS.reduce((x, k) => x + (v?.[k] || 0) * (w?.[k] || 0), 0);

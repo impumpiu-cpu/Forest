@@ -18,7 +18,7 @@
 // The court reads the wind too: its deeds are weighed along their vectors (atlas/court.js).
 //
 // realm.mind = {course, wind, flags, sense, obey, lead, acts, spent: {agg, grow, econ}}; town.role = 'agg' | 'grow' | 'econ'.
-import {MIND, VECTOR_IDS, vectorOf, normVec} from '../data/mind.js';
+import {MIND, VECTOR_IDS, vectorOf, normVec, leadOf as lead} from '../data/mind.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../data/peoples.js';
 import {TOWN_BUILDINGS, goodPrice} from '../data/townBuildings.js';
 import {TREASURY} from '../data/macro.js';
@@ -33,7 +33,6 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const zeroVec = () => Object.fromEntries(VECTOR_IDS.map(k => [k, 0]));
 const round = v => Object.fromEntries(VECTOR_IDS.map(k => [k, r3(v[k] || 0)]));
 const round2 = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, r3(v)]));
-const lead = v => VECTOR_IDS.reduce((m, k) => (v[k] > v[m] ? k : m), VECTOR_IDS[0]);
 export const roseOf = people => normVec(WORLD_PEOPLES.has(people) ? WORLD_PEOPLES.get(people).rose || {} : {});
 
 // what a town has built, along the vectors (its lean)
@@ -78,7 +77,8 @@ function sense(a, r, towns) {
   return {sense: {fed: r3(fed), crowd: r3(crowd), war, threat: r3(threat), short, reserve: r3(Math.min(reserve, 999))}, flags: round2(flags), obey: r3(obey)};
 }
 
-// a season of the councils (after the households, before the treasury: atlas/history.js)
+// a season of the councils (after the households, before the treasury: atlas/history.js); the roles are flagged in
+// spring, and at once for a new town or a new seat
 export function stepMinds(a, say = () => {}) {
   for (const r of a.realms || []) {
     if (r.fallen != null) continue;
@@ -105,7 +105,7 @@ export function stepMinds(a, say = () => {}) {
       say({text: `Совет ${realmLabelGen(a, r.id)} повернул к ${{agg: 'войне', grow: 'росту', econ: 'хозяйству'}[L]}: ${why}.`, topic: 'kingdom'});
       M.lead = L;
     }
-    if (a.hist.season === 0 || towns.some(t => t.role == null && t.id !== r.capital)) assignRoles(a, r, towns, M);
+    if (a.hist.season === 0 || towns.some(t => (t.role == null) !== (t.id === r.capital))) assignRoles(a, r, towns, M);
   }
 }
 
@@ -159,6 +159,9 @@ export function spendFree(a, r, towns, need) {
   const free = treasuryWorth(r) - MIND.reserve * need;
   if (free <= 1e-6) { M.spent = zeroVec(); return 0; }
   const budget = free * MIND.spend * (1 - (M.flags.hoard || 0));
+  // the coin the grants may give: what the treasury holds of the goods it pays its duties in (TREASURY.payIn) beyond
+  // MIND.reserve seasons of them — a treasury rich in stone and poor in gold keeps its gold for its armies
+  const coin = {left: Math.max(0, TREASURY.payIn.reduce((s, g) => s + (treasuryOf(r).stock[g] || 0) * worthOf(g), 0) - MIND.reserve * need)};
   let spent = 0;
   M.spent = zeroVec();
   for (const k of VECTOR_IDS) {
@@ -169,6 +172,7 @@ export function spendFree(a, r, towns, need) {
     for (const t of towns) {
       const w = t.project && t.works?.[t.project], b = w && TOWN_BUILDINGS.has(t.project) ? TOWN_BUILDINGS.get(t.project) : null;
       if (!b || lead(vectorOf(b)) !== k) continue;
+      if (works <= 1e-6) break;
       for (const [g, v] of Object.entries(w.mat)) {
         if (works <= 1e-6) break;
         const price = worthOf(g);
@@ -181,22 +185,24 @@ export function spendFree(a, r, towns, need) {
     const weigh = t => t.pop * ((t.role === k ? 1 : 0) + (k === 'grow' ? clamp01(TOWN_LIFE.fedOk - (t.econ?.fed ?? 1)) : 0));
     const to = towns.map(t => [t, weigh(t)]).filter(([, w]) => w > 0), W = to.reduce((s, [, w]) => s + w, 0);
     if (W <= 0 || B <= 1e-6) continue;
-    for (const [t, w] of to) { const g = grant(r, t, B * w / W); spent += g; M.spent[k] += g; }
+    for (const [t, w] of to) { const g = grant(r, t, B * w / W, coin); spent += g; M.spent[k] += g; }
   }
   M.spent = round(M.spent);
   for (const k of VECTOR_IDS) M.acts[k] += M.spent[k];   // the course counts what it spent
   return spent;
 }
 
-// give a town a worth from the treasury: gold first, then what the town asks for and has room for in its stores
-// (atlas/economy.js holdOf), the dearest first; returns the worth given
-function grant(r, t, w) {
-  const R = treasuryOf(r);
+// give a town a worth from the treasury: the coin it may spare (`coin.left`, TREASURY.payIn: gold first), then what the
+// town asks for and has room for in its stores (atlas/economy.js holdOf), the dearest first; returns the worth given
+function grant(r, t, w, coin) {
+  const R = treasuryOf(r), isCoin = g => TREASURY.payIn.includes(g);
   let left = w;
   const give = g => {
-    const room = holdOf(t, g) - stockOf(t, g), n = Math.min(R.stock[g] || 0, room, left / worthOf(g));
+    const room = holdOf(t, g) - stockOf(t, g), cap = isCoin(g) ? coin.left / worthOf(g) : Infinity;
+    const n = Math.min(R.stock[g] || 0, room, cap, left / worthOf(g));
     if (n <= 1e-9) return;
     withdraw(r, g, n, 'grant'); giveStock(t, g, n); left -= n * worthOf(g);
+    if (isCoin(g)) coin.left -= n * worthOf(g);
   };
   give('gold');
   const asks = Object.keys(R.stock).filter(g => g !== 'gold' && (t.econ?.want?.[g] || 0) > 0).sort((p, q) => worthOf(q) - worthOf(p) || (p < q ? -1 : 1));
@@ -204,17 +210,17 @@ function grant(r, t, w) {
   return w - left;
 }
 
-// a town pays a worth from its own purse (its masters' wage, atlas/build.js): gold, silver, luxury, gems (TREASURY.payIn),
-// then the goods it keeps that nothing in the town asks for (a surplus of meat, wool, stone), the dearest first — wages in
-// kind, as the treasury pays them; what its people and buildings use is never paid away. Returns the worth paid
+// a town pays a worth from its own purse (its masters' wage, atlas/build.js): its gold, then the goods nothing in the
+// town asks for (a surplus of meat, wool, stone; silver, luxury and gems first, as the treasury pays: TREASURY.payIn), the
+// dearest first — wages in kind; what its people and buildings use is never paid away. Returns the worth paid
 export function townPays(t, w) {
   if (!(w > 0) || !t.econ) return 0;
-  const E = t.econ, spare = g => (TREASURY.payIn.includes(g) || !(E.want?.[g] > 0) ? stockOf(t, g) : 0);
+  const E = t.econ, spare = g => (g === 'gold' || !(E.want?.[g] > 0) ? stockOf(t, g) : 0);
   const order = [...TREASURY.payIn, ...Object.keys(E.stock).filter(g => !TREASURY.payIn.includes(g)).sort((p, q) => worthOf(q) - worthOf(p) || (p < q ? -1 : 1))];
   let left = w;
   for (const g of order) {
     if (left <= 1e-9) break;
-    const n = Math.min(Math.max(0, spare(g)), left / worthOf(g));
+    const n = Math.min(spare(g), left / worthOf(g));
     if (n > 0) { E.stock[g] = stockOf(t, g) - n; left -= n * worthOf(g); }
   }
   return w - left;

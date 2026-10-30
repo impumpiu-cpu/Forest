@@ -1,14 +1,10 @@
 // Probe of the realms' councils (atlas/mind.js, docs/WORLD.md «Совет державы»): where each people's realms stand on the
 // three vectors at the end of history against their rose, how they spend, how fed and how many they are.
 // `node tools/mind-probe.mjs [worlds] [size] [--json]`
-import {newAtlas, runNextStage, landDone} from '../src/atlas/generate.js';
+import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {treasuryWorth, treasuryOf} from '../src/atlas/treasury.js';
-import {VECTOR_IDS, vectorOf, normVec} from '../src/data/mind.js';
-import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
-import {WORLD_PEOPLES} from '../src/data/peoples.js';
-
-const roseOf = p => normVec(WORLD_PEOPLES.get(p).rose || {});
-const townLean = t => { const v = {}; for (const id of t.built) if (TOWN_BUILDINGS.has(id)) { const x = vectorOf(TOWN_BUILDINGS.get(id)); for (const k of VECTOR_IDS) v[k] = (v[k] || 0) + x[k]; } return normVec(v); };
+import {VECTOR_IDS} from '../src/data/mind.js';
+import {roseOf, townLean} from '../src/atlas/mind.js';
 
 const args = process.argv.slice(2), json = args.includes('--json'), pos = args.filter(x => !x.startsWith('--'));
 const N = +(pos[0] || 4), size = pos[1] || 'small';

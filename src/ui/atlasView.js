@@ -26,10 +26,9 @@ import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {ruinAt} from '../atlas/diplomacy.js';
 import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
 import {townLean} from '../atlas/mind.js';
-import {VECTOR_IDS} from '../data/mind.js';
+import {leadOf} from '../data/mind.js';
 // the roles of the towns on the layer «Воля державы» (atlas/mind.js), and the seat's
 const ROLE_COLORS = {agg: [205, 72, 58], grow: [96, 178, 84], econ: [222, 178, 64], seat: [240, 236, 222]};
-const leadOf = v => VECTOR_IDS.reduce((m, k) => ((v[k] || 0) > (v[m] || 0) ? k : m), VECTOR_IDS[0]);
 import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';

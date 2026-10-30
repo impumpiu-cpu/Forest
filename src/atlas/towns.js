@@ -177,12 +177,13 @@ function econPull(t, b) {
 }
 
 // how much the town wants a building now: Σ need × taste × effect, and what its household lacks (no die);
-// `lean` — the realm's role for the town or its wind (atlas/mind.js leanOf): × (1 + k × how the building leans with it)
+// `lean` — the realm's role for the town or its wind (atlas/mind.js leanOf): × (1 + k × how the building leans with it;
+// `lean.vecs` — the buildings' vectors of this season, data/mind.js buildingVectors)
 export function wantOf(t, b, need, P, lean = null) {
   let v = 0;
   for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
   v += econPull(t, b);
-  return lean ? v * (1 + lean.k * along(vectorOf(b), lean.vec)) : v;
+  return lean ? v * (1 + lean.k * along(lean.vecs?.get(b.id) || vectorOf(b), lean.vec)) : v;
 }
 // the building the town wants most, or null; with `cur` (a building under way) also how much it wants that one
 // ({b, v, cv}: atlas/build.js weighs leaving it)

@@ -22,7 +22,7 @@ import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
-import {VECTORS, VECTOR_IDS} from '../data/mind.js';
+import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
 import {roseOf, townLean} from '../atlas/mind.js';
 
 const seasonWord = s => seasonLabel(s);
@@ -81,7 +81,7 @@ function deedsHtml(list) {
 }
 
 // the realm's treasury in its seat (atlas/treasury.js): what it holds, and the last season's ledger
-const LEDGER = {grant: 'гранты городам', works: 'стройке', guard: 'дружина', court: 'двор', tribute: 'дань', ransom: 'выкуп', tax: 'подати', duty: 'пошлины', loot: 'добыча', army: 'войско', wage: 'мастера', upkeep: 'содержание и двор', help: 'помощь городам', corruption: 'коррупция', looted: 'разграблено'};
+const LEDGER = {grant: 'гранты городам', grantWorks: 'гранты стройке', works: 'стройке', guard: 'дружина', court: 'двор', tribute: 'дань', ransom: 'выкуп', tax: 'подати', duty: 'пошлины', loot: 'добыча', army: 'войско', wage: 'мастера', upkeep: 'содержание и двор', help: 'помощь городам', corruption: 'коррупция', looted: 'разграблено'};
 function treasuryHtml(R) {
   const T = R.treasury;
   if (!T) return '';
@@ -111,7 +111,7 @@ function mindHtml(a, R) {
     row('нужды сезона', flags || 'спокойно') +
     row('роли', VECTOR_IDS.filter(k => roles[k]).map(k => `${VECTORS[k]}: ${esc(roles[k].join(', '))}`).join('; ') || null) +
     row('потратил сверх долга', spent ? `${spent} зол.` : 'ничего') +
-    row('послушание', `${Math.round((M.obey ?? 1) * 100)}%, запас казны ${M.sense?.reserve != null ? Math.round(M.sense.reserve) : '?'} сез.`);
+    row('послушание', `${Math.round((M.obey ?? 1) * 100)}%, запас казны ${M.sense?.reserve == null ? '?' : M.sense.reserve >= 999 ? 'без долгов' : `${Math.round(M.sense.reserve)} сез.`}`);
 }
 
 function realmHtml(a, R) {
@@ -158,7 +158,6 @@ function roleLine(a, t) {
   const lean = townLean(t), against = t.role && lead(lean) !== t.role;
   return `${what}${against ? ` (а строит больше ${VECTORS[lead(lean)]})` : ''}; кошель ${purse} зол.`;
 }
-const lead = v => VECTOR_IDS.reduce((m, k) => ((v[k] || 0) > (v[m] || 0) ? k : m), VECTOR_IDS[0]);
 
 function townHtml(a, t) {
   const P = WORLD_PEOPLES.get(t.people), fx = townFx(t), cnt = {};

@@ -28,7 +28,7 @@ import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js'
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
 import {ECONOMY, BUILD, ARMY_KEEP, TRADE as MACRO_TRADE, TREASURY, PLOTS} from '../macro.js';
-import {VECTORS, VEC_RULES, DEED_VEC, MIND} from '../mind.js';
+import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {ERAS} from '../history.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
@@ -369,12 +369,13 @@ export const TABLES = [
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (гномы кучно, эльфы и орки вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all(),
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', ')})),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
       col('vec', 'Вектор', 'map', {ref: keysOf(VECTORS), min: 0, nullable: true, note: 'куда постройка тянет державу: агрессия, рост, экономика; пусто — из эффектов и того, что она делает («Совет державы»)'}),
+      col('vecNow', 'Вектор итог', 'text', {computed: true, note: 'вектор, с которым постройка входит в курс и роли: свой «Вектор» или посчитанный из эффектов и того, что она делает'}),
       col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
       col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
       col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),
