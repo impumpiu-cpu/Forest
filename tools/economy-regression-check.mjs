@@ -1,6 +1,7 @@
 // Physical stores and repeated seasonal calculations: small fixtures through the production modules.
 import assert from 'node:assert/strict';
-import {planBuild, doBuild, seasonMoney} from '../src/atlas/treasury.js';
+import {planBuild, doBuild, seasonMoney, goodsFor} from '../src/atlas/treasury.js';
+import {TOWN_MONEY} from '../src/data/townBuildings.js';
 import {sendArmy, armyLosses, returnArmy} from '../src/atlas/army.js';
 import {stepWarBeasts} from '../src/atlas/beasts.js';
 import {stepGolems} from '../src/atlas/golems.js';
@@ -24,12 +25,14 @@ const flat = t => {
 const game = () => { const w = newGame({...DEFAULT_CFG, seed: 'herd-regression', size: 'small', colonists: 0, wildlife: 'none', predators: 'none', raids: 'off'}); w.agents = []; return w; };
 
 check('стройка объединяет дерево и заменённые доски до резервирования; склад остаётся конечным', () => {
-  for (const wood of [20, 35]) {
+  // (what a house takes, as the orcs take it: TOWN_MONEY.build.mats — boards swapped for logs; one stock short of it, one over it)
+  const need = goodsFor('orcs', TOWN_MONEY.build.mats.housing).wood;
+  for (const wood of [need * 0.6, need + 5]) {
     const t = town({people: 'orcs', stock: {wood}, econ: {dem: {}, freeHands: 100}}), a = world([t]);
     const p = planBuild(a, t, {tier: 1, cat: 'housing'});
     assert.ok(p); assert.equal(p.own.filter(([g]) => g === 'wood').length, 1);
-    assert.equal(p.own[0][1], wood); assert.equal(p.gather > 0, wood === 20);
-    doBuild(p); assert.ok(Object.values(t.stock).every(v => Number.isFinite(v) && v >= 0)); assert.equal(t.stock.wood || 0, 0);
+    assert.equal(p.own[0][1], Math.min(wood, need)); assert.equal(p.gather > 0, wood < need);
+    doBuild(p); assert.ok(Object.values(t.stock).every(v => Number.isFinite(v) && v >= 0)); assert.ok(Math.abs((t.stock.wood || 0) - Math.max(0, wood - need)) < 0.01);
   }
 });
 check('запас базовых нужд учитывает кость вместо горшков и меньшие нужды орды', () => {
