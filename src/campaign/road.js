@@ -4,6 +4,7 @@
 //   famed(a, K, kind, realm) — a fight won ('win', the realm of the nearest town) or a captive sold ('slaveSale')
 //   choosePace(a, K)        — the pace for the day (data/road.js PACE_RULES)
 // With every number of data/road.js and data/tongues.js at its default the terms are 1 and the pace normal.
+import {kitOf} from '../data/transport.js';
 import {REPUTATION, PACES, PACE_RULES, TERMS} from '../data/road.js';
 import {TONGUE, shareTongue} from '../data/tongues.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -19,7 +20,8 @@ export function termsOf(a, K, t) {
   const R = fameOf(K, t?.realm), rep = REPUTATION.fameDiscount * R.fame - REPUTATION.infamyMarkup * R.infamy;
   // clamped, so no number makes a town pay the caravan to buy, or refuse every sale (1 — as before)
   const m = Math.min(TERMS.max, Math.max(0, mute)), r = Math.min(TERMS.max, Math.max(-TERMS.max, rep));
-  return {buy: (1 + m) * (1 - r), sell: (1 - m) * (1 + r)};
+  const T = kitOf(K).trade || {};   // (the humans trade a little better: data/transport.js PEOPLE_KIT)
+  return {buy: (1 + m) * (1 - r) * (T.buy ?? 1), sell: (1 - m) * (1 + r) * (T.sell ?? 1)};
 }
 
 // the realm of the nearest living town within REPUTATION.near cells, or null

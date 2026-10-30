@@ -77,6 +77,12 @@ export const CREATURES = {
   varg:        {special: around({S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4}), hp: 1.5, speed: 0.15, attack: {power: 1.35, cooldown: 13, type: 'pierce'}, ks: 1.06},
   bear:        {special: around({S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4}), hp: 3.6, speed: 0.12, attack: {power: 2.4, cooldown: 16, type: 'slash'}, ks: 0.94},
   lynx:        {special: around({S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5}), hp: 0.6, speed: 0.16, attack: {power: 1, cooldown: 11, type: 'slash'}, ks: 1},
+  // golems (data/constructs.js): slow, heavy blunt blows; armour as what blades and points do to the plates; the mithril one quicker
+  bronzegolem:  {special: {S: [12, 14], P: [3, 5], E: [12, 14], C: [0, 0], I: [0, 0], A: [2, 3], L: [0, 1]}, hp: 3, speed: 0.07, attack: {power: 1.8, cooldown: 18, type: 'blunt'}, resist: {pierce: 0.6, slash: 0.6, blunt: 0.8, fire: 0.3}, ks: 1.05},
+  irongolem:    {special: {S: [13, 15], P: [3, 5], E: [13, 15], C: [0, 0], I: [0, 0], A: [2, 3], L: [0, 1]}, hp: 4, speed: 0.07, attack: {power: 2, cooldown: 18, type: 'blunt'}, resist: {pierce: 0.5, slash: 0.5, blunt: 0.75, fire: 0.3}, ks: 1.08},
+  steelgolem:   {special: {S: [14, 16], P: [3, 5], E: [14, 16], C: [0, 0], I: [0, 0], A: [2, 4], L: [0, 1]}, hp: 5, speed: 0.075, attack: {power: 2.2, cooldown: 17, type: 'blunt'}, resist: {pierce: 0.45, slash: 0.45, blunt: 0.7, fire: 0.3}, ks: 1.04},
+  mithrilgolem: {special: {S: [15, 17], P: [4, 6], E: [15, 17], C: [0, 0], I: [0, 0], A: [4, 6], L: [0, 1]}, hp: 6, speed: 0.1, attack: {power: 2.4, cooldown: 15, type: 'blunt'}, resist: {pierce: 0.4, slash: 0.4, blunt: 0.65, fire: 0.2}, ks: 1.03},
+  treant:      {special: around({S: 16, P: 5, E: 16, C: 2, I: 4, A: 2, L: 5}), hp: 5, speed: 0.06, attack: {power: 2.6, cooldown: 20, type: 'blunt'}, resist: {pierce: 0.35, slash: 0.7, fire: 2}, ks: 1.05},
   elk:         {special: around({S: 11, P: 6, E: 12, C: 2, I: 2, A: 6, L: 4}), hp: 3.4, speed: 0.13, attack: {power: 2, cooldown: 16}, ks: 1.09},
   hyena:       {special: around({S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5}), hp: 0.7, speed: 0.15, attack: {power: 0.9, cooldown: 12, type: 'pierce'}, ks: 1.06},
   toad:        {special: around({S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4}), hp: 1, speed: 0.06, attack: {power: 1.2, cooldown: 20}, ks: 0.98},

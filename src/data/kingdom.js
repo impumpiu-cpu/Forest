@@ -13,22 +13,22 @@ import {Registry} from '../core/registry.js';
 export const REALM_STATS = new Registry('realmStat');
 REALM_STATS.registerAll([
   {id: 'culture', label: 'культура', from: {lore: 1, faith: 0.5, prestige: 1}, compass: {}, note: 'знание, вера, слава: чем держава гордится'},
-  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5}, compass: {}, note: 'доход казны на 100 жителей и, долей, ремесло, торговля, хлеб (data/macro.js TREASURY)'},
-  {id: 'loyalty', label: 'лояльность', from: {faith: 1, prestige: 0.5}, compass: {mercy: 0.05}, note: 'вера и слава; добрая держава милее подданным'},
+  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5, money: 0.5}, compass: {}, note: 'ремесло, торговля, хлеб, полные казны городов'},
+  {id: 'loyalty', label: 'лояльность', from: {faith: 1, prestige: 0.5, needs: 0.5}, compass: {mercy: 0.05}, note: 'вера и слава; добрая держава милее подданным'},
   {id: 'stability', label: 'стабильность', from: {defence: 1, health: 0.5}, compass: {order: 0.05}, note: 'оборона и здоровье; закон держит порядок'},
 ]);
 
 // Ruin grows by its sources every year and falls by the attribute that holds it back (× `fall`); never below 0.
-//   towns — per town of the realm;  crowd — what its towns breed by their size, each people its own (data/peoples.js
-//   `crime`: per × (people of the town / 1000) ^ pow — humans' crowded towns breed more);  upkeep — per point of upkeep over the economy;
-//   unpaid — the share of what the treasury owed the court and the armies and did not pay this year (atlas/treasury.js);
+//   towns — per town of the realm;  rough — per town, × the share of its room in rough housing (shacks, tents: data/
+//   townBuildings.js housing of step 0; atlas/towns.js roughShare);  pop — per 1000 people;  upkeep — per point of upkeep over the economy;
+//   folk — per town, × the share of its people of other peoples (the crowd of many peoples: the humans' towns most);
 //   wars — per war the realm is in;  raided — per town of it raided this year
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
-  {id: 'corruption', label: 'коррупция', grows: {towns: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше держава, тем больше рук, что берут: города × бюрократия народа («Народы мира»)'},
-  {id: 'crime', label: 'преступность', grows: {crowd: 1}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража; у людей — сильнее с размером города'},
-  {id: 'decay', label: 'упадок', grows: {unpaid: 3}, fall: 'economy', eats: 'stability', note: 'казна не платит двору и войску'},
+  {id: 'corruption', label: 'коррупция', grows: {rough: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше городов и чем больше в них живут в шалашах и шатрах, тем больше рук, что берут; добротное жильё её сдерживает'},
+  {id: 'crime', label: 'преступность', grows: {pop: 0.02, folk: 0.3}, fall: 'stability', eats: 'loyalty', note: 'людные города, пёстрая толпа чужих народов, слабая стража'},
+  {id: 'decay', label: 'упадок', grows: {unpaid: 1, broke: 0.5}, fall: 'economy', eats: 'stability', note: 'неоплаченное содержание построек и пустая казна державы (atlas/treasury.js)'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
 export const RUIN_RULES = {fall: 0.1, penalty: 0.05, max: 20};
@@ -42,13 +42,9 @@ export const UPKEEP = {housing: 0.01, food: 0, raw: 0.01, craft: 0.02, trade: 0.
 //   when: {war: true} — at war;  {below: {stat: v}} — an attribute under v;  {above: {stat: v}} — over v
 export const EDICTS = new Registry('edict');
 EDICTS.registerAll([
-  // the treasury's council sets the dues (data/macro.js TREASURY.tax): heavy in war or with the treasury nearly empty
-  // (reserve — seasons of its spending it holds), light when the people murmur or the treasury overflows
   {id: 'taxes', label: 'подати', levels: [
     {id: 'high', label: 'тяжёлые', when: {war: true}, adds: {economy: 0.15, loyalty: -0.1}},
-    {id: 'need', label: 'тяжёлые: казна пуста', when: {below: {reserve: 2}}, adds: {economy: 0.1, loyalty: -0.1}},
     {id: 'light', label: 'лёгкие', when: {below: {loyalty: 0.2}}, adds: {economy: -0.1, loyalty: 0.1}},
-    {id: 'rich', label: 'лёгкие: казна полна', when: {above: {reserve: 12}}, adds: {loyalty: 0.15}},
     {id: 'usual', label: 'обычные', adds: {}},
   ]},
   {id: 'feasts', label: 'праздники', levels: [
@@ -88,9 +84,11 @@ REALM_EVENTS.registerAll([
 ]);
 export const EVENTS_RULE = {chance: 0.35};
 
-// What the kingdom does back to the world. schismByStrife: a contender's chance to break away
-// × (1 + value × strife); schismByLoyalty: × (1 + value × (1 − loyalty)) while loyalty is under 1
-export const FEEDBACK = {schismByStrife: 0.05, schismByLoyalty: 0.3};
+// What the kingdom does back to the world (atlas/kingdom.js; the numbers to be tuned with the balance). schismByStrife: a
+// contender's chance to break away × (1 + value × strife); schismByLoyalty: × (1 + value × (1 − loyalty)) while loyalty is under 1;
+// growthByEconomy: its towns grow × (1 + value × economy); mightByStability: its towns' might × (1 + value × stability) —
+// each × within `range` (kept on each town a year: t.realmFx)
+export const FEEDBACK = {schismByStrife: 0.03, schismByLoyalty: 0.5, growthByEconomy: 0.1, mightByStability: 0.1, range: [0.7, 1.3]};
 
 // The market of a town by its step (campaign/town.js), as the base value and purchase limit of a Pathfinder settlement:
 // `maxPrice` — the dearest thing it sells, `purse` — the gold it pays for the caravan's goods in one visit. Empty — no
@@ -104,8 +102,6 @@ MARKET_TIERS.registerAll([
 ]);
 export const marketTierOf = t => MARKET_TIERS.get(t.capital ? 'capital' : `tier${Math.min(2, t.tier ?? 0)}`);
 
-// what a condition may read besides the attributes and the ruin: reserve — the seasons of its spending the treasury holds
-export const COND_EXTRA = ['reserve'];
 // What is wrong with a condition ({war}, {below: {k: v}}, {above: {k: v}}) → [error]; k — an attribute or a ruin
 export function whenErrors(when) {
   if (when == null) return [];
@@ -115,7 +111,7 @@ export function whenErrors(when) {
     if (k === 'war') { if (typeof v !== 'boolean') errs.push('war — да или нет'); continue; }
     if (k !== 'below' && k !== 'above') { errs.push(`в условии нет «${k}» (war, below, above)`); continue; }
     for (const [s, x] of Object.entries(v || {})) {
-      if (!REALM_STATS.has(s) && !RUINS.has(s) && !COND_EXTRA.includes(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
+      if (!REALM_STATS.has(s) && !RUINS.has(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
       if (typeof x !== 'number' || !Number.isFinite(x)) errs.push(`${k}.${s}: не число`);
     }
   }

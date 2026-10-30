@@ -380,7 +380,9 @@ export class Renderer {
       const r = Math.max(Math.min(S * look.size, 4 + S * 0.26), look.shape === 'person' ? 3.4 : 2.8);
       const color = look.color || FACTIONS.get(a.faction).color;
       if (a === selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); }
-      LOOKS[look.shape](ctx, a, px, py, r, color, S);
+      // a rider (agents/mount.js): its beast under it, the rider a little above
+      if (a.mount?.hp > 0) { const ml = SPECIES.get(a.mount.species).look, mr = Math.max(Math.min(S * ml.size, 4 + S * 0.26), 2.8); LOOKS[ml.shape](ctx, a, px, py + r * 0.3, mr, ml.color || color, S); LOOKS[look.shape](ctx, a, px, py - mr * 0.6, r * 0.85, color, S); }
+      else LOOKS[look.shape](ctx, a, px, py, r, color, S);
       if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
       if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
       if (hpShare(a) < 0.999 && isSentient(sp)) {

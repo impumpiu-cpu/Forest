@@ -26,7 +26,7 @@ function rollBiomes(rnd, biomes) {
 // how many of a beast a mix of biomes holds: Σ share × rarity in that biome
 export function faunaFrom(biomes, sp) {
   const hab = SPECIES.get(sp).habitat;
-  if (!hab) return 1;   // hares and rats live everywhere
+  if (!hab) return SPECIES.get(sp).kind === 'construct' ? 0 : 1;   // hares and rats live everywhere; a golem is never wild
   let v = 0;
   for (const [b, r] of Object.entries(hab)) v += (biomes[b] || 0) * RARITY[r].mul;
   return v;

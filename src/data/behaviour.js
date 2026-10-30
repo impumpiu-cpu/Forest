@@ -35,6 +35,10 @@ export const WAYS = {
   // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
   // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
   raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
+  // a forest beast called into a fight (agents/summon.js): it goes for the caller's foes, then back to the wood
+  summoned: ['fleeFire', 'summoned'],
+  // a golem of our side (agents/golem.js): no fire drives it (tag «Механизм»); it guards its post
+  golem: ['golem'],
   // a captive on the run: for the map's edge as fast as its bonds let it
   fugitive: ['downed', 'escape'],
   // a trader: with the caravan's phase — walks in, stands at the stall, sleeps by the fire, leaves; never fights
@@ -93,6 +97,7 @@ export const CARCASS = {
   eatAt: 0.9,          // eats from this close
   takeAt: 1.4,         // a hunter takes what is left from this close
   scare: 4,            // feeders this close to a hunter either give way or turn on him
+  sinew: 1,            // sinew a hunter cuts out with each hide he takes (a bowstring for the elves)
 };
 
 export const PACK = {

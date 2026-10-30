@@ -30,12 +30,16 @@ import {log} from '../core/log.js';
 import {esc, g, perTick} from '../core/util.js';
 import {liveById} from '../agents/lookup.js';
 import {setStanding} from '../agents/standing.js';
+import {raceFrees} from '../data/slavery.js';
+import {colonyRace} from '../data/buildings.js';
 
 export const isCaptive = a => !!a?.captive;
 export const captives = w => colonists(w).filter(a => a.captive && !a.dead);
 
 // can the colony take one more: bonds in the stock and room for a captive
-export const canBind = w => captives(w).length < CAPTIVE.max && !!bestBonds(w.stock);
+// a colony of a people that keeps no captives (data/slavery.js frees: the dwarves) dresses a fallen foe and lets it go
+export const letsGo = w => raceFrees(colonyRace(w));
+export const canBind = w => letsGo(w) || (captives(w).length < CAPTIVE.max && !!bestBonds(w.stock));
 
 // a foe lying senseless that could be taken
 const takeable = (w, o) => !!o.downed && !o.dead && o.faction !== 'colony' && CAN_FALL(SPECIES.get(o.species), {faction: 'colony'});
@@ -79,6 +83,7 @@ export const bindStillOn = (w, a, task) => { const f = liveById(w, task.who); re
 
 // ── the knots are tied: the wound dressed, the foe one of ours, with the lot of a captive
 export function bindCaptive(w, by, f) {
+  if (letsGo(w)) return letGo(w, by, f);
   const B = bestBonds(w.stock);
   if (!B || !f.downed || f.dead) return null;
   w.stock[B.resource] -= B.n;
@@ -130,6 +135,25 @@ export function bindCaptive(w, by, f) {
   const who = was && was !== f.name && !/^налётчик/i.test(was) ? `${esc(f.name)} (${esc(was)}, ${sp.label})` : `${esc(f.name)}, ${sp.label},`;
   log(w, `<b>${esc(by.name)}</b> ${g(by, 'перевязал и связал', 'перевязала и связала')} упавшего врага: ${who} теперь пленный. Путы — ${B.label}.`, 'people', 'notice');
   return B;
+}
+
+// the wound dressed and the fallen foe let go: it walks off the map, its arms and armour stay in the store → {label}
+function letGo(w, by, f) {
+  if (!f.downed || f.dead) return null;
+  const d = f.downed; f.downed = null;
+  f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
+  if (d.trauma) f.wounds.push({id: d.trauma});
+  const loot = allItems(f).filter(it => it.dur > 0 && !captiveItem(it));
+  if (f.equip) { f.equip = emptySlots(); for (const it of allItems(f).filter(captiveItem)) putOn(f, it, 'body', []); }
+  if (loot.length) { w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1; }
+  if (f.loot) { for (const [r, v] of Object.entries(f.loot)) if (v > 0) load(by, r, v); f.loot = null; }
+  releaseAll(w, f);
+  f.hp = Math.max(f.hp, DEATHBLOW.stableHp * maxHp(f));
+  f.faction = 'leavers'; f.brain = 'leaver'; f.task = {id: 'leave'}; f.squad = null; f.band = null; f.leads = null; f.fightRole = null;
+  recalcGear(f);
+  const C = (w.chronicle.captives ||= {taken: 0, died: 0}); C.freed = (C.freed || 0) + 1;
+  log(w, `<b>${esc(by.name)}</b> ${g(by, 'перевязал', 'перевязала')} упавшего врага (${SPECIES.get(f.species).label}) и ${g(by, 'отпустил', 'отпустила')}: дварфы пленных не держат.`, 'people', 'notice');
+  return {label: 'отпущен'};
 }
 
 // a captive died: shackles come back to the stock (rope is cut and lost)

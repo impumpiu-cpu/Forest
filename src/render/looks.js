@@ -53,6 +53,34 @@ export const LOOKS = {
     ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
     ctx.fill();
   },
+  // treant: a thick trunk on root-feet, boughs for arms, a green crown; bark-dark, the crown greys when it rests
+  treant(ctx, a, px, py, r, color) {
+    ctx.save(); ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(px - r * 0.5, py + r * 0.9); ctx.lineTo(px - r * 0.35, py - r * 0.4); ctx.lineTo(px + r * 0.35, py - r * 0.4); ctx.lineTo(px + r * 0.5, py + r * 0.9);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.5, r * 0.22); ctx.beginPath();
+    ctx.moveTo(px - r * 0.3, py - r * 0.1); ctx.lineTo(px - r * 1.05, py - r * 0.55);
+    ctx.moveTo(px + r * 0.3, py - r * 0.1); ctx.lineTo(px + r * 1.05, py - r * 0.6);
+    ctx.moveTo(px - r * 0.45, py + r * 0.85); ctx.lineTo(px - r * 0.8, py + r * 1.05); ctx.moveTo(px + r * 0.45, py + r * 0.85); ctx.lineTo(px + r * 0.8, py + r * 1.05);
+    ctx.stroke();
+    ctx.fillStyle = a.task?.id === 'rest' ? '#5f6e4a' : '#3f7a34'; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.arc(px, py - r * 0.75, r * 0.62, 0, Math.PI * 2); ctx.arc(px - r * 0.5, py - r * 0.55, r * 0.42, 0, Math.PI * 2); ctx.arc(px + r * 0.5, py - r * 0.6, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e8d27a'; ctx.beginPath(); ctx.arc(px - r * 0.14, py - r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.arc(px + r * 0.14, py - r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  // golem (data/constructs.js): a squat block of plates on thick legs, heavy fists, a slit of coal-light for eyes
+  golem(ctx, a, px, py, r, color) {
+    ctx.save(); ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1; ctx.fillStyle = color;
+    ctx.fillRect(px - r * 0.55, py + r * 0.45, r * 0.4, r * 0.6); ctx.strokeRect(px - r * 0.55, py + r * 0.45, r * 0.4, r * 0.6);
+    ctx.fillRect(px + r * 0.15, py + r * 0.45, r * 0.4, r * 0.6); ctx.strokeRect(px + r * 0.15, py + r * 0.45, r * 0.4, r * 0.6);
+    ctx.fillRect(px - r * 0.7, py - r * 0.6, r * 1.4, r * 1.1); ctx.strokeRect(px - r * 0.7, py - r * 0.6, r * 1.4, r * 1.1);
+    ctx.beginPath(); ctx.arc(px - r * 0.95, py + r * 0.2, r * 0.3, 0, Math.PI * 2); ctx.arc(px + r * 0.95, py + r * 0.2, r * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillRect(px - r * 0.35, py - r * 1.05, r * 0.7, r * 0.5); ctx.strokeRect(px - r * 0.35, py - r * 1.05, r * 0.7, r * 0.5);
+    ctx.fillStyle = a.hp > 0 ? '#ff8a2a' : '#3a2a1a'; ctx.fillRect(px - r * 0.25, py - r * 0.85, r * 0.5, r * 0.1);
+    ctx.restore();
+  },
   // deer: a long tan body with a pale rump and branching antlers
   deer(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;

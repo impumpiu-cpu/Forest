@@ -7,15 +7,12 @@
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {actorStep} from './actor.js';
-import {MIND, deedVector, along} from '../data/mind.js';
 import {DOES} from './deeds/index.js';
 import {realmTowns} from './realms.js';
 
 const realmRole = {
   list: [],
   party: () => null,   // a realm is many wills: its armies out stop no other deed (one army of a war at a time is the march's own rule)
-  // the council's wind leans the court: a deed's weight × (1 + MIND.deed × the wind along its vector) (atlas/mind.js)
-  weigh: (a, realm, d) => { const v = deedVector(d.id); return v && realm.mind ? 1 + MIND.deed * along(v, realm.mind.wind) : 1; },
   setOut(a, realm, [plan, , , d], ctx) { const line = DOES[d.id].act?.(a, realm, plan, ctx); if (line) ctx.say(line); },
 };
 

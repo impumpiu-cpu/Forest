@@ -14,7 +14,18 @@ export const BEASTS = {
   horse: {use: 'ride', cells: 4, pulls: 0.5, label: 'лошадь', plural: 'лошади', acc: 'лошадь'},
   camel: {use: 'ride', cells: 4, pulls: 0.5, label: 'верблюд', plural: 'верблюды', acc: 'верблюда'},
   mule:  {use: 'pack', boxes: 2, pulls: 1, label: 'мул', plural: 'мулы', acc: 'мула'},
+  // the herd (CAMP_KIT.herd): it walks with the caravan for its milk and its meat
+  goat:  {use: 'food', label: 'коза', plural: 'козы', acc: 'козу'},
+  sheep: {use: 'food', label: 'овца', plural: 'овцы', acc: 'овцу'},
+  // the dwarves' golems (data/constructs.js), bought in a dwarven town with a golem forge (data/market.js): they carry two
+  // boxes and pull a wagon, eat nothing, stand guard over the camp (agents/behaviours/golem.js) and are mended only in a
+  // town with a forge or by the camp's own forge (GOLEM_REPAIR.day); `golem` — the caravan has at most `max` of them
+  bronzegolem:  {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'бронзовый голем', plural: 'бронзовые големы', acc: 'бронзового голема'},
+  irongolem:    {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'железный голем', plural: 'железные големы', acc: 'железного голема'},
+  steelgolem:   {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'стальной голем', plural: 'стальные големы', acc: 'стального голема'},
+  mithrilgolem: {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'мифриловый голем', plural: 'мифриловые големы', acc: 'мифрилового голема'},
 };
+export const CARAVAN_GOLEMS = {max: 1};
 
 // vehicles: room in boxes, what makes them, who pulls them.
 //   tool: the least metal of a tool that can build it (1 — bronze, 2 — iron; data/items.js `bronze` / `iron`);
@@ -34,13 +45,43 @@ export const WHEELS = {offRoad: 2, roadAt: 0.1, block: ['highlands', 'foothills'
 // party's camp in the old games. In camp it helps:
 //   heal × camp healing;  forage × camp food;  shelter — hunger wears them down × this;  build × camp days for vehicles
 export const CAMP_FX = {
-  hut:       {heal: 1.4, shelter: 0.6},
   healerhut: {heal: 2},
-  lodge:     {forage: 1.25},
-  fishhut:   {forage: 1.15},
-  crafthut:  {build: 0.6},
-  forge:     {build: 0.8},
 };
+// The caravan's camp is a soldiers' camp, not a craftsmen's: it helps them rest, eat and heal, and makes nothing.
+//   huts    — the shelters it may carry (at most `max`): by how many it has, × on camp healing (`heal`) and on what hunger
+//             wears off them (`shelter`) — none: they sleep on the ground
+//   start   — what every caravan sets out with: the healer's hut
+//   cauldron — the pot over the fire, every caravan's: a hot meal of what the stop gives, by the people's own dish (`dish`):
+//             × the stop's food (`food`), × camp healing (`heal`), × what hunger wears off (`shelter`)
+//   herd    — goats or sheep that walk with it (BEASTS use 'food', at most `max`, the people's `herd` ×): on pasture each
+//             gives `milk` rations a day; in hunger one is slaughtered for `meat` rations
+export const CAMP_KIT = {
+  huts: {max: 2, by: [{heal: 0.8, shelter: 1.2}, {}, {heal: 1.15, shelter: 0.8}]},
+  start: ['healerhut'],
+  herd: {max: 2, milk: 0.5, meat: 8},
+  dish: {
+    humans:  {label: 'похлёбка', food: 1.25},
+    elves:   {label: 'травяной отвар', food: 1.25, heal: 1.15},
+    dwarves: {label: 'пиво на привале', food: 1.25, shelter: 0.8},
+    orcs:    {label: 'жаркое', food: 1.35},
+  },
+};
+// What each people's caravan does its own way (campaign/march.js, town.js, potions.js, baggage.js):
+//   tame     — × the chance to tame a riding beast, `regain` × its mending on grass (the humans' hitching post)
+//   trade    — the town's terms: × what it buys at (`buy`), × what it pays (`sell`)
+//   forage   — × the stop's food in wooded land (`wood`)
+//   noPots   — the healer's hut brews of herbs alone, no pot
+//   herd     — × the herd's room (0: none)
+//   mine     — × what a stop to dig brings
+//   forge    — the camp's own field forge: mends golems (and arms) like a town's (the dwarves)
+//   bearers  — a captive carries a box besides its back (the greenskins)
+export const PEOPLE_KIT = {
+  humans:  {label: 'коновязь', tame: 1.5, regain: 1.5, trade: {buy: 0.9, sell: 1.1}},
+  elves:   {label: 'дары леса', forage: {wood: 1.5}, noPots: true, herd: 0},
+  dwarves: {label: 'походный горн', mine: 1.5, forge: true},
+  orcs:    {label: 'стадо', herd: 2, bearers: 1},
+};
+export const kitOf = K => PEOPLE_KIT[K?.people] || {};
 export const FIELD_BUILD = {woodPerDay: 6};
 
 // how the caravan comes by things

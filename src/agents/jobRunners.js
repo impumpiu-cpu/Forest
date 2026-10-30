@@ -44,7 +44,7 @@ const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.co
 export function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
   if (a.master) a.master.workedAt = w.tick;   // a master at work: the learners beside it learn (settlement/masters.js)
   // a good mood helps a little, a bad one slows down (±10%); learners beside a master speed it up
-  return (1 + apprenticeBonus(w, a, jobId)) * (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  return (1 + apprenticeBonus(w, a, jobId)) * (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * (SPECIES.get(a.species).jobPace?.[jobId] ?? 1) * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };

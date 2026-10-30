@@ -25,7 +25,9 @@ import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive, finished, chronicleText} from '../src/campaign/index.js';
 import {findPath} from '../src/atlas/roads.js';
 import {scratch} from '../src/campaign/march.js';
-import {CAMPAIGN} from '../src/data/campaign.js';
+import {CAMPAIGN, RETINUE} from '../src/data/campaign.js';
+import {COMBAT_ROLES} from '../src/data/roles.js';
+import {townKin} from '../src/atlas/towns.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {ITEMS} from '../src/data/items.js';
 import {capacity, load, wheeled} from '../src/campaign/baggage.js';
@@ -79,10 +81,17 @@ for (let s = 0; s < seeds; s++) {
   const bad = [];
   for (const c of pick) {
     const a = fresh(), K = newCampaign(a, c.town, {mode: fullLocal ? 'local' : 'auto'}), race = WORLD_PEOPLES.get(c.people).race;
-    const knights = K.members.filter(m => m.role === 'knight').length, squires = K.members.filter(m => m.role === 'squire').length;
-    if (knights !== CAMPAIGN.knights || squires !== CAMPAIGN.squires || K.members.some(m => m.race !== race || !m.special)) bad.push(`${c.label}: состав ${knights}+${squires}`);
+    // the core: eight fighters of the realm's kinds (data/campaign.js RETINUE), each with its fighting role, at most one great one;
+    // at least two of the line, a shooter and a healer where its kinds can take them
+    const R = RETINUE[c.people], kinds = R.kinds === 'kin' ? Object.keys(townKin(a, a.towns.find(t => t.id === c.town))) : Object.keys(R.kinds);
+    const fighters = K.members.filter(m => m.role === 'fighter'), big = fighters.filter(m => RETINUE.big.kinds.includes(m.species || m.race)).length;
+    const line = fighters.filter(m => (COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m.fight).group : null) === 'линия').length, shoot = fighters.filter(m => (COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m.fight).group : null) === 'дальний бой').length, heal = fighters.filter(m => m.fight === 'healer').length;
+    if (fighters.length !== CAMPAIGN.fighters || K.members.some(m => !kinds.includes(m.race) || !m.special || !m.fight) || big > RETINUE.big.max || line < 2 || shoot < 1 || heal < 1)
+      bad.push(`${c.label}: состав ${K.members.map(m => `${m.race}:${m.fight}`).join(' ')}`);
+    if (K.members.some(m => (COMBAT_ROLES.has(m.fight) && COMBAT_ROLES.get(m.fight).mount))) bad.push(`${c.label}: конный в караване`);
+    void race;
     if (K.members.some(m => [...m.gear.hand, m.gear.body].some(id => !ITEMS.has(id)))) bad.push(`${c.label}: неизвестная вещь`);
-    if (K.members.some(m => m.role === 'knight' && !['jerkin', 'hardleather'].includes(m.gear.body))) bad.push(`${c.label}: рыцарь не в коже`);
+    if (RETINUE.tools.some(t => !K.members.some(m => m.gear.hand.includes(t[0])))) bad.push(`${c.label}: нет походного инструмента`);
     // the quest: a crown and three clues on land the caravan can walk to, each in its own place; the capital
     // tells where to look for the first clue
     const Q = K.quest;
@@ -175,21 +184,22 @@ for (let s = 0; s < seeds; s++) {
       epi.slice(0, 2).join(' / '));
   }
 
-  // the ranks lean (data/campaign.js RETINUE.lean): over many rolls the fighters are stronger, tougher and quicker,
-  // the squires cleverer, more charming, sharper-eyed and luckier; nobody leaves the people's limits
+  // the roles lean (data/campaign.js RETINUE.lean): over many rolls the line is stronger and tougher, the support cleverer and
+  // more charming; nobody leaves the people's limits
   {
     const sum = {knight: {}, squire: {}}, n = {knight: 0, squire: 0};
     let out = 0;
     for (const c of pick) for (let k = 0; k < 20; k++) {
       const a = fresh(), K = newCampaign(a, c.town, {seed: `lean:${k}:${c.town}`, mode: 'auto'});
       for (const m of K.members) {
-        n[m.role]++;
-        for (const [id, v] of Object.entries(m.special)) { sum[m.role][id] = (sum[m.role][id] || 0) + v; if (v < 0) out++; }
+        const g = (COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m.fight).group : null), side = g === 'линия' ? 'knight' : g === 'поддержка' ? 'squire' : null; if (!side) continue;
+        n[side]++;
+        for (const [id, v] of Object.entries(m.special)) { sum[side][id] = (sum[side][id] || 0) + v; if (v < 0) out++; }
       }
     }
     const avg = (r, ids) => ids.reduce((t, id) => t + sum[r][id] / n[r], 0) / ids.length;
-    const fight = ['S', 'E', 'A'], craft = ['I', 'C', 'L'];
-    check(`сид ${seed}: бойцы сильнее в боевых характеристиках, сквайры — в остальных`, avg('knight', fight) > avg('squire', fight) + 0.4 && avg('squire', craft) > avg('knight', craft) + 0.4 && !out,
+    const fight = ['S', 'E'], craft = ['I', 'C'];
+    check(`сид ${seed}: бойцы линии сильнее и крепче, поддержка умнее и обаятельнее`, avg('knight', fight) > avg('squire', fight) + 0.4 && avg('squire', craft) > avg('knight', craft) + 0.4 && !out,
       `S/E/A ${avg('knight', fight).toFixed(2)} против ${avg('squire', fight).toFixed(2)}, I/C/L ${avg('squire', craft).toFixed(2)} против ${avg('knight', craft).toFixed(2)}`);
   }
 
@@ -241,7 +251,8 @@ for (let s = 0; s < seeds; s++) {
       K.i = cell; K.x = cell % a.w + 0.5; K.y = ((cell / a.w) | 0) + 0.5; K.why = 'mine:iron'; K.cargo = {};
       for (let d = 0; d < 3; d++) { const got = playStop(a, K); dug += got.ironore || 0; }
       // a smith whose realm works iron: a forge stands in one of its towns (data/townBuildings.js `metals`)
-      const t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)) && realmWorks(a, x, 'iron'));
+      let t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)) && realmWorks(a, x, 'iron'));
+      if (!t) { t = a.towns.find(x => x.alive && standing(a, K, x)); if (t) t.built.push('forge'); }   // (a world whose friends never built one: a forge is set up)
       if (t) {
         K.cargo.ironore = 40; K.gold = 200;
         const lines = trade(a, K, t, standing(a, K, t));

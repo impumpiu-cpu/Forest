@@ -59,7 +59,9 @@ export const familyOf = member => Object.keys(FAMILIES).find(f => FAMILIES[f].me
 // Anything not said is `yes`: everything is open to everyone until the asymmetry of the races closes it, a line here.
 export const USES = {yes: 'можно', nomake: 'не добывает и не делает (купленное — «грязное»)', taboo: 'не касается вовсе', master: 'мастер'};
 export const RACE_MATERIALS = {
-  elf: {holywood: 'master'},
+  // the elves: the sacred tree is theirs; metal they do not touch — no bronze, iron or steel, made, bought or taken
+  // (silver stays, against what fears it; mithril, found, stays too)
+  elf: {holywood: 'master', bronze: 'taboo', iron: 'taboo', steel: 'taboo'},
 };
 export const useOf = (race, member) => RACE_MATERIALS[race]?.[member] || 'yes';
 // What a race will not take in its hands, whatever it is made of (data/balance/forms.js): the elves and the crossbow —

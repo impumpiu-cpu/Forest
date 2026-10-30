@@ -11,6 +11,8 @@ import {SEA} from '../data/roads.js';
 import {townFx} from './towns.js';
 import {trades} from './diplomacy.js';
 import {scaleOf} from './tectonics.js';
+import {TOWN_FLOW} from '../data/townBuildings.js';
+import {faunaCell} from './fauna.js';
 
 export const hasHarbor = t => t.alive && t.built.includes('harbor');
 export const seaLevelOf = v => { let lv = -1; SEA.levels.forEach((L, k) => { if (v >= L.wear) lv = k; }); return lv; };
@@ -85,4 +87,21 @@ export function seaAccess(a, t) {
   if (!a.f.sea || !hasHarbor(t)) return 0;
   const q = quay(a, t);
   return q < 0 ? 0 : Math.min(1, a.f.sea[q] / SEA.levels[1].wear);
+}
+
+// what the sea around a town feeds, as a share of the land around it would (TOWN_FLOW.sea): the share of water in the
+// cells its land feed is counted over (atlas/peoples.js: 3×3 of the fauna grid; kept — the sea does not move) × its best
+// fishers (a fishing hut, a pier, a harbour) × the boats of its shipyard (t.econ.boats)
+export function seaFeed(a, t) {
+  const S = TOWN_FLOW.sea; let best = 0;
+  for (const id of Object.keys(S)) if (t.built.includes(id)) best = Math.max(best, S[id]);
+  if (!best) return 0;
+  const pk = t.place ||= {};
+  if (pk.sea == null) {
+    const F = a.fauna, c = F.c, j = faunaCell(a, t.i), fx = j % F.W, fy = (j / F.W) | 0;
+    let n = 0, w = 0;
+    for (let y = Math.max(0, (fy - 1) * c); y < Math.min(a.h, (fy + 2) * c); y++) for (let x = Math.max(0, (fx - 1) * c); x < Math.min(a.w, (fx + 2) * c); x++) { n++; if (a.f.ocean[y * a.w + x]) w++; }
+    pk.sea = n ? Math.round(w / n * 1000) / 1000 : 0;
+  }
+  return pk.sea * best * (t.econ?.boats || 1);
 }

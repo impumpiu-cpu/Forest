@@ -1,7 +1,7 @@
 // How the peoples see each other: the memory of old wars and old friendships, −3 … +3.
 // The table is not symmetric: an elf tolerates a human (0), a dwarf likes one (+1).
 // Rows and columns are race lines (`rel` in data/races.js): the greenskins — orcs, goblins, ogres,
-// trolls — share one line. Undead and other monsters are not here: nobody makes peace with them.
+// trolls, gnolls — share one line. Undead and other monsters are not here: nobody makes peace with them.
 //
 // One creature's opinion of another (opinion() below) has two parts. The starting attitude: the old memory of
 // the peoples, shared values (+), clashing values (−), a gulf in mercy or order (−) or a near point on the compass
@@ -16,21 +16,20 @@ import {EFFECTS} from './special.js';
 export const KINS = new Registry('kin');
 KINS.registerAll([
   {id: 'human', label: 'люди'}, {id: 'halfling', label: 'полурослики'}, {id: 'giant', label: 'великаны'},
-  {id: 'elf', label: 'лесные эльфы'}, {id: 'darkelf', label: 'тёмные эльфы'}, {id: 'dwarf', label: 'гномы'},
-  {id: 'greenskin', label: 'зеленокожие'}, {id: 'gnoll', label: 'гноллы'},
+  {id: 'elf', label: 'лесные эльфы'}, {id: 'darkelf', label: 'тёмные эльфы'}, {id: 'dwarf', label: 'дварфы'},
+  {id: 'greenskin', label: 'зеленокожие'},
 ]);
 
 // from (row) → to (column)
-const COLS = ['human', 'halfling', 'giant', 'elf', 'darkelf', 'dwarf', 'greenskin', 'gnoll'];
+const COLS = ['human', 'halfling', 'giant', 'elf', 'darkelf', 'dwarf', 'greenskin'];
 const ROWS = {
-  human:     [+1, +1,  0,  0, -2, +1, -1, -3],
-  halfling:  [+1, +2,  0, +1, -2,  0, -2, -3],
-  giant:     [ 0, +1, +2,  0, -1, -1,  0, -2],
-  elf:       [ 0, +1,  0, +2, -3, -2, -2, -3],
-  darkelf:   [-1, -2, -1, -3, +1, -1,  0, -1],
-  dwarf:     [+1,  0, -1, -2, -2, +2, -3, -2],
-  greenskin: [-1, -1, +1, -2,  0, -3, +1,  0],
-  gnoll:     [-2, -2, -1, -2,  0, -2, +1,  0],
+  human:     [+1, +1,  0,  0, -2, +1, -1],
+  halfling:  [+1, +2,  0, +1, -2,  0, -2],
+  giant:     [ 0, +1, +2,  0, -1, -1,  0],
+  elf:       [ 0, +1,  0, +2, -3, -2, -2],
+  darkelf:   [-1, -2, -1, -3, +1, -1,  0],
+  dwarf:     [+1,  0, -1, -2, -2, +2, -3],
+  greenskin: [-1, -1, +1, -2,  0, -3, +1],
 };
 
 export const RELATIONS = Object.fromEntries(Object.entries(ROWS).map(([r, row]) => [r, Object.fromEntries(COLS.map((c, k) => [c, row[k]]))]));

@@ -14,7 +14,7 @@ LANGUAGES.registerAll([
   {id: 'common', label: 'имперский', note: 'язык тракта и торговли'},
   {id: 'elvish', label: 'эльфийский', note: ''},
   {id: 'undertongue', label: 'подземный', note: 'язык тёмных эльфов'},
-  {id: 'dwarvish', label: 'гномий', note: ''},
+  {id: 'dwarvish', label: 'дварфийский', note: ''},
   {id: 'orcish', label: 'орочий', note: ''},
   {id: 'goblin', label: 'гоблинский', note: ''},
   {id: 'giant', label: 'великаний', note: 'великаны, огры, тролли'},

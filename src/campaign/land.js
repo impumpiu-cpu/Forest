@@ -1,6 +1,7 @@
 // The land as the caravan sees it: how much food a cell gives to those who hunt and gather there, and
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
+import {realmBand} from '../atlas/towns.js';
 import {cellRegion as regionOf} from '../seam/cell.js';
 
 // a cell's region (seam/cell.js) is asked several times a day; the beasts in it change once a season, so it
@@ -20,7 +21,7 @@ import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
-import {LAIR_BANDS, REALM_BANDS} from '../data/seam.js';
+import {LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS, HOST_BANDS} from '../data/seam.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {RELATIONS} from '../data/relations.js';
 import {atWar} from '../atlas/diplomacy.js';
@@ -91,13 +92,14 @@ export function peopleFoes(a, i, K) {
   const out = [], W = WILD_FOES.raiders; if (!K || !a.peoples || !a.fauna || a.f.ocean[i]) return out;
   const j = faunaCell(a, i);
   for (const pe of a.peoples) {
-    const band = REALM_BANDS[pe.id]; if (!band || pe.id === K.people) continue;
+    const band = REALM_BANDS[pe.id] || HOST_BANDS[pe.id]?.base; if (!band || pe.id === K.people) continue;
     const v = pe.u[j] * pe.K[j]; if (!(v >= WILD_FOES.at)) continue;
     const dislike = (RELATIONS[relOf(K.people)]?.[relOf(pe.id)] ?? 0) < 0;
     const war = !!K.realm && (a.realms || []).some(r => r.people === pe.id && atWar(a, K.realm, r.id));
-    if (!dislike && !war) continue;
+    if (!war && (!dislike || WAR_ONLY_BANDS.includes(pe.id))) continue;
     const x = Math.min(W.cap, v);
-    out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band, people: pe.id});
+    const host = (a.realms || []).find(r => r.people === pe.id && (war ? atWar(a, K.realm, r.id) : true));   // (the humans' host by what that realm has built)
+    out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band: host ? realmBand(a, host.id, pe.id) || band : band, people: pe.id});
   }
   return out;
 }

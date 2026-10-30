@@ -13,6 +13,7 @@
 //   roles — the band's leaning in its fighters' roles ({role: ×} over the species' weights, data/roles.js ROLE_MIX);
 //   least — the share of heads of one species a role must have at least ({shield: 0.2}: one shield-bearer in five)
 //           (`roles` and `least` are for a band without links; none of the bands uses them now)
+//   champion — its strongest fighter grows into a champion (data/conditions.js mark `champion`, data/migrations.js): one a band
 //   links — the links it comes in ([[link, weight], …]: data/roles.js LINKS): a band of links fills them place by place;
 //           without — its species drawn one by one, each in a role of its own (`roles`, `least` then apply)
 //   ranks — the band's names for its ranks ({officer: 'десятник'}: data/ranks.js)
@@ -25,7 +26,9 @@ import {ITEMS} from './items.js';
 import {hasSense} from './tongues.js';
 import {expectedStrength} from '../agents/strength.js';
 import {chanceWeight} from './chance.js';
-import {roleKit, drawRole, mixOf, LINKS} from './roles.js';
+import {roleKit, drawRole, mixOf, LINKS, ROLE_TIERS, COMBAT_ROLES} from './roles.js';
+import {mountUp} from '../agents/mount.js';
+import {golemOf, GOLEM_METALS} from './constructs.js';
 import {refreshBody} from '../agents/special.js';
 
 // a band that has lost many to the colony comes for the one who killed them; scouts come first, few
@@ -46,6 +49,7 @@ export function memberStrength(species, t, role = null) {
   return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role),
     prepare: a => {
       if (SPECIES.get(species).behaviours) { a.marks = ['trained']; refreshBody(a); }   // a band's beast is trained (data/migrations.js)
+      if (role && COMBAT_ROLES.get(role)?.mount) mountUp(a, COMBAT_ROLES.get(role).mount);   // a rider and its beast (agents/mount.js)
       a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
     }});
 }
@@ -97,6 +101,21 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
   return out.slice(0, 18);
 }
 
+// the war beasts a beast-driver brings (role `lead`, data/roles.js): of the land's beasts and monsters, as thick as they
+// live there (o.here, a world cell) or the band's own `led` kinds on the polygon
+export const LED = ['wolf', 'boar', 'varg', 'bear'];
+function withLed(rng, list, o, led = LED) {
+  const here = o?.here ? Object.entries(o.here).filter(([id, v]) => v > 0 && ['beast', 'monster'].includes(SPECIES.get(id).kind) && SPECIES.get(id).mind !== 'sentient') : led.map(id => [id, 1]);
+  if (!here.length) return list;
+  const out = [...list];
+  for (const m of list) {
+    const L = m.role && COMBAT_ROLES.get(m.role)?.lead; if (!L) continue;
+    const n = L[0] + Math.floor(rng() * (L[1] - L[0] + 1));
+    for (let k = 0; k < n && out.length < 18; k++) out.push({species: weighted(rng, here)});
+  }
+  return out;
+}
+
 // a budget counted in such bandits, for the bands that change their make-up with size
 const heads = (budget, t) => budget / raiderStrength(t);
 
@@ -142,6 +161,8 @@ function withTorch(species, kit) {
   return hands < 2 || !back ? [...kit, TORCH_ITEM] : kit;   // (both hands taken: behind the back — agents/equipment.js dress)
 }
 
+// the golem a dwarven band of level t brings: of the best metal its level opens (data/roles.js ROLE_TIERS), none below bronze
+const golemFor = t => { const k = ROLE_TIERS.from.reduce((b, f, i) => (t >= f ? i : b), 0); return k > 0 ? golemOf(GOLEM_METALS[Math.min(k, GOLEM_METALS.length) - 1]) : null; };
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };
 
@@ -153,25 +174,60 @@ RAID_BANDS.registerAll([
     members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = 'Налётчик'; }})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
-  {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
+  {id: 'orcs', label: 'ватага зеленокожих', kind: 'sentient',
     goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
-    links: [['warband', 3], ['swarm', 1]], ranks: {officer: 'сотник', boss: 'вождь'},
+    links: [['warband', 3], ['swarm', 1], ['riders', 1], ['takers', 1]], ranks: {officer: 'сотник', boss: 'вождь'}, champion: true,
     chance: {weight: 2, threat: 4, below: 0.5},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0]], t, o),
-    message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
+    // all the greenskin kinds in one band (data/peoples.js orcs `kin`); a beast-driver brings the war beasts of the land
+    members: (w, rng, budget, t, o) => withLed(rng, fill(rng, budget, [['orc', 3], ['goblin', 2], ['gnoll', 1], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0], ['troll', heads(budget, t) >= 12 ? 0.3 : 0]], t, o), o),
+    message: (n, group) => `Набег! Ватага зеленокожих: ${[...new Set(group.filter(a => !a.warBeast).map(a => SPECIES.get(a.species).plural))].join(', ')}${group.some(a => a.mount) ? ', с наездниками' : ''}${group.some(a => a.warBeast) ? ' и боевыми зверями' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
-    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, links: [['swarm', 3], ['line', 1]], ranks: {officer: 'заводила', boss: 'главарь'},
+    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, links: [['swarm', 3], ['line', 1], ['spiders', 1]], ranks: {officer: 'заводила', boss: 'главарь'},
     chance: {weight: 1.5},
     // a big band rides: wargs out of the hills, giant spiders out of the deep wood (the tribes' beasts, data/lairs.js)
     members: (w, rng, budget, t, o) => fill(rng, budget, [['goblin', 1], ['varg', heads(budget, t) >= 4 ? 0.3 : 0], ['spider', heads(budget, t) >= 6 ? 0.2 : 0]], t, o),
     message: (n, group) => `Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит${group.some(a => a.species === 'varg') ? '; верхом на варгах' : ''}${group.some(a => a.species === 'spider') ? '; с ними гигантские пауки' : ''}`},
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
-    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]], links: [['pack', 2], ['line', 1]], ranks: {officer: 'клык', boss: 'вожак стаи'},
+    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]], links: [['pack', 2], ['line', 1], ['hyenas', 1]], ranks: {officer: 'клык', boss: 'вожак стаи'},
     chance: {weight: 1.5, threat: 3, below: 0.4},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o),
+    members: (w, rng, budget, t, o) => withLed(rng, fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o), o, ['hyena']),   // (a beast-driver of theirs brings hyenas)
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
+
+  // a dwarven war party (data/seam.js REALM_BANDS): only a dwarven realm at war sends it (`world`); it takes no captives
+  // and burns nothing. Past a level its forges send golems along (data/constructs.js) — of the best metal its level opens
+  // (data/roles.js ROLE_TIERS), more of them with the hammer-smiths and the forge-masters
+  {id: 'dwarves', label: 'дварфийская дружина', kind: 'sentient', world: true, noCaptives: true,
+    goals: () => [['kill', 2], ['loot', 1]], nerve: -0.15,
+    links: [['anvil', 3], ['berserks', 1]], ranks: {officer: 'хирдман', boss: 'тан'},
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => {
+      const g = golemFor(t), n = heads(budget, t);
+      return fill(rng, budget, [['dwarf', 3], ...(g && n >= 5 ? [[g, n >= 10 ? 0.6 : 0.3]] : [])], t, o);
+    },
+    message: (n, group) => `Дварфийская дружина: ${n}${group.some(a => SPECIES.get(a.species).mechanism) ? ', с ними големы' : ''}. Пленных дварфы не берут`},
+
+  // the humans' host (data/seam.js REALM_BANDS, atlas/towns.js realmBand): a realm's men at war — the levy and a wall of
+  // shields; the knights and a champion when the realm has a tilt-yard (`k`), the horse-knights with a hippodrome (`h`), the
+  // cutthroats with a den (`d`): one band for each of what the realm has built (`host`, `host:k`, `host:kh`, …). Only from
+  // the world map (`world`)
+  ...['', 'k', 'h', 'kh', 'd', 'kd', 'hd', 'khd'].filter(s => !s.includes('h') || s.includes('k')).map(s => ({id: s ? `host:${s}` : 'host', label: 'дружина людей', kind: 'sentient', world: true,
+    goals: (w, g) => [['loot', 2], ['kill', 1 + feud(w)], ['burn', 0.4 * torches(w)], ['scout', scouting(w, g)]],
+    links: [['levy', 2], ['wall', 1], ...(s.includes('k') ? [['knights', 2]] : []), ...(s.includes('h') ? [['cavalry', 1]] : []), ...(s.includes('d') ? [['raid', 1]] : [])],
+    ranks: {officer: 'сотник', boss: 'воевода'}, champion: s.includes('k'),
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = m.role === 'knight' || m.role === 'horseknight' ? 'Рыцарь' : 'Ратник'; }})),
+    message: (n, group) => `Дружина людей: ${n}${group.some(a => a.fightRole === 'knight' || a.fightRole === 'horseknight') ? ', с рыцарями' : ''}${group.some(a => a.mount) ? ' и конницей' : ''}`})),
+
+  // an elven war party (data/seam.js REALM_BANDS): only an elven realm at war sends it (`world`, WAR_ONLY_BANDS); it takes no
+  // captives and burns nothing: bows from the trees, the caller of beasts behind them
+  {id: 'elves', label: 'отряд эльфов', kind: 'sentient', world: true, noCaptives: true,
+    goals: () => [['kill', 2], ['loot', 0.5]], nerve: 0.05,
+    links: [['grove', 2], ['wardens', 1], ['volley', 1]], ranks: {officer: 'страж', boss: 'владыка леса'},
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['elf', 1]], t, o),
+    message: (n, group) => `Отряд эльфов: ${n}${group.some(a => a.fightRole === 'summoner') ? ', с призывателем' : ''}. Пленных эльфы не берут`},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],

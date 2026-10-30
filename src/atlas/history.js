@@ -7,11 +7,11 @@
 import {mulberry, seedNumber} from '../core/rng.js';
 import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
-import {SEASONS_PER_YEAR, SEASON_DAYS} from '../data/atlas.js';
+import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {ERAS, WILD_YEARS, EPIC_YEARS, FAUNA} from '../data/history.js';
 import {ELDER_YEARS, YOUNG_YEARS, WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
-import {arrive, stepPeoples, townLabel} from './peoples.js';
+import {arrive, stepPeoples, seasonTowns, townLabel} from './peoples.js';
 import {townFx} from './towns.js';
 import {wearRoads} from './roads.js';
 import {sailLanes} from './sea.js';
@@ -23,12 +23,6 @@ import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
-import {stepEconomies} from './economy.js';
-import {stepBuilds} from './build.js';
-import {stepTrade} from './trade.js';
-import {stepTreasury} from './treasury.js';
-import {stepMinds} from './mind.js';
-import {migrate} from './demography.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom} from './kingdom.js';
 
@@ -140,19 +134,13 @@ export function stepHistory(a, onDay = null) {
     if ((H.step - wildEnd) % (SEA.every * SEASONS_PER_YEAR) === 0)
       for (const [p, q] of sailLanes(a)) say(a, `Корабли ${townLabel(p, 2)} ${p.name} проложили морской путь в ${townLabel(q, 1)} ${q.name}.`);
   }
+  if (H.era !== 'wild' && season !== 'spring') seasonTowns(a, t => say(a, t));
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepCalamities(a);
-  // the towns' households: a season of the flows of their buildings (no die: atlas/economy.js)
-  stepEconomies(a, SEASON_DAYS);
-  if (H.era !== 'wild') stepMinds(a, t => say(a, t));   // the realms' councils: course, wind, roles (atlas/mind.js)
-  stepTreasury(a, SEASON_DAYS, t => say(a, t));   // the towns' dues into the realm's treasury; it pays the armies, upkeep and court (atlas/treasury.js)
-  stepTrade(a, SEASON_DAYS);   // what one realm has to spare for what another lacks, down the routes (atlas/trade.js)
-  if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their buildings and settlers (atlas/build.js)
-  if (H.era !== 'wild') migrate(a);   // the people move to the towns they like better (atlas/demography.js)
   stepParties(a, rnd, t => say(a, t), onDay);
   freeVassals(a);   // the lairs that fell this season, by any hand, free their vassals (atlas/leaders.js)
   // the year's beaten raids of the tribes and the dead, in one line
@@ -192,7 +180,7 @@ export function stepHistory(a, onDay = null) {
       const realms = (a.realms || []).filter(r => r.people === pe.id && mine.some(t => t.realm === r.id)).length;
       parts.push(`${pe.P.label} — ${realms} ${plural(realms, 'держава', 'державы', 'держав')}, ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
     }
-    if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
+    if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и зеленокожие.`);
     else {
       const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
       H.endTold = true;

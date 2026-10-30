@@ -44,6 +44,7 @@ export function pieceLasts(u, skill, fine = 0) {
 // may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
 // which the stock holds too little that it may work, rules it out
 export function raceMayCraft(w, a, r) {
+  if (r.races && !r.races.includes(a.species)) return false;   // a people's own way of making a thing (data/recipes.js races)
   if (r.makes?.item && ITEMS.has(r.makes.item) && !mayWield(a.species, ITEMS.get(r.makes.item).form)) return false;   // a form its race will not touch
   for (const [res, v] of Object.entries(r.cost)) {
     if (FAMILY_RES[res]) { const ok = Object.entries(kindsOf(w, FAMILY_RES[res])).filter(([id]) => mayMake(a.species, id)).reduce((s, [, n]) => s + n, 0); if (ok + 1e-6 < v) return false; }
@@ -122,7 +123,7 @@ const MELEE = () => melee || (melee = ITEMS.filter(d => d.slot === 'hand' && d.m
 // someone alive in the colony can take this recipe. A T1 recipe anyone can; otherwise the living are looked
 // through directly, not through the per-tick list (reading that list early in a tick would fix it for the
 // rest of the tick and change what other systems see)
-export const anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some(a => a.faction === 'colony' && !a.dead && canMake(a, r));
+export const anyoneCan = (w, r) => (!recipeNeed(r) && !r.races) || w.agents.some(a => a.faction === 'colony' && !a.dead && (!r.races || r.races.includes(a.species)) && (!recipeNeed(r) || canMake(a, r)));   // (a recipe of a people: one of that people)
 
 // The order a worker would start here: what the colony wants most among what they can make and the stock
 // affords. Without a worker: what anyone in the colony could start.

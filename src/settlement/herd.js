@@ -8,12 +8,12 @@
 //     rest; an animal that goes hungry for a few days breaks out and goes wild again;
 //   - a fed goat gives milk (little in winter) and grows wool, which the herder takes;
 //   - with two goats, room in the pen and warm weather a kid may be born; kids grow up in `grownDays`;
-//   - when the colony is starving, a goat is slaughtered for meat (the youngest male first, so to say).
+//   - grown surplus is slaughtered for meat while supplies are low; a pair is kept for breeding.
 // Tame mules work for the colony: their `effects` join the colony's modifiers (settlement/mods.js).
 import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
 import {SPECIES, brainOf} from '../data/species.js';
-import {BUILDINGS} from '../data/buildings.js';
+import {BUILDINGS, penK} from '../data/buildings.js';
 import {DAY, HOUR} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
 import {log} from '../core/log.js';
@@ -28,12 +28,12 @@ export {HERD};   // (data/colony.js)
 const tameOf = a => SPECIES.get(a.species).tame;
 // the per-tick lists are out of date once an animal joins, leaves or dies
 const forget = w => { if (w.scratch) { delete w.scratch.herd; delete w.scratch.tameTargets; delete w.scratch.chores; } };
-export const herd = w => perTick(w, 'herd', () => w.agents.filter(a => a.tame && !a.dead));
+export const herd = w => perTick(w, 'herd', () => w.agents.filter(a => a.tame && !a.dead && !a.warBeast && !a.summoned));
 export const pens = w => w.buildings.filter(b => b.done && b.key === 'pen');
-export const penSpace = w => pens(w).reduce((s, b) => s + BUILDINGS.get(b.key).pen, 0);
+export const penSpace = w => pens(w).reduce((s, b) => s + BUILDINGS.get(b.key).pen, 0) * penK(w);   // (the greenskins keep twice the herd: data/buildings.js PEN_K)
 export const penUsed = w => herd(w).reduce((s, a) => s + tameOf(a).space, 0);
 export const penRoom = w => penSpace(w) - penUsed(w);
-export const isTameable = o => !o.dead && !o.tame && o.faction === 'wild' && o.owner == null && !!SPECIES.get(o.species).tame;
+export const isTameable = o => !o.dead && !o.tame && !o.warBeast && !o.summoned && o.faction === 'wild' && o.owner == null && !!SPECIES.get(o.species).tame;
 
 // wild animals the herder could go for now: room for them in the pen, bait in the stock, not too far
 // (the herder's runner leaves a beast another herder is already after to them: `tamerAt` is renewed
@@ -149,6 +149,15 @@ export function stepHerd(w) {
     const T = SPECIES.get(sp).tame; if (!T.breed) continue;
     const grown = herd(w).filter(a => a.species === sp && a.age >= T.grownDays && a.fed > 0.6);
     for (let k = 0; k + 1 < grown.length; k += 2) if (penRoom(w) >= T.space && w.rngs.wild() < T.breed) bear(w, grown[k]);
+  }
+  // A working pen supplies meat before famine: slaughter a grown surplus, keeping each kind's breeders.
+  const people = colonists(w).length;
+  if (people && foodTotal(w) < people * HERD.meatBelow) {
+    for (const sp of new Set(herd(w).map(a => a.species))) {
+      const T = SPECIES.get(sp).tame; if (!T?.breed) continue;
+      const grown = herd(w).filter(a => a.species === sp && a.age >= T.grownDays).sort((x, y) => y.age - x.age);
+      if (grown.length > HERD.breeders) { slaughter(w, grown[0], 'Загон снабжает припасами'); break; }
+    }
   }
   // winter: what the hay cannot feed till spring goes for meat, the youngest goats first, mules last;
   // a couple of goats are kept for breeding whatever happens. Planned on the first day of winter, then

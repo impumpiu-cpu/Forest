@@ -562,7 +562,7 @@ const cap1 = s => s[0].toUpperCase() + s.slice(1);
 export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём', it: 'его'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней', it: 'её'},
   m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём', it: 'его'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них', it: 'их'}};
 export const acc = L => L.labelAcc || L.label;
-// how many captives a lair holds, in words («люди 3, гномы 1») — for the chronicle and the readout
+// how many captives a lair holds, in words («люди 3, дварфы 1») — for the chronicle and the readout
 export const captiveCount = l => Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} ${n}`).join(', ');
 // «with the griffins» — the instrumental plural for the few owners
 const INSTR = {griffin: 'грифонами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};

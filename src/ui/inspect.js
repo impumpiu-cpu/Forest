@@ -6,14 +6,13 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, CATEGORIES, CHAINS, goodPrice} from '../data/townBuildings.js';
+import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
 import {alignLabel} from '../data/values.js';
 import {townAt, townLabel} from '../atlas/peoples.js';
 import {townFx, room, realmMetalWords} from '../atlas/towns.js';
-import {projectOf} from '../atlas/build.js';
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
@@ -22,8 +21,6 @@ import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
-import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
-import {roseOf, townLean} from '../atlas/mind.js';
 
 const seasonWord = s => seasonLabel(s);
 const KIND = {raid: 'набег', brood: 'выводок', army: 'войско', leader: 'отряд главаря', dragon: 'дракон', caravan: 'караван'};
@@ -80,40 +77,6 @@ function deedsHtml(list) {
   return `<p class="deeds">${list.map(id => { const d = DEEDS.get(id); return `<span class="deed lane-${d.band}" title="${esc(d.note)}">${esc(id)} <small>${esc(DEED_BAND_LABELS[d.band])}</small></span>`; }).join(' ')}</p>`;
 }
 
-// the realm's treasury in its seat (atlas/treasury.js): what it holds, and the last season's ledger
-const LEDGER = {grant: 'гранты городам', grantWorks: 'гранты стройке', works: 'стройке', guard: 'дружина', court: 'двор', tribute: 'дань', ransom: 'выкуп', tax: 'подати', duty: 'пошлины', loot: 'добыча', army: 'войско', wage: 'мастера', upkeep: 'содержание и двор', help: 'помощь городам', corruption: 'коррупция', looted: 'разграблено'};
-function treasuryHtml(R) {
-  const T = R.treasury;
-  if (!T) return '';
-  const worth = g => goodPrice(g) || 1, held = Object.entries(T.stock).filter(([, v]) => v > 0).sort((p, q) => q[1] * worth(q[0]) - p[1] * worth(p[0]));
-  const top = held.filter(([g, v]) => v * worth(g) >= 1).slice(0, 6).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`).join(', ');
-  const total = held.reduce((s, [g, v]) => s + v * worth(g), 0);
-  const line = o => Object.entries(o || {}).filter(([, v]) => v >= 1).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${LEDGER[k] || k} ${Math.round(v)}`).join(', ');
-  return row('казна', `${Math.round(total)} зол.${top ? `: ${esc(top)}` : ''}`) +
-    (T.last ? row('за сезон', `приход: ${line(T.last.in) || '—'}; расход: ${line(T.last.out) || '—'}`) : '');
-}
-
-// the realm's council (atlas/mind.js): its people's rose, its course and wind along the three vectors, the season's needs,
-// what it spent freely and how its towns follow
-const vecLine = v => VECTOR_IDS.map(k => `${VECTORS[k]} ${num(v?.[k] || 0)}`).join(', ');
-const FLAG_LABELS = {hunger: 'голод', crowd: 'теснота', threat: 'угроза', short: 'нехватки', hoard: 'казна пуста'};
-function mindHtml(a, R) {
-  const M = R.mind;
-  if (!M) return '';
-  const flags = Object.entries(M.flags || {}).filter(([, v]) => v >= 0.05).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${FLAG_LABELS[k] || k} ${num(v)}`).join(', ');
-  const roles = {};
-  for (const t of realmTowns(a, R.id)) if (t.role) (roles[t.role] ||= []).push(t.name);
-  const spent = VECTOR_IDS.filter(k => (M.spent?.[k] || 0) >= 1).map(k => `${VECTORS[k]} ${Math.round(M.spent[k])}`).join(', ');
-  return `<div class="ir"><span>совет</span></div>` +
-    row('роза народа', vecLine(roseOf(R.people))) +
-    row('курс', vecLine(M.course)) +
-    row('ветер', `${vecLine(M.wind)}; ведёт ${VECTORS[M.lead]}`) +
-    row('нужды сезона', flags || 'спокойно') +
-    row('роли', VECTOR_IDS.filter(k => roles[k]).map(k => `${VECTORS[k]}: ${esc(roles[k].join(', '))}`).join('; ') || null) +
-    row('потратил сверх долга', spent ? `${spent} зол.` : 'ничего') +
-    row('послушание', `${Math.round((M.obey ?? 1) * 100)}%, запас казны ${M.sense?.reserve == null ? '?' : M.sense.reserve >= 999 ? 'без долгов' : `${Math.round(M.sense.reserve)} сез.`}`);
-}
-
 function realmHtml(a, R) {
   if (!R) return '';
   const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race), sub = subOf(a, R.id);
@@ -124,9 +87,9 @@ function realmHtml(a, R) {
   }).join('');
   const armies = (a.parties || []).filter(p => p.kind === 'army' && p.owner === R.id && p.state !== 'gone').map(p => { const t = a.towns.find(x => x.id === p.target); return `${Math.round(p.men)} бойцов${t ? ` → ${townLabel(t, 1)} ${t.name}` : ''}, ${STATE[p.state] || p.state}`; }).join('; ');
   const Kd = R.kingdom;
-  const kingdom = Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
+  const kingdom = (R.gold != null ? row('казна державы', `${Math.round(R.gold)} зол.${R.spent ? `; за год на войско ${Math.round(R.spent.army)} (${Math.round(R.spent.men)} человек в гарнизонах), на стройку ${Math.round(R.spent.build)}` : ''}`) : '') + (Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
     row('разруха', RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ') || 'нет') +
-    row('двор', OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ')) : '';
+    row('двор', OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ')) : '');
   return sec(`Держава: ${realmLabel(a, R.id)}`,
     row('народ', `${esc(sub?.plural || P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +
@@ -134,29 +97,11 @@ function realmHtml(a, R) {
     row('основана', R.founded != null ? `${R.founded} г.${R.from != null ? `, расколом от «${esc(realmOf(a, R.from)?.name || '…')}»` : ''}` : null) +
     row('металлы', cap ? (realmMetalWords(a, cap).join(', ') || 'только кость, дерево и камень') : null) +
     row('войска', armies || null) +
-    treasuryHtml(R) +
     row('в полоне увели', R.captives && Object.values(R.captives).some(v => v > 0) ? captiveCount(R) : null) +
     kingdom +
-    mindHtml(a, R) +
     (rels ? `<div class="ir"><span>отношения</span></div><ul class="rels">${rels}</ul>` : '') +
     `<div class="ir"><span>нравы</span></div>${deedsHtml(sp.deeds?.realm)}` +
     `<div class="ir"><span>о чём думал двор</span></div>${thoughtsHtml(R)}`);
-}
-
-// the building under way (atlas/build.js): its work done and the materials it still waits for
-function buildingHtml(t) {
-  const w = t.project && t.works?.[t.project], P = w && projectOf(t);
-  if (!P) return null;
-  const wait = Object.entries(w.mat).filter(([, v]) => v > 0.5).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`);
-  return `${esc(P.name)}: работа ${Math.min(100, Math.round(100 * w.done / P.days))}%${wait.length ? `, ждёт: ${esc(wait.join(', '))}` : ''}`;
-}
-
-// the town's role in its realm (atlas/mind.js): the flag its council set, how it leans, its purse
-function roleLine(a, t) {
-  const purse = Math.round(t.econ?.stock?.gold || 0);
-  const what = t.role ? `${VECTORS[t.role]}` : t.capital ? 'столица: по ветру державы' : 'не назначена';
-  const lean = townLean(t), against = t.role && lead(lean) !== t.role;
-  return `${what}${against ? ` (а строит больше ${VECTORS[lead(lean)]})` : ''}; кошель ${purse} зол.`;
 }
 
 function townHtml(a, t) {
@@ -171,32 +116,21 @@ function townHtml(a, t) {
   const sieged = (a.parties || []).find(p => p.kind === 'army' && p.state === 'stay' && p.target === t.id);
   const head = sec(`${townLabel(t).replace(/^./, c => c.toUpperCase())} ${t.name}`,
     row('народ', `${esc(P.label)}${folk ? `, среди них ${esc(folk)}` : ''}`) +
-    row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}${t.content != null ? `, довольство ${Math.round(t.content * 100)}%` : ''}`) +
+    // the town's economy by its buildings' flows (atlas/economy.js: worked out each season, not saved)
+    (t.econ ? row('хозяйство', `руки ${Math.round(Math.min(t.econ.jobs, t.econ.hands))} из ${Math.round(t.econ.hands)}${t.slaves ? ` (рабов ${Math.round(t.slaves)})` : ''}; постройки кормят ${Math.round(t.econ.feeds)} жителей`
+      + (Object.keys(t.econ.short).length ? `; не хватает: ${esc(Object.entries(t.econ.short).sort((p, q) => q[1] - p[1]).slice(0, 4).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v * 100)}%`).join(', '))}` : '')) : '') +
+    // its money (atlas/treasury.js): the treasury, the store, the season's buying and selling, the dearest and the cheapest goods
+    (t.gold != null ? row('казна', `${Math.round(t.gold)} зол.${t.peopleGold != null ? `; у жителей ${Math.round(t.peopleGold)}, у мастеров ${Math.round(t.makersGold)}` : ''}${t.needs ? `; нужды закрыты ${Math.round(t.needs.basic * 100)}%, достаток ${Math.round(t.needs.comfort * 100)}%` : ''}${t.unpaid ? `; содержание не оплачено на ${Math.round(t.unpaid * 100)}%` : ''}${t.trade ? `; за сезон: жители купили ${Math.round((t.trade.people || 0) + (t.trade.imported || 0))}, зарплаты ${Math.round(t.trade.wages || 0)}, налоги ${Math.round(t.trade.tax || 0)}, постройки дали ${Math.round(t.trade.works || 0)}, купцам ${Math.round(t.trade.merchants || 0)}, мастерские купили у городов ${Math.round(t.trade.bought || 0)}, город продал ${Math.round(t.trade.sold || 0)}, содержание ${Math.round(t.trade.upkeep || 0)}${t.trade.aid ? ` (держава доплатила ${Math.round(t.trade.aid)})` : ''}${t.trade.wasted ? `; пропало излишков на ${Math.round(t.trade.wasted)}` : ''}` : ''}${t.garrison ? `; гарнизон державы ${Math.round(t.garrison)}` : ''}${t.grant ? `; на стройку от державы ${Math.round(t.grant)}` : ''}`) : '') +
+    (t.stock && Object.keys(t.stock).length ? row('склад', esc(Object.entries(t.stock).sort((p, q) => q[1] * goodPrice(q[0]) - p[1] * goodPrice(p[0])).slice(0, 6).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`).join(', '))) : '') +
+    (t.market && Object.keys(t.market).length ? row('цены', esc(Object.entries(t.market).sort((p, q) => q[1] - p[1]).filter((x, k, l) => k < 3 || k >= l.length - 3).map(([g, k]) => `${TOWN_GOODS.get(g).label} ×${k.toFixed(2)}`).join(', '))) : '') +
+    row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}`) +
     row('основан', `${t.founded} г.${t.capital ? ', столица' : ''}`) +
     row('угодья', `в ${siteRadius(a, t)} клетках; ${feed || ''}`) +
     row('даёт', gives || 'ничего сверх жилья') +
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
-    row('роль', t.realm != null ? roleLine(a, t) : null) +
-    row('строится', buildingHtml(t)) +
-    (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')) +
-    economyHtml(t));
+    (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);
-}
-
-// the town's household (atlas/economy.js): for each good the rate a day (+ made, − used up) and the stock, by branch
-const num = v => (Math.abs(v) >= 100 ? Math.round(v) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).toString().replace('.', ',');
-function economyHtml(t) {
-  const E = t.econ;
-  if (!E) return row('хозяйство', 'ещё не считалось');
-  const rows = TOWN_GOODS.all().filter(g => Math.abs(E.rate[g.id] || 0) > 0.001 || (E.stock[g.id] || 0) >= 0.5)
-    .sort((x, y) => Object.keys(CHAINS).indexOf(x.chain) - Object.keys(CHAINS).indexOf(y.chain))
-    .map(g => {
-      const r = E.rate[g.id] || 0, s = E.stock[g.id] || 0, low = E.short.includes(g.id);
-      return `<li class="${low ? 'short' : ''}"><span>${esc(g.label)}</span><b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : r < 0 ? '−' : ''}${num(Math.abs(r))}/день</b><i>${num(s)}${g.unit === 'рацион' ? ' рац.' : g.unit === 'зол. ценности' ? ' зол.' : ''}</i></li>`;
-    }).join('');
-  return `<div class="ir"><span>хозяйство</span><b>загрузка ${Math.round(E.load * 100)}%, ${E.scale < 1 ? `рук ${Math.round(E.scale * 100)}%` : `размах ×${num(E.scale)}`}${E.short.length ? `; не хватает: ${esc(E.short.map(id => TOWN_GOODS.get(id).label).join(', '))}` : ''}</b></div>
-    <ul class="econ"><li class="head"><span>благо</span><b>в день</b><i>на складе</i></li>${rows}</ul>`;
 }
 
 function lairHtml(a, l) {

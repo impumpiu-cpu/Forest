@@ -45,6 +45,8 @@ export const HERD = {
   reach: 75,                // how far from the camp the herder goes for a wild one
   slaughterBelow: 1.5,      // food per colonist below which a goat is slaughtered…
   keepGoats: 2,             // …as long as this many are left
+  meatBelow: 4,            // regular slaughter of grown surplus livestock below this food per colonist
+  breeders: 2,             // keep this many grown, breeding animals of each kind
 };
 
 export const THREAT = {

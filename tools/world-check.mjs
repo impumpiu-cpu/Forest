@@ -90,7 +90,7 @@ scene_('W01', 'главарь гоблинов: город людей в дос�
   return lair.strength > s0 || `добыча не дошла до логова: ${s0} → ${lair.strength}`;
 });
 
-scene_('W02', 'главарь не идёт на город народа, который его раса терпит: гоблины и орки — одна память зеленокожих', () => {
+scene_('W02', 'культ войны: главарь гоблинов идёт и на город зеленокожих — своя родня тоже враг', () => {
   const a = world();
   const plain = cellOf(a, i => ['steppe', 'savanna', 'meadow'].includes(biomeAt(a, i)?.id) && i % a.w > a.w * 0.3 && i % a.w < a.w * 0.7);
   const {town} = landPeople(a, 'orcs', plain);
@@ -99,7 +99,7 @@ scene_('W02', 'главарь не идёт на город народа, кот
   if (spot < 0) return 'нет места для стана';
   const lair = lead(a, addLair(a, 'goblins', spot));
   const o = ask(a, lair, ['raid']);
-  return o === null || `гоблины пошли на орков: ${o[3].id} → ${o[0].target}`;
+  return (o !== null && o[0].target === town.id) || `гоблины не пошли на зеленокожих: ${o ? `${o[3].id} → ${o[0].target}` : 'ничего'}`;
 });
 
 scene_('W03', 'главарь подчиняет слабого соседа: данник платит; соперника — бьёт', () => {
@@ -264,7 +264,7 @@ function court(a, realm, list = null, r = () => 0, season = 'spring') {
   return o;
 }
 
-scene_('W12', 'державы: при общей границе и вражде люди объявляют войну гномам; эльфы войну не начинают, но отвечают войском', () => {
+scene_('W12', 'державы: при общей границе и вражде люди объявляют войну дварфам; эльфы войну не начинают, но отвечают войском', () => {
   const a = world(), n = neighbours(a, 'humans', 'dwarves', -4);
   if (!n) return 'соседи не высадились';
   if (!n.rel.border) return 'граница не легла';
@@ -291,7 +291,7 @@ scene_('W13', 'держава в войне: ход её — войско из �
   if (!army || army.target !== n.t2.id) return `войско не вышло: ${n.A.lines.join(' | ')}`;
   if (n.rel.war.turn !== n.B.id) return 'ход не перешёл';
   if (court(a, n.A, ['march']) !== null) return 'второе войско в тот же год';
-  return court(a, n.B, ['march']) === null || 'гномы собрали войско, пока людское в пути';
+  return court(a, n.B, ['march']) === null || 'дварфы собрали войско, пока людское в пути';
 });
 
 scene_('W14', 'усталость от войны: мир — красная полоса, он прежде набега и войска', () => {
@@ -302,7 +302,7 @@ scene_('W14', 'усталость от войны: мир — красная п�
   return (o?.[3].id === 'makePeace' && o[3].band === 'red' && !n.rel.war) || `предложено: ${o ? `${o[3].id} (${o[3].band})` : 'ничего'}`;
 });
 
-scene_('W15', 'набег державы: орки с воинами грабят нелюбимый город рядом (не больше raidsPerYear в год); люди набегами не ходят', () => {
+scene_('W15', 'набег державы: орки с воинами грабят нелюбимый город рядом (не больше raidsPerYear в год, у культа войны — × raids); люди набегами не ходят', () => {
   const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
   if (!n) return 'соседи не высадились';
   n.t1.pop = 300; n.t1.built.push('palisade');
@@ -311,7 +311,7 @@ scene_('W15', 'набег державы: орки с воинами грабя�
   if (o?.[3].id !== 'raidTown') return `предложено: ${o ? o[3].id : 'ничего'}`;
   if (!(n.t2.pop < pop0) && !n.A.lines.some(t => /отбили набег/.test(t))) return `набег не состоялся: ${n.A.lines.join(' | ')}`;
   for (let k = 0; k < 6; k++) court(a, n.A, ['raidTown']);
-  if (n.A.raids.n > DIPLOMACY.raidsPerYear) return `набегов за год ${n.A.raids.n}`;
+  if (n.A.raids.n > DIPLOMACY.raidsPerYear * (WORLD_PEOPLES.get(n.A.people)?.warCult?.raids ?? 1)) return `набегов за год ${n.A.raids.n}`;   // (the cult of war raids the more: data/peoples.js warCult.raids)
   if (realmSpecies(a, n.B).deeds.realm.includes('raidTown')) return 'люди умеют ходить набегом';
   return true;
 });
@@ -356,14 +356,14 @@ scene_('W17', 'стан гоблинов осенью идёт за пленны
   return lair.captives[town.people] < 40 || 'пленные не тают';
 });
 
-scene_('W18', 'держава орков с воинами уводит пленных из нелюбимого города рядом: город орков растёт; у людей такого дела нет', () => {
+scene_('W18', 'держава орков с воинами уводит пленных из нелюбимого города рядом: у города орков прибавляется рабов; у людей такого дела нет', () => {
   const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
   if (!n) return 'соседи не высадились';
   n.t1.pop = 300; n.t1.built.push('palisade'); n.t2.pop = 300;
-  const p1 = n.t1.pop, p2 = n.t2.pop, o = court(a, n.A, ['captives']);
+  const s1 = n.t1.slaves || 0, p2 = n.t2.pop, o = court(a, n.A, ['captives']);
   if (o?.[3].id !== 'captives') return `предложено: ${o ? o[3].id : 'ничего'}`;
   const took = n.A.captives?.humans || 0;
-  if (took > 0 && !(n.t1.pop > p1 && n.t2.pop < p2)) return `полон взят, а города не изменились: ${p1} → ${n.t1.pop}, ${p2} → ${n.t2.pop}`;
+  if (took > 0 && !((n.t1.slaves || 0) > s1 && n.t2.pop < p2)) return `полон взят, а города не изменились: рабов ${s1} → ${n.t1.slaves || 0}, ${p2} → ${n.t2.pop}`;   // they become its slaves (atlas/economy.js)
   if (!took && !n.A.lines.some(t => /отбили/.test(t))) return `ни полона, ни отпора: ${n.A.lines.join(' | ')}`;
   return !realmSpecies(a, n.B).deeds.realm.includes('captives') || 'люди ходят за пленными';
 });
@@ -414,7 +414,8 @@ function allianceWorld() {
 }
 scene_('W20', 'союз против бедствия: державы рядом заключают союз, шлют войска, сильные войска берут логово — босс пал от союза; после лет мира союз распадается', () => {
   const S = allianceWorld(); if (S.error) return S.error;
-  for (const p of S.armies()) p.might = 1e6;
+  // Strength is derived from survivors now: scale its multiplier, not only its cached rating.
+  for (const p of S.armies()) { p.force *= 1e6 / p.might; p.might = 1e6; }
   for (let y = 0; y < 6 && S.cal().phase === 'rise'; y++) S.run(1);
   if (S.cal().fell?.by !== 'alliance') return `босс пал не от союза: ${S.cal().phase}, ${S.cal().fell?.by}; ${S.a.chronicle.filter(l => /оюз|войск/i.test(l.text)).slice(-6).map(l => l.year + ' ' + l.text).join(' | ')}; ${S.armies().map(p => p.state + p.might).join(',')}`;
   for (let y = 0; y < 20 && !S.A().broken; y++) S.run(1);
@@ -422,7 +423,7 @@ scene_('W20', 'союз против бедствия: державы рядом
 });
 scene_('W21', 'союз против бедствия: слабые войска разбиты у логова — босс устоял, союз пробует снова позже', () => {
   const S = allianceWorld(); if (S.error) return S.error;
-  for (const p of S.armies()) p.might = 0;
+  for (const p of S.armies()) { p.force = 0; p.might = 0; }
   const tries = S.A().tries;
   for (let y = 0; y < 6 && S.A().nextTry == null; y++) S.run(1);
   if (S.cal().phase !== 'rise' || S.A().nextTry == null) return `штурм не отбит: ${S.cal().phase}, следующая попытка ${S.A().nextTry}`;

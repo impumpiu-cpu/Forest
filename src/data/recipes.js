@@ -8,6 +8,7 @@
 //          do (copper, bronze, gold, silver), 2 (default): coal (iron). Fuel is picked in settlement/stock.js
 //   tool:  a town-made tool that must be in the stock (cupels for silver)
 //   skill: the skill the order trains and reads (data/skills.js); by default the station's (STATION_SKILL)
+//   races: only a worker of these races (data/races.js ids) takes the order — a people's own way of making a thing
 //   tier:  1–4 (data/skills.js TIERS), 1 by default. Above 1 only a worker whose letter for the recipe's
 //          skill reaches the tier may take the order (agents/skills.js recipeAccess): a sword needs S 6,
 //          cupellation of silver needs I 6. T1 recipes stay open to anyone, so everyone can learn
@@ -50,6 +51,9 @@ RECIPES.registerAll([
     want: c => (c.season !== 'spring' && short(c.owned('furcoat'), c.pop) ? (c.season === 'summer' ? 1.6 : 2.9) : 0)},
   {id: 'jerkin', tier: 2, skill: 'leatherwork', at: 'crafthut', cost: {leather: 3}, work: 1500, makes: {item: 'jerkin'},
     want: c => (short(c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.6 : 0)},
+  // the elves' woven armour (data/balance/forms.js wicker): bark, fibre and a little leather
+  {id: 'wicker', tier: 2, races: ['elf'], skill: 'tailoring', at: 'crafthut', cost: {wood: 4, fiber: 2, leather: 1}, work: 1400, makes: {item: 'wicker'},
+    want: c => (short(c.owned('wicker') + c.owned('hardleather'), Math.ceil(c.pop / 2)) ? 2.3 : 0)},
   {id: 'hardleather', tier: 3, skill: 'leatherwork', at: 'crafthut', cost: {leather: 3, bone: 3}, work: 1800, makes: {item: 'hardleather'},
     want: c => (short(c.owned('hardleather'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
@@ -72,6 +76,11 @@ RECIPES.registerAll([
   // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
   {id: 'bow', tier: 2, at: 'crafthut', cost: {wood: 3, leather: 1, rope: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
     want: c => (short(c.owned('bow'), Math.max(1, c.likes('hunt'))) ? 2.4 : 0)},
+  // the elves' bows (data/races.js elf): no hunters' lodge needed, any wood and a string of leather, sinew or fibre;
+  // with none of these, a plain bow of a single stave (weaker). Bows for every other elf, and every hunter
+  ...[['bowLeather', {wood: 3, leather: 1}, 'bow', 2.5], ['bowSinew', {wood: 3, sinew: 1}, 'bow', 2.45], ['bowFiber', {wood: 3, fiber: 2}, 'bow', 2.4],
+      ['bowStave', {wood: 5}, 'selfbow', 1.0]].map(([id, cost, item, want]) => ({id, races: ['elf'], at: 'crafthut', cost, work: item === 'bow' ? 800 : 600, makes: {item},
+    want: c => (short(c.owned('bow') + c.owned('selfbow'), Math.max(1, c.likes('hunt'), Math.ceil(c.pop / 2))) ? want : 0)})),
   {id: 'arrows', at: 'crafthut', cost: {wood: 1, bone: 1}, work: 150, makes: {resource: 'arrows', n: 5},
     want: c => (c.bows && c.stock('arrows') < c.bows * 10 ? 2.7 : 0)},
 

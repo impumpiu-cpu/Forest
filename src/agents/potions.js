@@ -20,6 +20,7 @@ import {nightness} from '../core/time.js';
 import {darkness} from './combat.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
+import {FRENZY} from '../data/roles.js';
 
 const able = a => !a.dead && !a.downed && !a.captive && a.hp > 0;
 // a blade in hand to rub a poison on: a weapon of blows, not a bow struck with
@@ -203,8 +204,20 @@ export function stepPotionEffects(w, a) {
   const left = a.effects.filter(e => w.tick < e.until);
   if (left.length === a.effects.length) return;
   const ended = a.effects.filter(e => w.tick >= e.until);
+  // a state that leaves another behind it (data/conditions.js `then`: the berserker's frenzy, then weariness)
+  for (const e of ended) { const nx = CONDITIONS.has(e.id) ? CONDITIONS.get(e.id).then : null; if (nx && CONDITIONS.has(nx)) left.push({id: nx, until: w.tick + (CONDITIONS.get(nx).ticks || 0), from: e.id}); }
   a.effects = left.length ? left : null;
-  if (ended.some(e => CONDITIONS.has(e.id) && (Object.keys(CONDITIONS.get(e.id).mods || {}).length || CONDITIONS.get(e.id).hp != null))) refreshBody(a);
+  if (ended.some(e => CONDITIONS.has(e.id) && (Object.keys(CONDITIONS.get(e.id).mods || {}).length || CONDITIONS.get(e.id).hp != null || CONDITIONS.get(e.id).then))) refreshBody(a);
+}
+
+// a wound throws a berserker into a frenzy (data/roles.js FRENZY): not while raging or spent — the next needs a fresh
+// wound once the weariness is over, so it never rages twice in a row
+export function rage(w, a) {
+  const F = FRENZY;
+  if (a.dead || a.downed || (a.effects || []).some(e => (e.id === F.rage || e.id === F.spent) && w.tick < e.until)) return false;
+  a.effects = [...(a.effects || []), {id: F.rage, until: w.tick + CONDITIONS.get(F.rage).ticks}];
+  refreshBody(a); a.flash = 4;
+  return true;
 }
 
 // a blow of a coated weapon struck home (agents/combat.js damage): a poison passes to `t` (not into the dead), the coat

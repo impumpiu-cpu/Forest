@@ -35,6 +35,12 @@ export const OFFERS = [
   {kind: 'beast', id: 'horse', at: ['pasture', 'pen', 'caravanserai'], price: CAMPAIGN.beasts.horse},
   {kind: 'beast', id: 'mule', at: ['pasture', 'pen', 'caravanserai', 'market'], price: CAMPAIGN.beasts.mule},
   {kind: 'beast', id: 'camel', at: ['caravanserai'], price: CAMPAIGN.beasts.camel},
+  // the herd (data/transport.js CAMP_KIT.herd): goats and sheep for milk and meat on the way
+  {kind: 'beast', id: 'goat', at: ['pen', 'pasture', 'grpens'], price: CAMPAIGN.beasts.goat},
+  {kind: 'beast', id: 'sheep', at: ['pen', 'pasture', 'grpens'], price: CAMPAIGN.beasts.sheep},
+  // a golem of the town's golem forge (data/constructs.js): of the metal the town chooses — one of its guard golems
+  // (atlas/golems.js), else its realm's best (campaign/town.js offers)
+  {kind: 'beast', id: 'golem', golem: true, at: ['golemforge']},
   {kind: 'vehicle', id: 'cart', at: ['crafthut', 'sawmill', 'woodcut'], price: CAMPAIGN.vehicles.cart},
   {kind: 'vehicle', id: 'wagon', at: ['sawmill', 'crafthut'], also: ['forge', 'smelter'], price: CAMPAIGN.vehicles.wagon},
   {kind: 'item', id: 'ironaxe', at: ['forge', 'smelter', 'foundry']},
@@ -71,8 +77,6 @@ export const OFFERS = [
   ...['warmBrewStrong', 'vigorBrewStrong', 'mendBrewStrong', 'sleepBrewStrong', 'warmBrew', 'vigorBrew', 'mendBrew', 'sleepBrew'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'home'})),
   {kind: 'goods', id: 'pots', n: 4, any: true, at: [], need: 'pots'},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
-  {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
-  {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},
 ];
 
 // what the caravan buys first when it has the gold: a list in order; each is bought when the caravan

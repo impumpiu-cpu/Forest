@@ -6,7 +6,9 @@ export const FACTIONS = new Registry('faction');
 
 FACTIONS.registerAll([
   {id: 'colony',  label: 'колония',      brain: 'colonist', color: '#62c6b9', hostile: ['raiders', 'nechist']},
-  {id: 'raiders', label: 'Серые волки',  brain: 'raider',   color: '#d9585e', hostile: ['colony']},
+  {id: 'raiders', label: 'Серые волки',  brain: 'raider',   color: '#d9585e', hostile: ['colony', 'allies']},
+  // the forest beasts an elf of the colony has called into a fight (agents/summon.js): the colony's foes are theirs
+  {id: 'allies', label: 'союзники', brain: 'summoned', color: '#7cbf6a', hostile: ['raiders', 'nechist'], legend: 'призванные звери, големы'},
   {id: 'wild',    label: 'дикие звери',  brain: null,       color: '#cdbb9a', hostile: []},
   // predators are not at war with anyone: they pick fights one victim at a time (see combat.js)
   {id: 'predators', label: 'хищники',     brain: null,       color: '#8d8f96', hostile: []},

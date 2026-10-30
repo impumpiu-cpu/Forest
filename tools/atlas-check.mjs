@@ -68,7 +68,9 @@ function townsCheck(a, tag) {
       const b = TOWN_BUILDINGS.get(id);
       seen[id] = (seen[id] || 0) + 1;
       if (b.peoples && !b.peoples.includes(t.people)) misbuilt ||= `${t.name}: ${b.name} — не их постройка`;
-      if (seen[id] > b.max) misbuilt ||= `${t.name}: ${b.name} больше ${b.max}`;
+      const most = Math.max(b.max, b.per ? Math.ceil(Math.max(t.peak || 0, t.pop) / b.per) : 0);   // units of work: one more for every `per` people it ever had
+      if (seen[id] > most) misbuilt ||= `${t.name}: ${b.name} больше ${most}`;
+      if (b.site && seen[id] > 1) continue;   // more units of an outlying work widen its one cell
       const at = b.site ? (a.sites.find(s => s.alive && s.town === t.id && s.kind === id && !seenSites.has(s.id)) || null) : null;
       if (at) seenSites.add(at.id);
       const where = b.site ? at?.i : t.i;   // an outlying work has its place in its own cell
@@ -413,10 +415,12 @@ console.log('Эпический мир кампании:');
   // the alliances (atlas/alliance.js): after the wild era the realms in a boss's reach band together and march on it, and
   // the alliance falls apart after the boss is gone — what holds in any world (whether an alliance or the heroes bring a
   // boss down is the luck of the world: the win itself is a scene of tools/world-check.mjs, W20). Eras of 40 years
+  // whether an ally's army comes depends on the world too (a town big enough near the boss): seen in one of two worlds
   const e = generateAtlas({...cfg, seed: '3', epicYears: {wild: 40, elder: 40, young: 40}}), AL = e.alliances || [];
+  const e2 = generateAtlas({...cfg, seed: '5', epicYears: {wild: 40, elder: 40, young: 40}}), sentAny = [...AL, ...(e2.alliances || [])].some(A => A.sent.length);
   const later = (e.calamities || []).filter(c => c.era !== 'wild');
-  check('  эпос: против бедствий после дикой эры собираются союзы, идут походом, союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0) && AL.some(A => A.sent.length) && AL.some(A => A.broken),
-    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + '; ' + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
+  check('  эпос: против бедствий после дикой эры собираются союзы, идут походом (войска союзников — хотя бы в одном из двух миров), союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0) && sentAny && AL.some(A => A.broken),
+    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + `; во втором мире войска пришли: ${(e2.alliances || []).some(A => A.sent.length)}; ` + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
   // the chronicle as a text (atlas/chronicle.js): every level has lines; major ⊂ normal ⊂ all; by its eras, every era a
   // block; the calamities apart — each calamity with its boss, its grave's epitaph, and the artifact's way
   const lv = {major: 0, normal: 0, minor: 0}; for (const c of e.chronicle) lv[lineLevel(c)]++;

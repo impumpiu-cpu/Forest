@@ -6,6 +6,7 @@
 //   takeAuto(a, K, d, r, say)   — after a fight won in the quick mode: one or two of the fallen bound
 //   takeFromCamp(a, K, o, say)  — the captives the camp on the local map took (campaign/camp.js outcome)
 //   bondsSets(K)                — how many more the baggage can bind
+import {freesCaptives} from '../data/slavery.js';
 import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
@@ -38,6 +39,7 @@ const names = list => list.join(', ');
 // after a fight won in the quick mode: the fallen who can be bound — one, now and then two
 export function takeAuto(a, K, d, r, say) {
   const p = C.auto[d.kind]; if (!p || r() >= p) return [];
+  if (freesCaptives(K.people)) { say('Упавших врагов перевязали и отпустили: дварфы пленных не держат.', 'people'); return []; }   // (data/slavery.js frees)
   const n = 1 + (r() < C.two ? 1 : 0), got = [];
   const races = C.races[d.kind] || ['human'];
   for (let q = 0; q < n && room(K, 'captive'); q++) {

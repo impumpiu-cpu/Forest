@@ -117,7 +117,7 @@ export const CAL = {
 //   loss:     the armies' men lost: when they win, when they are beaten;  retry — a beaten alliance tries again after
 //   peace:    years of peace after the boss fell before the alliance falls apart, [lo, hi]; then every pair's attitude
 //             goes back `back` of the way to what it was before, and a member that sent no army is held `shirk` worse
-export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3, levy: 0.2, minMen: 30, wait: 60,
+export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3, levy: 0.08, minMen: 12, wait: 60,
   boss: 8, retinue: 8, loss: {won: 0.25, beaten: 0.6}, retry: 5, peace: [5, 15], back: 0.7, shirk: 1};
 
 // The epic campaign (campaign/epic.js; docs/WORLD.md): the clues are the graves of the three

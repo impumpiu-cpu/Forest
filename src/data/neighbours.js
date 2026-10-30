@@ -12,7 +12,7 @@ export const NEIGHBOURS = new Registry('neighbour');
 
 NEIGHBOURS.registerAll([
   {id: 'kin', label: 'Род Ольхи', kind: 'kin', dist: 4, flows: ['settlers'],
-    note: 'материнское племя: отсюда уходят искать новую жизнь; через его земли изредка забредают полурослики, гномы, эльфы и великаны'},
+    note: 'материнское племя: отсюда уходят искать новую жизнь; через его земли изредка забредают полурослики, дварфы, эльфы и великаны'},
   {id: 'hostile', label: 'Враждебные земли', kind: 'enemy', dist: null, flows: ['raiders'],   // distance comes from the raids preset
     note: 'стойбище «Серых волков», орочьи и гоблинские становища, норы гноллов, курганы с мертвецами; чем ближе, тем чаще набеги'},
   {id: 'empire', label: 'Имперский тракт', kind: 'trade', dist: 5, flows: ['caravan'],
