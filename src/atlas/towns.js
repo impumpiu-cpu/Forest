@@ -49,7 +49,7 @@ export function townFx(t) {
     const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1;
     // the barracks and war camps hold the standing guard: an unpaid guard thins out (atlas/treasury.js t.guard)
     const load = (L?.[`${id}#${n}`] ?? 1) * (ARMY_KEEP.pro.at.includes(id) ? ARMY_KEEP.guardFloor + (1 - ARMY_KEEP.guardFloor) * (t.guard ?? 1) : 1);
-    for (const k of KEYS) out[k] += fxOf(b, k, load);
+    for (const k of KEYS) out[k] += fxOf(b, k, load, t.people);
   }
   return out;
 }
@@ -183,7 +183,7 @@ function econPull(t, b) {
 // `lean.vecs` — the buildings' vectors of this season, data/mind.js buildingVectors)
 export function wantOf(t, b, need, P, lean = null) {
   let v = 0;
-  for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
+  for (const k of KEYS) v += fxOf(b, k, 1, t.people) * need[k] * (P.taste[k] ?? 1);
   v += econPull(t, b);
   return lean ? v * (1 + lean.k * along(lean.vecs?.get(b.id) || vectorOf(b), lean.vec)) : v;
 }

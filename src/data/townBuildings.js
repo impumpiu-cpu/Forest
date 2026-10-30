@@ -45,6 +45,7 @@
 //   metals        the metals its realm's smiths work and its markets sell once one stands in the realm
 //                 (data/balance/materials.js ids; a metal no building lists, everyone works)
 //   fx            what it gives, per building (EFFECTS below)
+//   fxBy          {people: {effect: value}}: what it gives a people besides `fx` (the humans' temples keep a church school)
 //   boost         {building: share}: the town's buildings of that kind give this much more of what they make while this one
 //                 stands in it (the humans' compost heap: fields and ploughland)
 //   `jobs`, `heat`, `fire`, `repair`, `tools`, `in` and `out` are the numbers of the flows: drafts, in the table and checked
@@ -204,6 +205,8 @@ TOWN_BUILDINGS.registerAll([
   B('hut', 'шалаши', 'pl', 'housing', 0, ALL, {}, {max: 2, local: 'hut', house: 100, heat: 2.667, repair: W(0.25)}),
   B('yurts', 'шатры', 'pl', 'housing', 0, O, {}, {max: 8, house: 150, heat: 1.667, repair: HD(0.167)}),
   B('house', 'избы', 'pl', 'housing', 1, [...H], {}, {max: 6, needsAny: ['forest', 'clay'], local: 'house', house: 200, heat: 1.333, repair: PL(0.125)}),
+  // the humans' log cabins: fell the wood, raise a house — no place asked, the logs come from the realm's stocks
+  B('cabin', 'срубы', 'pl', 'housing', 0, H, {}, {max: 6, house: 150, heat: 1.5, repair: W(0.2)}),
   B('longhouse', 'длинный дом', 'm', 'housing', 1, [...H, ...O], {prestige: 0.03}, {max: 4, needs: ['forest'], house: 250, heat: 1.667, repair: W(0.25)}),
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 0.667, repair: W(0.083)}),
   B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], house: 400, heat: 0.833, repair: S(0.083)}),
@@ -211,7 +214,7 @@ TOWN_BUILDINGS.registerAll([
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
   // ── food: the land gives it raw, the hearth, the bakery, the smokehouse and the racks make it food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, tools: 2, repair: W(0.025), out: {produce: 128.316, herbs: 0.304}}),
-  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 300, fiber: 27.938}}),
+  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 200, fiber: 27.938}}),
   // humans clear, level and dung the land: the same field on poorer, rougher ground (PLACE_AT arable)
   B('ploughland', 'пашня', 'f', 'food', 0, H, {food: 0.3}, {max: 4, needs: ['arable'], site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 300, fiber: 27.938}}),
   // kitchen scraps and dung: the town's fields and ploughland give more (`boost`)
@@ -277,8 +280,8 @@ TOWN_BUILDINGS.registerAll([
   // cooks more and wastes less — the campfire turns 10 raw into 8 food, the common hearth 20 into 20, the cookhouse 60 into 72
   B('campfire', 'кострище', 'n', 'life', 0, ALL, {food: 0.1, health: 0.02}, {max: 4, jobs: 2, works: true}),
   B('hearth', 'общинный очаг', 'm', 'life', 1, ALL, {food: 0.15, health: 0.05}, {max: 3, local: 'hearth', jobs: 3, repair: S(0.017), works: true}),
-  // the humans' tavern: folk eat and drink there off the town's surplus — any raw food, with brew if there is some
-  // (TAVERN: how much it cooks a day, the brew it pours, what a meal with brew brings in coin)
+  // the humans' tavern: folk eat and drink there off the town's surplus — any raw food; it brews a little of its own and
+  // sells it, and with brew brought from a brewery it pours more and earns more (TAVERN)
   B('tavern', 'трактир', 'm', 'life', 1, H, {food: 0.15, trade: 0.1, prestige: 0.05, health: 0.03}, {jobs: 6, tools: 1, heat: 0.333, repair: W(0.042), works: true}),
   B('cookhouse', 'поварня', 'f', 'life', 2, ALL, {food: 0.2, health: 0.1}, {max: 3, requires: ['hearth'], jobs: 6, tools: 1, repair: S(0.042), works: true}),
   // ── trade and ways
@@ -310,7 +313,8 @@ TOWN_BUILDINGS.registerAll([
   B('sacredgrove', 'священная роща', 'f', 'faith', 0, E, {faith: 0.3}, {needs: ['forest'], jobs: 2}),
   B('stonecircle', 'каменный круг', 'm', 'faith', 0, [...H, ...O], {faith: 0.2}, {needsAny: ['stone', 'steep']}),
   B('ancestorhall', 'зал предков', 'm', 'faith', 1, D, {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 2, repair: S(0.042), works: true}),
-  B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 4, repair: S(0.083), works: true}),
+  // the humans' temples keep a church school: knowledge besides faith (`fxBy`)
+  B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {fxBy: {humans: {lore: 0.15}}, requires: ['shrine'], jobs: 4, repair: S(0.083), works: true}),
   B('crypt', 'усыпальница', 'f', 'faith', 2, [...H, ...D], {faith: 0.1}, {jobs: 1, repair: S(0.042)}),
   // by the barrows of old battles: the fallen are laid to rest, and the rot around fades (atlas/lairs.js stepRot)
   B('fallentemple', 'храм павших', 'm', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, {needs: ['graves'], requires: ['shrine'], notable: true, jobs: 3, repair: S(0.042), works: true}),
@@ -344,7 +348,7 @@ const r3 = v => Math.round(v * 1000) / 1000;
 // the kitchens of the three steps of a town: raw food a day (rations) at full strength, cycles of fire for it, food out of a unit of raw
 // home brew of the kitchens of the hamlets and villages (campfire, hearth): raw a day, drink it gives, cycles of fire
 export const HOMEBREW = {raw: 3.951, drink: 0.985, fire: 0.195};
-export const TAVERN = {raw: 120, drink: 6, yield: 1.1, gold: 0.4, fire: 1};
+export const TAVERN = {raw: 120, drink: 6, yield: 1.1, gold: 0.4, fire: 1, brewRaw: 4, brew: 1, ownGold: 0.15};
 export const KITCHENS = {campfire: {raw: 13.581, fire: 0.367, yield: 0.8}, hearth: {raw: 27.163, fire: 0.449, yield: 1}, cookhouse: {raw: 81.49, fire: 0.91, yield: 1.2}};
 const DISHES = {flour: 'лепёшки', grain: 'каша', produce: 'похлёбка из овощей', mushrooms: 'грибная похлёбка', meat: 'мясная похлёбка', fish: 'уха', milk: 'сыр и творог'};
 // fine work of the luxury workshop: how much of each material a day goes into it (any two of them make a way), and how
@@ -385,7 +389,8 @@ TOWN_WORKS.registerAll([
   // the tavern: any raw food with brew (a meal and a mug: more food, coin) or without
   ...Object.entries(DISHES).flatMap(([raw, dish]) => [
     WK('tavern', raw, `${dish} с брагой`, {[raw]: TAVERN.raw, drink: TAVERN.drink}, {food: r3(TAVERN.raw * TAVERN.yield), gold: TAVERN.gold}, {fire: TAVERN.fire}),
-    WK('tavern', `${raw}Plain`, dish, {[raw]: TAVERN.raw}, {food: TAVERN.raw}, {fire: TAVERN.fire})]),
+    // its own brew: a little of the same stock goes to the vat — a mug or two for the house, sold to the guests
+    WK('tavern', `${raw}Plain`, `${dish} и своя брага`, {[raw]: TAVERN.raw + TAVERN.brewRaw}, {food: TAVERN.raw, drink: TAVERN.brew, gold: TAVERN.ownGold}, {fire: TAVERN.fire})]),
   // milling and brewing: grain, or the dwarves' mushrooms
   WK('quern', 'grain', 'мука из зерна', {grain: 175.55}, {flour: 175.55}),
   WK('quern', 'mushrooms', 'грибная мука', {mushrooms: 204.809}, {flour: 175.55}),
@@ -482,7 +487,8 @@ export const townNeeds = () => Object.fromEntries(TOWN_GOODS.filter(g => g.need)
 
 // what a building gives, as one number for each effect (0 where it gives nothing); `load` — its load in the town's
 // household (atlas/economy.js), 1 when not counted
-export const fxOf = (b, key, load = 1) => (key === 'housing' ? (b.house || 0) / TOWN_FX.room[1] : (b.fx[key] || 0) * (TOWN_FX.load[0] + (TOWN_FX.load[1] - TOWN_FX.load[0]) * load));
+// (`people`: the town's people — a building may give some peoples more, `fxBy`: the humans' temple teaches)
+export const fxOf = (b, key, load = 1, people = null) => (key === 'housing' ? (b.house || 0) / TOWN_FX.room[1] : ((b.fx[key] || 0) + (b.fxBy?.[people]?.[key] || 0)) * (TOWN_FX.load[0] + (TOWN_FX.load[1] - TOWN_FX.load[0]) * load));
 
 // the buildings that let a realm work a metal (`metals`); none — everyone works it
 export const metalBuildings = m => TOWN_BUILDINGS.filter(b => b.metals?.includes(m)).map(b => b.id);

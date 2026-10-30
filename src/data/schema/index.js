@@ -394,6 +394,7 @@ export const TABLES = [
       col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOLS), note: 'из чего её орудия и оружие: сколько использований даёт орудие'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
       col('boost', 'Усиливает', 'map', {ref: 'townBuildings', min: 0, note: 'на сколько больше дают постройки этого вида в том же городе, пока стоит эта (компостная куча людей: поля и пашни)'}),
+      ...['elves', 'dwarves', 'humans', 'orcs'].map(p => col(`fxBy.${p}`, `Даёт ещё: ${WORLD_PEOPLES.get(p).label}`, 'map', {ref: keysOf(TOWN_FX), nullable: true, note: 'что постройка даёт этому народу сверх «Даёт» (у людей храм держит церковную школу: знание)'})),
       col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
   {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
