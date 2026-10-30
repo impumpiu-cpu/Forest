@@ -20,7 +20,7 @@ while (runNextStage(a)) {
   if (!landDone(a) || !a.hist || !a.towns || a.hist.season !== 1 || !at.has(a.hist.year)) continue;
   at.delete(a.hist.year);
   const vecs = buildingVectors(TOWN_BUILDINGS.all());
-  for (const t of a.towns) if (t.alive && t.people === people) {
+  for (const t of a.towns) if (t.alive && t.people === people && t.wants) {   // a town founded this season has no wants yet
     const pe = a.peoples.find(p => p.id === t.people), P = {...pe.P, taste: realmTaste(a, t.realm)}, fx = townFx(t);
     const ctx = {feeds: t.wants.feeds, threat: t.wants.threat, road: roadAccess(a, t.i)};
     const L = leanOf(a, t), lean = L && {...L, vecs};

@@ -34,23 +34,23 @@ import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
 LAIRS.registerAll([
-  {id: 'griffin', species: 'griffin', flies: true, from: 'из гнезда', label: 'гнездо грифонов', g: 'n', color: [214, 170, 90], radius: 9, ground: 'heights', density: 25, max: 8, breed: 0.12, rivals: ['wyvern', 'drake'],
+  {id: 'griffin', gen: 'грифонов', species: 'griffin', flies: true, from: 'из гнезда', label: 'гнездо грифонов', g: 'n', color: [214, 170, 90], radius: 9, ground: 'heights', density: 25, max: 8, breed: 0.12, rivals: ['wyvern', 'drake'],
     nouns: [['гнездо', 'n'], ['утёс', 'm'], ['скала', 'f'], ['кручи', 'pl']]},
-  {id: 'wyvern', species: 'wyvern', flies: true, from: 'из логова', label: 'логово виверны', g: 'n', color: [120, 150, 90], radius: 10, ground: 'heights', density: 18, max: 6, breed: 0.08, rivals: ['griffin', 'drake'],
+  {id: 'wyvern', gen: 'виверны', species: 'wyvern', flies: true, from: 'из логова', label: 'логово виверны', g: 'n', color: [120, 150, 90], radius: 10, ground: 'heights', density: 18, max: 6, breed: 0.08, rivals: ['griffin', 'drake'],
     nouns: [['логово', 'n'], ['ущелье', 'n'], ['гора', 'f'], ['пик', 'm']]},
-  {id: 'drake', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],
+  {id: 'drake', gen: 'дрейка', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],
     nouns: [['жерло', 'n'], ['кратер', 'm'], ['пепелище', 'n'], ['гора', 'f']]},
   // the dragon's lair: one or two in a world, ancient, at a volcano; it does not feed on prey and sends no
   // broods — the dragon sleeps for years and flies out (atlas/parties.js, data/parties.js DRAGON)
-  {id: 'dragon', dragon: true, species: 'dragon', flies: true, from: 'из логова', label: 'логово дракона', g: 'n', color: [150, 30, 20], radius: 14, ground: 'volcano', density: 30, max: 2, breed: 0, rivals: [],
+  {id: 'dragon', gen: 'дракона', dragon: true, species: 'dragon', flies: true, from: 'из логова', label: 'логово дракона', g: 'n', color: [150, 30, 20], radius: 14, ground: 'volcano', density: 30, max: 2, breed: 0, rivals: [],
     nouns: [['жерло', 'n'], ['престол', 'm'], ['гора', 'f'], ['пещера', 'f']]},
-  {id: 'spider', species: 'spider', from: 'из гнезда', label: 'паучье гнездо', g: 'n', color: [150, 110, 170], radius: 6, ground: 'deep', density: 14, max: 10, breed: 0.07, rivals: [],
+  {id: 'spider', gen: 'пауков', species: 'spider', from: 'из гнезда', label: 'паучье гнездо', g: 'n', color: [150, 110, 170], radius: 6, ground: 'deep', density: 14, max: 10, breed: 0.07, rivals: [],
     nouns: [['чаща', 'f'], ['паутинник', 'm'], ['дебри', 'pl'], ['лог', 'm']]},
-  {id: 'stoneworm', species: 'stoneworm', from: 'из норы', label: 'нора каменного червя', labelAcc: 'нору каменного червя', g: 'f', color: [160, 140, 110], radius: 8, ground: 'caves', density: 10, max: 6, breed: 0.06, rivals: [],
+  {id: 'stoneworm', gen: 'каменного червя', species: 'stoneworm', from: 'из норы', label: 'нора каменного червя', labelAcc: 'нору каменного червя', g: 'f', color: [160, 140, 110], radius: 8, ground: 'caves', density: 10, max: 6, breed: 0.06, rivals: [],
     nouns: [['нора', 'f'], ['провал', 'm'], ['ход', 'm'], ['пустошь', 'f']]},
-  {id: 'bat', species: 'bat', flies: true, from: 'из пещеры', label: 'пещера кровопийц', labelAcc: 'пещеру кровопийц', g: 'f', color: [120, 70, 90], radius: 6, ground: 'caves', density: 12, max: 8, breed: 0.08, rivals: [],
+  {id: 'bat', gen: 'кровопийц', species: 'bat', flies: true, from: 'из пещеры', label: 'пещера кровопийц', labelAcc: 'пещеру кровопийц', g: 'f', color: [120, 70, 90], radius: 6, ground: 'caves', density: 12, max: 8, breed: 0.08, rivals: [],
     nouns: [['пещера', 'f'], ['грот', 'm'], ['подземелье', 'n'], ['расселина', 'f']]},
-  {id: 'varg', species: 'varg', from: 'из логова', label: 'логово варгов', g: 'n', color: [130, 130, 140], radius: 10, ground: 'open', density: 8, max: 8, breed: 0.08, rivals: [],
+  {id: 'varg', gen: 'варгов', species: 'varg', from: 'из логова', label: 'логово варгов', g: 'n', color: [130, 130, 140], radius: 10, ground: 'open', density: 8, max: 8, breed: 0.08, rivals: [],
     nouns: [['логово', 'n'], ['падь', 'f'], ['урочище', 'n'], ['буреломы', 'pl']]},
   // ── tribes: camps of the thinking wild
   {id: 'goblins', tribe: true, gen: 'гоблинов', species: 'goblin', from: 'из нор', label: 'гоблинские норы', labelAcc: 'гоблинские норы', g: 'pl', color: [150, 180, 60], radius: 7, ground: 'home', needsAny: ['caves', 'heights'],

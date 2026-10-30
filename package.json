@@ -17,6 +17,7 @@
     "people": "node tools/people-probe.mjs",
     "people:council": "node tools/council-probe.mjs",
     "people:whatif": "node tools/people-whatif.mjs",
+    "people:spot": "node tools/spot-probe.mjs",
     "macro:check": "node tools/macro-check.mjs",
     "stress": "node tools/stress.mjs",
     "stress:full": "node tools/stress.mjs --full",
