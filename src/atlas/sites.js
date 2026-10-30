@@ -22,7 +22,7 @@ import {ARMY} from '../data/parties.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 
-const FIT_NEEDS = ['fertile', 'forest', 'pasture', 'ore', 'stone', 'water', 'coast', 'river'];
+const FIT_NEEDS = ['fertile', 'arable', 'forest', 'pasture', 'ore', 'stone', 'water', 'coast', 'river'];
 
 // whether a cell has what a building asks for; the land does not change, so the answer is kept per
 // cell (roads and graves do change and are asked afresh)
@@ -41,7 +41,7 @@ function fitness(a, i, b) {
   for (const nd of needs) {
     if (!FIT_NEEDS.includes(nd)) continue;
     n++;
-    v += nd === 'fertile' ? f.fert[i] : nd === 'forest' ? f.trees[i] : nd === 'pasture' ? (cellHas(a, i, 'pasture') ? 0.8 : 0) : cellHas(a, i, nd) ? 0.7 : 0;
+    v += nd === 'fertile' || nd === 'arable' ? f.fert[i] : nd === 'forest' ? f.trees[i] : nd === 'pasture' ? (cellHas(a, i, 'pasture') ? 0.8 : 0) : cellHas(a, i, nd) ? 0.7 : 0;
   }
   return n ? v / n : 0.5;
 }

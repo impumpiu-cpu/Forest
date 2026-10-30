@@ -110,6 +110,7 @@ export function placeHas(a, i, need) {
     case 'clay': return f.alluvium[i] >= PA.clay || rock(i) === 'shale' || rock(i) === 'limestone';
     case 'stone': return around(a, i, PA.near, j => !f.ocean[j] && (f.flat[j] < PA.stoneFlat || (f.elev[j] - a.sea) / (1 - a.sea) > PA.stoneHigh));
     case 'fertile': return f.fert[i] >= PA.fertile;
+    case 'arable': return f.fert[i] >= PA.arableFert && f.flat[i] > PA.arableFlat;
     case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
     case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
     case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
@@ -155,7 +156,8 @@ export function townNeeds(a, t, fx, ctx) {
   const N = TF.needs, raided = t.raided != null && a.hist.year - t.raided < N.raided;
   return {
     housing: N.housing[0] * clamp01((t.pop / room(fx) - N.full[0]) / N.full[1]),
-    food: N.food[0] * clamp01((t.pop / Math.max(1, ctx.feeds) - N.full[0]) / N.full[1]),
+    // food: the land filling up, or the people short of their ration now (atlas/economy.js E.fed), whichever is worse
+    food: N.food[0] * Math.max(clamp01((t.pop / Math.max(1, ctx.feeds) - N.full[0]) / N.full[1]), clamp01((1 - (t.econ?.fed ?? 1)) / N.food[1])),
     defence: Math.min(N.defence[0], ctx.threat + (raided ? N.defence[1] : 0)) + N.defence[2],
     trade: N.trade[0] + N.trade[1] * ctx.road + (t.tier >= 2 ? N.trade[2] : 0),
     prod: N.prod[0] + N.prod[1] * t.tier,

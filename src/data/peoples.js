@@ -87,7 +87,7 @@ WORLD_PEOPLES.registerAll([
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
     spread: 0.26, growth: 0.24, spacing: 12,
-    born: 0.34, content: {base: 0.55, economy: 0.08, loyalty: 0.12}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
+    born: 0.4, content: {base: 0.55, economy: 0.08, loyalty: 0.12}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
     settlers: {pop: 30, from: 130, days: 150, reach: 2.5, want: 3, goods: {stores: 600, wood: 30, tools: 3}},
     army: {gold: 0.12, arms: 0.02, armor: 0.02, food: 1, eats: ['stores', 'food']},
     crime: {per: 0.03, pow: 1.6},

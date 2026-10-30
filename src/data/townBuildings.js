@@ -45,6 +45,8 @@
 //   metals        the metals its realm's smiths work and its markets sell once one stands in the realm
 //                 (data/balance/materials.js ids; a metal no building lists, everyone works)
 //   fx            what it gives, per building (EFFECTS below)
+//   boost         {building: share}: the town's buildings of that kind give this much more of what they make while this one
+//                 stands in it (the humans' compost heap: fields and ploughland)
 //   `jobs`, `heat`, `fire`, `repair`, `tools`, `in` and `out` are the numbers of the flows: drafts, in the table and checked
 //   (`npm run buildings`), not yet run by the towns — the next step. `house` runs now.
 //   What some buildings do beyond their effects: a bridge or ferry takes the ford out of the road's cost
@@ -186,7 +188,7 @@ export const PLACE_NEEDS = {
   ore: 'железо, медь или серебро не хуже «есть»', gems: 'самоцветы', coal: 'уголь', magma: 'магма поблизости',
   precious: 'золото или серебро', placer: 'золотой песок', salt: 'солёное озеро или тёплый морской берег',
   clay: 'глина: пойма, глинистый сланец или известняк', stone: 'камень: склоны или скалы рядом',
-  fertile: 'плодородная земля', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
+  fertile: 'плодородная земля', arable: 'пахотная земля: плодородие и ровность пониже (люди корчуют, ровняют, удобряют)', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
   steep: 'крутые склоны', flat: 'ровная земля', caves: 'пещеры: известняк или базальт', road: 'наезженная дорога',
   warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', graves: 'курганы былых битв рядом',
 };
@@ -209,7 +211,11 @@ TOWN_BUILDINGS.registerAll([
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
   // ── food: the land gives it raw, the hearth, the bakery, the smokehouse and the racks make it food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, tools: 2, repair: W(0.025), out: {produce: 128.316, herbs: 0.304}}),
-  B('field', 'пашни', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  // humans clear, level and dung the land: the same field on poorer, rougher ground (PLACE_AT arable)
+  B('ploughland', 'пашня', 'f', 'food', 0, H, {food: 0.3}, {max: 4, needs: ['arable'], site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  // kitchen scraps and dung: the town's fields and ploughland give more (`boost`)
+  B('compost', 'компостная куча', 'f', 'food', 0, H, {food: 0.25}, {requiresAny: ['field', 'ploughland'], jobs: 2, repair: W(0.008), boost: {field: 0.25, ploughland: 0.25}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, tools: 1, out: {produce: 108.641, wood: 0.403}}),
   B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {max: 4, needsAny: ['caves', 'steep'], site: true, jobs: 15, tools: 1, out: {mushrooms: 286.709}}),
   // the herd is fed raw food (TOWN_WORKS); milk comes from its head, the increase goes to the slaughterhouse
@@ -494,12 +500,12 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //              `raided` years, at most defence[0], + defence[2]; the others — a base + a step a tier (trade + its road,
 //              + trade[2] from tier 2; lore only from tier 2, else lore[2]; health + health[2] after a raid)
 export const TOWN_FX = {room: [120, 100], mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, econ: [0.1, 0.3], load: [0.5, 1.2],
-  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
+  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3, 0.25], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 
 // What a town's place must have for a building (atlas/towns.js placeHas): cells around to look, and the thresholds —
 // a lake, magma, gold sand, salt (a salt lake; or the coast where it is warmer than saltSea°), clay (alluvium), stone
 // (rough ground below stoneFlat of flatness or above stoneHigh of the land's height), fertile soil, a forest (tree
 // cover), steep and flat ground, graves (barrows), warm (°C), dry country; `near` — the cells around for the rest
-export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5,
+export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5, arableFert: 0.3, arableFlat: 0.6,
   forest: 0.5, steep: 0.5, flat: 0.85, graves: 3, gravesAt: 0.2, warm: 12, dry: 3};

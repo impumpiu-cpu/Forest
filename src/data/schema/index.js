@@ -393,6 +393,7 @@ export const TABLES = [
       col('out', 'Даёт в день', 'map', {ref: 'townGoods', min: 0, note: 'при полной загрузке (черновик)'}),
       col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOLS), note: 'из чего её орудия и оружие: сколько использований даёт орудие'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
+      col('boost', 'Усиливает', 'map', {ref: 'townBuildings', min: 0, note: 'на сколько больше дают постройки этого вида в том же городе, пока стоит эта (компостная куча людей: поля и пашни)'}),
       col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
   {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
