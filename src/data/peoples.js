@@ -274,12 +274,11 @@ export const ELDER_YEARS = [
 //              will, past far × spacing it fades by `fade` of itself a year (between — in part); a burnt people's land
 //              goes with its towns
 //   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) — born of its
-//              people, and over the target dying off; no roll and no floor (people are not made out of nothing);
-//              build — the chance a year a town builds what it needs most
+//              people, and over the target dying off; no roll and no floor (people are not made out of nothing)
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  growth: 0.22, prestige: 0.6, minTarget: 60, build: 0.65};
+  growth: 0.22, prestige: 0.6, minTarget: 60};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's

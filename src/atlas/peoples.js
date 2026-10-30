@@ -12,11 +12,9 @@
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
-import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
+import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
-import {seasonMoney, planBuild, doBuild} from './treasury.js';
-import {leanOf, note} from './mind.js';
-import {vectorOf} from '../data/mind.js';
+import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
@@ -32,7 +30,7 @@ import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess, seaFeed} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
+import {foundRealm, joinRealm, realmLabel, realmHome, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 import {abandonEmpty} from './demography.js';
@@ -196,6 +194,22 @@ function sendSettlers(a, rnd, say) {
 }
 
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
+
+// a building is raised in a town (atlas/build.js): an outlying work takes its cell (atlas/sites.js) — false when there is none
+// left — housing goes up in place of an older one, a bridge or a ferry eases the ford, the chronicle tells of the notable ones
+export function placeWork(a, t, b, rnd) {
+  const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
+  return !b.site || sited || placeSite(a, t, b, rnd);   // more of it widen its cell
+}
+export function raiseBuilding(a, t, b, say) {
+  const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
+  const old = upgradeOf(t, b);   // housing built in place of an older one
+  if (old) t.built.splice(t.built.indexOf(old), 1);
+  t.built.push(b.id);
+  if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
+  if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
+  else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+}
 export const BURNT = {m: 'сожжён', f: 'сожжена', n: 'сожжено', pl: 'сожжены'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
@@ -354,34 +368,7 @@ export function stepPeoples(a, rnd, say) {
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
     t.wants = {feeds, threat};   // what the town needs, for its realm's council (atlas/mind.js)
-    const lean = leanOf(a, t);   // its role in the realm, or the seat's wind (atlas/mind.js)
-    // and as many more as the realm's grant pays for (atlas/treasury.js realmSpend), not left to chance
-    const own = (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build), paid = Math.floor((t.grant || 0) / TOWN_MONEY.realm.build);
-    for (let q = 0; q < own + paid; q++) {   // a big town builds more a year
-      if (q < own && rnd() > TL.build) continue;
-      // the best it wants and can pay for — its materials to be had, its gold (atlas/treasury.js planBuild); what it cannot,
-      // it passes over for the next, a few times
-      const skip = new Set();
-      let b = null, plan = null;
-      for (let k = 0; k < TOWN_MONEY.build.tries && !plan; k++) {
-        b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ, skip, lean}, rnd);
-        if (!b) break;
-        plan = planBuild(a, t, b); if (!plan) skip.add(b.id);
-      }
-      if (!plan) break;
-      const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
-      const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
-      if (b.site && !sited && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js); more of it widen it
-      doBuild(plan);   // paid: the materials to their makers, the work to the people
-      note(a, t.realm, vectorOf(b), plan.cost);   // the realm's course: what it built, along the building's vector (atlas/mind.js)
-      const old = upgradeOf(t, b);   // housing built in place of an older one
-      if (old) t.built.splice(t.built.indexOf(old), 1);
-      t.built.push(b.id);
-      if (t.econ && b.jobs) t.econ.freeHands -= b.jobs;   // its hands are taken: the next choice of the year knows it
-      if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
-      if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
-      else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
-    }
+    // (what it builds: one project at a time, raised by its builders season by season — atlas/build.js)
     // the step the town has earned by its people and buildings; it falls one when the people are gone
     const tier = tierOf(t), fall = t.tier > 0 && t.pop < TIERS[t.tier].pop * TIER_FALL;
     if (tier > t.tier || (fall && tier < t.tier)) {

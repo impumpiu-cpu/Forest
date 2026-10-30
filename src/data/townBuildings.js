@@ -325,7 +325,6 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //   slaves    — a town's slaves (t.slaves, the orcs' raids): they work first, at `work` of a free hand, in at most `share`
 //               of a building's places (the rest — masters and overseers — are free); they eat as the town's people do;
 //               each year `waste` of them are gone (dead, run off, freed)
-//   build     — a town builds one more thing a year for every `build` of its people (beyond the step's one or two)
 //   heat      — the climate's weight on the wood a town burns to keep warm (atlas/economy.js heatFactor)
 //   boats     — a shipyard's boats: its fishers (`fish`) give × k, as the yard works
 //   sea       — the sea around a town feeds as land would (atlas/sea.js seaFeed) × its best fishers: these shares
@@ -355,7 +354,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
   sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   gather: {brush: 2},   // what a town's people gather a head a year by hand, with no building (brushwood)
-  rounds: 8, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
+  rounds: 8, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
 
 // The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a
@@ -373,7 +372,9 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               boards are what they take a year, not what they are built of, or a town without a sawmill could never house itself) and the people's
 //               work by its step (step 0 — the hamlet's own hands, free); a town that cannot pay the best one tries `tries` others
 //               (atlas/treasury.js planBuild); wood and stone not to be had the people gather by hand at × `gather.k` of their price
-//               (that gold goes to nobody: their hours), taking `gather.hands` free hands a unit for the season
+//               (that gold goes to nobody: their hours), taking `gather.hands` free hands a unit for the season. Paid, it is raised
+//               as the town's one project (atlas/build.js): `days` work-days by its step × (1 + jobs / jobsPer) × (1 + house /
+//               housePer), its builders `crew` of the town's people each day
 //   store     — a good's room in the store: × a year of what the town makes and takes of it (at least `least`); food is not
 //               stored here (it goes by the net, atlas/sites.js) — the granary of the ration's price is the town's surplus
 //   keep      — the seasons of what its works take a town keeps for them; safety — the seasons of its people's basic needs it
@@ -389,8 +390,8 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //   tax       — the share of a town's treasury above `keep` × its people the realm takes a year, by its edict of taxes
 //   realm     — what a realm does with its treasury, once a year after the tax (atlas/treasury.js realmSpend): `spend` of it goes;
 //               of that `army` (more at war) pays its towns' garrisons — a man a year for `man` gold, shared by their people, each
-//               a man of the town's might — and the rest is granted to its towns to build: a building more for every `build` gold
-//               (a town holds at most `hoard` of them; what is over stays in the realm's treasury)
+//               a man of the town's might — and the rest is granted to its towns to build (atlas/mind.js councilShares): a town
+//               holds at most `hoard` × `build` gold of grants, what is over stays in the realm's treasury
 //   price     — the market of the season: a good its works lack (`short`) or its people (`need`) dearer, one it has in plenty
 //               cheaper, within lo … hi;
 //               a ration cheaper by the town's surplus of food (its feeds over its people, at most `food` off)
@@ -400,7 +401,7 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
     comfort: {lux: 0.001, honey: 0.004, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.004}, rich: 1, grow: [0.95, 0.05], comfortGrow: 0.1, unmet: 0.1},
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
   plunder: {raid: 0.15, storm: 0.4, cult: 2, chief: 0.3, dare: 1.5},
-  build: {labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
+  build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
   upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3}, tax: {keep: 0.02, rate: {high: 0.3, usual: 0.15, light: 0.05}},
   price: {short: 0.6, need: 0.4, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
 

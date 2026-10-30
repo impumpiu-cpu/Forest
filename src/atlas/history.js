@@ -22,6 +22,7 @@ import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
 import {stepMinds} from './mind.js';
+import {stepBuilds} from './build.js';
 import {migrate, freeCaptives} from './demography.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
@@ -138,6 +139,7 @@ export function stepHistory(a, onDay = null) {
   }
   if (H.era !== 'wild' && season !== 'spring') seasonTowns(a, t => say(a, t));
   if (H.era !== 'wild') { freeCaptives(a); migrate(a); }   // the freed go home, the people move to the towns they like better (atlas/demography.js)
+  if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their projects (atlas/build.js)
   if (H.era !== 'wild') stepMinds(a, t => say(a, t));   // the realms' councils: course, wind, roles (atlas/mind.js)
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);

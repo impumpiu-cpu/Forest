@@ -23,6 +23,7 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
 import {roseOf, townLean} from '../atlas/mind.js';
+import {projectOf, crewDays} from '../atlas/build.js';
 
 const seasonWord = s => seasonLabel(s);
 const KIND = {raid: 'набег', brood: 'выводок', army: 'войско', leader: 'отряд главаря', dragon: 'дракон', caravan: 'караван'};
@@ -162,6 +163,7 @@ function townHtml(a, t) {
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
     row('роль', t.realm != null ? roleLine(t) : null) +
+    row('строится', (P => (P ? `${esc(P.b.name)}: ${Math.min(99, Math.round(100 * P.done / P.days))}%, ещё ~${Math.max(1, Math.ceil((P.days - P.done) / Math.max(1e-9, crewDays(t))))} сез.` : null))(projectOf(t))) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);
 }
