@@ -155,8 +155,9 @@ export function councilShares(a, r, towns, budget) {
     return [...out];
   }
   M.spent = zeroVec();
+  const sum = VECTOR_IDS.reduce((s, k) => s + (M.wind[k] || 0), 0) || 1;   // (the wind is kept rounded: its shares may sum to 0.999)
   for (const k of VECTOR_IDS) {
-    const B = budget * (M.wind[k] || 0);
+    const B = budget * (M.wind[k] || 0) / sum;
     if (B <= 1e-9) continue;
     const weigh = t => t.pop * ((t.role === k ? 1 : t.id === r.capital ? MIND.seat : 0) + (k === 'grow' ? clamp01((MIND.flags.fed - fedOf(t)) / MIND.flags.fedSpan) : 0));
     let W = towns.reduce((s, t) => s + weigh(t), 0), w = weigh;

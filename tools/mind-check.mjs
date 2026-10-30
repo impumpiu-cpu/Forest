@@ -59,7 +59,7 @@ check('за историю советы сложились у всех держ�
   const towns = live(a).filter(t => t.realm === r.id), M = mindOf(a, r), budget = 1000;
   const sh = councilShares(a, r, towns, budget), total = sh.reduce((s, [, g]) => s + g, 0);
   check('гранты по ветру: делят ровно весь бюджет', near(total, budget, 1e-9), `${total.toFixed(6)} из ${budget}`);
-  check('гранты по ветру: доли векторов — по ветру', VECTOR_IDS.every(k => near(M.spent[k], Math.round(budget * M.wind[k] * 1000) / 1000, 1e-2)), JSON.stringify(M.spent));
+  check('гранты по ветру: доли векторов — по ветру', VECTOR_IDS.every(k => near(M.spent[k], budget * M.wind[k] / VECTOR_IDS.reduce((s, x) => s + M.wind[x], 0), 1e-2)), JSON.stringify(M.spent));
   // with the wind set all along one vector, the towns of that role take it all (and the seat its share)
   const k = towns.find(t => t.role)?.role;
   if (k) {
