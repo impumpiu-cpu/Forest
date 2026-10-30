@@ -450,7 +450,13 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //   realm     — what a realm does with its treasury, once a year after the tax (atlas/treasury.js realmSpend): `spend` of it goes;
 //               of that `army` (more at war) pays its towns' garrisons — a man a year for `man` gold, shared by their people, each
 //               a man of the town's might — and the rest is granted to its towns to build (atlas/mind.js councilShares): a town
-//               holds at most `hoard` × `build` gold of grants, what is over stays in the realm's treasury
+//               holds at most `hoard` × `build` gold of grants, what is over stays in the realm's treasury. Before it spends
+//               (from the branch Elves, atlas/treasury.js realmDuties): corruption takes `corrupt` × its points of the tax on
+//               the way (at most corruptMax); the court is paid `court` gold a year for each office filled, for each 1000 of
+//               the realm's people; its armies in the field `wage` a man a year — what it cannot pay, `desert` of the unpaid
+//               share of the men leave; customs take `duty` of what a town buys of another realm, for the buyer's realm;
+//               storming a seat carries off `seat` of the beaten realm's treasury; a realm that hates a neighbour `ratio`
+//               times mightier (attitude below `tribute.below`) pays it `tribute.share` of its gold a year
 //   price     — the market of the season: a good its works lack (`short`) or its people (`need`) dearer, one it has in plenty
 //               cheaper, within lo … hi;
 //               a ration cheaper by the town's surplus of food (its feeds over its people, at most `food` off)
@@ -461,7 +467,7 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
   plunder: {raid: 0.15, storm: 0.4, cult: 2, chief: 0.3, dare: 1.5},
   build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
-  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3}, tax: {keep: 0.02, rate: {high: 0.3, usual: 0.15, light: 0.05}},
+  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3, corrupt: 0.03, corruptMax: 0.35, court: 3, wage: 0.2, desert: 0.3, duty: 0.05, seat: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05}}, tax: {keep: 0.02, rate: {high: 0.3, need: 0.3, usual: 0.15, light: 0.05, rich: 0.05}},
   price: {short: 0.6, need: 0.4, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
 
 // The golems of a golem forge (atlas/golems.js): a season after the forge stands, a golem each season — of the best metal

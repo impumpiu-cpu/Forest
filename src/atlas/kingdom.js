@@ -11,8 +11,9 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {pickOne} from '../data/chance.js';
-import {townFx, roughShare} from './towns.js';
-import {taxYear, realmSpend} from './treasury.js';
+import {townFx, roughShare, might} from './towns.js';
+import {taxYear, realmSpend, realmDuties, payTribute, reserveOf, fiscOf} from './treasury.js';
+import {attitude} from './diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
@@ -55,7 +56,11 @@ export function baseStats(a, realm, towns) {
 // (by kind, as the effects: twelve fields are one farmland to keep — atlas/towns.js townFx)
 export const upkeepOf = towns => towns.reduce((s, t) => s + [...new Set(t.built)].reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
 
+// a realm's might: the might of its towns (atlas/towns.js might) — for tribute
+const mightOfRealm = a => { const m = new Map(); for (const t of a.towns || []) if (t.alive && t.realm != null) m.set(t.realm, (m.get(t.realm) || 0) + might(t, townFx(t))); return id => m.get(id) || 0; };
+
 export function stepKingdom(a, say) {
+  let mightOf = null;
   if (!a.realms?.length || a.hist.season !== SEASONS_PER_YEAR - 1) return;
   const r = mulberry(a.kingdomRnd ?? seedNumber(`${a.cfg.seed}:atlas:kingdom`)), year = a.hist.year;
   const tell = text => say({text, topic: 'kingdom'});
@@ -82,13 +87,13 @@ export function stepKingdom(a, say) {
       }
       addTo(stats, K.court[O.id] ? O.adds : O.vacant);
     }
-    // the edicts: the first level whose condition holds
-    const ctx = {stats, ruin: K.ruin, war};
+    // the edicts: the first level whose condition holds (the treasury's council reads `reserve`: years of its spending held)
+    const ctx = {stats: {...stats, reserve: reserveOf(realm)}, ruin: K.ruin, war};
     for (const E of EDICTS.all()) {
       const L = E.levels.find(l => holds(l.when, ctx)) || E.levels[E.levels.length - 1];
       if (K.edicts[E.id] !== L.id && K.edicts[E.id] != null) tell(`${cap1(E.label)} ${name} — ${L.label}.`);
       K.edicts[E.id] = L.id;
-      addTo(stats, L.adds); addTo(K.ruin, L.ruin);
+      addTo(stats, L.adds); addTo(K.ruin, L.ruin); addTo(ctx.stats, L.adds);
     }
     // ruin eats the attributes
     for (const R of RUINS.all()) stats[R.eats] -= (K.ruin[R.id] || 0) * RUIN_RULES.penalty;
@@ -103,20 +108,26 @@ export function stepKingdom(a, say) {
       }
     }
     // the tax of the year, by last year's edict (atlas/treasury.js): the realm's treasury
-    taxYear(realm, towns, K.edicts.taxes || 'usual');
+    taxYear(realm, towns, K.edicts.taxes || 'usual');   // (corruption takes its share on the way)
+    mightOf ||= mightOfRealm(a);
+    const courtUnpaid = realmDuties(a, realm, towns);   // its armies in the field and its court are paid first (atlas/treasury.js)
+    { const tr = payTribute(a, realm, towns, mightOf, attitude); if (tr && tr[1] >= 1) tell(`${Name} платят дань «${realmLabel(a, tr[0].id)}»: ${Math.round(tr[1])} золотых.`); }
     realmSpend(realm, towns, war, a);   // garrisons and grants to build, by the council's wind (atlas/treasury.js, atlas/mind.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
     const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + Object.values(t.folk || {}).reduce((x, v) => x + v, 0), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    src.court = courtUnpaid;   // the court unpaid: decay
+    const bureau = WORLD_PEOPLES.get(realm.people)?.bureau ?? 1;   // (corruption × the people's bureaucracy)
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
-      for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w;
+      for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w * (R.id === 'corruption' ? bureau : 1);
       v -= Math.max(0, stats[R.fall]) * RUIN_RULES.fall;
       K.ruin[R.id] = r3(Math.min(RUIN_RULES.max, Math.max(0, v)));
     }
     K.upkeep = r3(upkeep);
     K.stats = Object.fromEntries(Object.entries(stats).map(([k, v]) => [k, r3(v)]));
+    fiscOf(realm); realm.fisc.last = realm.fisc.year; realm.fisc.year = null;   // the year's ledger closed (atlas/treasury.js)
     // back to the world for a year: its towns' growth by the economy, their might by the stability (saved on each town)
     const [lo, hi] = FEEDBACK.range, k = v => r3(Math.max(lo, Math.min(hi, v)));
     for (const t of towns) t.realmFx = {grow: k(1 + FEEDBACK.growthByEconomy * K.stats.economy), might: k(1 + FEEDBACK.mightByStability * K.stats.stability)};

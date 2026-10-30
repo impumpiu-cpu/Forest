@@ -23,6 +23,7 @@
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
 //   rose:     the course the people keeps its realm to over the years, along the three vectors (data/mind.js): the
 //             greenskins to war, the dwarves to craft and hoard, the humans to growth, the elves to a warded, crafted home
+//   bureau:   how fast a realm of this people breeds corruption (× RUINS corruption `grows`, data/kingdom.js; from the branch Elves)
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   flows:    × on what its buildings give of a good (data/townBuildings.js TOWN_GOODS, `out`): the elves' gardens
@@ -60,6 +61,7 @@ WORLD_PEOPLES.registerAll([
     settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.005, welcome: [],
     eatsRaw: ['produce'],   // the elves eat the grove's fruit as it is: it feeds them as cooked food does (atlas/economy.js)
     rose: {agg: 0.35, grow: 0.2, econ: 0.45},
+    bureau: 0.7,
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
@@ -88,6 +90,7 @@ WORLD_PEOPLES.registerAll([
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
     settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, goods: {stores: 30, stone: 30, tools: 4}}, migrate: 0.005, welcome: [],
     rose: {agg: 0.2, grow: 0.2, econ: 0.6},
+    bureau: 1,
     taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
@@ -106,6 +109,7 @@ WORLD_PEOPLES.registerAll([
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
     settlers: {pop: 30, from: 130, keep: 80, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
     rose: {agg: 0.25, grow: 0.45, econ: 0.3},
+    bureau: 1.2,
     taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
@@ -147,6 +151,7 @@ WORLD_PEOPLES.registerAll([
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
     settlers: {pop: 25, from: 110, keep: 70, reach: 2.5, goods: {stores: 25, hide: 20, arms: 3}}, migrate: 0.03, welcome: ['elves', 'dwarves', 'humans'],
     rose: {agg: 0.55, grow: 0.3, econ: 0.15},
+    bureau: 1.5,
     taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},

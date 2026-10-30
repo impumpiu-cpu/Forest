@@ -27,7 +27,7 @@
 ```text
 check-layers · atlas-check 2 · atlas-save-check 1 · map-check 3 · seam-check 16 · campaign-check 2 ·
 check-data · check-tables · align-check · leaders-check · buildings-check · elves-check · dwarves-check · greenskins-check · humans-check · kinds-check · fight-check ·
-conditions-check · ranks-check · potions-check · checks-check · clock-check · kingdom-check · mind-check · demography-check · build-check · content-check · land-check · settle-check ·
+conditions-check · ranks-check · potions-check · checks-check · clock-check · kingdom-check · mind-check · demography-check · build-check · fisc-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
@@ -83,6 +83,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run mind:check` | `mind-check.mjs` | совет державы: вектор каждой постройки — три доли; ветер и курс — доли; роль у каждого города, кроме столицы; без жребия; гранты по ветру делят ровно бюджет, чужим ролям ничего; что ушло из казны, пришло в города; таблица доходит до игры |
 | `npm run demography` | `demography-check.mjs` | люди — ресурс: переезд, поселенцы (уходят из города, столько же в новом, уносят со склада), опустевший город, пленные павшего логова, венец, войско павшего города — никого не делают и не теряют; год без рождений никого не прибавляет |
 | `npm run build:check` | `build-check.mjs` | стройка проектом: работа растёт со ступенью, местами и жильём; сезон прибавляет дни строителей; доделанное встаёт, начинается следующее; брошенный проект идёт дальше без второй оплаты |
+| `npm run fisc` | `fisc-check.mjs` | казна державы: коррупция уносит долю податей; войскам и двору платят первыми, недоплата — беглецы и упадок; дань слабого сильному, которого ненавидит; штурм столицы уносит казну; совет податей по запасу казны |
 | `npm run content` | `content-check.mjs` | недуги, зависимость, порча, языки, ночное зрение, слава каравана, темп похода, показатели поселения: при нуле ничего, с числами работают |
 | `npm run land` | `land-check.mjs` | «Создать землю»: без правок та же земля; поднятая плита, сдвиг плиты, кисть, климат меняют что должны; пересчёт с копии = земля целиком; сохранение земли |
 | `npm run settle` | `settle-check.mjs` | «Заселение мира»: мир без эпох; народы, логова, бедствия ставятся; те же действия — тот же мир; сохранение между отрезками |
