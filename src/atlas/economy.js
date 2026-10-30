@@ -57,12 +57,15 @@ function climateOf(a, t) {
 }
 
 // the units of a town: one per building it has, its copies told apart
+// (a building that boosts others — the humans' compost heap, data/townBuildings.js `boost` — makes their ways give more)
 function unitsOf(t) {
-  const seen = {}, out = [];
+  const seen = {}, out = [], boost = {};
+  for (const id of new Set(t.built)) for (const [k, v] of Object.entries(TOWN_BUILDINGS.has(id) && TOWN_BUILDINGS.get(id).boost || {})) boost[k] = (boost[k] || 0) + v;
   for (const id of t.built) {
     if (!TOWN_BUILDINGS.has(id)) continue;
     const n = seen[id] = (seen[id] || 0) + 1, b = TOWN_BUILDINGS.get(id);
-    out.push({key: keyOf(id, n), b, ways: worksOf(b).filter(w => raceOk(w, t.people))});
+    const ways = worksOf(b).filter(w => raceOk(w, t.people)), k = 1 + (boost[id] || 0);
+    out.push({key: keyOf(id, n), b, ways: k === 1 ? ways : ways.map(w => ({...w, out: Object.fromEntries(Object.entries(w.out).map(([g, v]) => [g, v * k]))}))});
   }
   return out;
 }

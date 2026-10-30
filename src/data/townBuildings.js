@@ -45,6 +45,9 @@
 //   metals        the metals its realm's smiths work and its markets sell once one stands in the realm
 //                 (data/balance/materials.js ids; a metal no building lists, everyone works)
 //   fx            what it gives, per building (EFFECTS below)
+//   fxBy          {people: {effect: value}}: what it gives a people besides `fx` (the humans' temples keep a church school)
+//   boost         {building: share}: the town's buildings of that kind give this much more of what they make while this one
+//                 stands in it (the humans' compost heap: fields and ploughland)
 //   `jobs`, `heat`, `fire`, `repair`, `tools`, `in` and `out` are the numbers of the flows: drafts, in the table and checked
 //   (`npm run buildings`), not yet run by the towns — the next step. `house` runs now.
 //   What some buildings do beyond their effects: a bridge or ferry takes the ford out of the road's cost
@@ -97,7 +100,7 @@ const RATION = () => CAMPAIGN.ration;   // the price of a ration of ready food
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   // food: raw (not eaten) and ready
-  {id: 'grain', label: 'зерно', unit: 'рацион', kind: 'base', raw: true, spoil: 0.002, chain: 'food', get price() { return RATION() * 0.7; }, note: 'сырое: мельница и жернова мелют его в муку, очаг варит кашу, загон кормит им скот'},
+  {id: 'grain', label: 'зерно', unit: 'рацион', kind: 'base', raw: true, spoil: 0.005, chain: 'food', get price() { return RATION() * 0.7; }, note: 'сырое: мельница и жернова мелют его в муку, очаг варит кашу, загон кормит им скот'},
   {id: 'produce', label: 'овощи и плоды', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', start: 10, get price() { return RATION() * 0.7; }},
   {id: 'mushrooms', label: 'грибы', unit: 'рацион', kind: 'base', raw: true, spoil: 0.01, chain: 'food', get price() { return RATION() * 0.6; }, note: 'сырое: грибные пещеры гномов; варят похлёбку, мелют грибную муку, ставят грибное пиво'},
   {id: 'meat', label: 'мясо', unit: 'рацион', kind: 'base', raw: true, spoil: 0.02, chain: 'food', get price() { return RATION() * 0.8; }},
@@ -186,7 +189,7 @@ export const PLACE_NEEDS = {
   ore: 'железо, медь или серебро не хуже «есть»', gems: 'самоцветы', coal: 'уголь', magma: 'магма поблизости',
   precious: 'золото или серебро', placer: 'золотой песок', salt: 'солёное озеро или тёплый морской берег',
   clay: 'глина: пойма, глинистый сланец или известняк', stone: 'камень: склоны или скалы рядом',
-  fertile: 'плодородная земля', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
+  fertile: 'плодородная земля', arable: 'пахотная земля: плодородие и ровность пониже (люди корчуют, ровняют, удобряют)', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
   steep: 'крутые склоны', flat: 'ровная земля', caves: 'пещеры: известняк или базальт', road: 'наезженная дорога',
   warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', graves: 'курганы былых битв рядом',
 };
@@ -202,6 +205,8 @@ TOWN_BUILDINGS.registerAll([
   B('hut', 'шалаши', 'pl', 'housing', 0, ALL, {}, {max: 2, local: 'hut', house: 100, heat: 2.667, repair: W(0.25)}),
   B('yurts', 'шатры', 'pl', 'housing', 0, O, {}, {max: 8, house: 150, heat: 1.667, repair: HD(0.167)}),
   B('house', 'избы', 'pl', 'housing', 1, [...H], {}, {max: 6, needsAny: ['forest', 'clay'], local: 'house', house: 200, heat: 1.333, repair: PL(0.125)}),
+  // the humans' log cabins: fell the wood, raise a house — no place asked, the logs come from the realm's stocks
+  B('cabin', 'срубы', 'pl', 'housing', 0, H, {}, {max: 6, house: 150, heat: 1.5, repair: W(0.2)}),
   B('longhouse', 'длинный дом', 'm', 'housing', 1, [...H, ...O], {prestige: 0.03}, {max: 4, needs: ['forest'], house: 250, heat: 1.667, repair: W(0.25)}),
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 0.667, repair: W(0.083)}),
   B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], house: 400, heat: 0.833, repair: S(0.083)}),
@@ -209,7 +214,11 @@ TOWN_BUILDINGS.registerAll([
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 0.667, repair: W(0.083), in: {arms: 0.15, armor: 0.125}}),
   // ── food: the land gives it raw, the hearth, the bakery, the smokehouse and the racks make it food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, tools: 2, repair: W(0.025), out: {produce: 128.316, herbs: 0.304}}),
-  B('field', 'пашни', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 3686.137, fiber: 27.938}}),
+  B('field', 'поля', 'pl', 'food', 0, [...H, ...O], {food: 0.3}, {max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 200, fiber: 27.938}}),
+  // humans clear, level and dung the land: the same field on poorer, rougher ground (PLACE_AT arable)
+  B('ploughland', 'пашня', 'f', 'food', 0, H, {food: 0.3}, {max: 4, needs: ['arable'], site: true, jobs: 30, tools: 4, repair: W(0.042), out: {grain: 300, fiber: 27.938}}),
+  // kitchen scraps and dung: the town's fields and ploughland give more (`boost`)
+  B('compost', 'компостная куча', 'f', 'food', 0, H, {food: 0.25}, {requiresAny: ['field', 'ploughland'], jobs: 2, repair: W(0.008), boost: {field: 0.25, ploughland: 0.25}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, tools: 1, out: {produce: 108.641, wood: 0.403}}),
   B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {max: 4, needsAny: ['caves', 'steep'], site: true, jobs: 15, tools: 1, out: {mushrooms: 286.709}}),
   // the herd is fed raw food (TOWN_WORKS); milk comes from its head, the increase goes to the slaughterhouse
@@ -271,6 +280,9 @@ TOWN_BUILDINGS.registerAll([
   // cooks more and wastes less — the campfire turns 10 raw into 8 food, the common hearth 20 into 20, the cookhouse 60 into 72
   B('campfire', 'кострище', 'n', 'life', 0, ALL, {food: 0.1, health: 0.02}, {max: 4, jobs: 2, works: true}),
   B('hearth', 'общинный очаг', 'm', 'life', 1, ALL, {food: 0.15, health: 0.05}, {max: 3, local: 'hearth', jobs: 3, repair: S(0.017), works: true}),
+  // the humans' tavern: folk eat and drink there off the town's surplus — any raw food; it brews a little of its own and
+  // sells it, and with brew brought from a brewery it pours more and earns more (TAVERN)
+  B('tavern', 'трактир', 'm', 'life', 1, H, {food: 0.15, trade: 0.1, prestige: 0.05, health: 0.03}, {jobs: 6, tools: 1, heat: 0.333, repair: W(0.042), works: true}),
   B('cookhouse', 'поварня', 'f', 'life', 2, ALL, {food: 0.2, health: 0.1}, {max: 3, requires: ['hearth'], jobs: 6, tools: 1, repair: S(0.042), works: true}),
   // ── trade and ways
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {needs: ['river'], jobs: 2, repair: W(0.042), out: {gold: 0.167}}),
@@ -301,7 +313,8 @@ TOWN_BUILDINGS.registerAll([
   B('sacredgrove', 'священная роща', 'f', 'faith', 0, E, {faith: 0.3}, {needs: ['forest'], jobs: 2}),
   B('stonecircle', 'каменный круг', 'm', 'faith', 0, [...H, ...O], {faith: 0.2}, {needsAny: ['stone', 'steep']}),
   B('ancestorhall', 'зал предков', 'm', 'faith', 1, D, {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 2, repair: S(0.042), works: true}),
-  B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 4, repair: S(0.083), works: true}),
+  // the humans' temples keep a church school: knowledge besides faith (`fxBy`)
+  B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {fxBy: {humans: {lore: 0.15}}, requires: ['shrine'], jobs: 4, repair: S(0.083), works: true}),
   B('crypt', 'усыпальница', 'f', 'faith', 2, [...H, ...D], {faith: 0.1}, {jobs: 1, repair: S(0.042)}),
   // by the barrows of old battles: the fallen are laid to rest, and the rot around fades (atlas/lairs.js stepRot)
   B('fallentemple', 'храм павших', 'm', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, {needs: ['graves'], requires: ['shrine'], notable: true, jobs: 3, repair: S(0.042), works: true}),
@@ -335,6 +348,7 @@ const r3 = v => Math.round(v * 1000) / 1000;
 // the kitchens of the three steps of a town: raw food a day (rations) at full strength, cycles of fire for it, food out of a unit of raw
 // home brew of the kitchens of the hamlets and villages (campfire, hearth): raw a day, drink it gives, cycles of fire
 export const HOMEBREW = {raw: 3.951, drink: 0.985, fire: 0.195};
+export const TAVERN = {raw: 120, drink: 6, yield: 1.1, gold: 0.4, fire: 1, brewRaw: 4, brew: 1, ownGold: 0.15};
 export const KITCHENS = {campfire: {raw: 13.581, fire: 0.367, yield: 0.8}, hearth: {raw: 27.163, fire: 0.449, yield: 1}, cookhouse: {raw: 81.49, fire: 0.91, yield: 1.2}};
 const DISHES = {flour: 'лепёшки', grain: 'каша', produce: 'похлёбка из овощей', mushrooms: 'грибная похлёбка', meat: 'мясная похлёбка', fish: 'уха', milk: 'сыр и творог'};
 // fine work of the luxury workshop: how much of each material a day goes into it (any two of them make a way), and how
@@ -372,6 +386,11 @@ TOWN_WORKS.registerAll([
   // the kitchens: raw to ready, any raw (KITCHENS: how much each cooks a day and how much food a unit of raw gives)
   ...Object.entries(KITCHENS).flatMap(([at, K]) => Object.entries(DISHES).map(([raw, dish]) =>
     WK(at, raw, dish, {[raw]: K.raw}, {food: r3(K.raw * K.yield * (raw === 'milk' ? 0.9 : 1))}, {fire: r3(K.fire * (raw === 'milk' ? 0.5 : 1))}))),
+  // the tavern: any raw food with brew (a meal and a mug: more food, coin) or without
+  ...Object.entries(DISHES).flatMap(([raw, dish]) => [
+    WK('tavern', raw, `${dish} с брагой`, {[raw]: TAVERN.raw, drink: TAVERN.drink}, {food: r3(TAVERN.raw * TAVERN.yield), gold: TAVERN.gold}, {fire: TAVERN.fire}),
+    // its own brew: a little of the same stock goes to the vat — a mug or two for the house, sold to the guests
+    WK('tavern', `${raw}Plain`, `${dish} и своя брага`, {[raw]: TAVERN.raw + TAVERN.brewRaw}, {food: TAVERN.raw, drink: TAVERN.brew, gold: TAVERN.ownGold}, {fire: TAVERN.fire})]),
   // milling and brewing: grain, or the dwarves' mushrooms
   WK('quern', 'grain', 'мука из зерна', {grain: 175.55}, {flour: 175.55}),
   WK('quern', 'mushrooms', 'грибная мука', {mushrooms: 204.809}, {flour: 175.55}),
@@ -468,7 +487,8 @@ export const townNeeds = () => Object.fromEntries(TOWN_GOODS.filter(g => g.need)
 
 // what a building gives, as one number for each effect (0 where it gives nothing); `load` — its load in the town's
 // household (atlas/economy.js), 1 when not counted
-export const fxOf = (b, key, load = 1) => (key === 'housing' ? (b.house || 0) / TOWN_FX.room[1] : (b.fx[key] || 0) * (TOWN_FX.load[0] + (TOWN_FX.load[1] - TOWN_FX.load[0]) * load));
+// (`people`: the town's people — a building may give some peoples more, `fxBy`: the humans' temple teaches)
+export const fxOf = (b, key, load = 1, people = null) => (key === 'housing' ? (b.house || 0) / TOWN_FX.room[1] : ((b.fx[key] || 0) + (b.fxBy?.[people]?.[key] || 0)) * (TOWN_FX.load[0] + (TOWN_FX.load[1] - TOWN_FX.load[0]) * load));
 
 // the buildings that let a realm work a metal (`metals`); none — everyone works it
 export const metalBuildings = m => TOWN_BUILDINGS.filter(b => b.metals?.includes(m)).map(b => b.id);
@@ -494,12 +514,12 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //              `raided` years, at most defence[0], + defence[2]; the others — a base + a step a tier (trade + its road,
 //              + trade[2] from tier 2; lore only from tier 2, else lore[2]; health + health[2] after a raid)
 export const TOWN_FX = {room: [120, 100], mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, econ: [0.1, 0.3], load: [0.5, 1.2],
-  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
+  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3, 0.25], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 
 // What a town's place must have for a building (atlas/towns.js placeHas): cells around to look, and the thresholds —
 // a lake, magma, gold sand, salt (a salt lake; or the coast where it is warmer than saltSea°), clay (alluvium), stone
 // (rough ground below stoneFlat of flatness or above stoneHigh of the land's height), fertile soil, a forest (tree
 // cover), steep and flat ground, graves (barrows), warm (°C), dry country; `near` — the cells around for the rest
-export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5,
+export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5, arableFert: 0.3, arableFlat: 0.6,
   forest: 0.5, steep: 0.5, flat: 0.85, graves: 3, gravesAt: 0.2, warm: 12, dry: 3};

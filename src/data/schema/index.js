@@ -21,7 +21,7 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, TOWN_WORKS, TOOLS, CHAINS, KITCHENS, FUEL} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, TOWN_WORKS, TOOLS, CHAINS, KITCHENS, TAVERN, FUEL} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
@@ -393,6 +393,8 @@ export const TABLES = [
       col('out', 'Даёт в день', 'map', {ref: 'townGoods', min: 0, note: 'при полной загрузке (черновик)'}),
       col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOLS), note: 'из чего её орудия и оружие: сколько использований даёт орудие'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
+      col('boost', 'Усиливает', 'map', {ref: 'townBuildings', min: 0, note: 'на сколько больше дают постройки этого вида в том же городе, пока стоит эта (компостная куча людей: поля и пашни)'}),
+      ...['elves', 'dwarves', 'humans', 'orcs'].map(p => col(`fxBy.${p}`, `Даёт ещё: ${WORLD_PEOPLES.get(p).label}`, 'map', {ref: keysOf(TOWN_FX), nullable: true, note: 'что постройка даёт этому народу сверх «Даёт» (у людей храм держит церковную школу: знание)'})),
       col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
   {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
@@ -487,8 +489,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOLS — сколько рабочих дней служит орудие из каждого материала и сколько оно стоит; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, циклы жара, сколько еды с единицы сырья; fuel.uses — сколько циклов тепла или жара даёт единица топлива).',
-    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, tools: TOOLS, kitchens: KITCHENS, fuel: FUEL})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOLS — сколько рабочих дней служит орудие из каждого материала и сколько оно стоит; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, циклы жара, сколько еды с единицы сырья; TAVERN — трактир людей: сколько сырья варит в день, сколько браги наливает, во сколько еды выходит еда с брагой и сколько золота она приносит; fuel.uses — сколько циклов тепла или жара даёт единица топлива).',
+    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, tools: TOOLS, kitchens: KITCHENS, tavern: TAVERN, fuel: FUEL})},
   {id: 'macroRules', label: 'Хозяйство и казна', group: 'Народы', note: 'Числа хозяйства городов и держав (data/macro.js; docs/WORLD.md «Потоки построек», «Стройка», «Содержание войска», «Торговля держав», «Казна»): economy — руки, переделы, склад с пределом, запас заготовок, сбор еды с земли; build — стройка и поселенцы; armyKeep — сбор войска, обоз, дезертирство, дружина; trade — торговля держав; treasury — подати, коррупция, пошлины, добыча, двор, мастера, совет казны, дань и выкуп; plots — участки в черте города. storage — что берегут амбар и погреб; lux, mint, riteWorth — ценность роскоши, монеты и обрядов. Что у каждого народа своё (прирост, довольство, переезд, поселенцы, содержание бойца, преступность, свои нужды, что едят сырым и только покупают, что сразу меняют, роза векторов и бюрократия) — в «Народах мира».',
     ...grp({economy: ECONOMY, build: BUILD, armyKeep: ARMY_KEEP, trade: MACRO_TRADE, treasury: TREASURY, plots: PLOTS, storage: STORAGE, lux: LUX, mint: MINT, riteWorth: RITE_WORTH})},
   {id: 'mindRules', label: 'Совет державы', group: 'Народы', note: 'Мозг державы (data/mind.js, atlas/mind.js; docs/WORLD.md «Совет державы»): три вектора — агрессия, рост, экономика. vecRules — как вектор постройки считается из её эффектов и того, что она делает, если в «Постройках городов» он не задан; deedVec — вектор дел двора и поселенцев; mind — курс, ветер, нужды сезона, траты свободных денег, роли городов, послушание. Роза каждого народа и его бюрократия — в «Народах мира».',
