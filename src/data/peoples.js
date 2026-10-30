@@ -37,6 +37,9 @@
 //   levy:     × the share of a town's people its army takes (data/parties.js ARMY.levy); breed — × how fast its towns grow;
 //             needs — × the goods its people want a head (atlas/treasury.js); none — ×1
 //   eatsRaw:  raw foods it eats as they are (data/townBuildings.js TOWN_GOODS `raw`): they feed it as cooked food does
+//   tradeUp:  goods it sells as soon as it has them, for another at `rate` of the worth ({sells, buys, rate}: the greenskins sell
+//             luxury, gems and silver for arms — atlas/peoples.js tradeUp, a season)
+//   wants:    its own wants a head beyond TOWN_MONEY.needs ({basic, comfort}: {good: amount a head a year}; 0 — it wants none of it)
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
@@ -127,7 +130,10 @@ WORLD_PEOPLES.registerAll([
     house: 0.75, roughHome: true,
     // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
-    levy: 10 / 3, breed: 1.25, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
+    // nomads and warriors (from the branch Elves): luxury, gems and silver they sell as soon as they have them and buy arms at
+    // 0.8 of the worth (atlas/peoples.js tradeUp); they want no luxury, and arms are a need of theirs
+    tradeUp: {sells: ['lux', 'gems', 'silver'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
+    levy: 10 / 3, breed: 1.45, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
     // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
     // for pots, rough logs for boards (atlas/economy.js swaps)
     swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},

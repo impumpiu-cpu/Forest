@@ -19,7 +19,7 @@ import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
+import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY, goodPrice} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -299,7 +299,19 @@ export function seasonTowns(a, say) {
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
   }
   seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
+  for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
   for (const t of a.towns) if (t.alive) keepWork(t);
+}
+
+// a people that sells some goods as soon as it has them (data/peoples.js tradeUp: the greenskins) sells what its town's store
+// holds of them to the passing traders, for `buys` at `rate` of their worth → the worth sold
+export function tradeUp(t) {
+  const TU = WORLD_PEOPLES.get(t.people)?.tradeUp;
+  if (!TU || !t.stock) return 0;
+  let worth = 0;
+  for (const g of TU.sells) { const n = t.stock[g] || 0; if (n <= 0) continue; worth += n * goodPrice(g); delete t.stock[g]; }
+  if (worth > 0) t.stock[TU.buys] = (t.stock[TU.buys] || 0) + worth * TU.rate / goodPrice(TU.buys);
+  return worth;
 }
 
 // A year of the peoples: fields, founding, growth, construction and meetings.

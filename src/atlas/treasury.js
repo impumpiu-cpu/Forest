@@ -75,8 +75,10 @@ function open(t) {
 // (× its people's `needs`: a horde wants less; a good its people do without is swapped as its buildings do — data/peoples.js)
 function wants(t) {
   const N = M.needs, P = peopleOf(t.people), k = P?.needs ?? 1, rich = Math.min(1, Math.max(0, t.peopleGold) / Math.max(1, t.pop * N.rich)), o = {basic: {}, comfort: {}};
-  o.basic = goodsFor(t.people, N.basic, t.pop * k);
-  o.comfort = goodsFor(t.people, N.comfort, t.pop * rich * k);
+  // (its own wants — data/peoples.js `wants`: the greenskins want arms and no luxury)
+  o.basic = goodsFor(t.people, {...N.basic, ...(P?.wants?.basic || {})}, t.pop * k);
+  o.comfort = goodsFor(t.people, {...N.comfort, ...(P?.wants?.comfort || {})}, t.pop * rich * k);
+  for (const tier of ['basic', 'comfort']) for (const g of Object.keys(o[tier])) if (!(o[tier][g] > 0)) delete o[tier][g];
   return o;
 }
 // a basket as the town's people takes it (data/peoples.js swapGoods): the needs, the safety reserve and the materials of a building
