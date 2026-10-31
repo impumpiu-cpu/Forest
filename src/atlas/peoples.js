@@ -17,6 +17,7 @@ import {keepWork} from './economy.js';
 import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
+import {stepWilds} from './wilds.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY, goodPrice} from '../data/townBuildings.js';
@@ -306,6 +307,7 @@ export function seasonTowns(a, say) {
     if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - waste / SEASONS_PER_YEAR));
     if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - waste / SEASONS_PER_YEAR));
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
+    if (stepWilds(a, t) && t.treants === 1) say(`У ${townLabel(t, 2)} ${t.name} проснулся древень: старое дерево сошло с корней и встало на стражу.`);   // the elves' grove (atlas/wilds.js)
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
   }
   seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)

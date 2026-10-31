@@ -1,11 +1,13 @@
 // The same levy and physical stores for a war and an alliance (diplomacy.js, alliance.js).
-// Livestock stays home. Guard golems and trained war beasts are transferred, never counted twice.
+// Livestock stays home. Guard golems and trained war beasts are transferred, never counted twice. The elves' wild allies
+// (p.wild: beasts of the land, treants of the forest — atlas/wilds.js) fight and fall with the army and go back to the wood.
 import {ARMY as A} from '../data/parties.js';
 import {GOLEMS} from '../data/townBuildings.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {beastWorth} from './beasts.js';
 import {townFx} from './towns.js';
+import {wildOfArmy} from './wilds.js';
 import {sendParty} from './parties.js';
 import {YEAR_DAYS} from '../data/atlas.js';
 
@@ -14,7 +16,7 @@ const beastMen = list => Object.entries(list || {}).reduce((s, [sp, n]) => s + n
 const guardMen = list => (list || []).reduce((s, metal) => s + (GOLEMS.men[metal] || 0), 0);
 
 export function refreshArmy(p) {
-  if (p.force) p.might = Math.sqrt(Math.max(0, p.men) + beastMen(p.warBeasts) + guardMen(p.golems)) * p.force;
+  if (p.force) p.might = Math.sqrt(Math.max(0, p.men) + beastMen(p.warBeasts) + beastMen(p.wild) + guardMen(p.golems)) * p.force;
   // Old saves and hand-set scenarios retain their rating, but it now follows their casualties.
   else if (p.ratedMen > 0) p.might *= Math.sqrt(Math.max(0, p.men) / p.ratedMen);
   p.ratedMen = p.men;
@@ -24,6 +26,7 @@ export function refreshArmy(p) {
 export function sendArmy(a, t, goal, men, props) {
   const share = WORLD_PEOPLES.get(t.people)?.beastLevy ?? A.beasts;
   const warBeasts = Object.fromEntries(Object.entries(t.warBeasts?.list || {}).map(([sp, n]) => [sp, Math.ceil(n * share)]).filter(([, n]) => n > 0));
+  const wild = wildOfArmy(a, t, men, goal);   // the elves' beasts of the land and treants of the forest (atlas/wilds.js)
   const guards = t.golems?.guard || [], golems = guards.slice(0, Math.ceil(guards.length * A.beasts));
   const kit = Object.fromEntries(Object.entries(A.kit).map(([g, n]) => [g, Math.min(t.stock?.[g] || 0, men * n)]));
   const fx = townFx(t), force = (1 + A.prod * fx.prod + A.defence * fx.defence) * A.might;
@@ -31,7 +34,7 @@ export function sendArmy(a, t, goal, men, props) {
   const owner = props?.owner ?? t.realm, realm = (a.realms || []).find(r => r.id === owner);
   const need = men * A.supplies / YEAR_DAYS, fromRealm = Math.max(0, Math.min(need, realm?.stock?.stores || 0)), fromTown = Math.max(0, Math.min(need - fromRealm, t.stock?.stores || 0));
   const supplies = Math.round(A.supplies * (A.supplyFloor + (1 - A.supplyFloor) * (need > 0 ? (fromRealm + fromTown) / need : 1)));
-  const army = {people: t.people, from: t.id, men, men0: men, warBeasts, golems, kit, force, supplies, speed: 'foot', burnt: 0, ...props};
+  const army = {people: t.people, from: t.id, men, men0: men, warBeasts, wild, golems, kit, force, supplies, speed: 'foot', burnt: 0, ...props};
   refreshArmy(army);
   const p = sendParty(a, 'army', t.i, goal, army);
   if (!p) return null;
@@ -57,6 +60,7 @@ export function armyLosses(p, share, rnd, battle = null) {
   }
   p.men = Math.max(0, p.men - loss);
   if (p.warBeasts) for (const [sp, n] of Object.entries(p.warBeasts)) { let alive = 0; for (let k = 0; k < n; k++) if (rnd() >= share) alive++; if (alive) p.warBeasts[sp] = alive; else delete p.warBeasts[sp]; }
+  if (p.wild) for (const [sp, n] of Object.entries(p.wild)) { let alive = 0; for (let k = 0; k < n; k++) if (rnd() >= share) alive++; if (alive) p.wild[sp] = alive; else delete p.wild[sp]; }
   if (p.golems) p.golems = p.golems.filter(() => rnd() >= share);
   refreshArmy(p);
 }

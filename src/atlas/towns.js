@@ -115,7 +115,7 @@ export const slotsOf = t => ({town: TOWN_SLOTS.town[Math.min(t.tier || 0, TOWN_S
 // a town's might: its people (with its guard golems, its trained war beasts
 // and the garrison its realm pays: atlas/treasury.js realmSpend — as so many men: atlas/golems.js, atlas/beasts.js) × its
 // defence and craft, × a people's own fierceness (data/peoples.js warCult: the greenskins)
-export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.wardMen || 0) + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
   * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1) * (t.realmFx?.might ?? 1);   // and its realm's stability (atlas/kingdom.js)
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 

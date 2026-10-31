@@ -224,7 +224,7 @@ RAID_BANDS.registerAll([
   // captives and burns nothing: bows from the trees, the caller of beasts behind them
   {id: 'elves', label: 'отряд эльфов', kind: 'sentient', world: true, noCaptives: true,
     goals: () => [['kill', 2], ['loot', 0.5]], nerve: 0.05,
-    links: [['grove', 2], ['wardens', 1], ['volley', 1]], ranks: {officer: 'страж', boss: 'владыка леса'},
+    links: [['grove', 3], ['wardens', 1], ['volley', 1]], ranks: {officer: 'страж', boss: 'владыка леса'},
     chance: {weight: 0},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['elf', 1]], t, o),
     message: (n, group) => `Отряд эльфов: ${n}${group.some(a => a.fightRole === 'summoner') ? ', с призывателем' : ''}. Пленных эльфы не берут`},
