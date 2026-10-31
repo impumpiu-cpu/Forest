@@ -181,7 +181,7 @@ export const PLACE_NEEDS = {
   clay: 'глина: пойма, глинистый сланец или известняк', stone: 'камень: склоны или скалы рядом',
   fertile: 'плодородная земля', arable: 'пахотная земля: плодородие и ровность пониже (люди корчуют, ровняют, удобряют)', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
   steep: 'крутые склоны', flat: 'ровная земля', caves: 'пещеры: известняк или базальт', road: 'наезженная дорога',
-  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', graves: 'курганы былых битв рядом',
+  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', grazing: 'открытая земля рядом: луга, степь, саванна, тундра, кустарники, пустыня, предгорья, высокогорье (выпас кочевников)', graves: 'курганы былых битв рядом',
 };
 
 // Indicators (docs/WORLD.md «Цепочки 6.1»): what a town has or has not — a flag, not a good. A building lights its `opens` while one
@@ -230,7 +230,9 @@ const U = (id, name, tier, peoples, hosts, boost, more = {}) => B(id, name, 'n',
 const R = (id, name, req, io = {}) => ({id, name, req, ...io});
 const ALL = null, E = ['elves'], D = ['dwarves'], H = ['humans'], O = ['orcs'];
 const SALT_REC = [R('brine', 'выварка рассола', [], {fire: 80, out: {salt: 200}}), R('spring', 'соляной ручей', ['people:elves'], {out: {salt: 40}})];
-const KITCHEN_REC = k => [R('bread', 'хлеб', ['flour'], {in: {raw: 60 * k}, fire: 80 * k, out: {food: 84 * k}}), R('ogrepot', 'мясной котёл', ['kin:ogre'], {in: {raw: 40 * k}, fire: 30 * k, out: {food: 48 * k, bone: 20 * k}})];
+// (the greenskins brew their own at the fire from the first step: a little raw food into brew, data/peoples.js orcs)
+const KITCHEN_REC = k => [R('bread', 'хлеб', ['flour'], {in: {raw: 60 * k}, fire: 80 * k, out: {food: 84 * k}}), R('ogrepot', 'мясной котёл', ['kin:ogre'], {in: {raw: 40 * k}, fire: 30 * k, out: {food: 48 * k, bone: 20 * k}}),
+  R('brew', 'своя брага', ['people:orcs'], {in: {raw: 4 * k}, fire: 10 * k, out: {drink: 40 * k}})];
 const BREW_REC = [R('grain', 'зерновая брага', ['grain'], {in: {raw: 20}, out: {drink: 800}}), R('fruit', 'плодовая брага', ['fruit'], {in: {raw: 20}, out: {drink: 800}}),
   R('mushroom', 'грибная брага', ['mushrooms'], {in: {raw: 20}, out: {drink: 800}}), R('mead', 'медовая брага', ['honey'], {in: {raw: 20}, out: {drink: 800}})];
 const LARDER_REC = [R('dry', 'сушка', [], {in: {raw: 12}, out: {stores: 6}}), R('salt', 'засолка', ['stock:salt'], {in: {raw: 12, salt: 6}, out: {stores: 12}}),
@@ -302,10 +304,10 @@ TOWN_BUILDINGS.registerAll([
   T('pasture', 'выгоны', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, 'pen', {line: 'pasture', per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, in: {tools: 3}, out: {fiber: 200, beasts: 8, fuel: 60},
     recipes: [R('herds', 'большие стада', ['people:orcs'], {out: {beasts: 8, fuel: 40}})], opens: ['herds', 'wool']}),
   // the greenskins' beast dens, one work with a recipe by kind: wargs of the orcs, spiders (and silk) of the goblins, hyenas
-  // of the gnolls (data/peoples.js WAR_BEASTS)
+  // of the gnolls (data/peoples.js WAR_BEASTS); the beasts eat raw meat, not the kitchens' food
   B('dens', 'логово зверей', 'n', 'defence', 0, O, {defence: 0.15, prestige: 0.05}, {line: 'dens', local: ['wargden', 'spiderden'], notable: true, jobs: 4,
-    recipes: [R('wargs', 'варги', ['kin:orc'], {in: {food: 30}, opens: ['wargs']}), R('spiders', 'пауки', ['kin:goblin'], {in: {food: 15}, out: {fiber: 40}, opens: ['spiders', 'silk']}),
-      R('hyenas', 'гиены', ['kin:gnoll'], {in: {food: 15}, opens: ['hyenas']})], opens: ['warbeasts']}),
+    recipes: [R('wargs', 'варги', ['kin:orc'], {in: {raw: 30}, opens: ['wargs']}), R('spiders', 'пауки', ['kin:goblin'], {in: {raw: 15}, out: {fiber: 40}, opens: ['spiders', 'silk']}),
+      R('hyenas', 'гиены', ['kin:gnoll'], {in: {raw: 15}, opens: ['hyenas']})], opens: ['warbeasts']}),
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {line: 'crossing', needs: ['river'], jobs: 2, in: {tools: 0.4}, out: {gold: 20}, opens: ['crossing']}),
   T('bridge', 'мост', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, 'ferry', {line: 'crossing', here: ['ferry', 'bridge', 'quarry'], needs: ['river'], requires: ['quarry'], in: {stone: 10}, opens: ['crossing']}),
   A('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1}, ['ferry'], {line: 'crossing', needs: ['river'], jobs: 4, in: {planks: 6, tools: 0.8}, out: {gold: 20}, opens: ['river']}),
@@ -466,10 +468,12 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 // over what it takes; of its recipes, the best one that may run (`lit`: the town's indicators; none — the first that asks for
 // nothing of the people or the kind)
 const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : g === 'raw' ? v * TOWN_FLOW.rawFood : g === 'beasts' ? v * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0), 0);
-const ioFood = x => FOOD_GOODS(x.out) - FOOD_GOODS(x.in);
-export const foodNet = (b, lit = null) => {
+// (wf — × what a people's work of this kind gives of a good: data/peoples.js workFlows, the greenskins' hunt)
+const scaled = (io, wf) => (wf ? Object.fromEntries(Object.entries(io || {}).map(([g, v]) => [g, v * (wf[g] ?? 1)])) : io);
+const ioFood = (x, wf) => FOOD_GOODS(scaled(x.out, wf)) - FOOD_GOODS(x.in);
+export const foodNet = (b, lit = null, wf = null) => {
   const R = recipesOf(b).filter(q => (lit ? reqLit(q.req, lit) : !(q.req || []).some(r => /^(people|kin):/.test(r))));
-  return ioFood(b) + (R.length ? Math.max(...R.map(ioFood)) : 0);   // (a pen's increase counts as the meat it gives at the slaughterhouse)
+  return ioFood(b, wf) + (R.length ? Math.max(...R.map(q => ioFood(q, wf))) : 0);   // (a pen's increase counts as the meat it gives at the slaughterhouse)
 };
 
 // Fuel (docs/WORLD.md «Кухни и топливо»): the warmth of homes (`heat`) and the heat of the works (`fire`) are charges of one
@@ -503,7 +507,7 @@ export const takesOf = b => [...new Set([...Object.keys(b.in || {}), ...recipesO
 // Slots (docs/WORLD.md «Слоты»): a town holds at most `town[step]` works of its own in it — not the works on the map (`site`), not
 // housing; two of a kind take two; a tier takes its base's place. Upgrades have slots of their own (`upgrades[step]`). A town at its
 // slots razes a work of its own that works below `raze` for `years` years running, to make room (atlas/build.js)
-export const TOWN_SLOTS = {town: [6, 12, 20], upgrades: [1, 2, 4], raze: 0.25, years: 2};
+export const TOWN_SLOTS = {town: [8, 16, 24], upgrades: [1, 2, 4], raze: 0.25, years: 2, idle: 0.5};   // (idle: a town whose council finds nothing to build razes its worst work below this, one a season: atlas/build.js)
 export const slotKind = b => (b.kind === 'upgrade' ? 'upgrades' : b.site || b.cat === 'housing' || b.kind === 'tier' ? null : 'town');
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier']},
@@ -575,7 +579,7 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
   needs: {basic: {wood: 0.05, cloth: 0.01, ware: 0.004, salt: 0.002, leather: 0.004, drink: 0.02, tools: 0.002},
     comfort: {lux: 0.001, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.008}, rich: 1, grow: [0.95, 0.05], comfortGrow: 0.1, unmet: 0.1},
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
-  plunder: {raid: 0.15, storm: 0.4, cult: 2, chief: 0.3, dare: 1.5},
+  plunder: {raid: 0.25, storm: 0.5, cult: 3, chief: 0.3, dare: 1.5, slaves: 0.4},
   build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
   upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, kind: {stores: 5, arms: 1, armor: 0.5, herbs: 0.3}, man: 3, build: 400, hoard: 3, corrupt: 0.03, corruptMax: 0.35, court: 3, wage: 0.2, desert: 0.3, duty: 0.05, seat: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05}}, tax: {keep: 0.02, rate: {high: 0.3, need: 0.3, usual: 0.15, light: 0.05, rich: 0.05}},
   price: {short: 0.6, need: 0.4, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
@@ -613,7 +617,7 @@ export const GOLEMS = {
 //   `idle` of itself; one whose goods all fill the store already (their price at the market's floor) is worth `glut` of itself;
 //   a building that wants `hands` × its jobs and finds
 //   fewer free is not built
-export const TOWN_FX = {room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, spareSkip: ['food', 'stores', 'gold'], cap: 1.2, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3},
+export const TOWN_FX = {room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, spareSkip: ['food', 'stores', 'gold'], cap: 1.2, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3, tierUp: 1, tierAt: 0.8},
   needs: {full: [0.55, 0.4], housing: [2], food: [1.3, 0.1], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 

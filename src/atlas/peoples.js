@@ -33,7 +33,7 @@ import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
 import {foundRealm, joinRealm, realmLabel, realmHome, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
-import {abandonEmpty} from './demography.js';
+import {abandonEmpty, lifeYear} from './demography.js';
 import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
 
@@ -301,8 +301,10 @@ export function seasonTowns(a, say) {
     if (!t.alive) continue;
     // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
     // its slaves wear away (the orcs' raids keep them coming)
-    if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
-    if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    // (a people's own `slaveLife` [from, to] years: the greenskins work theirs to death in 5–10)
+    const SL = WORLD_PEOPLES.get(t.people)?.slaveLife, waste = SL ? 2 / (SL[0] + SL[1]) : TOWN_FLOW.slaves.waste;
+    if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - waste / SEASONS_PER_YEAR));
+    if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - waste / SEASONS_PER_YEAR));
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
   }
@@ -384,8 +386,9 @@ export function stepPeoples(a, rnd, say) {
     if (hungry > 0) { t.stock.stores = Math.round((t.stock.stores - hungry) * 100) / 100; if (t.stock.stores < TOWN_MONEY.dust) delete t.stock.stores; feeds += hungry; t.ateStores = Math.round(hungry); } else delete t.ateStores;
     const target = Math.min(feeds, room(fx));
     // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
-    // a town too few to hold is left — atlas/demography.js abandonEmpty)
-    t.pop = Math.max(0, t.pop + bornOf(t, pe.P, fx, target));
+    // a town too few to hold is left — atlas/demography.js abandonEmpty); and they die of age and in brawls (lifeYear)
+    const grow = bornOf(t, pe.P, fx, target);
+    lifeYear(a, t, Math.max(0, grow), Math.max(0, -grow), fx);
     t.target = Math.round(target);   // what feeds and houses it: its settlers go when it is full (sendSettlers)
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster

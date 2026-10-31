@@ -17,12 +17,13 @@
 import {SITES, NET} from '../data/sites.js';
 import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
+import {placeNeed} from '../data/peoples.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 
-const FIT_NEEDS = ['fertile', 'arable', 'forest', 'pasture', 'ore', 'stone', 'water', 'coast', 'river'];
+const FIT_NEEDS = ['fertile', 'arable', 'forest', 'pasture', 'grazing', 'ore', 'stone', 'water', 'coast', 'river'];
 
 // whether a cell has what a building asks for; the land does not change, so the answer is kept per
 // cell (roads and graves do change and are asked afresh)
@@ -32,16 +33,17 @@ export function cellHas(a, i, need) {
   if (!m[i]) m[i] = placeHas(a, i, need) ? 2 : 1;
   return m[i] === 2;
 }
-const cellFits = (a, i, b) => (!b.needs || b.needs.every(nd => cellHas(a, i, nd))) && (!b.needsAny || b.needsAny.some(nd => cellHas(a, i, nd)));
+// (a people reads a need its own way: data/peoples.js placeNeed — the greenskins' pasture is any open land)
+const cellFits = (a, i, b, people) => (!b.needs || b.needs.every(nd => cellHas(a, i, placeNeed(people, nd)))) && (!b.needsAny || b.needsAny.some(nd => cellHas(a, i, placeNeed(people, nd))));
 
 // how well the ground of a cell suits a building, 0 … 1: by what it asks for
-function fitness(a, i, b) {
-  const f = a.f, needs = [...(b.needs || []), ...(b.needsAny || [])];
+function fitness(a, i, b, people) {
+  const f = a.f, needs = [...(b.needs || []), ...(b.needsAny || [])].map(nd => placeNeed(people, nd));
   let v = 0, n = 0;
   for (const nd of needs) {
     if (!FIT_NEEDS.includes(nd)) continue;
     n++;
-    v += nd === 'fertile' || nd === 'arable' ? f.fert[i] : nd === 'forest' ? f.trees[i] : nd === 'pasture' ? (cellHas(a, i, 'pasture') ? 0.8 : 0) : cellHas(a, i, nd) ? 0.7 : 0;
+    v += nd === 'fertile' || nd === 'arable' ? f.fert[i] : nd === 'forest' ? f.trees[i] : nd === 'pasture' || nd === 'grazing' ? (cellHas(a, i, nd) ? 0.8 : 0) : cellHas(a, i, nd) ? 0.7 : 0;
   }
   return n ? v / n : 0.5;
 }
@@ -62,14 +64,14 @@ export function siteCell(a, t, b, rnd) {
   let best = -1, bv = -Infinity;
   for (let y = Math.max(0, y0 - R); y <= Math.min(a.h - 1, y0 + R); y++) for (let x = Math.max(0, x0 - R); x <= Math.min(a.w - 1, x0 + R); x++) {
     const i = y * a.w + x;
-    if (f.ocean[i] || f.lake[i] >= 0 || taken(a, i, x, y) || !cellFits(a, i, b)) continue;
+    if (f.ocean[i] || f.lake[i] >= 0 || taken(a, i, x, y) || !cellFits(a, i, b, t.people)) continue;
     let beside = 0;
     for (const [dx, dy] of DIRS8) {
       const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= a.w || ny >= a.h) continue;
       const j = ny * a.w + nx;
       if ((a.siteAt && a.siteAt[j]) || (f.road && f.road[j] > 0.25)) beside++;
     }
-    const v = fitness(a, i, b) - SITES.close * Math.hypot(x - x0, y - y0) + SITES.beside * beside + (rnd ? 0.04 * rnd() : 0);
+    const v = fitness(a, i, b, t.people) - SITES.close * Math.hypot(x - x0, y - y0) + SITES.beside * beside + (rnd ? 0.04 * rnd() : 0);
     if (v > bv) { bv = v; best = i; }
   }
   return best;

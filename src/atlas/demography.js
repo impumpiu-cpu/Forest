@@ -14,13 +14,81 @@
 //   a town left with fewer than TOWN_LIFE.abandon people is left: they go to the nearest town of their realm;
 //   the captives of a lair gone go home (freeCaptives); an army whose town fell comes back to the nearest town of its realm
 //   (atlas/army.js); the crowned seat draws people from its realm's towns (drawTo), it does not make them.
-import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
-import {townFx, room, townLabel} from './towns.js';
+import {WORLD_PEOPLES, TOWN_LIFE as TL, KIN} from '../data/peoples.js';
+import {SPECIES} from '../data/species.js';
+import {townFx, room, townLabel, townKin, kinOfLand} from './towns.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
 import {trades} from './diplomacy.js';
 import {scaleOf} from './tectonics.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
+
+// ── age and death (docs/WORLD.md «Демография»; each kind's lifeFrom, life, fertility, brawled — the races table, data/races.js
+// body; data/peoples.js `brawl`, TOWN_LIFE.age). A town keeps how many of each kind it holds (t.kin — shares — for a people of
+// many kinds; its race for the others) and each kind's mean age (t.kinAge; t.age — the town's). Each year each kind dies by
+// its age against how long it lives — a long-lived kind hardly dies in a history, a short-lived one turns over many times —
+// and, in a people that brawls, by its brawls (the weak first); the old die first (the dead are older than the mean), all
+// grow a year older; the born, shared among the kinds by their fertility, are of age 0. So the kinds of a town drift: the
+// goblins breed and die fast, the trolls and the ogres slowly. → {born, dead, brawl, want}
+const bodyOf = id => (SPECIES.has(id) ? SPECIES.get(id).body || {} : {});
+// the kinds of a town, {species: share}: its kinds (atlas/towns.js townKin) or its race
+export function kindsOf(a, t) {
+  const P = WORLD_PEOPLES.get(t.people);
+  const K = P?.kin && (a?.f || t.kin) ? townKin(a, t) : null;
+  return K || {[P?.race || 'human']: 1};
+}
+// how long a kind lives in a town of this health (its lifeFrom … life, the health a soft lift)
+export function lifeOf(kind, health = 0) {
+  const B = bodyOf(kind), hi = B.life || 70, lo = B.lifeFrom ?? hi, lift = 1 - Math.exp(-Math.max(0, health) / TL.age.health);
+  return lo + (hi - lo) * lift;
+}
+// the base of death, the children, the sick and the unlucky: high in a poor land, low where the town is healthy
+const baseOf = health => { const [hi, lo] = TL.age.base; return lo + (hi - lo) * Math.exp(-Math.max(0, health) / TL.age.health); };
+// the share of a kind of this age that dies of age this year
+export const deathRate = (L, age, health = 0) => Math.min(TL.age.most, (1 / L) * (baseOf(health) + Math.pow(age / (L / 2), TL.age.hazard)));
+// the age of a founding band or of settlers of a kind
+export const foundAge = kind => Math.round((bodyOf(kind).lifeFrom ?? bodyOf(kind).life ?? 54) * TL.age.found);
+// the share of a town that dies in brawls this year (data/peoples.js `brawl`: the greenskins), before each kind's `brawled`
+export function brawlRate(a, t, fx = townFx(t)) {
+  const B = WORLD_PEOPLES.get(t.people)?.brawl; if (!B) return 0;
+  const crime = a?.realms?.find(r => r.id === t.realm)?.kingdom?.ruin?.crime || 0;
+  return B.crime * crime + B.crowd * Math.max(0, t.pop / Math.max(1, room(fx)) - B.from);
+}
+// how much more a town of these kinds breeds than its people's own race (each kind's fertility against the race's)
+export function breedOf(a, t) {
+  const P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, K = kindsOf(a, t);
+  return Object.entries(K).reduce((s, [k, sh]) => s + sh * (bodyOf(k).fertility ?? ref) / ref, 0);
+}
+// a year of a town's people: `born` came of them this year (by the people's breed: the kinds' own fertility shares and
+// scales it), `want` died of hunger and crowding (atlas/peoples.js bornOf, < 0); its kinds and their ages move on
+export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
+  const A = TL.age, P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, K = kindsOf(a, t), P0 = Math.max(0, t.pop);
+  const ages = t.kinAge ||= {}, health = fx.health || 0, br = brawlRate(a, t, fx);
+  const w = Object.fromEntries(Object.entries(K).map(([k, sh]) => [k, sh * (bodyOf(k).fertility ?? ref) / ref]));
+  const n1 = {}, V = {born: 0, dead: 0, brawl: 0, want: 0};
+  for (const [k, sh] of Object.entries(K)) {
+    const n = sh * P0, age = ages[k] ?? t.age ?? foundAge(k);
+    const dead = n * deathRate(lifeOf(k, health), age, health);
+    const fight = Math.max(0, n - dead) * Math.min(1, br * (bodyOf(k).brawled ?? 1));
+    const hunger = want * sh, b = born * w[k];   // (its share of the births × its fertility against the race's)
+    const left = Math.max(0, n - dead - fight - hunger);
+    // the old die first; brawls and hunger take any age; a year older; the born are young
+    const oldAge = n > dead ? Math.max(0, (age * n - dead * Math.min(age * A.dead, age * n / Math.max(dead, 1e-9))) / (n - dead)) : 0;
+    n1[k] = left + b;
+    ages[k] = n1[k] > 0 ? Math.round(((oldAge + 1) * left) / n1[k] * 100) / 100 : foundAge(k);
+    V.born += b; V.dead += dead; V.brawl += fight; V.want += hunger;
+  }
+  const P1 = Object.values(n1).reduce((s, v) => s + v, 0);
+  t.pop = P1;
+  if (P?.kin && P1 > 0) {
+    // the kinds drift by their births and deaths, and the land's wild tribes pull them back a little (KIN.pull)
+    const land = kinOfLand(a, t), pull = land ? KIN.pull : 0;
+    t.kin = Object.fromEntries(Object.entries(n1).map(([k, v]) => [k, Math.round(((1 - pull) * v / P1 + pull * (land?.[k] || 0)) * 10000) / 10000]));
+  }
+  t.age = P1 > 0 ? Math.round(Object.entries(n1).reduce((s, [k, v]) => s + v * ages[k], 0) / P1 * 100) / 100 : 0;
+  t.vital = Object.fromEntries(Object.entries(V).map(([k, v]) => [k, Math.round(v * 10) / 10]));
+  return t.vital;
+}
 
 // how much people like a town: its fame and how well its people live (a town not counted yet: as well as can be)
 const pull = t => (1 + Math.max(0, townFx(t).prestige)) * (t.needs?.basic ?? 1);

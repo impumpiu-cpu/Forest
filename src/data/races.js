@@ -11,7 +11,10 @@
 //              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные дварфы Медной горы»),
 //              `taste` leans its towns' building (data/peoples.js taste); `world: false` — never a realm
 //   body     — physiology for the card and, later, for the world map (growth of a node):
-//              adult/life in years, fertility 0…1, diet
+//              adult in years; lifeFrom…life — how long it lives, the town's health lifting it towards `life` (atlas/
+//              demography.js lifeYear); fertility 0…1 — on the world map, × its people's births as against the race the
+//              people is named for (a goblin of the greenskins breeds × 0.95 / 0.75 of an orc); brawled — × how often it dies
+//              in its people's brawls (data/peoples.js `brawl`: the weak goblin crushed for a laugh); diet
 //   mods     — multipliers on the agent (hunger, cold, sleep, regen… see data/traits.js BASE_MODS)
 //   innate   — racial traits nobody can learn or lose: {label, note, mods?}
 //   align    — the race's point on the compass (data/values.js): order (−5 хаос … +5 закон), mercy (−5 зло … +5 добро);
@@ -32,7 +35,7 @@ export const RACES = [
   {id: 'human', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05},
     label: 'человек', plural: 'люди', rel: 'human', settle: 6,
     heatHarm: 70, look: person(0.62, '#e2b48c'),
-    body: {adult: 16, life: 70, fertility: 0.5, diet: 'всеядный'},
+    body: {adult: 16, lifeFrom: 60, life: 80, fertility: 0.5, diet: 'всеядный'},
     innate: [{label: 'приспособляемость', note: 'учится любому делу быстрее других', mods: {learn: 1.15}}],
     align: {order: 0, mercy: 0, spread: {order: 1.3, mercy: 1.3}},
     values: {work: 1, family: 1, faith: 1, gold: 1, freedom: 1, strength: 0.6, knowledge: 0.6, ancestors: 0.6, nature: 0.5},
@@ -61,7 +64,7 @@ export const RACES = [
   {id: 'elf', kind: 'race', deeds: {realm: [...DEED_WAYS.wardens]}, home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
     label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
     heatHarm: 70, look: person(0.6, '#f1dcc0'),
-    body: {adult: 50, life: 600, fertility: 0.08, diet: 'почти травоядный'},
+    body: {adult: 50, lifeFrom: 1000, life: 1500, fertility: 0.08, diet: 'почти травоядный'},
     mods: {hunger: 0.8, cold: 1.3, sleep: 0.5},
     // the pace of a job (agents/jobRunners.js workRate): stone they take humanely, the field answers them
     jobPace: {mine: 0.5, farm: 1.25},
@@ -96,7 +99,7 @@ export const RACES = [
   {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.liberators]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
     label: 'дварф', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
-    body: {adult: 40, life: 300, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
+    body: {adult: 40, lifeFrom: 300, life: 400, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
     mods: {cold: 0.7},
     // the pace of a job (agents/jobRunners.js workRate): the rock and the forge are theirs
     jobPace: {mine: 1.25, dig: 1.25, smith: 1.2},
@@ -121,7 +124,7 @@ export const RACES = [
   {id: 'orc', kind: 'race', deeds: {realm: [...DEED_WAYS.raiders]}, home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
     label: 'орк', plural: 'орки', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.66, '#6f9a4a'),
-    body: {adult: 12, life: 50, fertility: 0.75, diet: 'хищник-всеядный'},
+    body: {adult: 12, lifeFrom: 40, life: 60, fertility: 0.75, brawled: 1, diet: 'хищник-всеядный'},
     mods: {hunger: 1.4, cold: 0.85, regen: 1.6, bravery: 1.2},
     innate: [{label: 'живучий', note: 'раны затягиваются быстро'}, {label: 'ярость', note: 'раненым дерётся злее'}],
     align: {order: -2, mercy: -2, spread: {order: 1.1, mercy: 1}},
@@ -131,7 +134,7 @@ export const RACES = [
   {id: 'goblin', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
     label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.45, '#8fb04c'),
-    body: {adult: 6, life: 30, fertility: 0.95, diet: 'ест что угодно'},
+    body: {adult: 6, lifeFrom: 20, life: 30, fertility: 1, brawled: 2.5, diet: 'ест что угодно'},
     mods: {hunger: 0.7, cold: 1.1, bravery: 0.7},
     innate: [{label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'трус в одиночку', note: 'смел только в толпе своих'}],
     align: {order: -3, mercy: -2, spread: {order: 1.3, mercy: 1.1}},
@@ -141,7 +144,7 @@ export const RACES = [
   {id: 'ogre', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
     label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.86, '#9b8a6a'),
-    body: {adult: 15, life: 60, fertility: 0.3, diet: 'ест что угодно, за четверых'},
+    body: {adult: 15, lifeFrom: 120, life: 200, fertility: 0.25, brawled: 0.3, diet: 'ест что угодно, за четверых'},
     mods: {hunger: 3, cold: 0.7, bravery: 1.3},
     innate: [{label: 'утроба', note: 'голод валит его быстрее других'}],
     align: {order: -3, mercy: -3, spread: {order: 1, mercy: 0.8}},
@@ -152,7 +155,7 @@ export const RACES = [
   {id: 'troll', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
     label: 'тролль', plural: 'тролли', rel: 'greenskin', settle: 0,
     heatHarm: 62, look: person(0.76, '#4f8f86'),
-    body: {adult: 14, life: 80, fertility: 0.5, diet: 'хищник'},
+    body: {adult: 14, lifeFrom: 150, life: 250, fertility: 0.3, brawled: 0.3, diet: 'хищник'},
     mods: {hunger: 1.8, regen: 6, bravery: 1.3},
     innate: [{label: 'регенерация', note: 'рана затягивается на глазах, пока рядом нет огня'}],
     peoples: [
@@ -168,7 +171,7 @@ export const RACES = [
   {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
     label: 'гнолл', plural: 'гноллы', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.64, '#a98d5a'),
-    body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},
+    body: {adult: 8, lifeFrom: 30, life: 45, fertility: 0.75, brawled: 1, diet: 'падальщик'},
     mods: {hunger: 1.2, cold: 0.9},
     innate: [{label: 'нюх', note: 'чует добычу и нежить издалека'}, {label: 'падальщик', note: 'мертвечина и гниль ему не вредят'}],
     align: {order: -2, mercy: -5, spread: {order: 1, mercy: 0.6}},

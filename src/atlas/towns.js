@@ -25,7 +25,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_
 // the buildings that make a good (once)
 const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
-import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods} from '../data/peoples.js';
+import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -131,6 +131,8 @@ const nextTo = (a, i, test) => {
   return false;
 };
 
+// the open land a nomad people's herds and hunts use (data/peoples.js `places`: the greenskins' pasture is any of it)
+const GRAZING = ['meadow', 'steppe', 'savanna', 'tundra', 'shrubland', 'desert', 'foothills', 'highlands'];
 export function placeHas(a, i, need) {
   const f = a.f, k2 = scaleOf(a) ** 2, rock = j => ROCK_BY_CODE[f.rock[j]]?.id, bio = j => biomeAt(a, j)?.id;
   switch (need) {
@@ -151,6 +153,7 @@ export function placeHas(a, i, need) {
     case 'arable': return f.fert[i] >= PA.arableFert && f.flat[i] > PA.arableFlat;
     case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
     case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
+    case 'grazing': return around(a, i, PA.near, j => GRAZING.includes(bio(j)));
     case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
     case 'flat': return f.flat[i] > PA.flat;
     case 'caves': return around(a, i, PA.near, j => rock(j) === 'limestone' || rock(j) === 'basalt');
@@ -168,9 +171,15 @@ export function placeHas(a, i, need) {
 // the biome of its cell — worked out once and kept; null for a people of one kind
 export function townKin(a, t) {
   if (t.kin) return t.kin;
-  const K = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).kin : null; if (!K) return null;
+  const K = kinOfLand(a, t); if (!K) return null;
+  return (t.kin = K);
+}
+// the kinds the land of a town gives a people of many kinds (its biome: base + home), {species: share} — a new town's, and
+// what its wild tribes keep bringing to it (atlas/demography.js lifeYear, KIN.pull)
+export function kinOfLand(a, t) {
+  const K = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).kin : null; if (!K || !a?.f) return null;
   const b = biomeAt(a, t.i)?.id, w = Object.fromEntries(Object.entries(K).map(([sp, k]) => [sp, k.base + (k.home[b] || 0)])), sum = Object.values(w).reduce((s, v) => s + v, 0);
-  return (t.kin = Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000])));
+  return Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000]));
 }
 // the town's leading kind (its race for a people of one kind)
 export const leadKin = (a, t) => { const k = townKin(a, t); return k ? Object.entries(k).sort((p, q) => q[1] - p[1])[0][0] : WORLD_PEOPLES.get(t.people)?.race; };
@@ -195,7 +204,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
-  const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
+  const has = need0 => { const need = placeNeed(t.people, need0); return need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)); };   // the land does not change; roads and graves do
   if (b.needs && !b.needs.every(has)) return false;
   if (b.needsAny && !b.needsAny.some(has)) return false;
   return true;
@@ -248,11 +257,14 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // an upgrade or an annex that boosts its host: what the host makes and the town lacks, × the boost
       for (const [id, k] of Object.entries(b.boost || {})) if (t.built.includes(id)) for (const g of makesOf(TOWN_BUILDINGS.get(id))) flow += (E.short[g] || 0) * TF.flow.short * k * t.built.filter(x => x === id).length;
       v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
+      // a work that earns the town its next step (data/peoples.js TIERS needsAny), once it has nearly the people for it
+      const next = TIERS[(t.tier || 0) + 1];
+      if (next && t.pop >= next.pop * TF.flow.tierAt && next.needsAny.includes(b.id) && !next.needsAny.some(id => lineHas(t.built, id))) v += TF.flow.tierUp;
       // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
       const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
       if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
       // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
-      const fed = foodNet(b, lit) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit) * t.built.filter(x => x === id).length, 0);
+      const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
       if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
       // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing

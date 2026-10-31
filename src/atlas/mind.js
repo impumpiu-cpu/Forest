@@ -97,7 +97,7 @@ export function stepMinds(a, say = () => {}) {
     // the wind: the rose and the pull back to it, and the season's needs
     const rose = roseOf(r.people), f = M.flags;
     const need = {agg: f.threat, grow: Math.max(f.hunger, f.crowd), econ: f.short};
-    const want = normVec(Object.fromEntries(VECTOR_IDS.map(k => [k, Math.max(0, rose[k] + MIND.pull * (rose[k] - M.course[k])) + MIND.needs * need[k]])));
+    const want = normVec(Object.fromEntries(VECTOR_IDS.map(k => [k, Math.max(0, rose[k] + (WORLD_PEOPLES.get(r.people)?.rosePull ?? MIND.pull) * (rose[k] - M.course[k])) + MIND.needs * need[k]])));
     M.wind = round(normVec(Object.fromEntries(VECTOR_IDS.map(k => [k, M.wind[k] * MIND.smooth + want[k] * (1 - MIND.smooth)]))));
     // a new lead, told when it leads the old one clearly
     const L = lead(M.wind);

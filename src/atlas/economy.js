@@ -12,6 +12,8 @@
 //               stands for want of leather does not burn its wood (the rest stays for the store)
 //   herds     — the pens and pastures raise beasts (`out`), the slaughterhouse alone kills them (`in`) for meat, hides and
 //               bone; the store keeps TOWN_FLOW.herd.keep head a pen at work for breeding, out of the slaughter's reach
+//   workFlows — × what a building of its kind gives, by good (data/peoples.js `workFlows`: the greenskins' hunt and slaughter
+//               give more meat, their fields and gardens less)
 //   pools     — what a building takes of any of a set of goods (its `any`: a kitchen any raw food) and the fuel of its heat and
 //               fire (data/townBuildings.js POOLS, FUEL) come out of what the buildings' own `in` left, the cheapest of the pool
 //               first; short of it, it stops as for a hard good (housing: never)
@@ -26,7 +28,7 @@
 //               share to the others
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf, reqLit} from '../data/townBuildings.js';
-import {WORLD_PEOPLES, swapOf, KIN} from '../data/peoples.js';
+import {WORLD_PEOPLES, swapOf, KIN, placeNeed} from '../data/peoples.js';
 import {placeHas, townKin} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 
@@ -76,7 +78,7 @@ export function digOf(a, t, b) {
 // what a work gives where the place decides it (`placeOut`: the quarry's stone on slopes, its clay in the flood plain) — of its
 // `out` only the goods its place has (the town's cell; none of them — all of its `out`, so it is never built for nothing)
 function placeOutOf(a, t, b) {
-  const pk = t.place ||= {}, has = n => (a?.f ? (pk[n] ??= placeHas(a, t.i, n)) : true);
+  const pk = t.place ||= {}, has = n0 => { const n = placeNeed(t.people, n0); return a?.f ? (pk[n] ??= placeHas(a, t.i, n)) : true; };
   const keep = Object.entries(b.out || {}).filter(([g]) => !b.placeOut[g] || has(b.placeOut[g]));
   return Object.fromEntries(keep.length ? keep : Object.entries(b.out || {}));
 }
@@ -99,9 +101,9 @@ export function heatFactor(a, t) {
 }
 
 export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
-  const P = WORLD_PEOPLES.get(t.people), flows = P.flows || {}, swaps = P.swaps || {};
+  const P = WORLD_PEOPLES.get(t.people), flows = P.flows || {}, swaps = P.swaps || {}, wf = P.workFlows || {};
   // its place: more where it stands so (the dwarves under the mountain) — the world's place of the town (atlas/towns.js placeHas)
-  const PF = P.placeFlows, here = PF && a?.f && PF.needsAny.some(n => (t.place ||= {})[n] ??= placeHas(a, t.i, n)) ? PF.flows : {};
+  const PF = P.placeFlows, here = PF && a?.f && PF.needsAny.map(n => placeNeed(t.people, n)).some(n => (t.place ||= {})[n] ??= placeHas(a, t.i, n)) ? PF.flows : {};
   const free0 = t.pop * (P.hands ?? F.hands), slaves0 = (t.slaves || 0);
   let free = free0, slaves = slaves0;
   // the buildings, a row each with its count, in the order the hands go
@@ -133,7 +135,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     const fuel = ((r.b.heat || 0) * heatK + (r.b.fire || 0)) * r.n;
     if (fuel > 0) r.pool.fuel = (r.pool.fuel || 0) + fuel;
     const outs = r.b.dig ? {...digOf(a, t, r.b), ...(r.b.out || {})} : r.b.placeOut ? placeOutOf(a, t, r.b) : (r.b.out || {});   // a mine: the ores of its cell
-    r.out = Object.fromEntries(Object.entries(outs).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
+    r.out = Object.fromEntries(Object.entries(outs).map(([g, v]) => [g, v * (flows[g] ?? 1) * (wf[r.b.id]?.[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
     r.share = 1; r.eff = r.staff * r.own;
   }
@@ -144,7 +146,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     x.in = {}; for (const [g, v] of Object.entries(q.in || {})) { const s = swaps[g], to = s ? s.to : g; x.in[to] = (x.in[to] || 0) + v * (s ? s.k : 1) * r.n; }
     x.soft = r.soft; x.pool = {}; if (q.any) for (const [k, v] of Object.entries(q.any)) x.pool[k] = v * r.n;
     if (q.fire) x.pool.fuel = q.fire * r.n;
-    x.out = Object.fromEntries(Object.entries(q.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
+    x.out = Object.fromEntries(Object.entries(q.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (wf[r.b.id]?.[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     recRows.push(x);
   }
   rows.push(...recRows);
@@ -256,8 +258,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   for (const r of own) if (recipesOf(r.b).length && !Object.keys(r.out).length && !r.b.yields) r.eff = Math.min(r.eff, recRows.filter(x => x.of === r).reduce((s, x) => s + x.eff, 0));
   return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, pools: pgot, herd: {slaughtered: (used.beasts || 0) / S}, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, lit: [...lights].sort(),
-    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems})),
-    recipes: recRows.map(x => ({id: x.b.id, of: x.of.b.id, name: x.q.name, on: x.w > 0, share: x.share, eff: x.eff}))};
+    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
+    recipes: recRows.map(x => ({id: x.b.id, of: x.of.b.id, name: x.q.name, on: x.w > 0, share: x.share, eff: x.eff, gave: Object.fromEntries(Object.entries(x.out).map(([g, v]) => [g, v * x.eff]))}))};
 }
 
 // how each building of a town works this year (saved: its effects follow it, atlas/towns.js townFx)
