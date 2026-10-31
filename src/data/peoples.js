@@ -64,11 +64,11 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
-    // spacing 14 (was 16): as dense as the dwarves, no denser; settlers from 100 people (was 150, keeping 60, was 90) — at the
+    // spacing 14 (was 16): as dense as the dwarves, no denser; 20 settlers (was 30) from 100 people (was 150, keeping 60, was 90) — at the
     // same start with the others their few slow towns reach 150 only when the land about them is taken (docs/WORLD.md «Эльфы»)
     spread: 0.22, growth: 0.18, spacing: 14,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
-    settlers: {pop: 30, from: 100, keep: 60, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.005, welcome: [],
+    settlers: {pop: 20, from: 100, keep: 60, reach: 2.5, goods: {stores: 20, wood: 20, tools: 2}}, migrate: 0.005, welcome: [],
     eatsRaw: ['raw'],   // the elves eat the raw food as it is — fruit, nuts, honey, greens: it feeds them as cooked food does (atlas/economy.js)
     lineMax: {kitchen: 1},   // one kitchen a town, for the strangers among them: a kitchen turns their food into less food
     rose: {agg: 0.35, grow: 0.2, econ: 0.45},
