@@ -8,7 +8,7 @@ import {RUINS} from '../src/data/kingdom.js';
 import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
 import {stepGolems} from '../src/atlas/golems.js';
-import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
+import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, realmKeep, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet, GOLEMS} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
 import {stepHistory} from '../src/atlas/history.js';
@@ -92,10 +92,14 @@ const T = a.towns.filter(t => t.alive);
 // the merchants' purse, the realm's spending
 {
   const sold = T.reduce((s, t) => s + (t.trade?.merchants || 0), 0), purse = T.reduce((s, t) => s + TOWN_MONEY.merchants.purse * t.pop * (1 + townFx(t).trade), 0) * 1.05;
+  check('заготовки — товар: лежат на складе городов, держава берёт их податью', T.some(t => (t.stock?.stores || 0) > 0) && (a.realms || []).some(r => (r.stock?.stores || 0) > 0),
+    `городов с заготовками ${T.filter(t => (t.stock?.stores || 0) > 0).length}, держав ${(a.realms || []).filter(r => (r.stock?.stores || 0) > 0).length}`);
   check('купцы берут не больше своего кошелька; что сверх — пропадает', sold <= purse && T.some(t => t.trade?.wasted > 0), `продано купцам ${Math.round(sold)} из ${Math.round(purse)}, пропало ${Math.round(T.reduce((s, t) => s + (t.trade?.wasted || 0), 0))}`);
   const R = {gold: 1000}, ts = [{pop: 300}, {pop: 100}], sp = realmSpend(R, ts, false), war = realmSpend({gold: 1000}, [{pop: 300}, {pop: 100}], true);
-  check('держава тратит казну: гарнизоны городам по людям, золото на стройку; в войну — больше на войско',
-    sp.army > 0 && sp.build > 0 && R.gold < 1000 && ts[0].garrison === 3 * ts[1].garrison && ts[0].grant > 0 && war.army > sp.army, JSON.stringify(sp));
+  const kp = realmKeep({}, {id: 1, gold: 1000}, [{pop: 300, gold: 0}, {pop: 100, gold: 0}], false), kw = realmKeep({}, {id: 1, gold: 1000}, [{pop: 300, gold: 0}, {pop: 100, gold: 0}], true);
+  const gs = [{pop: 300, gold: 0}, {pop: 100, gold: 0}]; realmKeep({}, {id: 1, gold: 1000}, gs, false);
+  check('держава тратит казну: гарнизоны городам по людям каждый сезон, золото на стройку раз в год; в войну — больше на войско',
+    kp.garrison > 0 && sp.build > 0 && R.gold < 1000 && gs[0].garrison === 3 * gs[1].garrison && ts[0].grant > 0 && kw.garrison > kp.garrison && war.build < sp.build, JSON.stringify({sp, kp}));
   const t = T.find(x => x.garrison > 0); const g = t?.garrison; if (t) t.garrison = 0; const m0 = t ? might(t, townFx(t)) : 0; if (t) t.garrison = g;
   check('гарнизон прибавляет городу силы', !!t && might(t, townFx(t)) > m0, t ? `${t.name}: гарнизон ${Math.round(g)}` : 'нет гарнизонов');
   check('упадок растёт только от неоплаченного и пустой казны', !RUINS.get('decay').grows.upkeep && RUINS.get('decay').grows.unpaid > 0);

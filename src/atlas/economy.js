@@ -15,7 +15,8 @@
 //   pools     — what a building takes of any of a set of goods (its `any`: a kitchen any raw food) and the fuel of its heat and
 //               fire (data/townBuildings.js POOLS, FUEL) come out of what the buildings' own `in` left, the cheapest of the pool
 //               first; short of it, it stops as for a hard good (housing: never)
-//   food      — what the buildings give of ready food and stores, less what the buildings take of it, in people-years (raw
+//   food      — what the buildings give of ready food, less what the buildings take of it, in people-years (stores are kept
+//               and traded as goods, eaten in a hungry year — atlas/peoples.js; raw
 //               food is not eaten: the kitchens cook it — but by a people that eats it raw, data/peoples.js eatsRaw): the
 //               town's people and slaves eat it at their people's `eat`
 //   indicators — what the town has, as flags (data/townBuildings.js INDICATORS): its buildings' `opens`, its people, the kinds it
@@ -246,7 +247,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   const spare = {};
   for (const [g, v] of Object.entries(made)) { const s = v > 0 ? 1 - Math.min(1, (used[g] || 0) / v) : 0; if (s > F.shortAt) spare[g] = s; }
   const net = g => Math.max(0, (made[g] || 0) - (used[g] || 0));
-  const food = net('food') + net('stores') + (P.eatsRaw || []).reduce((s, g) => s + net(g), 0);
+  const food = net('food') + (P.eatsRaw || []).reduce((s, g) => s + net(g), 0);   // (stores go to the store: a hungry year eats them, atlas/peoples.js)
   // the indicators at the end of the season: the recipes that ran light theirs too
   const lights = litOf();
   for (const x of recRows) if (x.eff > 1e-6) for (const o of x.q.opens || []) lights.add(o);

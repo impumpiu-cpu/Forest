@@ -1,11 +1,13 @@
 // The realm's treasury, its duties and its dealings (atlas/treasury.js, atlas/kingdom.js; docs/WORLD.md «Деньги городов»,
-// «Казна державы»): corruption takes its share of the tax; the armies in the field and the court are paid first, the unpaid
-// desert and decay; customs on what a town buys of another realm; tribute of the weak to the mighty it hates; a seat stormed
+// «Казна державы»): corruption takes its share of the tax; the tax in kind fills the realm's store; the court is paid a year,
+// the armies in the field each season (pay, stores, kit) — the unpaid desert, the court unpaid decays; customs on what a town buys of another realm; tribute of the weak to the mighty it hates; a seat stormed
 // loses its treasury; the edict of dues by what the treasury holds. `node tools/fisc-check.mjs`
-import {TOWN_MONEY as M} from '../src/data/townBuildings.js';
+import {TOWN_MONEY as M, goodPrice} from '../src/data/townBuildings.js';
 import {EDICTS, whenErrors} from '../src/data/kingdom.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
-import {taxYear, corruptShare, realmDuties, payTribute, lootSeat, fiscOf, reserveOf} from '../src/atlas/treasury.js';
+import {taxYear, corruptShare, realmDuties, realmKeep, payTribute, lootSeat, fiscOf, reserveOf} from '../src/atlas/treasury.js';
+import {ARMY} from '../src/data/parties.js';
+import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../src/data/atlas.js';
 import {holds} from '../src/atlas/kingdom.js';
 
 const fail = [];
@@ -22,17 +24,39 @@ const R = M.realm;
   check('бюрократия народов: эльфы меньше всех, зеленокожие больше всех', ['elves', 'dwarves', 'humans', 'orcs'].map(p => WORLD_PEOPLES.get(p).bureau).every((v, i, l) => !i || v > l[i - 1]));
 }
 
-// the duties: the armies in the field and the court first; what is not paid — desertion, decay
+// the court, once a year: what is not paid — decay
 {
   const realm = {id: 1, gold: 1000, kingdom: {court: {ruler: {name: 'А'}, marshal: {name: 'Б'}, a: null}}};
-  const a = {parties: [{kind: 'army', owner: 1, state: 'go', men: 100}]}, towns = [{pop: 2000}];
-  const unpaid = realmDuties(a, realm, towns), court = 2 * R.court * 2, wages = 100 * R.wage;
-  check('казна платит войскам в поле и двору; хватает — никто не бежит, упадка нет', unpaid === 0 && near(realm.gold, 1000 - court - wages) && a.parties[0].men === 100,
-    `двору ${court}, войскам ${wages}`);
-  const poor = {id: 2, gold: 5, kingdom: {court: {ruler: {name: 'А'}}}}, b = {parties: [{kind: 'army', owner: 2, state: 'go', men: 100}]};
-  const u2 = realmDuties(b, poor, [{pop: 1000}]), share = 1 - 5 / (100 * R.wage);
-  check('пустая казна: войско теряет беглецов по недоплате, двор недоплачен — упадок растёт', poor.gold === 0 && near(b.parties[0].men, 100 * (1 - R.desert * share)) && u2 === 1,
-    `осталось ${b.parties[0].men.toFixed(1)}, двору недоплачено ${u2}`);
+  const unpaid = realmDuties({}, realm, [{pop: 2000}]), court = 2 * R.court * 2;
+  check('казна платит двору; хватает — упадка нет', unpaid === 0 && near(realm.gold, 1000 - court), `двору ${court}`);
+  const poor = {id: 2, gold: 0, kingdom: {court: {ruler: {name: 'А'}}}};
+  check('пустая казна: двор недоплачен — упадок растёт', realmDuties({}, poor, [{pop: 1000}]) === 1);
+}
+
+// each season the realm keeps its armies in the field: pay in gold, food in stores, kit made up out of its store
+{
+  const realm = {id: 1, gold: 1000, stock: {stores: 50, arms: 20, armor: 5}};
+  const army = {kind: 'army', owner: 1, state: 'go', men: 100, supplies: 40, kit: {arms: 8, armor: 5}};
+  const k = realmKeep({parties: [army]}, realm, [{pop: 2000, gold: 0}], false), wage = 100 * R.wage / S, eat = 100 / S;
+  check('сезон войска: жалованье золотом, заготовки на сезон, снаряжение до нормы из склада державы',
+    near(k.wages, wage) && near(k.food, eat) && near(realm.stock.stores, 50 - eat) && near(army.supplies, 40 + SEASON_DAYS) && near(army.kit.arms, ARMY.kit.arms * 100) && army.men === 100,
+    `жалованье ${k.wages}, заготовок ${k.food}, припасов ${army.supplies}, оружия ${army.kit.arms}`);
+  const poor = {id: 2, gold: 0}, b = {kind: 'army', owner: 2, state: 'go', men: 100, supplies: 40, kit: {}};
+  const k2 = realmKeep({parties: [b]}, poor, [{pop: 1000, gold: 0}], false);
+  check('пустая казна: войско не кормлено и не плачено — едят свои припасы, бегут за сезон', b.supplies === 40 && near(k2.short, b.men / S, 1e-3) && near(b.men, 100 * (1 - R.desert / S)),
+    `осталось ${b.men.toFixed(1)}, не хватило заготовок ${k2.short}`);
+}
+
+// the tax in kind: the realm takes the goods its store lacks out of what the towns can spare, the rest in gold
+{
+  const realm = {id: 1, gold: 0}, town = {pop: 1000, gold: 2020, stock: {stores: 200, arms: 100}}, rate = M.tax.rate.usual;
+  const got = taxYear(realm, [town], 'usual'), stores = Math.min(rate * 200, R.kind.stores * 10), arms = Math.min(rate * 100, R.kind.arms * 10);
+  const worth = stores * goodPrice('stores') + arms * goodPrice('arms');
+  check('подати натурой: держава берёт долю заготовок и оружия, чего не хватает её складу, и долю золота',
+    near(realm.stock.stores, stores) && near(realm.stock.arms, arms) && near(got, 2000 * rate) && near(fiscOf(realm).tax, worth + got),
+    `заготовок ${realm.stock.stores}, оружия ${realm.stock.arms}, золотом ${got.toFixed(2)}`);
+  const full = {id: 2, gold: 0, stock: {stores: 1000, arms: 1000, armor: 1000, herbs: 1000}}, t2 = {pop: 1000, gold: 220, stock: {stores: 200}};
+  check('полный склад державы: натурой не берёт', near(taxYear(full, [t2], 'usual'), (220 - M.tax.keep * 1000) * M.tax.rate.usual) && t2.stock.stores === 200);
 }
 
 // tribute: the weak pays the mighty it hates; a friend pays nothing

@@ -75,7 +75,7 @@ check('за историю советы сложились у всех держ�
   rb.gold = 5000;
   const tb = live(b).filter(t => t.realm === rb.id), g0 = tb.reduce((s, t) => s + (t.grant || 0) + (t.peopleGold || 0), 0);
   const sp = realmSpend(rb, tb, false, b), g1 = tb.reduce((s, t) => s + (t.grant || 0) + (t.peopleGold || 0), 0);
-  check('казна державы: что ушло из казны, пришло в города', near(g1 - g0, sp.army + sp.build, 1e-3) && near(rb.gold, 5000 - sp.army - sp.build, 1e-3), `ушло ${(sp.army + sp.build).toFixed(2)}, пришло ${(g1 - g0).toFixed(2)}`);
+  check('казна державы: что ушло из казны, пришло в города', near(g1 - g0, sp.build, 1e-3) && near(rb.gold, 5000 - sp.build, 1e-3), `ушло ${sp.build.toFixed(2)}, пришло ${(g1 - g0).toFixed(2)}`);
 }
 
 // ── a town leans its choice along its role; the court along the wind

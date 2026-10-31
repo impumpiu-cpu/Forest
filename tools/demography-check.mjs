@@ -5,7 +5,7 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../src/data/peoples.js';
 import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove} from '../src/atlas/demography.js';
-import {foundFrom, settleSpot, stepPeoples} from '../src/atlas/peoples.js';
+import {foundFrom, settleSpot, stepPeoples, bornOf} from '../src/atlas/peoples.js';
 import {returnArmy} from '../src/atlas/army.js';
 import {mulberry} from '../src/core/rng.js';
 import {setCell, resetAll} from '../src/data/schema/edits.js';
@@ -50,6 +50,7 @@ check('ни в одном живом городе нет меньше, чем д
     check('поселенцы: новый город — той же державы', made && made.realm === t.realm && made.from === t.id);
     const moved = Object.keys(S.goods).every(g => near((made?.stock?.[g] || 0) + (t.stock?.[g] || 0), goods0[g] || 0));
     check('поселенцы: уносят со склада, что есть, и не больше', made && moved, JSON.stringify(made?.stock));
+    check('поселенцы: еду несут заготовками — первый склад нового города', (made?.stock?.stores || 0) > 0, `заготовок ${made?.stock?.stores}`);
     t.pop = S.pop + S.keep - 1;
     check('поселенцы: из города, где останется меньше keep, не уходят', !foundFrom(a, t, mulberry(2), say));
   }
@@ -92,6 +93,23 @@ check('ни в одном живом городе нет меньше, чем д
   const p0 = people(a);
   returnArmy(a, p);
   check('войско павшего города возвращается к своим, все до одного', near(people(a), p0 + 40.5), `${p0.toFixed(1)} → ${people(a).toFixed(1)}`);
+}
+
+// ── the peoples breed by their kind: the elder ones (elves, dwarves) slower than the younger (humans, greenskins)
+{
+  const t = {pop: 200, needs: {basic: 1, comfort: 0}}, fx = {prestige: 0}, rate = id => bornOf(t, WORLD_PEOPLES.get(id), fx, 1000) / t.pop;
+  const r = Object.fromEntries(['elves', 'dwarves', 'humans', 'orcs'].map(id => [id, rate(id)]));
+  check('прирост по народу: эльфы и дварфы медленнее людей и зеленокожих', Math.max(r.elves, r.dwarves) < Math.min(r.humans, r.orcs),
+    Object.entries(r).map(([k, v]) => `${k} ${(v * 100).toFixed(1)}%`).join(', '));
+  check('прирост упирается в предел: полный город не растёт', bornOf({...t, pop: 1000}, WORLD_PEOPLES.get('humans'), fx, 1000) <= 1e-9);
+}
+
+// ── a hungry year eats the stores of the store (a store a man a year)
+{
+  const a = copy(), t = live(a).sort((p, q) => q.pop - p.pop)[0];
+  t.pop *= 10; t.stock = {...(t.stock || {}), stores: 50};
+  stepPeoples(a, mulberry(5), say);
+  check('голодный год: город ест заготовки со склада', (t.stock?.stores || 0) < 50 && t.ateStores > 0, `съедено ${t.ateStores}, осталось ${t.stock?.stores || 0}`);
 }
 
 // ── a year of the peoples with no births makes nobody (no roll, no floor, no town out of nothing)

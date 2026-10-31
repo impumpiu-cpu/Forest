@@ -317,7 +317,8 @@ check('караваны обзаводятся обозом и выбирают 
   const E = generateAtlas({seed: '7', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 40, elder: 40, young: 40}});
   const frozenE = JSON.stringify(saveAtlas(E)), freshE = () => loadAtlas(JSON.parse(frozenE)), capsE = capitals(E);
   const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
-  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
+  const laid = Q?.epic && Q.clues.length >= 2 && Q.clues.length <= (a.graves || []).length &&   // (a grave the caravan cannot walk to is no clue: which it can is the world's)
+    Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
     a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
   check(`эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — ${EPIC.doom} лет`, laid,
     Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');

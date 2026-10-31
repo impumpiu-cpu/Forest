@@ -7,6 +7,7 @@ import {SPECIES} from '../data/species.js';
 import {beastWorth} from './beasts.js';
 import {townFx} from './towns.js';
 import {sendParty} from './parties.js';
+import {YEAR_DAYS} from '../data/atlas.js';
 
 const r2 = n => Math.round(n * 100) / 100;
 const beastMen = list => Object.entries(list || {}).reduce((s, [sp, n]) => s + n * beastWorth(SPECIES.get(sp)), 0);
@@ -26,7 +27,11 @@ export function sendArmy(a, t, goal, men, props) {
   const guards = t.golems?.guard || [], golems = guards.slice(0, Math.ceil(guards.length * A.beasts));
   const kit = Object.fromEntries(Object.entries(A.kit).map(([g, n]) => [g, Math.min(t.stock?.[g] || 0, men * n)]));
   const fx = townFx(t), force = (1 + A.prod * fx.prod + A.defence * fx.defence) * A.might;
-  const army = {people: t.people, from: t.id, men, men0: men, warBeasts, golems, kit, force, supplies: A.supplies, speed: 'foot', burnt: 0, ...props};
+  // its food: stores for A.supplies days, a store a man a year — its realm's store first, then its town's; short, it forages
+  const owner = props?.owner ?? t.realm, realm = (a.realms || []).find(r => r.id === owner);
+  const need = men * A.supplies / YEAR_DAYS, fromRealm = Math.max(0, Math.min(need, realm?.stock?.stores || 0)), fromTown = Math.max(0, Math.min(need - fromRealm, t.stock?.stores || 0));
+  const supplies = Math.round(A.supplies * (A.supplyFloor + (1 - A.supplyFloor) * (need > 0 ? (fromRealm + fromTown) / need : 1)));
+  const army = {people: t.people, from: t.id, men, men0: men, warBeasts, golems, kit, force, supplies, speed: 'foot', burnt: 0, ...props};
   refreshArmy(army);
   const p = sendParty(a, 'army', t.i, goal, army);
   if (!p) return null;
@@ -34,6 +39,10 @@ export function sendArmy(a, t, goal, men, props) {
   if (t.warBeasts) { for (const [sp, n] of Object.entries(warBeasts)) { t.warBeasts.list[sp] -= n; if (!t.warBeasts.list[sp]) delete t.warBeasts.list[sp]; } t.warBeasts.men = beastMen(t.warBeasts.list); }
   if (t.golems) t.golems.guard = guards.slice(golems.length);
   for (const [g, n] of Object.entries(kit)) if (n > 0) { t.stock[g] = r2(t.stock[g] - n); if (t.stock[g] <= 0) delete t.stock[g]; }
+  if (props?.supplies == null) {   // (an army that brings its own supplies — the alliance's — takes no stores)
+    if (fromRealm > 0) { realm.stock.stores = r2(realm.stock.stores - fromRealm); if (realm.stock.stores <= 0) delete realm.stock.stores; }
+    if (fromTown > 0) { t.stock.stores = r2(t.stock.stores - fromTown); if (t.stock.stores <= 0) delete t.stock.stores; }
+  }
   return p;
 }
 
