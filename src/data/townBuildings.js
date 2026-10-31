@@ -181,7 +181,7 @@ export const PLACE_NEEDS = {
   clay: 'глина: пойма, глинистый сланец или известняк', stone: 'камень: склоны или скалы рядом',
   fertile: 'плодородная земля', arable: 'пахотная земля: плодородие и ровность пониже (люди корчуют, ровняют, удобряют)', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
   steep: 'крутые склоны', flat: 'ровная земля', caves: 'пещеры: известняк или базальт', road: 'наезженная дорога',
-  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', graves: 'курганы былых битв рядом',
+  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', grazing: 'открытая земля рядом: луга, степь, саванна, тундра, кустарники, пустыня, предгорья, высокогорье (выпас кочевников)', graves: 'курганы былых битв рядом',
 };
 
 // Indicators (docs/WORLD.md «Цепочки 6.1»): what a town has or has not — a flag, not a good. A building lights its `opens` while one
@@ -302,10 +302,10 @@ TOWN_BUILDINGS.registerAll([
   T('pasture', 'выгоны', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, 'pen', {line: 'pasture', per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, in: {tools: 3}, out: {fiber: 200, beasts: 8, fuel: 60},
     recipes: [R('herds', 'большие стада', ['people:orcs'], {out: {beasts: 8, fuel: 40}})], opens: ['herds', 'wool']}),
   // the greenskins' beast dens, one work with a recipe by kind: wargs of the orcs, spiders (and silk) of the goblins, hyenas
-  // of the gnolls (data/peoples.js WAR_BEASTS)
+  // of the gnolls (data/peoples.js WAR_BEASTS); the beasts eat raw meat, not the kitchens' food
   B('dens', 'логово зверей', 'n', 'defence', 0, O, {defence: 0.15, prestige: 0.05}, {line: 'dens', local: ['wargden', 'spiderden'], notable: true, jobs: 4,
-    recipes: [R('wargs', 'варги', ['kin:orc'], {in: {food: 30}, opens: ['wargs']}), R('spiders', 'пауки', ['kin:goblin'], {in: {food: 15}, out: {fiber: 40}, opens: ['spiders', 'silk']}),
-      R('hyenas', 'гиены', ['kin:gnoll'], {in: {food: 15}, opens: ['hyenas']})], opens: ['warbeasts']}),
+    recipes: [R('wargs', 'варги', ['kin:orc'], {in: {raw: 30}, opens: ['wargs']}), R('spiders', 'пауки', ['kin:goblin'], {in: {raw: 15}, out: {fiber: 40}, opens: ['spiders', 'silk']}),
+      R('hyenas', 'гиены', ['kin:gnoll'], {in: {raw: 15}, opens: ['hyenas']})], opens: ['warbeasts']}),
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {line: 'crossing', needs: ['river'], jobs: 2, in: {tools: 0.4}, out: {gold: 20}, opens: ['crossing']}),
   T('bridge', 'мост', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, 'ferry', {line: 'crossing', here: ['ferry', 'bridge', 'quarry'], needs: ['river'], requires: ['quarry'], in: {stone: 10}, opens: ['crossing']}),
   A('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1}, ['ferry'], {line: 'crossing', needs: ['river'], jobs: 4, in: {planks: 6, tools: 0.8}, out: {gold: 20}, opens: ['river']}),
@@ -466,10 +466,12 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 // over what it takes; of its recipes, the best one that may run (`lit`: the town's indicators; none — the first that asks for
 // nothing of the people or the kind)
 const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : g === 'raw' ? v * TOWN_FLOW.rawFood : g === 'beasts' ? v * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0), 0);
-const ioFood = x => FOOD_GOODS(x.out) - FOOD_GOODS(x.in);
-export const foodNet = (b, lit = null) => {
+// (wf — × what a people's work of this kind gives of a good: data/peoples.js workFlows, the greenskins' hunt)
+const scaled = (io, wf) => (wf ? Object.fromEntries(Object.entries(io || {}).map(([g, v]) => [g, v * (wf[g] ?? 1)])) : io);
+const ioFood = (x, wf) => FOOD_GOODS(scaled(x.out, wf)) - FOOD_GOODS(x.in);
+export const foodNet = (b, lit = null, wf = null) => {
   const R = recipesOf(b).filter(q => (lit ? reqLit(q.req, lit) : !(q.req || []).some(r => /^(people|kin):/.test(r))));
-  return ioFood(b) + (R.length ? Math.max(...R.map(ioFood)) : 0);   // (a pen's increase counts as the meat it gives at the slaughterhouse)
+  return ioFood(b, wf) + (R.length ? Math.max(...R.map(q => ioFood(q, wf))) : 0);   // (a pen's increase counts as the meat it gives at the slaughterhouse)
 };
 
 // Fuel (docs/WORLD.md «Кухни и топливо»): the warmth of homes (`heat`) and the heat of the works (`fire`) are charges of one

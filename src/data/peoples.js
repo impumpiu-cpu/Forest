@@ -40,6 +40,9 @@
 //   eatsRaw:  raw foods it eats as they are (data/townBuildings.js TOWN_GOODS `raw`): they feed it as cooked food does
 //   tradeUp:  goods it sells as soon as it has them, for another at `rate` of the worth ({sells, buys, rate}: the greenskins sell
 //             luxury, gems and silver for arms — atlas/peoples.js tradeUp, a season)
+//   places:   a place need as it reads it ({pasture: 'grazing'}: nomads graze and hunt on any open land; atlas/towns.js placeHas)
+//   workFlows: × what a building of a kind gives of a good, by building ({lodge: {raw: 2}}: the greenskins live by meat — the hunt,
+//             the pens and the slaughterhouse feed them, their fields and gardens give little; atlas/economy.js)
 //   wants:    its own wants a head beyond TOWN_MONEY.needs ({basic, comfort}: {good: amount a head a year}; 0 — it wants none of it)
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
@@ -145,6 +148,10 @@ WORLD_PEOPLES.registerAll([
     swaps: {salt: {to: 'wood', k: 2}, planks: {to: 'wood', k: 1.5}},
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
     placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, raw: 1.25, beasts: 1.25, hide: 1.25}},
+    // nomads live by meat: their herds graze and their hunters ride on any open land of theirs; the hunt and the slaughterhouse
+    // give more meat, the fields, gardens, fishers and gatherers less (atlas/economy.js workFlows)
+    places: {pasture: 'grazing'},
+    workFlows: {lodge: {raw: 2}, slaughter: {raw: 1.5}, pen: {beasts: 1.5}, pasture: {beasts: 1.5}, field: {raw: 0.25}, garden: {raw: 0.5}, gatherer: {raw: 0.5}, fishhut: {raw: 0.5}, pier: {raw: 0.5}},
     warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
@@ -160,6 +167,8 @@ WORLD_PEOPLES.registerAll([
 ]);
 
 // a good as a people takes it (`swaps`): [the good, × how much] — the greenskins' bone for pots, the elves' wood for metal
+// a place need as a people reads it (`places`: the greenskins' pasture is any open land of theirs, «grazing»)
+export const placeNeed = (people, need) => WORLD_PEOPLES.get(people)?.places?.[need] || need;
 export const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
 // a basket of goods as a people takes it, × k: several goods may become one (the horde's wood for both salt and boards);
 // the buildings' flows, the people's needs, the materials of a building and the town's choices all read goods through this

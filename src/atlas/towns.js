@@ -25,7 +25,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_
 // the buildings that make a good (once)
 const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
-import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods} from '../data/peoples.js';
+import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -131,6 +131,8 @@ const nextTo = (a, i, test) => {
   return false;
 };
 
+// the open land a nomad people's herds and hunts use (data/peoples.js `places`: the greenskins' pasture is any of it)
+const GRAZING = ['meadow', 'steppe', 'savanna', 'tundra', 'shrubland', 'desert', 'foothills', 'highlands'];
 export function placeHas(a, i, need) {
   const f = a.f, k2 = scaleOf(a) ** 2, rock = j => ROCK_BY_CODE[f.rock[j]]?.id, bio = j => biomeAt(a, j)?.id;
   switch (need) {
@@ -151,6 +153,7 @@ export function placeHas(a, i, need) {
     case 'arable': return f.fert[i] >= PA.arableFert && f.flat[i] > PA.arableFlat;
     case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
     case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
+    case 'grazing': return around(a, i, PA.near, j => GRAZING.includes(bio(j)));
     case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
     case 'flat': return f.flat[i] > PA.flat;
     case 'caves': return around(a, i, PA.near, j => rock(j) === 'limestone' || rock(j) === 'basalt');
@@ -195,7 +198,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
-  const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
+  const has = need0 => { const need = placeNeed(t.people, need0); return need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)); };   // the land does not change; roads and graves do
   if (b.needs && !b.needs.every(has)) return false;
   if (b.needsAny && !b.needsAny.some(has)) return false;
   return true;
@@ -252,7 +255,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
       if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
       // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
-      const fed = foodNet(b, lit) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit) * t.built.filter(x => x === id).length, 0);
+      const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
       if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
       // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
