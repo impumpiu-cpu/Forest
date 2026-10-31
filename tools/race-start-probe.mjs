@@ -6,7 +6,7 @@
 // `node tools/race-start-probe.mjs [seed] [size]` → JSON on stdout
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {BEHAVIOURS} from '../src/atlas/parties.js';
-import {townFx, room, townKin, realmBuilt, unitsMax, slotsUsed, slotsOf, placeHas, canBuild, chooseBuilding} from '../src/atlas/towns.js';
+import {townFx, room, townKin, realmBuilt, unitsMax, lineFull, slotsUsed, slotsOf, placeHas, canBuild, chooseBuilding} from '../src/atlas/towns.js';
 import {TOWN_BUILDINGS, lineHas, slotKind, goodPrice} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES, KIN, placeNeed} from '../src/data/peoples.js';
 import {roadAccess} from '../src/atlas/roads.js';
@@ -101,6 +101,7 @@ function stopOf(t, b, inRealm) {
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return 'одна на державу';
   if (!t.built.includes(b.id) && lineHas(t.built, b.id)) return 'есть выше';
   if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return 'есть';
+  if (lineFull(t, b)) return 'предел народа';
   const sk = slotKind(b);
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return sk === 'upgrades' ? 'нет места улучшению' : 'нет места';
   const has = n => placeHas(a, t.i, placeNeed(t.people, n));
