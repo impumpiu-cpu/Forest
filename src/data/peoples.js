@@ -45,6 +45,7 @@
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
+import {lineHas} from './townBuildings.js';
 
 // the race's own «Биомы расселения» (data/races.js), read each time: an edit of the races table reaches the peoples
 const raceHome = id => RACES.find(r => r.id === id).home;
@@ -59,14 +60,15 @@ WORLD_PEOPLES.registerAll([
     spread: 0.22, growth: 0.18, spacing: 16,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
     settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.005, welcome: [],
-    eatsRaw: ['produce'],   // the elves eat the grove's fruit as it is: it feeds them as cooked food does (atlas/economy.js)
+    eatsRaw: ['raw'],   // the elves eat the raw food as it is — fruit, nuts, honey, greens: it feeds them as cooked food does (atlas/economy.js)
     rose: {agg: 0.35, grow: 0.2, econ: 0.45},
     bureau: 0.7,
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
-    // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
+    // children of the wood: the land feeds them better, herbs are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
-    flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
-    swaps: {silver: {to: 'wood', k: 3}, drink: {to: 'honey', k: 1}},   // they brew no beer: mead and honey wine of the hives
+    flows: {food: 1.25, raw: 1.25, herbs: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
+    swaps: {bar_silver: {to: 'wood', k: 3}},
+    wants: {basic: {drink: 0}, comfort: {drink: 0}},   // they brew no beer (docs/WORLD.md «Мёд»: honey is raw food and an indicator)
     breed: 0.8,   // long lives, few children: their towns grow slowest (× TOWN_LIFE.growth)
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
@@ -78,11 +80,11 @@ WORLD_PEOPLES.registerAll([
     folk: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
-    flows: {ironOre: 1.5, copperOre: 1.5, silverOre: 1.5, mithrilOre: 1.5, stone: 1.5, gems: 1.5, bronze: 1.25, iron: 1.25, steel: 1.25, silver: 1.25, mithril: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
-    // beer for the ancestors; leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
-    swaps: {honey: {to: 'drink', k: 1}, cloth: {to: 'leather', k: 1}, pots: {to: 'stone', k: 2}},
+    flows: {ore_iron: 1.5, ore_bronze: 1.5, ore_silver: 1.5, ore_gold: 1.5, ore_mithril: 1.5, stone: 1.5, gems: 1.5, bar_bronze: 1.25, bar_iron: 1.25, bar_steel: 1.25, bar_silver: 1.25, bar_gold: 1.25, bar_mithril: 1.25, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
+    // leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
+    swaps: {cloth: {to: 'leather', k: 1}, ware: {to: 'stone', k: 2}},
     breed: 0.9,   // few children, long lives
-    placeFlows: {needsAny: ['steep', 'caves'], flows: {ironOre: 1.25, copperOre: 1.25, silverOre: 1.25, mithrilOre: 1.25, stone: 1.25}},
+    placeFlows: {needsAny: ['steep', 'caves'], flows: {ore_iron: 1.25, ore_bronze: 1.25, ore_silver: 1.25, ore_gold: 1.25, ore_mithril: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
@@ -134,15 +136,15 @@ WORLD_PEOPLES.registerAll([
     house: 0.75, roughHome: true,
     // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
-    // nomads and warriors (from the branch Elves): luxury, gems and silver they sell as soon as they have them and buy arms at
-    // 0.8 of the worth (atlas/peoples.js tradeUp); they want no luxury, and arms are a need of theirs
-    tradeUp: {sells: ['lux', 'gems', 'silver'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
+    // nomads and warriors (from the branch Elves): luxury, gems, silver and gold they sell as soon as they have them and buy arms
+    // at 0.8 of the worth (atlas/peoples.js tradeUp); they want no luxury, and arms are a need of theirs
+    tradeUp: {sells: ['lux', 'gems', 'bar_silver', 'bar_gold'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
     levy: 10 / 3, breed: 1.45, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
-    // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
-    // for pots, rough logs for boards (atlas/economy.js swaps)
-    swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'waterskins', k: 1}, planks: {to: 'wood', k: 1.5}},   // (waterskins for pots: from the branch Elves)
+    // what they do without: meat smoked on the fire for salt, rough logs for boards (atlas/economy.js swaps); their ware is
+    // waterskins (the hand workshop's recipe)
+    swaps: {salt: {to: 'wood', k: 2}, planks: {to: 'wood', k: 1.5}},
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
-    placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, beasts: 1.25, hide: 1.25}},
+    placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, raw: 1.25, beasts: 1.25, hide: 1.25}},
     warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
@@ -203,7 +205,7 @@ export function tierOf(t) {
   let k = 0;
   for (let i = 1; i < TIERS.length; i++) {
     const T = TIERS[i];
-    if (t.pop >= T.pop && T.needsAny.some(id => t.built.includes(id))) k = i; else break;
+    if (t.pop >= T.pop && T.needsAny.some(id => lineHas(t.built, id))) k = i; else break;   // (a tier counts as what it grew from)
   }
   return k;
 }
@@ -294,6 +296,8 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's
 // worth: health × blow) — and breaks it to war, while it holds fewer than one for every `per` of its people; a war beast
-// counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin)
+// counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin).
+// The beast dens breed their own: a recipe of the dens each (data/townBuildings.js dens: `building:recipe`), while it works
+// at `work` or better (t.work)
 export const WAR_BEASTS = {per: 200, men: 2, least: 0.002, work: 0.5,
-  dens: {wargden: {species: 'varg', every: 1}, spiderden: {species: 'spider', every: 2}, hyenadens: {species: 'hyena', every: 2}}};
+  dens: {'dens:wargs': {species: 'varg', every: 1}, 'dens:spiders': {species: 'spider', every: 2}, 'dens:hyenas': {species: 'hyena', every: 2}}};

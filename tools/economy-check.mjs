@@ -20,8 +20,8 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
 // the buildings
 {
   const B = id => TOWN_BUILDINGS.get(id);
-  check('рыбная пристань — у всех народов; гавань даёт рыбу и хочет свою пристань; маяк — свою пристань или хижину рыбака',
-    !B('pier').peoples && B('harbor').out.fish > 0 && B('harbor').here.includes('pier') && B('lighthouse').here.includes('fishhut'));
+  check('промысловая пристань — у всех народов, тир рыбацких хижин; гавань хочет свою пристань; маяк и верфь — пристройки гавани',
+    !B('pier').peoples && B('pier').kind === 'tier' && B('pier').upgrades.includes('fishhut') && B('harbor').here.includes('pier') && B('lighthouse').here.includes('harbor') && B('shipyard').here.includes('harbor'));
 }
 
 const a = generateAtlas({seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north'});
@@ -80,7 +80,7 @@ const T = a.towns.filter(t => t.alive);
 // the stores, the realm back to the world, the beasts
 {
   const fed = TOWN_BUILDINGS.all().filter(b => b.fx.food).map(b => b.id), field = foodNet(TOWN_BUILDINGS.get('field'));
-  check('эффект «запасы» — только у амбара, погреба, коптильни, вешал, солеварни и соляного ручья; пашня кормит своим зерном', fed.every(id => ['granary', 'cellar', 'smokehouse', 'dryrack', 'saltworks', 'saltspring'].includes(id)) && field > 0, `${fed.join(', ')}; пашня ${field}`);
+  check('эффект «запасы» — только у амбара, погребов, заготовительного двора и соляного промысла; поле кормит своей сырой едой', fed.every(id => ['granary', 'cellar', 'dryrack', 'saltworks'].includes(id)) && field > 0, `${fed.join(', ')}; поле ${field}`);
   const R = a.realms.find(r => r.kingdom && r.fallen == null), t = T.find(x => x.realm === R.id);
   check('показатели державы правят миром: рост городов от экономики, сила — от стабильности, расколы — от лояльности и раздоров',
     t.realmFx && t.realmFx.grow > 0 && t.realmFx.might > 0 && schismFactor({kingdom: {stats: {loyalty: 0}, ruin: {strife: 5}}}) > 1, JSON.stringify(t.realmFx));
@@ -143,7 +143,8 @@ const T = a.towns.filter(t => t.alive);
   const o = {pop: 200, people: 'orcs', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 60}, built: [], market: {}};
   check('у зеленокожих дом строится из брёвен вместо тёса', !!planBuild(a, o, {tier: 1, cat: 'housing'}));
   const t = T.find(x => x.people === 'orcs'), lack = Object.keys(t?.needs?.lack || {});
-  check('зеленокожим не нужны горшки и соль (бурдюки и дерево вместо них), и благ им нужно вдвое меньше', !!t && !lack.includes('pots') && !lack.includes('salt') && (t.econ.people?.waterskins?.want || 0) > 0,
+  check('зеленокожим не нужна соль (дерево вместо неё), тара у них — бурдюки мастерской, и благ им нужно вдвое меньше', !!t && !lack.includes('salt') && (t.econ.people?.ware?.want || 0) > 0
+    && TOWN_BUILDINGS.get('handshop').recipes.some(q => q.out?.ware && q.req.includes('people:orcs')),
     t ? `${t.name}: не хватает ${lack.join(', ') || '—'}` : 'нет города');
   check('содержание платится после налогов: неоплаченного почти нет', T.filter(x => x.unpaid > 0).length <= T.length * 0.2, `${T.filter(x => x.unpaid > 0).length} из ${T.length}`);
 }
@@ -153,9 +154,9 @@ const T = a.towns.filter(t => t.alive);
   const t = {built: ['golemforge', 'forge', 'smelter'], pop: 800, realm: null, stock: {}, work: {golemforge: 1}}, ar = {hist: {year: 1}};
   // (of its own metal: the forge and the smelter give iron and bronze; the store holds the golem's metal)
   stepGolems(ar, t); const none = stepGolems(ar, t);
-  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;
-  const one = stepGolems(ar, t), spent = one && t.stock[one.metal] === 50 - GOLEMS.make.metal;
-  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[`bar_${m}`] = 50;   // (its ingots: data/townBuildings.js METALS)
+  const one = stepGolems(ar, t), spent = one && t.stock[`bar_${one.metal}`] === 50 - GOLEMS.make.metal;
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[`bar_${m}`] = 50;
   t.work.golemforge = 0.1; const idle = stepGolems(ar, t);
   check('голема не делают без металла на складе и без работы кузни; делают — его металл уходит', !none && !!one && spent && !idle, `${JSON.stringify(one)}`);
 }

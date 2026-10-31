@@ -36,8 +36,8 @@ export const OFFERS = [
   {kind: 'beast', id: 'mule', at: ['pasture', 'pen', 'caravanserai', 'market'], price: CAMPAIGN.beasts.mule},
   {kind: 'beast', id: 'camel', at: ['caravanserai'], price: CAMPAIGN.beasts.camel},
   // the herd (data/transport.js CAMP_KIT.herd): goats and sheep for milk and meat on the way
-  {kind: 'beast', id: 'goat', at: ['pen', 'pasture', 'grpens'], price: CAMPAIGN.beasts.goat},
-  {kind: 'beast', id: 'sheep', at: ['pen', 'pasture', 'grpens'], price: CAMPAIGN.beasts.sheep},
+  {kind: 'beast', id: 'goat', at: ['pen', 'pasture'], price: CAMPAIGN.beasts.goat},
+  {kind: 'beast', id: 'sheep', at: ['pen', 'pasture'], price: CAMPAIGN.beasts.sheep},
   // a golem of the town's golem forge (data/constructs.js): of the metal the town chooses — one of its guard golems
   // (atlas/golems.js), else its realm's best (campaign/town.js offers)
   {kind: 'beast', id: 'golem', golem: true, at: ['golemforge']},
@@ -46,7 +46,7 @@ export const OFFERS = [
   {kind: 'item', id: 'ironaxe', at: ['forge', 'smelter', 'foundry']},
   {kind: 'item', id: 'ironspear', at: ['forge', 'armory']},
   {kind: 'item', id: 'sword', at: ['forge', 'armory']},
-  {kind: 'item', id: 'bow', at: ['bowyer']},
+  {kind: 'item', id: 'bow', at: ['handshop', 'crafthut'], peoples: ['elves', 'humans']},   // (the bows: a recipe of the workshop of the elves and the humans)
   {kind: 'item', id: 'crossbow', at: ['armory', 'foundry']},
   {kind: 'item', id: 'irondagger', at: ['forge', 'armory']},
   {kind: 'item', id: 'ironjavelin', at: ['forge', 'armory']},

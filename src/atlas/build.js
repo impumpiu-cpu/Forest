@@ -9,10 +9,10 @@
 // project the town can no longer build (its realm lost what it requires) is dropped, the work done kept in `t.works`: if
 // the town comes back to it, it goes on from there and is not paid twice. So a town builds as fast as its hands let it:
 // a big, busy town many things a year, a hamlet one in a few.
-import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_MONEY, TOWN_SLOTS, slotKind} from '../data/townBuildings.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
-import {SEASON_DAYS} from '../data/atlas.js';
-import {townFx, chooseBuilding, canBuild} from './towns.js';
+import {SEASON_DAYS, SEASONS_PER_YEAR} from '../data/atlas.js';
+import {townFx, chooseBuilding, canBuild, slotsUsed, slotsOf} from './towns.js';
 import {realmTaste} from './realms.js';
 import {roadAccess} from './roads.js';
 import {planBuild, doBuild} from './treasury.js';
@@ -52,11 +52,25 @@ function pickProject(a, t, rnd) {
   return null;
 }
 
+// a town at its slots (data/townBuildings.js TOWN_SLOTS) razes a work of its own in it that has worked below `raze` for `years`
+// years running — the worst of them, one a season — to make room (its seasons below are counted in t.idle) → its id, or null
+export function razeIdle(t) {
+  const S = TOWN_SLOTS, idle = t.idle ||= {};
+  for (const id of Object.keys(idle)) if (!t.built.includes(id)) delete idle[id];
+  for (const id of new Set(t.built)) { if (slotKind(TOWN_BUILDINGS.get(id)) !== 'town') continue; if ((t.work?.[id] ?? 1) < S.raze) idle[id] = (idle[id] || 0) + 1; else delete idle[id]; }
+  if (slotsUsed(t).town < slotsOf(t).town) return null;
+  const worst = Object.entries(idle).filter(([, n]) => n >= S.years * SEASONS_PER_YEAR).sort((p, q) => (t.work?.[p[0]] ?? 1) - (t.work?.[q[0]] ?? 1) || q[1] - p[1] || (p[0] < q[0] ? -1 : 1))[0];
+  if (!worst) return null;
+  t.built.splice(t.built.indexOf(worst[0]), 1); delete idle[worst[0]];
+  return worst[0];
+}
+
 // a season of building in every town: the project goes on, a finished one stands, the council picks the next (after the
 // towns' economies and the growth: atlas/history.js)
 export function stepBuilds(a, rnd, say) {
   for (const t of a.towns || []) {
     if (!t.alive || !t.wants || !WORLD_PEOPLES.has(t.people)) continue;
+    razeIdle(t);
     let days = crewDays(t);
     for (let guard = 0; guard < 4 && days > 1e-9; guard++) {   // a big crew may finish a small work and begin the next in a season
       let P = projectOf(t);

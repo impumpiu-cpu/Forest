@@ -6,13 +6,13 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice} from '../data/townBuildings.js';
+import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice, indicatorLabel} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
 import {alignLabel} from '../data/values.js';
 import {townAt, townLabel} from '../atlas/peoples.js';
-import {townFx, room, realmMetalWords} from '../atlas/towns.js';
+import {townFx, room, realmMetalWords, slotsUsed, slotsOf} from '../atlas/towns.js';
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
@@ -154,12 +154,16 @@ function townHtml(a, t) {
   const head = sec(`${townLabel(t).replace(/^./, c => c.toUpperCase())} ${t.name}`,
     row('народ', `${esc(P.label)}${folk ? `, среди них ${esc(folk)}` : ''}`) +
     // the town's economy by its buildings' flows (atlas/economy.js: worked out each season, not saved)
-    (t.econ ? row('хозяйство', `руки ${Math.round(Math.min(t.econ.jobs, t.econ.hands))} из ${Math.round(t.econ.hands)}${t.slaves ? ` (рабов ${Math.round(t.slaves)})` : ''}; постройки кормят ${Math.round(t.econ.feeds)} жителей${t.econ.pools ? `; кухням сырого ${Math.round((t.econ.pools.raw ?? 1) * 100)}%, топлива ${Math.round((t.econ.pools.fuel ?? 1) * 100)}%` : ''}`
+    (t.econ ? row('хозяйство', `руки ${Math.round(Math.min(t.econ.jobs, t.econ.hands))} из ${Math.round(t.econ.hands)}${t.slaves ? ` (рабов ${Math.round(t.slaves)})` : ''}; постройки кормят ${Math.round(t.econ.feeds)} жителей${t.econ.pools ? `; топлива ${Math.round((t.econ.pools.fuel ?? 1) * 100)}%` : ''}`
       + (Object.keys(t.econ.short).length ? `; не хватает: ${esc(Object.entries(t.econ.short).sort((p, q) => q[1] - p[1]).slice(0, 4).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v * 100)}%`).join(', '))}` : '')) : '') +
     // its money (atlas/treasury.js): the treasury, the store, the season's buying and selling, the dearest and the cheapest goods
     (t.gold != null ? row('казна', `${Math.round(t.gold)} зол.${t.peopleGold != null ? `; у жителей ${Math.round(t.peopleGold)}, у мастеров ${Math.round(t.makersGold)}` : ''}${t.needs ? `; нужды закрыты ${Math.round(t.needs.basic * 100)}%, достаток ${Math.round(t.needs.comfort * 100)}%` : ''}${t.unpaid ? `; содержание не оплачено на ${Math.round(t.unpaid * 100)}%` : ''}${t.trade ? `; за сезон: жители купили ${Math.round((t.trade.people || 0) + (t.trade.imported || 0))}, зарплаты ${Math.round(t.trade.wages || 0)}, налоги ${Math.round(t.trade.tax || 0)}, постройки дали ${Math.round(t.trade.works || 0)}, купцам ${Math.round(t.trade.merchants || 0)}, мастерские купили у городов ${Math.round(t.trade.bought || 0)}, город продал ${Math.round(t.trade.sold || 0)}, содержание ${Math.round(t.trade.upkeep || 0)}${t.trade.aid ? ` (держава доплатила ${Math.round(t.trade.aid)})` : ''}${t.trade.wasted ? `; пропало излишков на ${Math.round(t.trade.wasted)}` : ''}` : ''}${t.garrison ? `; гарнизон державы ${Math.round(t.garrison)}` : ''}${t.grant ? `; на стройку от державы ${Math.round(t.grant)}` : ''}`) : '') +
     (t.stock && Object.keys(t.stock).length ? row('склад', esc(Object.entries(t.stock).sort((p, q) => q[1] * goodPrice(q[0]) - p[1] * goodPrice(p[0])).slice(0, 6).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`).join(', '))) : '') +
     (t.market && Object.keys(t.market).length ? row('цены', esc(Object.entries(t.market).sort((p, q) => q[1] - p[1]).filter((x, k, l) => k < 3 || k >= l.length - 3).map(([g, k]) => `${TOWN_GOODS.get(g).label} ×${k.toFixed(2)}`).join(', '))) : '') +
+    // its indicators and the recipes that run (atlas/economy.js; docs/WORLD.md «Цепочки 6.1»), its slots (TOWN_SLOTS)
+    (t.econ?.lit ? row('индикаторы', esc(t.econ.lit.map(indicatorLabel).join(', '))) : '') +
+    (t.econ?.recipes?.some(x => x.eff > 0.005) ? row('рецепты', esc(t.econ.recipes.filter(x => x.eff > 0.005).map(x => `${TOWN_BUILDINGS.get(x.of).name}: ${x.name} ${Math.round(x.share * 100)}%`).join(', '))) : '') +
+    row('слоты', (u => `${u.town} из ${slotsOf(t).town}, улучшения ${u.upgrades} из ${slotsOf(t).upgrades}`)(slotsUsed(t))) +
     row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}`) +
     row('основан', `${t.founded} г.${t.capital ? ', столица' : ''}`) +
     row('угодья', `в ${siteRadius(a, t)} клетках; ${feed || ''}`) +
