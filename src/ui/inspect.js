@@ -122,8 +122,10 @@ function realmHtml(a, R) {
   // the year's ledger of its treasury (atlas/treasury.js fiscOf: the last year closed)
   const L = R.fisc?.last, fisc = L ? row('книга казны', [`подати ${Math.round(L.tax)}`, L.lost >= 1 && `коррупция унесла ${Math.round(L.lost)}`, L.duty >= 1 && `пошлины ${Math.round(L.duty)}`,
     L.loot >= 1 && `добыча ${Math.round(L.loot)}`, L.tribute >= 1 && `дань получена ${Math.round(L.tribute)}`, L.tribute <= -1 && `дань уплачена ${Math.round(-L.tribute)}`,
-    `двору ${Math.round(L.court)}${L.courtUnpaid >= 1 ? ` (недоплачено ${Math.round(L.courtUnpaid)})` : ''}`, L.wages >= 1 && `войскам ${Math.round(L.wages)}`, L.wagesUnpaid >= 1 && `войскам недоплачено ${Math.round(L.wagesUnpaid)}`].filter(Boolean).join(', ')) : '';
-  const kingdom = fisc + (R.gold != null ? row('казна державы', `${Math.round(R.gold)} зол.${R.spent ? `; за год на войско ${Math.round(R.spent.army)} (${Math.round(R.spent.men)} человек в гарнизонах), на стройку ${Math.round(R.spent.build)}` : ''}`) : '') + (Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
+    `двору ${Math.round(L.court)}${L.courtUnpaid >= 1 ? ` (недоплачено ${Math.round(L.courtUnpaid)})` : ''}`, L.wages >= 1 && `войскам ${Math.round(L.wages)}`, L.wagesUnpaid >= 1 && `войскам недоплачено ${Math.round(L.wagesUnpaid)}`,
+    L.kind >= 1 && `натурой ${Math.round(L.kind)}`, L.food >= 0.5 && `войскам заготовок ${Math.round(L.food)}`, L.foodShort >= 0.5 && `не хватило заготовок ${Math.round(L.foodShort)}`, L.kit >= 1 && `снаряжение войскам ${Math.round(L.kit)}`].filter(Boolean).join(', ')) : '';
+  const store = Object.entries(R.stock || {}).filter(([, n]) => n >= 0.5).map(([g, n]) => `${TOWN_GOODS.has(g) ? TOWN_GOODS.get(g).label : g} ${Math.round(n)}`).join(', ');
+  const kingdom = fisc + (R.gold != null ? row('казна державы', `${Math.round(R.gold)} зол.${store ? `, на складе: ${store}` : ''}${R.keep ? `; за сезон гарнизонам ${Math.round(R.keep.garrison)} (${Math.round(R.keep.men)} человек)` : ''}${R.spent?.build != null ? `; за год на стройку ${Math.round(R.spent.build)}` : ''}`) : '') + (Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
     row('разруха', RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ') || 'нет') +
     row('двор', OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ')) : '');
   return sec(`Держава: ${realmLabel(a, R.id)}`,

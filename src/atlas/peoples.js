@@ -149,6 +149,9 @@ export function settleSpot(a, t) {
   for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp, pe)) return i;
   return -1;
 }
+// a year's growth of a town towards its target (what feeds and houses it): born of its people at its people's `breed`
+// (the elder peoples slower), by fame, its realm's economy and its people's needs; over the target it shrinks the same way
+export const bornOf = (t, P, fx, target) => TL.growth * (P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target));
 // the settlers of a town found a new one: `settlers.pop` of its people leave it with what its store can spare of
 // `settlers.goods`; the new town is of the same realm → the town, or null (no spot, or too few to leave)
 export function foundFrom(a, from, rnd, say) {
@@ -375,11 +378,14 @@ export function stepPeoples(a, rnd, say) {
     if (!t.alive) continue;
     const pe = a.peoples.find(p => p.id === t.people);
     const fx = townFx(t);
-    const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
+    let feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
+    // a hungry year: what the land, the works and the net do not feed, the store's stores do (a store a man a year)
+    const hungry = Math.min(t.stock?.stores || 0, Math.max(0, t.pop - feeds));
+    if (hungry > 0) { t.stock.stores = Math.round((t.stock.stores - hungry) * 100) / 100; if (t.stock.stores < TOWN_MONEY.dust) delete t.stock.stores; feeds += hungry; t.ateStores = Math.round(hungry); } else delete t.ateStores;
     const target = Math.min(feeds, room(fx));
     // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
     // a town too few to hold is left — atlas/demography.js abandonEmpty)
-    t.pop = Math.max(0, t.pop + TL.growth * (pe.P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)));
+    t.pop = Math.max(0, t.pop + bornOf(t, pe.P, fx, target));
     t.target = Math.round(target);   // what feeds and houses it: its settlers go when it is full (sendSettlers)
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster

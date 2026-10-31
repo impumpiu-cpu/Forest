@@ -27,7 +27,7 @@ import {migrate, freeCaptives} from './demography.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
-import {stepKingdom} from './kingdom.js';
+import {stepKingdom, stepRealmKeep} from './kingdom.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -145,6 +145,7 @@ export function stepHistory(a, onDay = null) {
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
+  if (H.era !== 'wild') stepRealmKeep(a);   // the realms keep their garrisons and armies, a season's pay, food and kit (atlas/treasury.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
