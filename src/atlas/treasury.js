@@ -266,6 +266,15 @@ export function doBuild(P) {
   t.builtCost = r2((t.builtCost || 0) + cost);   // what its building cost (for the cards)
 }
 
+// the cult of war (data/peoples.js warCult: the greenskins) drives off TOWN_MONEY.plunder.slaves of the people a beaten town
+// lost (a raid's, a storm's) as slaves to the raiders' town (atlas/economy.js: they work its buildings) → how many
+export function driveOff(raider, target, lost) {
+  if (!raider || !target || !(lost > 0) || !peopleOf(raider.people)?.warCult) return 0;
+  const n = lost * M.plunder.slaves;
+  raider.slaves = r2((raider.slaves || 0) + n);
+  (raider.slavesOf ||= {})[target.people] = r2((raider.slavesOf[target.people] || 0) + n);   // whose kin (atlas/deeds/liberate.js)
+  return n;
+}
 // ── plunder (atlas/deeds/captives.js, raidTown.js; atlas/diplomacy.js, the storm): the raiders carry off `share` of the beaten
 // town's goods and gold (× its people's cult of war: the greenskins), the gold to the raiders' people, the goods to their store
 // → [gold, the goods' worth], or null
