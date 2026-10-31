@@ -76,7 +76,7 @@ WORLD_PEOPLES.registerAll([
     // the wood fights for them (atlas/wilds.js): treants wake about a town in the forest, `grove.grow` a year up to `grove.cap` by
     // its step; the town counts beasts of the land worth `guard` of its people in its might; an army takes beasts worth `beasts`
     // of its men and, marching on a town in the forest, treants worth `treants` of them
-    wilds: {guard: 0.25, beasts: 0.25, treants: 0.25, grove: {grow: 0.5, cap: [1, 3, 6]}},
+    wilds: {guard: 0.25, beasts: 0.25, treants: 0.25, grove: {grow: 0.5, cap: [2, 4, 6]}},
     rose: {agg: 0.35, grow: 0.2, econ: 0.45},
     bureau: 0.7,
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
