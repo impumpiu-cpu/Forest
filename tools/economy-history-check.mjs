@@ -13,7 +13,7 @@ if (levy) {
   if (!(share > 0 && share < 1)) throw new Error('levy must be between 0 and 1');
   WORLD_PEOPLES.get('orcs').levy = share / ARMY.levy;
 }
-const skip = new Set(['food', 'grain', 'stores', 'gold']);
+const skip = new Set(['food', 'raw', 'stores', 'gold']);
 const take = a => {
   const by = Object.fromEntries(WORLD_PEOPLES.all().map(p => [p.id, {pop: 0, away: 0, money: 0, needs: 0, ask: 0, lack: 0, rows: 0, idle: 0}]));
   for (const t of a.towns.filter(t => t.alive)) {

@@ -199,13 +199,18 @@ const APPEARED = {m: 'появился', f: 'появилась', n: 'появи
 // left — housing goes up in place of an older one, a bridge or a ferry eases the ford, the chronicle tells of the notable ones
 export function placeWork(a, t, b, rnd) {
   const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
-  return !b.site || sited || placeSite(a, t, b, rnd);   // more of it widen its cell
+  return !b.site || sited || placeSite(a, t, b, rnd);   // more of it widen its cell (a tier on the map takes a cell of its own: its place differs)
 }
 export function raiseBuilding(a, t, b, say) {
   const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
-  const old = upgradeOf(t, b);   // housing built in place of an older one
+  const old = upgradeOf(t, b);   // housing and a tier built in place of an older one
   if (old) t.built.splice(t.built.indexOf(old), 1);
   t.built.push(b.id);
+  // a tier of a work on the map: the last unit that gave way leaves its cell free (atlas/sites.js)
+  if (old && TOWN_BUILDINGS.get(old).site && !t.built.includes(old)) {
+    const s = (t.sites || []).map(id => a.sites?.[id - 1]).find(x => x?.alive && x.kind === old);
+    if (s) { s.alive = false; s.died = a.hist?.year ?? 0; if (a.siteAt) a.siteAt[s.i] = 0; t.sites = t.sites.filter(id => id !== s.id); }
+  }
   if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
   if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
   else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);

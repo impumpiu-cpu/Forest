@@ -15,7 +15,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, goodPrice} from '../src/data/townBuildings.j
 const args = process.argv.slice(2), FULL = args.includes('--full');
 const SEEDS = (args.find(x => /^[\d,]+$/.test(x)) || '5,9,21').split(',');
 const SEASONS = 8, IDLE = 0.3, WASTE = 0.2, NEEDS = 0.3, NEAR = 0.04, STEPS = [0.5, 0.7, 0.85, 1, 1.2, 1.5, 2, 3];
-const SKIP = new Set(['food', 'grain', 'stores', 'gold']);
+const SKIP = new Set(['food', 'raw', 'stores', 'gold']);
 const GOODS = TOWN_GOODS.all().map(g => g.id).filter(g => !SKIP.has(g) && TOWN_BUILDINGS.all().some(b => b.out?.[g]));
 const BASE = new Map(TOWN_BUILDINGS.all().map(b => [b.id, {...(b.out || {})}]));
 const apply = m => { for (const b of TOWN_BUILDINGS.all()) { const o = BASE.get(b.id); if (!b.out) continue; for (const g of Object.keys(o)) b.out[g] = o[g] * (m[g] ?? 1); } };

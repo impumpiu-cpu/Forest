@@ -41,7 +41,7 @@ import {townEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 
-const FOODS = new Set(['food', 'grain', 'stores', 'meat', 'fish', 'produce', 'flour', 'brush']);   // (raw food too: it is cooked where it is made, not traded; brushwood is burnt where it is gathered)
+const FOODS = new Set(['food', 'raw', 'stores', 'brush']);   // (raw food too: it is cooked where it is made, not traded; brushwood is burnt where it is gathered)
 const r2 = v => Math.round(v * 100) / 100;
 const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
 const stored = g => !FOODS.has(g) && g !== 'gold';

@@ -7,7 +7,7 @@ import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const args = process.argv.slice(2), pos = args.filter(x => !x.startsWith('--'));
 const N = +(pos[0] || 4), size = pos[1] || 'small';
-const RAW = Object.keys(POOLS.raw), by = {};
+const RAW = ['raw'], by = {};   // (raw food is one good: docs/WORLD.md «Цепочки 6.1»)
 for (let k = 0; k < N; k++) {
   const a = newAtlas({seed: 'macro' + k, size, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1});
   while (runNextStage(a)) { /* the whole history */ }

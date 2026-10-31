@@ -41,7 +41,7 @@ const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0,
 {
   const bad = [];
   for (const b of TOWN_BUILDINGS.all()) {
-    if (b.local && !BUILDINGS.has(b.local)) bad.push(`${b.id}: нет постройки локальной карты ${b.local}`);
+    for (const l of b.local || []) if (!BUILDINGS.has(l)) bad.push(`${b.id}: нет постройки локальной карты ${l}`);
     for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (!TOWN_BUILDINGS.has(id)) bad.push(`${b.id}: требует неизвестное ${id}`);
     for (const nd of [...(b.needs || []), ...(b.needsAny || [])]) if (!(nd in PLACE_NEEDS)) bad.push(`${b.id}: неизвестное условие места ${nd}`);
     for (const p of b.peoples || []) if (!WORLD_PEOPLES.has(p)) bad.push(`${b.id}: неизвестный народ ${p}`);
