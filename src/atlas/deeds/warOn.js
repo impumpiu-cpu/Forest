@@ -21,6 +21,15 @@ export const warOn = {
       if (r.att > D.warAt) continue;
       out.push([{kk, other: other.id}, 1, () => `${realmLabel(a, other.id)}: отношение ${r.att.toFixed(1)}, общая граница`]);
     }
+    // the cult fights its own kind too: with no realm of its own people at its border, it goes for the nearest of them
+    if (C && ctx.r) {
+      const kin = relationsOf(a, realm).filter(x => x.other.people === realm.people);
+      if (kin.length && !kin.some(x => x.r.border || x.r.war)) {
+        const mine = a.towns.filter(t => t.alive && t.realm === realm.id), dist = o => { let d = Infinity; for (const t of mine) for (const u of a.towns) if (u.alive && u.realm === o.id) d = Math.min(d, Math.hypot(t.x - u.x, t.y - u.y)); return d; };
+        const near = kin.map(x => [x, dist(x.other)]).filter(([, d]) => d < Infinity).sort((p, q) => p[1] - q[1])[0]?.[0];
+        if (near && a.hist.year - (near.r.peaceAt ?? -Infinity) >= C.rest && ctx.r() < C.chance / SEASONS_PER_YEAR) out.push([{kk: near.kk, other: near.other.id, cult: true, far: true}, 1, () => `${realmLabel(a, near.other.id)}: свои, ближе всех`]);
+      }
+    }
     return out.length ? out : null;
   },
   act(a, realm, plan, ctx = {}) {
@@ -29,7 +38,7 @@ export const warOn = {
     r.war = {since: a.hist.year, battles: 0, razed: 0, turn: realm.id, mustered: null}; r.wars++;
     if (plan.cult) {
       const Y = cultOf(realm).years, rnd = ctx.r();   // (a war of the cult is planned only with the stream at hand)
-      r.war.cult = {until: a.hist.year + Y[0] + Math.floor(rnd * (Y[1] - Y[0] + 1)), att: r.att};
+      r.war.cult = {until: a.hist.year + Y[0] + Math.floor(rnd * (Y[1] - Y[0] + 1)), att: r.att, ...(plan.far ? {far: true} : {})};   // (far: no border — its armies march to the nearest town anyway)
       return `Без всякой вражды, просто чтобы подраться: ${realmLabel(a, realm.id)} и ${realmLabel(a, plan.other)} — началась война.`;
     }
     return `${cap1(realmLabel(a, realm.id))} и ${realmLabel(a, plan.other)} не поделили ${r.kin ? 'власть' : 'земли'}: началась война.`;

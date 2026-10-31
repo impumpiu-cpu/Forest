@@ -153,7 +153,7 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   t.built = ['temple', 'market'];
   const after = lineHas(t.built, 'shrine') && canBuild(a, t, B('warehouse')), noShrine = !canBuild(a, {...t, built: []}, B('temple'));
   t.tier = 1;
-  t.built = Array(slotsOf(t).town).fill('market').map((x, k) => ['market', 'well', 'granary', 'cemetery', 'eldershall', 'shrine', 'inn', 'healerhut', 'loom', 'potter', 'forge', 'tannery'][k]);
+  t.built = Array(slotsOf(t).town).fill('market').map((x, k) => ['market', 'well', 'granary', 'cemetery', 'eldershall', 'shrine', 'inn', 'healerhut', 'loom', 'potter', 'forge', 'tannery', 'smelter', 'charpit', 'sawmill', 'dryrack', 'quern', 'tavern', 'alchemist', 'armory'][k]);
   const full = slotsUsed(t).town >= slotsOf(t).town && !canBuild(a, t, B('watchtower')) && canBuild(a, t, B('temple'));
   check('тир — на месте основы и считается ею; пристройка — при основе; слоты: полный город не ставит новых, а тир ставит',
     temple && rites && after && noShrine && full, `храм ${temple}, склады без рынка нельзя ${rites}, после храма и рынка ${after}, без святилища храма нет ${noShrine}, слоты ${slotsUsed(t).town}/${slotsOf(t).town}: ${full} (${TOWN_SLOTS.town.join('/')})`);

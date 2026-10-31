@@ -40,7 +40,7 @@ const CATS = ['housing', 'food', 'raw', 'craft', 'trade', 'defence', 'faith', 'l
 function yearRow() {
   const by = {};
   for (const p of PE) by[p] = {pop: 0, towns: 0, tiers: [0, 0, 0], room: 0, feeds: 0, target: 0, nb: 0, nc: 0, hands: 0, free: 0, jobs: 0, built: 0, cats: Object.fromEntries(CATS.map(c => [c, 0])),
-    rawBy: {}, spot: 0, big: 0, idle: 0, roleOf: {agg: 0, grow: 0, econ: 0, seat: 0}, stock: {}, made: {}, used: {}, short: {}, lack: {}, army: 0, beasts: 0, ate: 0, gold: 0, slotsFull: 0, realms: 0, rgold: 0, rstock: {}, stats: {}, ruin: {}, course: {agg: 0, grow: 0, econ: 0}, wind: {agg: 0, grow: 0, econ: 0}, fisc: {}};
+    rawBy: {}, kinPop: {}, born: 0, dead: 0, brawl: 0, want: 0, ageSum: 0, slaves: 0, warYears: 0, warKin: 0, warOther: 0, spot: 0, big: 0, idle: 0, roleOf: {agg: 0, grow: 0, econ: 0, seat: 0}, stock: {}, made: {}, used: {}, short: {}, lack: {}, army: 0, beasts: 0, ate: 0, gold: 0, slotsFull: 0, realms: 0, rgold: 0, rstock: {}, stats: {}, ruin: {}, course: {agg: 0, grow: 0, econ: 0}, wind: {agg: 0, grow: 0, econ: 0}, fisc: {}};
   for (const t of a.towns) if (t.alive) {
     const B = by[t.people], fx = townFx(t), E = t.econ || {};
     B.pop += t.pop; B.towns++; B.tiers[t.tier]++; B.room += room(fx); B.feeds += t.wants?.feeds || 0; B.target += t.target || t.pop;
@@ -48,6 +48,9 @@ function yearRow() {
     B.hands += E.hands || 0; B.free += E.freeHands || 0; B.jobs += E.jobs || 0; B.built += t.built.length;
     for (const id of t.built) B.cats[TOWN_BUILDINGS.get(id).cat]++;
     if (!t.project) B.idle++;
+    if (t.vital) { B.born += t.vital.born; B.dead += t.vital.dead; B.brawl += t.vital.brawl; B.want += t.vital.want; }
+    B.ageSum += (t.age ?? 18) * t.pop; B.slaves += t.slaves || 0;
+    for (const [k, v] of Object.entries(t.kin || {})) B.kinPop[k] = (B.kinPop[k] || 0) + v * t.pop;
     const S = WORLD_PEOPLES.get(t.people).settlers;
     if (S && t.pop >= S.from) { B.big++; if (settleSpot(a, t) >= 0) B.spot++; }
     B.roleOf[t.role || (t.capital ? 'seat' : 'econ')]++;
@@ -62,7 +65,8 @@ function yearRow() {
   for (const p of a.parties || []) if (p.kind === 'army') { const pp = realmPeople(p.owner); if (pp) by[pp].army += p.men || 0; }
   for (const r of a.realms || []) {
     if (!a.towns.some(t => t.alive && t.realm === r.id)) continue;
-    const B = by[r.people]; B.realms++; B.rgold += r.gold || 0;
+    const B = by[r.people]; B.realms++;
+    { let kin = false, other = false; for (const [k, rel] of Object.entries(a.rel || {})) { if (!rel.war) continue; const [p, q] = k.split(':'); if (p !== r.id && q !== r.id) continue; const o = a.realms.find(x => x.id === (p === r.id ? q : p)); if (o?.people === r.people) kin = true; else other = true; } if (kin || other) B.warYears++; if (kin) B.warKin++; if (other) B.warOther++; } B.rgold += r.gold || 0;
     for (const [g, v] of Object.entries(r.stock || {})) B.rstock[g] = (B.rstock[g] || 0) + v;
     for (const [k, v] of Object.entries(r.kingdom?.stats || {})) B.stats[k] = (B.stats[k] || 0) + v;
     for (const [k, v] of Object.entries(r.kingdom?.ruin || {})) B.ruin[k] = (B.ruin[k] || 0) + v;
@@ -75,7 +79,7 @@ function yearRow() {
     out[p] = {pop: Math.round(B.pop), towns: B.towns, tiers: B.tiers, room: Math.round(B.room), feeds: Math.round(B.feeds), target: Math.round(B.target),
       basic: r3(B.nb / Math.max(1, B.pop)), comfort: r3(B.nc / Math.max(1, B.pop)), hands: Math.round(B.hands), free: Math.round(B.free), jobs: Math.round(B.jobs), built: B.built, cats: B.cats, idle: B.idle, big: B.big, spot: B.spot, roles: B.roleOf,
       stock: Object.fromEntries(Object.entries(B.stock).map(([g, v]) => [g, Math.round(v)])), made: Object.fromEntries(Object.entries(B.made).map(([g, v]) => [g, r1(v)])), used: Object.fromEntries(Object.entries(B.used).map(([g, v]) => [g, r1(v)])),
-      short: B.short, lack: B.lack, rawBy: Object.fromEntries(Object.entries(B.rawBy).map(([k, v]) => [k, Math.round(v)])), army: Math.round(B.army), beasts: Math.round(B.beasts), ate: Math.round(B.ate), gold: Math.round(B.gold), slotsFull: B.slotsFull,
+      short: B.short, lack: B.lack, rawBy: Object.fromEntries(Object.entries(B.rawBy).map(([k, v]) => [k, Math.round(v)])), kinPop: Object.fromEntries(Object.entries(B.kinPop).map(([k, v]) => [k, Math.round(v)])), born: Math.round(B.born), dead: Math.round(B.dead), brawl: Math.round(B.brawl), want: Math.round(B.want), age: r1(B.ageSum / Math.max(1, B.pop)), slaves: Math.round(B.slaves), warYears: B.warYears, warKin: B.warKin, warOther: B.warOther, army: Math.round(B.army), beasts: Math.round(B.beasts), ate: Math.round(B.ate), gold: Math.round(B.gold), slotsFull: B.slotsFull,
       realms: B.realms, rgold: Math.round(B.rgold / n), rstock: Object.fromEntries(Object.entries(B.rstock).map(([g, v]) => [g, Math.round(v / n)])),
       stats: Object.fromEntries(Object.entries(B.stats).map(([k, v]) => [k, r3(v / n)])), ruin: Object.fromEntries(Object.entries(B.ruin).map(([k, v]) => [k, r3(v / n)])),
       course: Object.fromEntries(Object.entries(B.course).map(([k, v]) => [k, r3(v / n)])), wind: Object.fromEntries(Object.entries(B.wind).map(([k, v]) => [k, r3(v / n)])),

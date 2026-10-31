@@ -23,6 +23,7 @@
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
 //   rose:     the course the people keeps its realm to over the years, along the three vectors (data/mind.js): the
 //             greenskins to war, the dwarves to craft and hoard, the humans to growth, the elves to a warded, crafted home
+//   rosePull: how hard its realms' councils pull back to the rose (× MIND.pull's place; data/mind.js)
 //   bureau:   how fast a realm of this people breeds corruption (× RUINS corruption `grows`, data/kingdom.js; from the branch Elves)
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
@@ -30,6 +31,7 @@
 //             yield more, their humane quarries less; none — ×1
 //   hands:    the share of its people who work (the rest are children, the old, those who keep house): the hands its
 //             town's buildings share out (atlas/economy.js); elves have few children and many elders, orcs put everyone to work
+//   brawl:    a people that kills its own for a place at the fire: a share a year by its realm's crime and its crowding
 //   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   placeFlows: more × where its town stands on such a place (data/townBuildings.js PLACE_NEEDS, any of `needsAny`)
 //   swaps:    a good its buildings never take, and what they take instead: {silver: {to: 'wood', k: 3}} — an elven
@@ -137,6 +139,10 @@ WORLD_PEOPLES.registerAll([
     // they will not crowd: every house of theirs holds × `house` of its people (atlas/towns.js townFx); shacks and tents are
     // their homes, no rough housing to breed corruption (`roughHome`: atlas/towns.js roughShare)
     house: 0.75, roughHome: true,
+    // a fight for a place at the fire (atlas/demography.js lifeYear): each year this share of a town's people kill each other —
+    // `crime` × its realm's crime (data/kingdom.js RUINS) and `crowd` × how much fuller it is than `from` of its room; their
+    // slaves last `slaveLife` years [from, to] (atlas/peoples.js seasonTowns)
+    brawl: {crime: 0.002, crowd: 0.06, from: 0.6}, slaveLife: [1, 4],
     // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
     // nomads and warriors (from the branch Elves): luxury, gems, silver and gold they sell as soon as they have them and buy arms
@@ -159,7 +165,7 @@ WORLD_PEOPLES.registerAll([
     spread: 0.3, growth: 0.26, spacing: 13,
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
     settlers: {pop: 25, from: 110, keep: 70, reach: 2.5, goods: {stores: 25, hide: 20, arms: 3}}, migrate: 0.03, welcome: ['elves', 'dwarves', 'humans'],
-    rose: {agg: 0.55, grow: 0.3, econ: 0.15},
+    rose: {agg: 0.55, grow: 0.3, econ: 0.15}, rosePull: 3,   // the horde keeps to its ways: its council pulls back to the rose × 3 (data/mind.js MIND.pull)
     bureau: 1.5,
     taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
@@ -179,7 +185,9 @@ export function swapGoods(people, goods, k = 1) {
 }
 
 // a kind's share a town must hold for a building of that kind's own (data/townBuildings.js `kin`)
-export const KIN = {least: 0.08};
+// `pull` — each year a town's kinds move this share of the way back to what its land gives (the wild tribes of the land join
+// the horde: atlas/demography.js lifeYear), so a slow-breeding kind thins but does not die out
+export const KIN = {least: 0.08, pull: 0.05};
 
 // Town sizes: three steps, earned by what the town has built (docs/WORLD.md).
 // A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
@@ -196,7 +204,7 @@ export const TIERS = [
     label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
       humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
     gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},
-  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'temple', 'ancestorhall'],
+  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'warcamp', 'temple', 'ancestorhall'],
     label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
       humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'f'}},
@@ -300,7 +308,13 @@ export const ELDER_YEARS = [
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  growth: 0.22, prestige: 0.6, minTarget: 60};
+  growth: 0.22, prestige: 0.6, minTarget: 60,
+  // age and death (atlas/demography.js lifeYear; each kind's lifeFrom, life, fertility, brawled — the races table, data/races.js
+  // body): a band or settlers come at `found` × lifeFrom years of age; a kind lives L = from + (to − from) × (1 − e^(−health /
+  // health)) years — the town's health its soft lift; it dies at (1 / L) × (base + (age / (L / 2))^hazard) a year (at most
+  // `most`), where base — the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land
+  // buries its children); the dead are `dead` × the mean age old (the old die first)
+  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, dead: 1.4, most: 0.5}};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's

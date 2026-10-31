@@ -4,7 +4,7 @@
 // no births makes nobody. `node tools/demography-check.mjs`
 import {generateAtlas} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../src/data/peoples.js';
-import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove} from '../src/atlas/demography.js';
+import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove, lifeOf, deathRate, brawlRate, lifeYear, breedOf, foundAge} from '../src/atlas/demography.js';
 import {foundFrom, settleSpot, stepPeoples, bornOf} from '../src/atlas/peoples.js';
 import {returnArmy} from '../src/atlas/army.js';
 import {mulberry} from '../src/core/rng.js';
@@ -121,6 +121,33 @@ check('ни в одном живом городе нет меньше, чем д
   resetAll();
   check('год без рождений: жителей не прибавилось', people(a) <= p0 + 1e-6, `${p0.toFixed(2)} → ${people(a).toFixed(2)}, городов ${n0} → ${live(a).length}`);
   check('после сброса таблиц прирост вернулся', TOWN_LIFE.growth > 0);
+}
+
+// ── age and death (atlas/demography.js lifeYear; the races table: lifeFrom, life, fertility, brawled; data/peoples.js brawl)
+{
+  const rate = (kind, age, health = 0) => deathRate(lifeOf(kind, health), age, health);
+  check('эльфы почти не умирают за историю, люди умирают, гоблины — быстрее всех', rate('elf', 300) < 0.002 && rate('human', 40) > 0.01 && rate('goblin', 15) > rate('orc', 15) && rate('orc', 15) > rate('human', 15),
+    `эльф в 300: ${rate('elf', 300).toFixed(4)}, человек в 40: ${rate('human', 40).toFixed(3)}, в 15 лет: гоблин ${rate('goblin', 15).toFixed(3)}, орк ${rate('orc', 15).toFixed(3)}, человек ${rate('human', 15).toFixed(3)}`);
+  check('тролли и огры живут дольше орков и людей', lifeOf('troll') > 100 && lifeOf('ogre') > 100 && lifeOf('orc') < lifeOf('human'));
+  check('здоровье продлевает жизнь к верхней границе и бережёт детей', lifeOf('human', 0) === 60 && lifeOf('human', 0.3) > 60 && lifeOf('human', 10) <= 80 && rate('human', 10, 1) < rate('human', 10, 0));
+  check('основатели — треть срока своего вида', foundAge('human') === 20 && foundAge('goblin') < foundAge('orc') && foundAge('troll') > foundAge('orc'));
+  check('гоблины плодовитее орков, тролли и огры — реже', breedOf(null, {people: 'orcs', kin: {goblin: 1}}) > 1 && breedOf(null, {people: 'orcs', kin: {troll: 1}}) < 1 && breedOf(null, {people: 'humans'}) === 1);
+  check('драки за место у костра — только у зеленокожих, от тесноты и преступности', (() => {
+    const a = {realms: [{id: 'r1', kingdom: {ruin: {crime: 10}}}]}, fx = {housing: 0, health: 0};
+    return brawlRate(a, {people: 'humans', realm: 'r1', pop: 120}, fx) === 0 && brawlRate(a, {people: 'orcs', realm: 'r1', pop: 120}, fx) > brawlRate({realms: []}, {people: 'orcs', realm: 'r1', pop: 60}, fx);
+  })());
+  {
+    const t = {people: 'humans', pop: 1000, age: 30};
+    const v = lifeYear(null, t, 50, 10, {health: 0, housing: 0});
+    check('год жизни: родились + выжили, умершие не возвращаются; возраст растёт на год и молодеет от рождений', Math.abs(t.pop - (1000 - v.dead - 10 + 50)) < 0.1 && t.age > 20 && t.age < 31, `жителей ${t.pop.toFixed(1)}, умерло ${v.dead}, возраст ${t.age}`);
+  }
+  {
+    const a = {realms: [{id: 'r1', kingdom: {ruin: {crime: 10}}}]};
+    const t = {people: 'orcs', realm: 'r1', pop: 1000, kin: {orc: 0.5, goblin: 0.3, troll: 0.2}, kinAge: {orc: 15, goblin: 8, troll: 50}};
+    const v = lifeYear(a, t, 0, 0, {health: 0, housing: 10});
+    check('виды города расходятся: гоблины гибнут в драках и от старости быстрее, тролли держатся', t.kin.goblin < 0.3 && t.kin.goblin > 0.1 && t.kin.troll > 0.2 && v.brawl > 0, JSON.stringify(t.kin));
+  }
+  check('рабы зеленокожих живут 1–4 года', 2 / (WORLD_PEOPLES.get('orcs').slaveLife[0] + WORLD_PEOPLES.get('orcs').slaveLife[1]) >= 0.4);
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

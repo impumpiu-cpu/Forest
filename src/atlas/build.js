@@ -65,6 +65,17 @@ export function razeIdle(t) {
   return worst[0];
 }
 
+// a town at its slots whose council finds nothing to build razes its worst work of its own below TOWN_SLOTS.idle (one a
+// season; a work no worse than that stays) → its id, or null
+export function razeWorst(t) {
+  const S = TOWN_SLOTS;
+  if (slotsUsed(t).town < slotsOf(t).town) return null;
+  const worst = [...new Set(t.built)].filter(id => slotKind(TOWN_BUILDINGS.get(id)) === 'town' && (t.work?.[id] ?? 1) < S.idle).sort((p, q) => (t.work?.[p] ?? 1) - (t.work?.[q] ?? 1) || (p < q ? -1 : 1))[0];
+  if (!worst) return null;
+  t.built.splice(t.built.indexOf(worst), 1); if (t.idle) delete t.idle[worst];
+  return worst;
+}
+
 // a season of building in every town: the project goes on, a finished one stands, the council picks the next (after the
 // towns' economies and the growth: atlas/history.js)
 export function stepBuilds(a, rnd, say) {
@@ -77,7 +88,7 @@ export function stepBuilds(a, rnd, say) {
       if (P && !(P.done > 0 || canBuild(a, t, P.b))) { t.project = null; P = null; }   // (it may not any more: its realm lost what it needed)
       if (!P) {
         const b = pickProject(a, t, rnd);
-        if (!b) break;
+        if (!b) { razeWorst(t); break; }   // nothing to build: a full town makes room
         t.project = b.id; P = projectOf(t);
       }
       const W = t.works[P.b.id], put = Math.min(days, P.days - W.done);

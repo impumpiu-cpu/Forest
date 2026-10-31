@@ -274,7 +274,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax * tw, D.trade * tw * routes) : 0);
     // the front, for the realms' deeds (atlas/deeds/warOn.js, march.js): whether the two border — shared land or towns
     // within the front — and the nearest pair of their towns
-    r.border = sh > 0 || gap <= D.front * k; r.front = pair && gap <= D.front * k ? [pair[0].id, pair[1].id] : null; r.kin = kin;
+    r.border = sh > 0 || gap <= D.front * k; r.front = pair && (gap <= D.front * k || r.war?.cult?.far) ? [pair[0].id, pair[1].id] : null; r.kin = kin;   // (a far war of the cult: its front is the nearest pair, however far)
     if (r.war) r.att += D.weariness;   // a war wears both out; who ends it, and who marches, is the realms' choice (atlas/deeds/)
     r.att = Math.max(-5, Math.min(5, r.att));
   }

@@ -171,9 +171,15 @@ export function placeHas(a, i, need) {
 // the biome of its cell — worked out once and kept; null for a people of one kind
 export function townKin(a, t) {
   if (t.kin) return t.kin;
-  const K = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).kin : null; if (!K) return null;
+  const K = kinOfLand(a, t); if (!K) return null;
+  return (t.kin = K);
+}
+// the kinds the land of a town gives a people of many kinds (its biome: base + home), {species: share} — a new town's, and
+// what its wild tribes keep bringing to it (atlas/demography.js lifeYear, KIN.pull)
+export function kinOfLand(a, t) {
+  const K = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).kin : null; if (!K || !a?.f) return null;
   const b = biomeAt(a, t.i)?.id, w = Object.fromEntries(Object.entries(K).map(([sp, k]) => [sp, k.base + (k.home[b] || 0)])), sum = Object.values(w).reduce((s, v) => s + v, 0);
-  return (t.kin = Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000])));
+  return Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000]));
 }
 // the town's leading kind (its race for a people of one kind)
 export const leadKin = (a, t) => { const k = townKin(a, t); return k ? Object.entries(k).sort((p, q) => q[1] - p[1])[0][0] : WORLD_PEOPLES.get(t.people)?.race; };
@@ -251,6 +257,9 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // an upgrade or an annex that boosts its host: what the host makes and the town lacks, × the boost
       for (const [id, k] of Object.entries(b.boost || {})) if (t.built.includes(id)) for (const g of makesOf(TOWN_BUILDINGS.get(id))) flow += (E.short[g] || 0) * TF.flow.short * k * t.built.filter(x => x === id).length;
       v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
+      // a work that earns the town its next step (data/peoples.js TIERS needsAny), once it has nearly the people for it
+      const next = TIERS[(t.tier || 0) + 1];
+      if (next && t.pop >= next.pop * TF.flow.tierAt && next.needsAny.includes(b.id) && !next.needsAny.some(id => lineHas(t.built, id))) v += TF.flow.tierUp;
       // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
       const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
       if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
