@@ -142,7 +142,7 @@ for (let s = 0; s < seeds; s++) {
     const epi = K.log.filter(l => l.kind === 'epilogue');
     if (!finished(K) || a.campaignsDone?.length !== 1 || !epi.length) bad.push(`${c.label}: эпилог не рассказан или поход не в архиве мира`);
     if (K.members.some(m => m.alive && !m.fate) || (K.lostWith || []).some(id => !K.members.find(m => m.id === id)?.fate)) bad.push(`${c.label}: не у всех оставшихся есть судьба`);
-    if (K.phase === 'won' && !(a.towns.find(t => t.id === K.capital)?.relic && a.realms.find(r => r.id === K.realm)?.crown)) bad.push(`${c.label}: корона дома, а держава о ней не знает`);
+    if (K.phase === 'won' && !(a.towns.find(t => t.relic && (t.id === K.capital || (t.alive && t.realm === K.realm))) && a.realms.find(r => r.id === K.realm)?.crown)) bad.push(`${c.label}: корона дома, а держава о ней не знает`);   // (a capital burnt while away: the crown goes to the realm's seat now)
     const text = chronicleText(a, a.campaignsDone?.[0] || K);
     if (!text.includes('ЛЕТОПИСЬ ПОХОДА') || text.split('\n').length < K.log.length + K.members.length) bad.push(`${c.label}: летопись текстом неполна`);
     ending[K.phase] = (ending[K.phase] || 0) + 1; ending.lines += epi.length;

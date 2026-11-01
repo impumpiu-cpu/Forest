@@ -69,6 +69,14 @@ function drawPool(id, want, left) {
 export function digOf(a, t, b) {
   const f = a?.f, site = (t.sites || []).map(id => a.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
   const w = Object.fromEntries(b.dig.ores.map(k => [k, Math.max(0, f?.[`ore_${k}`]?.[i] || 0)]));
+  // the knowledge of stone (data/peoples.js `stoneLore`: the dwarves): a rare ore anywhere within `reach` of the work is found —
+  // they dig through the whole mountain for it — and counts × its `k` among what the mine gives
+  const SL = WORLD_PEOPLES.get(t.people)?.stoneLore;
+  if (SL && f) for (const k of b.dig.ores) if (SL.k[k]) {
+    const x0 = i % a.w, y0 = (i / a.w) | 0, v = f[`ore_${k}`]; let m = w[k];
+    if (v) for (let y = Math.max(0, y0 - SL.reach); y <= Math.min(a.h - 1, y0 + SL.reach); y++) for (let x = Math.max(0, x0 - SL.reach); x <= Math.min(a.w - 1, x0 + SL.reach); x++) m = Math.max(m, v[y * a.w + x] || 0);
+    w[k] = m * SL.k[k];
+  }
   const sum = Object.values(w).reduce((s, v) => s + v, 0);
   const out = Object.fromEntries(b.dig.ores.map(k => [ORE_GOODS[k], b.dig.n * (sum > 0 ? w[k] / sum : k === 'iron' ? 1 : 0)]).filter(([, v]) => v > 0));
   const coal = b.dig.coal ? b.dig.coal * Math.max(0, Math.min(1, f?.ore_coal?.[i] || 0)) : 0;
@@ -129,7 +137,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   // (× its people's flows)
   for (const r of rows) {
     r.in = {};
-    for (const [g, v] of Object.entries(r.b.in || {})) { const s = swaps[g], to = s ? s.to : g; r.in[to] = (r.in[to] || 0) + v * (s ? s.k : 1) * r.n; }
+    for (const [g, v] of Object.entries(r.b.in || {})) { const s = P.workSwaps?.[r.b.id]?.[g] || swaps[g], to = s ? s.to : g; r.in[to] = (r.in[to] || 0) + v * (s ? s.k : 1) * r.n; }   // (workSwaps: this building's own — data/peoples.js)
     r.soft = new Set((r.b.soft || []).map(g => swapOf(P, g)[0]));   // what this building does without (as its people takes it)
     r.pool = Object.fromEntries(Object.entries(r.b.any || {}).map(([k, v]) => [k, v * r.n]));
     const fuel = ((r.b.heat || 0) * heatK + (r.b.fire || 0)) * r.n;

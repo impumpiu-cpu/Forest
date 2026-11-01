@@ -90,6 +90,33 @@ const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.ali
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
 const dealOf = (a, b, s) => (b.realm == null || s.realm == null ? 0 : b.realm === s.realm ? 1 : trades(a, b.realm, s.realm) ? M.foreign : 0);
 
+// A season of a town's reworking (data/townBuildings.js `recycle`: the dwarves' «переработка», one in a town): what its works
+// still lack after buying (`L`) and what its people want of the basic goods and the store cannot give, made of what it has to
+// spare (`P`: over its keep and safety) at the worth in gold, `k` to one — up to `worth` gold a year of the spare at full hands.
+// `give(g, n)` puts what came of it into the store with the season's buying → the worth taken
+export function recycle(t, L, P, give) {
+  const b = t.built.map(id => TOWN_BUILDINGS.get(id)).find(x => x?.recycle);
+  if (!b || !L || !P) return 0;
+  const R = b.recycle, need = {...L};
+  for (const [g, n] of Object.entries(wants(t).basic)) if (stored(g)) need[g] = Math.max(need[g] || 0, n - forPeople(t, g));
+  let left = R.worth / S * Math.min(1, t.work?.[b.id] ?? 1), took = 0;
+  const from = Object.keys(P).filter(h => !(need[h] > 0) && P[h] > 0).sort((x, y) => P[y] * goodPrice(y) - P[x] * goodPrice(x));
+  for (const [g, n] of Object.entries(need).sort((x, y) => y[1] * goodPrice(y[0]) - x[1] * goodPrice(x[0]))) {
+    let want = n * goodPrice(g) * R.k;   // the worth of spare it takes to make it
+    for (const h of from) {
+      if (!(want > M.dust) || !(left > M.dust)) break;
+      const q = Math.min(P[h], t.stock[h] || 0, want / goodPrice(h), left / goodPrice(h));
+      if (!(q > M.dust)) continue;
+      const v = q * goodPrice(h);
+      P[h] -= q; t.stock[h] -= q; want -= v; left -= v; took += v;
+      give(g, v / R.k / goodPrice(g));
+      if (L[g] > 0) L[g] = Math.max(0, L[g] - v / R.k / goodPrice(g));
+    }
+  }
+  if (took > 0) add(t.trade, 'recycled', took);
+  return took;
+}
+
 export function seasonMoney(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }   // (at: the season's step — a town burnt later in the season still sold this season)
@@ -128,6 +155,8 @@ export function seasonMoney(a, towns) {
     }
   };
   for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }
+  // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
+  for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
   // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
