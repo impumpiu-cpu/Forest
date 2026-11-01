@@ -248,7 +248,7 @@ const FORGE_REC = [R('bronze', 'бронзовые изделия', ['stock:bar_
   R('iron', 'железные изделия', ['stock:bar_iron'], {in: {bar_iron: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}}),
   R('steel', 'стальные изделия', ['stock:bar_steel'], {in: {bar_steel: 50, leather: 10}, out: {tools: 22, arms: 15, armor: 3}}),
   R('mithril', 'мифриловые изделия', ['stock:bar_mithril', 'people:dwarves'], {in: {bar_mithril: 10}, out: {arms: 15, armor: 5, lux: 3}})];
-const WALLS = ['palisade', 'thornhedge', 'earthwall', 'tunnels'], SHRINES = ['shrine', 'shamanhut', 'sacredgrove', 'stonecircle'];
+const WALLS = ['palisade', 'thornhedge', 'earthwall', 'tunnels'], SHRINES = ['shrine', 'shamanhut', 'sacredgrove', 'stonecircle', 'ancestorhall'];
 
 export const TOWN_BUILDINGS = new Registry('townBuilding');
 TOWN_BUILDINGS.registerAll([
@@ -370,7 +370,8 @@ TOWN_BUILDINGS.registerAll([
   V('stonecircle', 'каменный круг', 'm', 'faith', 0, [...H, ...O], {faith: 0.2}, {line: 'shrine', needsAny: ['stone', 'steep'], opens: ['faith']}),
   // (the humans' temple keeps a church school: knowledge besides faith)
   T('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.45, prestige: 0.1}, 'shrine', {line: 'shrine', fxBy: {humans: {lore: 0.15}}, jobs: 5, in: {lux: 1}, opens: ['temple']}),
-  T('ancestorhall', 'зал предков', 'm', 'faith', 1, D, {faith: 0.3, prestige: 0.1}, 'shrine', {line: 'shrine', jobs: 2, opens: ['temple']}),
+  // the dwarves' hall of the ancestors: their own shrine from the first stone, no other before it
+  V('ancestorhall', 'зал предков', 'm', 'faith', 0, D, {faith: 0.3, prestige: 0.1}, {line: 'shrine', jobs: 2, opens: ['faith', 'temple']}),
   // by the barrows of old battles: the fallen are laid to rest, and the rot around fades (atlas/lairs.js stepRot); any ingots
   // to the fallen, by their worth (RITE_WORTH)
   A('fallentemple', 'погребальные обряды', 'pl', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, SHRINES, {line: 'shrine', needs: ['graves'], notable: true, jobs: 3, any: {rite: RITE_WORTH.fallentemple}, opens: ['rites']}),
@@ -387,7 +388,10 @@ TOWN_BUILDINGS.registerAll([
   A('lighthouse', 'маяк', 'm', 'trade', 2, [...H, ...E], {trade: 0.1, defence: 0.05}, ['harbor'], {line: 'harbor', needs: ['coast'], jobs: 1, fire: 40, opens: ['lighthouse']}),
   A('shipyard', 'верфь', 'f', 'craft', 2, [...H, ...E], {trade: 0.25, prod: 0.1}, ['harbor'], {line: 'harbor', needs: ['coast', 'forest'], jobs: 15, in: {planks: 200, fiber: 40, cloth: 30}, opens: ['shipyard']}),
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
-  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {line: 'golemforge', requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, any: {bars: 40}, opens: ['golems']}),
+  // the dwarves' reworking, one in a town: what the town has over its keep and safety into what it lacks — its works and its
+  // people's basic needs — at the worth in gold, `k` to one, up to `worth` gold of it a year at full hands (atlas/treasury.js)
+  B('recycler', 'переработка', 'f', 'craft', 0, D, {prod: 0.05}, {line: 'recycler', jobs: 4, recycle: {k: 4, worth: 400}, opens: ['craft']}),
+  B('golemforge', 'кузня големов', 'f', 'craft', 1, D, {prod: 0.2, defence: 0.1}, {line: 'golemforge', requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, any: {bars: 40}, opens: ['golems']}),
   // coin of gold or silver ingots or of gems (MINT), into the purse
   B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {line: 'mint', needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, in: {tools: 0.8}, any: {coin: 1}, yields: MINT_YIELDS, opens: ['coinage']}),
   // the wards of a mage tower hold the dead off (atlas/lairs.js: the undead's raids on it fail oftener, the rot around fades)
@@ -398,11 +402,16 @@ TOWN_BUILDINGS.registerAll([
   // a hedge of thorn grown round the town instead of a palisade: it holds, slows and tears whoever comes through
   V('thornhedge', 'колючая изгородь', 'f', 'defence', 1, E, {defence: 0.3}, {line: 'wall', local: 'thornhedge', jobs: 1, in: {wood: 10}}),
   V('earthwall', 'земляной вал', 'm', 'defence', 1, O, {defence: 0.3}, {line: 'wall'}),
-  V('tunnels', 'подземные ходы', 'pl', 'defence', 1, D, {defence: 0.2, trade: 0.1}, {line: 'wall', needsAny: ['steep', 'caves'], jobs: 2, in: {wood: 10}}),
-  T('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, 'palisade', {line: 'wall', here: ['palisade', 'tunnels', 'stonewall'], needs: ['stone'], requires: ['quarry'], local: 'stonewall', in: {stone: 30}}),
+  V('tunnels', 'подземные ходы', 'pl', 'defence', 0, D, {defence: 0.2, trade: 0.1}, {line: 'wall', needsAny: ['steep', 'caves'], jobs: 2, in: {wood: 10}}),
+  T('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, 'palisade', {line: 'wall', tierBy: {dwarves: 0}, here: ['palisade', 'tunnels', 'stonewall'], needs: ['stone'], requires: ['quarry'], local: 'stonewall', in: {stone: 30}}),
   T('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, 'thornhedge', {line: 'wall', needs: ['forest'], jobs: 3}),
   A('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, WALLS, {line: 'wall', local: 'watchtower', jobs: 2, in: {wood: 5}}),
   A('tower', 'крепостные башни', 'pl', 'defence', 2, [...H, ...D], {defence: 0.3}, ['stonewall'], {line: 'wall', jobs: 10, in: {stone: 15, arms: 2}}),
+  // the dwarves' walls of metal, each in place of the one before it: bronze, iron, steel, mithril — the ingots they take a year
+  T('bronzewall', 'бронзовая стена', 'f', 'defence', 1, D, {defence: 0.7, prestige: 0.05}, 'stonewall', {line: 'wall', requires: ['smelter'], jobs: 4, in: {stone: 20, bar_bronze: 6}}),
+  T('ironwall', 'железная стена', 'f', 'defence', 2, D, {defence: 0.9, prestige: 0.1}, 'bronzewall', {line: 'wall', requires: ['forge'], jobs: 6, in: {stone: 20, bar_iron: 6}}),
+  T('steelwall', 'стальная стена', 'f', 'defence', 2, D, {defence: 1.1, prestige: 0.15}, 'ironwall', {line: 'wall', requires: ['forge'], jobs: 8, in: {stone: 20, bar_steel: 4}}),
+  T('mithrilwall', 'мифриловая стена', 'f', 'defence', 2, D, {defence: 1.5, prestige: 0.3}, 'steelwall', {line: 'wall', requires: ['forge'], pop: 800, jobs: 10, in: {stone: 20, bar_mithril: 1}}),
   T('citadel', 'цитадель', 'f', 'defence', 2, [...H, ...D], {defence: 0.6, prestige: 0.2}, 'stonewall', {line: 'wall', pop: 800, jobs: 40, in: {stone: 40, arms: 6, armor: 3}}),
   B('well', 'колодец', 'm', 'life', 1, ALL, {health: 0.1}, {line: 'water', local: 'well', in: {stone: 2}}),
   A('bathhouse', 'баня', 'f', 'life', 2, [...H, ...D], {health: 0.15}, ['well'], {line: 'water', needs: ['water'], jobs: 3, fire: 120}),

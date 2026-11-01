@@ -54,7 +54,8 @@ export function townFx(t) {
     for (const k of KEYS) if (k !== 'housing') out[k] += fxOf(b, k, t.people) * k0;   // (fxBy: what it gives its own people more)
   }
   const hk = WORLD_PEOPLES.get(t.people)?.house ?? 1;   // a people that will not crowd (data/peoples.js `house`: the greenskins)
-  for (const id of t.built) out.housing += fxOf(TOWN_BUILDINGS.get(id), 'housing') * hk;
+  const BK = WORLD_PEOPLES.get(t.people)?.bunks, bunks = (BK ? [BK].flat()[Math.min(t.tier || 0, [BK].flat().length - 1)] : 0) / TF.room[1];   // a bunk in every work (data/peoples.js `bunks`: the dwarves)
+  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); out.housing += fxOf(b, 'housing') * hk + (b.cat === 'housing' ? 0 : bunks); }
   return out;
 }
 export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
@@ -197,7 +198,7 @@ export function canBuild(a, t, b, inRealm = null) {
   }
   // in the town itself (a harbour — its own pier; an annex — its host; a tier — what it is built in place of, or a unit of itself)
   if (b.here && !b.here.some(id => (id === b.id ? t.built.includes(id) : lineHas(t.built, id)))) return false;
-  if (b.tier > t.tier) return false;
+  if ((b.tierBy?.[t.people] ?? b.tier) > t.tier) return false;   // (tierBy: a step of its own for a people — the dwarves' stone walls)
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
@@ -258,6 +259,9 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       for (const g of ins) if (!TF.flow.spareSkip.includes(g)) flow += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain (food is not stored: its surplus is no reason)
       // of a pool (a kitchen: any raw food): what lies unused of its goods — raw food nobody cooks
       for (const id of Object.keys(b.any || {})) flow += Object.keys(POOLS[id]).reduce((s, g) => s + (E.spare?.[g] || 0), 0) * TF.flow.spare;
+      // the reworking (the dwarves' `recycle`): what lies spare into what is short — worth as much as the less of the two
+      if (b.recycle) flow += Math.min(Object.values(E.short).reduce((s, v) => s + v, 0) * TF.flow.short + Object.values(t.needs?.lack || {}).reduce((s, v) => s + v, 0) * TF.flow.needs,
+        Object.values(E.spare || {}).reduce((s, v) => s + v, 0) * TF.flow.spare) / b.recycle.k;
       // an upgrade or an annex that boosts its host: what the host makes and the town lacks, × the boost
       for (const [id, k] of Object.entries(b.boost || {})) if (t.built.includes(id)) for (const g of makesOf(TOWN_BUILDINGS.get(id))) flow += (E.short[g] || 0) * TF.flow.short * k * t.built.filter(x => x === id).length;
       v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works

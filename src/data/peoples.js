@@ -16,7 +16,9 @@
 //   spacing:  a town stands at least this many cells (of a 192-cell-high world) from any other town
 //   settlers: a full town sends `pop` of its people to found a new town (atlas/peoples.js sendSettlers; docs/WORLD.md
 //             «Демография»): only from `from` people, keeping at least `keep`; on a free spot within `reach` × spacing;
-//             they carry what its store can spare of `goods`
+//             they carry what its store can spare of `goods`; `oreLand` — they settle off their people's land too where
+//             the ore under the spot is at least so rich (the dwarves follow the veins; atlas/peoples.js settleSpot); `avoid` —
+//             never nearer than so many × its spacing to a town of that people ({orcs: 2}: the dwarves keep off the camps)
 //   migrate:  share of a town's people ready to move in a season to a better town (fame and how well their needs are met
 //             draw them): of their realm, or of another realm that trades with it, nearby (atlas/demography.js)
 //   welcome:  the other peoples whose folk this people takes into its towns by migration (its own kin of other realms always)
@@ -44,6 +46,13 @@
 //             the land and the treants of their forest, in a town's might and with its armies
 //   lineMax:  at most so many buildings of a line in a town of this people, its tiers counted together ({kitchen: 1}: the elves
 //             eat raw, one hearth for the strangers among them; atlas/towns.js canBuild)
+//   bunks:    room for so many of its people (by the town's step) in every building that is not housing (the dwarves sleep in the workshop under
+//             the hammers; atlas/towns.js townFx)
+//   stoneLore: the dwarves' knowledge of stone: {reach, k} — a rare ore anywhere within `reach` cells of a mine counts at
+//             its richest there × k[ore] among what the mine digs (atlas/economy.js digOf)
+//   ruinGrow: × how fast a ruin grows in its realms ({crime: 0.25}: the dwarves' clans, where everyone knows everyone; atlas/kingdom.js)
+//   workSwaps: a good a building of the people takes in place of another ({handshop: {wood: {to: 'stone', k: 1}}}: the dwarves
+//             make tools of stone where others need logs; atlas/economy.js)
 //   tradeUp:  goods it sells as soon as it has them, for another at `rate` of the worth ({sells, buys, rate}: the greenskins sell
 //             luxury, gems and silver for arms — atlas/peoples.js tradeUp, a season)
 //   places:   a place need as it reads it ({pasture: 'grazing'}: nomads graze and hunt on any open land; atlas/towns.js placeHas)
@@ -100,13 +109,20 @@ WORLD_PEOPLES.registerAll([
     // leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
     swaps: {cloth: {to: 'leather', k: 1}, ware: {to: 'stone', k: 2}},
     breed: 0.9,   // few children, long lives
+    // cramped and of one clan: a bunk in every workshop and store (`bunks`), little crime where everyone knows everyone and
+    // a crime is never washed off in a life of four centuries (`ruinGrow`); tools of stone where the mountain has no logs
+    bunks: [5, 10, 15], ruinGrow: {crime: 0.25},   // (bunks by the town's step)
+    // the knowledge of stone: a rare ore anywhere in the mountain about a mine is found and dug × k (atlas/economy.js digOf)
+    stoneLore: {reach: 5, k: {silver: 2, gold: 3, mithril: 4}},
+    workSwaps: {handshop: {wood: {to: 'stone', k: 1}}, crafthut: {wood: {to: 'stone', k: 1}}},
     placeFlows: {needsAny: ['steep', 'caves'], flows: {ore_iron: 1.25, ore_bronze: 1.25, ore_silver: 1.25, ore_gold: 1.25, ore_mithril: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
-    moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
-    spread: 0.18, growth: 0.16, spacing: 14,
+    // the mountains first, the hills seldom; the densest of all — where others see no room they set a workshop, a store and a bunk
+    moves: {highlands: 1.4, volcano: 1.1, foothills: 1}, movesElse: 0.3,
+    spread: 0.18, growth: 0.16, spacing: 8,
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
-    settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, goods: {stores: 30, stone: 30, tools: 4}}, migrate: 0.005, welcome: [],
+    settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, oreLand: 0.5, avoid: {orcs: 2}, goods: {stores: 30, stone: 30, tools: 4}}, migrate: 0.005, welcome: [],
     rose: {agg: 0.2, grow: 0.2, econ: 0.6},
     bureau: 1,
     taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
@@ -211,7 +227,7 @@ export const TIERS = [
     label: {elves: ['приют', 'приют', 'приюта', 'приюте', 'приютом'], dwarves: ['застава', 'заставу', 'заставы', 'заставе', 'заставой'],
       humans: ['хутор', 'хутор', 'хутора', 'хуторе', 'хутором'], orcs: ['стойбище', 'стойбище', 'стойбища', 'стойбище', 'стойбищем']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'n'}},
-  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle'],
+  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle', 'ancestorhall'],
     label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
       humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
     gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},

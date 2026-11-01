@@ -40,7 +40,7 @@ import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
-const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'gems'].map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
+export const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'gems'].map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
 
 export function initPeoples(a, era) {
   for (const P of WORLD_PEOPLES.filter(p => p.era === era)) initPeople(a, P);
@@ -143,11 +143,12 @@ export function settleSpot(a, t) {
     const d = Math.hypot(x - t.x, y - t.y);
     if (d > R || d < sp) continue;
     const i = y * a.w + x, v = pe.site[i];
-    if (!(v > TL.siteBar) || pe.K[faunaCell(a, i)] < TL.foundLand) continue;
+    if (!(v > TL.siteBar) || (pe.K[faunaCell(a, i)] < TL.foundLand && !(S.oreLand != null && oreWealth(a, i) >= S.oreLand))) continue;   // (off its land: a vein — data/peoples.js oreLand)
     cand.push([i, v - TL.settle.near * d / R]);
   }
   cand.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
-  for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp, pe)) return i;
+  const far = (x, y) => !S.avoid || !a.towns.some(o => o.alive && S.avoid[o.people] && Math.hypot(o.x - x, o.y - y) < S.avoid[o.people] * sp);   // (avoid: never by such a people's towns)
+  for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp, pe) && far(i % a.w, (i / a.w) | 0)) return i;
   return -1;
 }
 // a year's growth of a town towards its target (what feeds and houses it): born of its people at its people's `breed`

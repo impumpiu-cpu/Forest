@@ -130,10 +130,10 @@ export function stepKingdom(a, say) {
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
     const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + Object.values(t.folk || {}).reduce((x, v) => x + v, 0), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     src.court = courtUnpaid;   // the court unpaid: decay
-    const bureau = WORLD_PEOPLES.get(realm.people)?.bureau ?? 1;   // (corruption × the people's bureaucracy)
+    const RP = WORLD_PEOPLES.get(realm.people), bureau = RP?.bureau ?? 1;   // (corruption × the people's bureaucracy; any ruin × its `ruinGrow`)
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
-      for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w * (R.id === 'corruption' ? bureau : 1);
+      for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w * (R.id === 'corruption' ? bureau : 1) * (RP?.ruinGrow?.[R.id] ?? 1);
       v -= Math.max(0, stats[R.fall]) * RUIN_RULES.fall;
       K.ruin[R.id] = r3(Math.min(RUIN_RULES.max, Math.max(0, v)));
     }

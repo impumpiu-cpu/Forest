@@ -96,7 +96,7 @@ export const RACES = [
 
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
-  {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.liberators]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
+  {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.liberators]}, home: {highlands: 1, volcano: 0.5, foothills: 0.4, taiga: 0.1, tundra: 0.1, forest: 0.05, steppe: 0.05},   // the mountains; the hills seldom
     label: 'дварф', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
     body: {adult: 40, lifeFrom: 300, life: 400, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
