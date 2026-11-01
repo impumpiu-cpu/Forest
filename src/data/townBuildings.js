@@ -287,14 +287,16 @@ TOWN_BUILDINGS.registerAll([
   B('placer', 'прииск', 'm', 'raw', 1, [...H, ...D, ...O], {trade: 0.2}, {line: 'placer', per: 1500, needs: ['placer'], notable: true, site: true, jobs: 6, in: {tools: 1}, out: {ore_gold: 100, gems: 0.2}, opens: ['gems']}),
   // brine boiled over a fire; the elves' spring of salt water dries in the sun, a little, with no fire
   B('saltworks', 'соляной промысел', 'm', 'raw', 1, ALL, {trade: 0.2, food: 0.05}, {line: 'salt', per: 1500, needs: ['salt'], site: true, jobs: 5, in: {tools: 1}, recipes: SALT_REC, opens: ['salt']}),
-  B('field', 'поля', 'pl', 'food', 0, [...H, ...E, ...O], {}, {line: 'field', per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {raw: 110, fiber: 100}, opens: ['grain', 'flax']}),
-  U('plough', 'плуг', 1, [...H, ...E, ...O], ['field'], 0.25, {line: 'field', in: {tools: 3}}),
-  U('mules', 'тягловые мулы', 1, [...H, ...O], ['field'], 0.25, {line: 'field', in: {tools: 1, beasts: 2}}),
-  U('manure', 'удобрения', 0, [...H, ...E, ...O], ['field'], 0.2, {line: 'field', in: {tools: 1}}),
+  B('field', 'поля', 'pl', 'food', 0, [...E, ...O], {}, {line: 'field', per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {raw: 110, fiber: 100}, opens: ['grain', 'flax']}),
+  // the humans plough instead of the field: they clear, level and dung poorer land (`arable`) and take half as much again from it
+  V('ploughland', 'пашня', 'f', 'food', 0, H, {}, {line: 'field', per: 150, max: 4, needs: ['arable'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {raw: 165, fiber: 100}, opens: ['grain', 'flax']}),
+  U('plough', 'плуг', 1, [...H, ...E, ...O], ['field', 'ploughland'], 0.25, {line: 'field', in: {tools: 3}}),
+  U('mules', 'тягловые мулы', 1, [...H, ...O], ['field', 'ploughland'], 0.25, {line: 'field', in: {tools: 1, beasts: 2}}),
+  U('manure', 'удобрения', 0, [...H, ...E, ...O], ['field', 'ploughland'], 0.2, {line: 'field', in: {tools: 1}}),
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {}, {line: 'garden', per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, in: {tools: 3}, out: {raw: 35, herbs: 10}, opens: ['vegetables', 'herbs']}),
   B('grove', 'сад', 'm', 'food', 1, [...E, ...H], {}, {line: 'grove', per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, in: {tools: 2.4}, out: {raw: 45, lux: 10}, opens: ['fruit']}),
   // the hives by a field, a garden or a grove: they pollinate it, and their honey is raw food (and «мёд»)
-  A('apiary', 'пасека', 'f', 'food', 0, [...H, ...E], {prod: 0.05}, ['field', 'garden', 'grove'], {line: 'apiary', needs: ['warm'], jobs: 2, in: {tools: 0.4}, out: {raw: 1}, boost: {field: 0.1, garden: 0.1, grove: 0.1}, opens: ['honey']}),
+  A('apiary', 'пасека', 'f', 'food', 0, [...H, ...E], {prod: 0.05}, ['field', 'ploughland', 'garden', 'grove'], {line: 'apiary', needs: ['warm'], jobs: 2, in: {tools: 0.4}, out: {raw: 1}, boost: {field: 0.1, ploughland: 0.1, garden: 0.1, grove: 0.1}, opens: ['honey']}),
   B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {}, {line: 'mushrooms', per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, in: {tools: 3}, out: {raw: 70}, opens: ['mushrooms']}),
   U('mushmanure', 'удобрения пещер', 1, D, ['mushrooms'], 0.2, {line: 'mushrooms', in: {tools: 1}}),
   // the pens and pastures raise the herds (`beasts`: their increase), the slaughterhouse alone kills them; the greenskins'
@@ -323,7 +325,7 @@ TOWN_BUILDINGS.registerAll([
   T('hearth', 'общинный очаг', 'm', 'food', 1, ALL, {health: 0.05}, 'firepit', {line: 'kitchen', per: 200, local: 'hearth', jobs: 3, fire: 40, in: {raw: 80, tools: 0.6}, out: {food: 80}, recipes: KITCHEN_REC(1.5), opens: ['food']}),
   T('cookhouse', 'поварня', 'f', 'food', 2, ALL, {health: 0.05}, 'hearth', {line: 'kitchen', per: 600, jobs: 6, fire: 120, in: {raw: 240, tools: 1.2}, out: {food: 288}, recipes: KITCHEN_REC(3), opens: ['food']}),
   // one brew of any fermentable: a recipe for each raw food the town has (its indicator)
-  B('brewery', 'пивоварня', 'f', 'food', 2, [...H, ...D, ...O], {prod: 0.1, prestige: 0.05}, {line: 'brewery', per: 1500, requiresAny: ['field', 'garden', 'mushrooms', 'grove', 'gatherer'], jobs: 4, in: {tools: 0.8}, recipes: BREW_REC, opens: ['drink']}),
+  B('brewery', 'пивоварня', 'f', 'food', 2, [...H, ...D, ...O], {prod: 0.1, prestige: 0.05}, {line: 'brewery', per: 1500, requiresAny: ['field', 'ploughland', 'garden', 'mushrooms', 'grove', 'gatherer'], jobs: 4, in: {tools: 0.8}, recipes: BREW_REC, opens: ['drink']}),
   // the mill lights «мука» (bread in the kitchens); the greenskins grind bone to meal where grain is short
   B('quern', 'ручные жернова', 'pl', 'food', 0, ALL, {}, {line: 'mill', per: 600, local: 'quern', jobs: 2, recipes: [R('bonemeal', 'костяная мука', ['people:orcs'], {in: {bone: 40}, out: {raw: 14}})], opens: ['flour']}),
   T('windmill', 'ветряная мельница', 'f', 'food', 1, H, {}, 'quern', {line: 'mill', per: 1500, needs: ['flat'], jobs: 4, opens: ['flour']}),

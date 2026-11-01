@@ -16,6 +16,8 @@ import {realmBand} from '../src/atlas/towns.js';
 import {stepDiplomacy} from '../src/atlas/diplomacy.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
+import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
+import {townEconomy} from '../src/atlas/economy.js';
 import {RUINS} from '../src/data/kingdom.js';
 import {RAID_BANDS} from '../src/data/raids.js';
 import {roleKit, rolesOf} from '../src/data/roles.js';
@@ -31,6 +33,18 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
   const H = WORLD_PEOPLES.get('humans'), D = WORLD_PEOPLES.get('dwarves');
   check('люди принимают чужих в полтора раза охотнее и теплеют от торговли; толпа чужих растит преступность; дварфы чужих почти не берут',
     H.folk.take > 1 && H.trade > 1 && RUINS.get('crime').grows.folk > 0 && D.folk.take < 1 && D.folk.expel > 0 && D.folk.push > 1);
+}
+// the ploughland: the humans plough instead of the field — poorer land (`arable`), half as much again; the field's upgrades,
+// the apiary and the brewery take it as a field
+{
+  const F = TOWN_BUILDINGS.get('field'), P = TOWN_BUILDINGS.get('ploughland');
+  const hosts = ['plough', 'mules', 'manure', 'apiary'].every(id => TOWN_BUILDINGS.get(id).here.includes('ploughland') && TOWN_BUILDINGS.get(id).boost.ploughland > 0);
+  check('люди пашут вместо поля: поле им не строится, пашня — только им, на пахотной земле, в полтора раза больше поля; плуг, мулы, удобрения и пасека встают на пашню',
+    !F.peoples.includes('humans') && P.peoples.join() === 'humans' && P.line === F.line && P.needs.join() === 'arable' && P.out.raw === F.out.raw * 1.5 && hosts && TOWN_BUILDINGS.get('brewery').requiresAny.includes('ploughland'));
+  const row = (E, id) => E.rows.find(r => r.id === id);
+  const one = townEconomy(null, {people: 'humans', pop: 1000, built: ['ploughland'], slaves: 0}, 1), up = townEconomy(null, {people: 'humans', pop: 1000, built: ['ploughland', 'plough'], slaves: 0}, 1);
+  check('пашня даёт зерно и лён, плуг прибавляет ей четверть', one.made.raw > 0 && Math.abs(row(up, 'ploughland').gave.raw / row(one, 'ploughland').gave.raw - 1.25) < 1e-9 && row(one, 'ploughland').gave.fiber > 0,
+    `сырой еды ${one.made.raw.toFixed(0)} → ${up.made.raw.toFixed(0)}`);
 }
 // the dwarves push strangers out of their towns; the world: the humans' host by what the realm has built
 {
