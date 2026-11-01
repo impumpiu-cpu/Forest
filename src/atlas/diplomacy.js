@@ -154,7 +154,9 @@ export function muster(a, t, target, war, rnd, say) {
     label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color});
   if (!p) return;
   const beasts = Object.values(p.warBeasts).reduce((s, n) => s + n, 0);
-  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
+  // the elves' wild allies (atlas/wilds.js): the beasts of the land and the treants of the forest go with them
+  const wild = Object.entries(p.wild || {}).map(([sp, n]) => `${SPECIES.get(sp).plural} (${n})`).join(' и ');
+  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''}${wild ? `; с ними ${wild}` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
 }
 // the foragers: the land around the army is scourged this season
 function scourge(a, p) {

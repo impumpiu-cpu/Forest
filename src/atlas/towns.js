@@ -87,6 +87,9 @@ export function roughShare(t) {
 }
 // how many of a building a town may have: its `max`, or one for every `per` of its people (a unit of work)
 export const unitsMax = (t, b) => Math.max(b.max, b.per ? Math.ceil(t.pop / b.per) : 0);
+// a people's cap on a line (data/peoples.js lineMax: one kitchen a town of the elves): the line's buildings in the town, its tiers
+// together, are at the cap — and this one would add one more (a tier built in place of one of them does not)
+export const lineFull = (t, b) => { const n = WORLD_PEOPLES.get(t.people)?.lineMax?.[b.line]; return n != null && t.built.filter(id => TOWN_BUILDINGS.get(id).line === b.line).length >= n && !upgradeOf(t, b); };
 // housing built in place of an older one (data/townBuildings.js `upgrades`): the id of what gives way, or null
 export const upgradeOf = (t, b) => (b.upgrades || []).find(id => t.built.includes(id)) || null;
 // the room it adds: its own less what gives way to it
@@ -112,7 +115,7 @@ export const slotsOf = t => ({town: TOWN_SLOTS.town[Math.min(t.tier || 0, TOWN_S
 // a town's might: its people (with its guard golems, its trained war beasts
 // and the garrison its realm pays: atlas/treasury.js realmSpend — as so many men: atlas/golems.js, atlas/beasts.js) × its
 // defence and craft, × a people's own fierceness (data/peoples.js warCult: the greenskins)
-export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.wardMen || 0) + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
   * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1) * (t.realmFx?.might ?? 1);   // and its realm's stability (atlas/kingdom.js)
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
@@ -199,6 +202,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
+  if (lineFull(t, b)) return false;
   // its slot (data/townBuildings.js TOWN_SLOTS): a work of its own in the town, an upgrade; a tier takes its base's place
   const sk = slotKind(b);
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;

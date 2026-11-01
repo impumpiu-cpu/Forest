@@ -6,7 +6,7 @@
 // `node tools/race-start-probe.mjs [seed] [size]` → JSON on stdout
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {BEHAVIOURS} from '../src/atlas/parties.js';
-import {townFx, room, townKin, realmBuilt, unitsMax, slotsUsed, slotsOf, placeHas, canBuild, chooseBuilding} from '../src/atlas/towns.js';
+import {townFx, room, townKin, realmBuilt, unitsMax, lineFull, slotsUsed, slotsOf, placeHas, canBuild, chooseBuilding} from '../src/atlas/towns.js';
 import {TOWN_BUILDINGS, lineHas, slotKind, goodPrice} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES, KIN, placeNeed} from '../src/data/peoples.js';
 import {roadAccess} from '../src/atlas/roads.js';
@@ -101,6 +101,7 @@ function stopOf(t, b, inRealm) {
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return 'одна на державу';
   if (!t.built.includes(b.id) && lineHas(t.built, b.id)) return 'есть выше';
   if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return 'есть';
+  if (lineFull(t, b)) return 'предел народа';
   const sk = slotKind(b);
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return sk === 'upgrades' ? 'нет места улучшению' : 'нет места';
   const has = n => placeHas(a, t.i, placeNeed(t.people, n));
@@ -127,7 +128,7 @@ const towns = a.towns.filter(t => t.alive).map(t => {
   return {id: t.id, name: t.name, people: t.people, realm: t.realm, pop: Math.round(t.pop), tier: t.tier, capital: !!t.capital, role: t.role || null, room: Math.round(room(fx)), feeds: Math.round(t.wants?.feeds ?? 0), target: t.target ?? Math.round(t.pop),
     econFeeds: Math.round(E.feeds || 0), built: t.built, project: t.project || null, next, slots: slotsUsed(t), slotCap: slotsOf(t), work: t.work,
     hands: Math.round(E.hands || 0), free: Math.round(E.freeHands || 0), jobs: Math.round(E.jobs || 0), short: E.short || {}, needs: t.needs, kin: t.people === 'orcs' ? townKin(a, t) : null,
-    recipes: (E.recipes || []).map(x => ({id: x.id, on: x.on, eff: r3(x.eff)})), avail, fx: Object.fromEntries(Object.entries(fx).map(([k, v]) => [k, r3(v)])), born: t.from != null, warBeasts: t.warBeasts?.list || {}};
+    recipes: (E.recipes || []).map(x => ({id: x.id, on: x.on, eff: r3(x.eff)})), avail, fx: Object.fromEntries(Object.entries(fx).map(([k, v]) => [k, r3(v)])), born: t.from != null, warBeasts: t.warBeasts?.list || {}, treants: t.treants || 0, wardMen: t.wardMen || 0};
 });
 const ruins = (a.ruins || []).map(r => ({people: r.people, how: r.how, by: r.by != null ? realmPeople(r.by) : null, year: r.year}));
 const realms = (a.realms || []).filter(r => a.towns.some(t => t.alive && t.realm === r.id)).map(r => ({id: r.id, people: r.people, towns: a.towns.filter(t => t.alive && t.realm === r.id).length, gold: Math.round(r.gold || 0), stock: r.stock || {}, kingdom: r.kingdom ? {stats: r.kingdom.stats, ruin: r.kingdom.ruin, edicts: r.kingdom.edicts} : null, course: r.mind?.course, fisc: r.fisc?.last || null}));
