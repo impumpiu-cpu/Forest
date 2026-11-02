@@ -166,7 +166,7 @@ export function muster(a, t, target, war, rnd, say) {
 // takes in `mingle` × its people's `folk.take` of its people a year, as many as the other towns can spare (TOWN_LIFE.minTarget
 // stays home), shared out over its routes, from the peoples it welcomes (data/peoples.js `welcome`), up to `mingleMax` of its
 // people of strangers — they come as they are, their races and ages
-function mingle(a, routes, say) {
+export function mingle(a, routes, say) {
   for (const [x, froms] of routes) {
     const P = WORLD_PEOPLES.get(x.people), welcome = P.welcome || [], take = P.folk?.take ?? 1;
     const from = froms.filter(o => o.alive && welcome.includes(o.people)); if (!from.length) continue;

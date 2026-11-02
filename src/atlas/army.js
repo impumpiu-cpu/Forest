@@ -72,14 +72,16 @@ export function armyLosses(p, share, rnd, battle = null) {
   refreshArmy(p);
 }
 
-// the dead of a scene the caravan played (campaign/march.js worldOutcome): `dead` of its men lie dead, `taken` walk off bound —
-// no herbs (the scene's dead are dead), its beasts and golems in the same share, rounded; its levy's composition follows
+// the dead of a scene the caravan played (campaign/march.js worldOutcome): `dead` of its men lie dead, `taken` walk off bound
+// with the caravan (those it really led away, not all it bound) — no herbs (the scene's dead are dead), its beasts and golems
+// in the same share, rounded. `p.group` is the levy AS IT WENT (sendArmy) and is never cut: every loss — a battle's
+// (armyLosses), the road's, a scene's — is in `p.men` alone, and the survivors come home as `p.group` × men / men0 (returnArmy)
 export function sceneLosses(a, p, dead, taken) {
-  const men = Math.max(0, p.men), gone = Math.min(men, Math.max(0, dead) + Math.max(0, taken));
+  const men = Math.max(0, p.men), led = Math.min(men, Math.max(0, taken)), gone = Math.min(men, Math.max(0, dead) + led);
   if (!(gone > 0) || !(men > 0)) return 0;
   const share = gone / men, keep = 1 - share;
   p.men = men - gone;
-  if (p.group) for (const b of Object.values(p.group)) for (let i = 0; i < 3; i++) b[i] *= keep;
+  p.taken = (p.taken || 0) + led;   // (led away alive: the town's loss is «taken», not «war» — returnArmy)
   const trim = list => { for (const [sp, n] of Object.entries(list || {})) { const left = Math.round(n * keep); if (left > 0) list[sp] = left; else delete list[sp]; } };
   trim(p.warBeasts); trim(p.wild);
   if (p.golems) p.golems = p.golems.slice(0, Math.round(p.golems.length * keep));
@@ -95,11 +97,13 @@ export function returnArmy(a, p) {
   const t = home?.alive ? home : (a.towns || []).filter(o => o.alive && (p.owner != null ? o.realm === p.owner : o.people === p.people)).sort((x, y) => near(x) - near(y) || x.id - y.id)[0];
   if (!t) return;
   stepOff(a, p, t);
-  // the survivors come home as they went — the races of the levy, less the fallen in proportion; the fallen are the town's loss of war
-  const alive = Math.max(0, p.men), k = p.men0 > 0 ? alive / p.men0 : 0;
+  // the survivors come home as they went — the races of the levy (p.group, the levy as taken, uncut), less all that is gone in
+  // proportion: the levy's men0 = men alive + fallen + led away; the fallen are the town's loss of war, the led away its «taken»
+  const alive = Math.max(0, p.men), k = p.men0 > 0 ? alive / p.men0 : 0, led = Math.min(p.taken || 0, Math.max(0, (p.men0 || 0) - alive));
   if (p.group) addGroup(a, t, Object.fromEntries(Object.entries(p.group).map(([r, b]) => [r, b.map(x => x * k)])));
   else addGroup(a, t, {[WORLD_PEOPLES.get(p.people || t.people).race]: [0, alive, 0]});   // (an old save's army: grown ones of its people's race)
-  book(t, 'war', Math.max(0, (p.men0 || 0) - alive));
+  book(t, 'war', Math.max(0, (p.men0 || 0) - alive - led));
+  if (led > 0) book(t, 'taken', led);
   if (p.warBeasts && Object.keys(p.warBeasts).length) { const b = t.warBeasts ||= {list: {}, men: 0}; for (const [sp, n] of Object.entries(p.warBeasts)) b.list[sp] = (b.list[sp] || 0) + n; b.men = beastMen(b.list); }
   if (p.golems?.length) { t.golems ||= {auto: {}, guard: [], since: null}; t.golems.guard.push(...p.golems); }
   const survival = Math.min(1, Math.max(0, p.men / (p.men0 || p.men || 1))), wear = A.wear[p.result || 'retreat'];

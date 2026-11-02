@@ -586,13 +586,14 @@ function leaderRumour(a, K, t) {
 // its own rule. A party gone or a person dead already is not touched again (atlas/persons.js personDies applies once)
 export function worldOutcome(a, K, t, win) {
   const S = CAMPAIGN.scene, rec = K.fights?.at(-1), local = rec && rec.mode === 'local';
-  // the party: the scene's dead and taken are that many of its men (the rest did not fight); whoever won, they are gone
+  // the party: the scene's dead and those led away by the caravan are that many of its men (the rest did not fight; the bound
+  // it had no room for get away, as its chief does); whoever won, they are gone
   if (t.party != null) {
     const p = (a.parties || []).find(x => x.id === t.party && x.state !== 'gone');
     if (p && !(K.partyHit ||= {})[`${p.id}:${K.day}`]) {
       K.partyHit[`${p.id}:${K.day}`] = true;
       const men = p.kind === 'army' ? Math.max(0, p.men) : null;
-      const dead = local ? rec.killed || 0 : (win ? S.auto.won : S.auto.lost) * (men ?? 1), taken = local ? rec.taken || 0 : 0;
+      const dead = local ? rec.killed || 0 : (win ? S.auto.won : S.auto.lost) * (men ?? 1), taken = local ? rec.led || 0 : 0;
       if (p.kind === 'army') { const gone = sceneLosses(a, p, dead, taken); if (gone > 0) p.result = win ? 'beaten' : 'won'; }
       else if (local) { const n = Math.max(1, rec.foes || 1); p.might = Math.max(0, (p.might || 0) * (1 - Math.min(1, (dead + taken) / n))); }
       else p.might = Math.max(0, (p.might || 0) * (1 - dead));

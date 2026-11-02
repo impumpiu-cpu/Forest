@@ -96,7 +96,7 @@ export function stepKingdom(a, say) {
     for (const O of OFFICES.all()) {
       const h = K.court[O.id], hp = h ? personOf(a, h.person) : null;
       if (h && (!hp || !hp.alive)) K.court[O.id] = null;   // (its holder is dead: the office was freed by its death — atlas/succession.js; an old save's holder of no person is let go)
-      else if (h && year >= h.until) { K.court[O.id] = null; backToCrowd(a, hp, whereIs(a, hp) || seat); tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }   // (back into the crowd of its town: atlas/persons.js)
+      else if (h && year >= h.until) { K.court[O.id] = null; backToCrowd(a, hp, whereIs(a, hp) || seat); tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }   // (back into the crowd of its town; with a host on the march — at the town it steps off at: atlas/persons.js)
       const held = O.id === 'ruler' && ((realm.mourn ?? -1) > year || realm.contest != null);
       // (one of the seat's own: a grown one of the realm's race must be there to be named — none, the office waits)
       if (!K.court[O.id] && !held && seat && hasGrown(a, seat, race) && r() < COURT.fill) {

@@ -172,7 +172,7 @@ export function freedomEvening(a, K, say) {
     }
     unbind(K, m);
     setPlace(m, 'former', {since: K.day, fought: false, service: m.captive.service || 0}); m.loyalty = FREEDOM.bond.start;
-    K.stats.freed = (K.stats.freed || 0) + 1; memberFate(a, m, 'freed');
+    K.stats.freed = (K.stats.freed || 0) + 1; memberFate(a, m, 'unbound');   // (a person of the world: its bonds off, still with the caravan — atlas/persons.js)
     say(`С ${m.name} сняли путы: за ${gw(m, 'него', 'неё')} поручился ${vouch.name}. Теперь ${gw(m, 'бывший раб', 'бывшая рабыня')} — без оружия, но не в путах.`, 'people', [m.id, vouch.id]);
   }
   for (const m of K.members.filter(x => x.alive && x.former)) {

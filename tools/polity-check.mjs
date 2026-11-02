@@ -20,7 +20,7 @@ import {meets, explain, reqText, reqErrors} from '../src/core/requirements.js';
 import {townFacts, whyBuild} from '../src/atlas/requirements.js';
 import {profileOf, rulerOf, ruledBy, polities, seatOf, holdingsOf, vassalsOf, lordOf, mayBend} from '../src/atlas/polities.js';
 import {personOf, personDies, livingPersons, partyBeaten, townStormed, isAt, moveTo} from '../src/atlas/persons.js';
-import {sendArmy} from '../src/atlas/army.js';
+import {sendArmy, armyLosses, returnArmy} from '../src/atlas/army.js';
 import {crownRuler, stepSuccession} from '../src/atlas/succession.js';
 import {channelsOf} from '../src/atlas/control.js';
 import {stepKingdom} from '../src/atlas/kingdom.js';
@@ -398,9 +398,9 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   t.heads = {human: [0, 400, 0]}; sync(t); t.stock = {...(t.stock || {}), herbs: 50, stores: 100}; t.warBeasts = {list: {varg: 100}, men: 100}; t.golems = {auto: {}, guard: ['iron', 'iron'], since: 0};
   const p = sendArmy(a, t, goal, 100, {owner: t.realm}); p.warBeasts = {varg: 100}; p.golems = ['iron', 'iron']; p.kit.herbs = 10;
   const {worldOutcome} = await import('../src/campaign/march.js');
-  const K = {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 100, killed: 10, taken: 2}]};
+  const K = {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 100, killed: 10, taken: 2, led: 2}]};
   worldOutcome(a, K, {party: p.id, kind: 'army'}, true);
-  check('N01–N03: павшие и уведённые сцены — ровно столько из отряда, травы мёртвых не лечат; N05: звери и големы той же долей', Math.abs(p.men - 88) < 1e-9 && p.kit.herbs === 10 && p.warBeasts.varg === 88 && p.golems.length === 2 && Math.abs(groupSize(p.group) - 88) < 1e-6, `men ${p.men}, варгов ${p.warBeasts.varg}, трав ${p.kit.herbs}`);
+  check('N01–N03: павшие и уведённые сцены — ровно столько из отряда, травы мёртвых не лечат; N05: звери и големы той же долей', Math.abs(p.men - 88) < 1e-9 && p.kit.herbs === 10 && p.warBeasts.varg === 88 && p.golems.length === 2 && Math.abs(groupSize(p.group) - 100) < 1e-6 && p.taken === 2, `men ${p.men}, варгов ${p.warBeasts.varg}, трав ${p.kit.herbs}`);
   check('N04: разбитый караваном отряд поворачивает домой', p.state === 'home' || p.state === 'gone', p.state);
   K.fights.push({mode: 'local', foes: 10, killed: 8, taken: 0}); K.day = 2; p.state = 'go';
   worldOutcome(a, K, {party: p.id, kind: 'army'}, false);
@@ -446,6 +446,117 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   check('N09: область только town/realm; чужая — ошибка и не выполняется', reqErrors({fact: 'built', arg: 'field', op: '=', value: true, scope: 'galaxy'}).length === 1 && meets({fact: 'built', arg: 'field', op: '=', value: true, scope: 'galaxy'}, {get: () => true}) === false);
   const r = {any: [[C('pop', '>', 0), C('pop', '<', 0)]]};
   check('N10: список внутри группы — ошибка; читается как «все»: проверка и объяснение сходятся', reqErrors(r).length === 1 && meets(r, src) === explain(r, src)[0].ok);
+}
+
+// ── the third review (B01–B04): the chains after the change — the levy home, the office's end on the march, the unbound
+//    captive's one place, the bound the caravan had no room for
+{
+  // B01: a levy of two races, three kinds of loss, home twice: the town's count, the fallen and the led away add up
+  const a = copy(), t = a.towns.find(x => x.alive && x.people === 'humans' && x.realm != null), goal = a.towns.find(x => x.alive && x !== t).i;
+  t.heads = {human: [0, 600, 0], halfling: [0, 400, 0]}; sync(t); t.book = null;
+  const p = sendArmy(a, t, goal, 100, {owner: t.realm}), G0 = structuredClone(p.group);
+  armyLosses(p, 0.1, mulberry(2));                                        // the road's loss: 90 left (no battle, no herbs)
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  const K = {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 90, killed: 10, taken: 4, led: 2}]};
+  worldOutcome(a, K, {party: p.id, kind: 'army'}, true);                  // a scene: 10 dead, 2 led away (2 bound got away)
+  check('B01: состав войска — набор как взят, не режется потерями; потери только в men', Math.abs(groupSize(p.group) - 100) < 1e-6 && Math.abs(p.men - 78) < 1e-9, `group ${groupSize(p.group)}, men ${p.men}`);
+  returnArmy(a, p); const pop1 = t.pop, H = headsOf(a, t);
+  const want = r => (r === 'human' ? 600 : 400) - G0[r][1] * (1 - 0.78);
+  check('B01: домой — 900 + 78 = 978; по расам — каждая раса набора меньше на свою долю ушедших', Math.abs(pop1 - 978) < 1e-6 && Math.abs(H.human[1] - want('human')) < 1e-6 && Math.abs(H.halfling[1] - want('halfling')) < 1e-6, `${pop1}; людей ${H.human[1]}, полуросликов ${H.halfling[1]}`);
+  check('B01: в книге — на войне 20, уведено 2: 978 + 20 + 2 = 1000', Math.abs((t.book?.war || 0) - 20) < 0.11 && Math.abs((t.book?.taken || 0) - 2) < 0.11, JSON.stringify(t.book));
+  returnArmy(a, p);
+  check('B01: второе возвращение ничего не добавляет', Math.abs(t.pop - pop1) < 1e-9);
+}
+{
+  // B02: the office's years run out while its holder is with the host: it is not lost — it stays apart, and goes into the count of
+  // the town it steps off at (home, or the nearest if the host is stranded); the count is one owner at a time
+  const {returnArmy: back, sendArmy: send} = await import('../src/atlas/army.js');
+  const {stranded, whereIs, backToCrowd} = await import('../src/atlas/persons.js');
+  for (const way of ['home', 'stranded', 'seat burnt']) {
+    const a = copy(), r = realmsOf(a, 'humans').find(x => realmTowns(a, x.id).length >= 2) || realmsOf(a, 'humans')[0], seat = capitalOf(a, r.id), goal = a.towns.find(x => x.alive && x !== seat).i;
+    seat.heads = {human: [0, 500, 0]}; sync(seat); seat.book = null;
+    const hp = makeRuler(a, r), army = send(a, seat, goal, 50, {owner: r.id}); moveTo(hp, 'party', army.id);
+    const n0 = seat.pop; r.kingdom.court.ruler.until = a.hist.year; a.hist.season = SEASONS_PER_YEAR - 1;
+    stepKingdom(a, say);
+    const apart = hp.alive && !hp.inCount && hp.crowd && isAt(hp, 'party', army.id) && livingPersons(a).includes(hp) && !r.kingdom.court.ruler?.person && Math.abs(seat.pop - n0) < 1e-6;
+    check(`B02 (${way}): срок вышел в походе — пост свободен, личность жива и ведётся отдельно при отряде, в счёт города никто не добавлен`, apart, `${JSON.stringify(hp.at)}, inCount ${!!hp.inCount}, pop ${n0} → ${seat.pop}`);
+    let to = seat;
+    if (way === 'home') back(a, army);
+    else if (way === 'stranded') { army.state = 'gone'; stranded(a, army); }
+    else { seat.alive = false; back(a, army); to = whereIs(a, hp) || a.towns.find(x => x.alive && x.realm === r.id); }
+    const expect = way === 'home' ? n0 + army.men + 1 : way === 'stranded' ? n0 + 1 : null;
+    check(`B02 (${way}): сошёл в городе — в его счёте, личность больше не ведётся отдельно (ровно один раз)`, hp.alive && hp.inCount && !hp.crowd && !livingPersons(a).includes(hp) && (expect == null ? to && to.alive : Math.abs(seat.pop - expect) < 1e-6), `pop ${seat.pop}${expect != null ? ` (ждали ${expect})` : ''}, ${JSON.stringify(hp.at)}`);
+    check(`B02 (${way}): повторный возврат в счёт — ничего`, backToCrowd(a, hp, to) === false);
+  }
+  // age and the office's end in one spring: death wins, no count is touched
+  const a = copy(), r = realmsOf(a, 'humans')[0], seat = capitalOf(a, r.id); seat.heads = {human: [0, 500, 0]}; sync(seat);
+  const hp = makeRuler(a, r), n0 = seat.pop; hp.dies = a.hist.year; r.kingdom.court.ruler.until = a.hist.year; a.hist.season = 0;
+  const {stepPersons} = await import('../src/atlas/persons.js'); stepPersons(a, say); stepKingdom(a, say);
+  check('B02: смерть по возрасту и конец срока в одну весну — умер один раз, в счёт не возвращён, пост пуст', !hp.alive && !hp.inCount && Math.abs(seat.pop - n0) < 1e-6 && !r.kingdom.court.ruler?.person);
+}
+{
+  // B03: a captive unbound walks on with the caravan — the person is with the caravan, not at its lair; it is back at the lair only
+  // when it leaves the caravan (let go at the end, or escaped); a death after the unbinding is one death
+  const {freedomEvening, escaped} = await import('../src/campaign/captives.js');
+  const {memberFate} = await import('../src/atlas/persons.js');
+  for (const way of ['freed', 'escaped', 'dead']) {
+    const a = copy(), l = lairOf(a, 'goblins'), p = l.leader || lead(a, l);
+    const {worldOutcome} = await import('../src/campaign/march.js');
+    const m = {id: 2, name: p.name, gender: 'm', race: p.species, person: p.id, alive: true, role: 'captive', core: false, hp: 1, gear: {hand: [], body: null}, captive: {since: 1, bonds: 'rope', resigned: true, service: 10}};
+    const vouch = {id: 1, name: 'Поручитель', alive: true, role: 'knight', core: true, master: true, hp: 1, gear: {hand: [], body: null}};
+    const K = {day: 3, members: [vouch, m], stats: {}, cargo: {}, beasts: [], vehicles: [], fights: [{mode: 'local', foes: 5, killed: 0, taken: 1, led: 1, boss: {fate: 'bound'}}], log: []};
+    worldOutcome(a, K, {person: p.id, boss: {name: p.name}}, true);
+    freedomEvening(a, K, () => {});
+    const one = m.alive && m.role === 'former' && !m.captive && p.alive && !p.captive && p.at?.kind === 'caravan' && !l.leader;
+    check(`B03 (${way}): путы сняты — спутник каравана; личность при караване, логово всё ещё без главаря`, one, `${m.role}, ${JSON.stringify(p.at)}, главарь ${l.leader?.name ?? '—'}`);
+    freedomEvening(a, K, () => {});
+    check(`B03 (${way}): вечер ещё раз — ничего не меняется`, K.stats.freed === 1 && p.at?.kind === 'caravan' && !l.leader);
+    if (way === 'freed') { m.alive = false; m.left = {day: 9}; memberFate(a, m, 'freed'); check('B03: отпущен из каравана — свободен и во главе своего логова', p.alive && !p.captive && l.leader?.id === p.id && isAt(p, 'lair', l.id)); }
+    if (way === 'escaped') { escaped(a, K, m, 'бежал', () => {}); check('B03: бежал уже без пут — личность в логове, в караване его нет', !m.alive && l.leader?.id === p.id && isAt(p, 'lair', l.id)); }
+    if (way === 'dead') { m.alive = false; memberFate(a, m, 'dead'); check('B03: погиб спутником — одна смерть, логово без главаря', !p.alive && !l.leader && a.persons.filter(x => x.id === p.id).length === 1); }
+  }
+}
+{
+  // B04: the caravan's room is short: the bound it could not take are not lost to the host — only those really led away
+  const {takeFromCamp} = await import('../src/campaign/captives.js');
+  const {CAPTIVE} = await import('../src/data/captives.js');
+  const a = copy(), K = {day: 1, members: [], stats: {}, nextMember: 0};
+  for (let i = 0; i < CAPTIVE.max; i++) K.members.push({id: i + 1, name: `П${i}`, alive: true, role: 'captive', captive: {since: 0, bonds: 'rope'}});
+  const bound = [{name: 'A', race: 'orc', hp: 1, bonds: 'rope'}, {name: 'B', race: 'orc', hp: 1, bonds: 'rope'}];
+  const got0 = takeFromCamp(a, K, {taken: bound}, () => {});
+  K.members[0].alive = false;
+  const got1 = takeFromCamp(a, K, {taken: bound}, () => {});
+  check('B04: мест нет — никого не взяли; одно место — взят один, первый из связанных', got0.length === 0 && got1.length === 1 && got1[0].name === 'A', `${got0.length}, ${got1.length}`);
+  const t = a.towns.find(x => x.alive && x.people === 'humans' && x.realm != null), goal = a.towns.find(x => x.alive && x !== t).i;
+  t.heads = {human: [0, 400, 0]}; sync(t);
+  const p = sendArmy(a, t, goal, 100, {owner: t.realm});
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  worldOutcome(a, {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 100, killed: 0, taken: 2, led: got1.length}]}, {party: p.id, kind: 'army'}, true);
+  check('B04: связаны двое, уведён один — войско меньше на одного; второй ушёл', Math.abs(p.men - 99) < 1e-9 && p.taken === 1, `men ${p.men}`);
+}
+
+// ── the strangers' coming (atlas/diplomacy.js mingle, atlas/demography.js migrate): the operation never passes DIPLOMACY.mingleMax
+//    and makes nobody — the cap is on the coming; what the standing do afterwards (atlas/demography.js lifeYear) is their own
+//    races' births and deaths, and no cap on it is claimed (tools/atlas-check.mjs checks only that the count stays a count)
+{
+  const {mingle} = await import('../src/atlas/diplomacy.js');
+  const {migrate} = await import('../src/atlas/demography.js');
+  const {DIPLOMACY} = await import('../src/data/diplomacy.js');
+  const {shareOfPeople} = await import('../src/atlas/population.js');
+  const a = copy(), x = a.towns.find(t => t.alive && t.people === 'humans'), o = a.towns.find(t => t.alive && t.people === 'orcs');
+  x.heads = {human: [100, 800, 100]}; sync(x); o.heads = {orc: [1000, 5000, 1000]}; sync(o); x.tier = 0;
+  const total = () => x.pop + o.pop, t0 = total();
+  let top = 0;
+  for (let y = 0; y < 200; y++) { mingle(a, [[x, [o]]], say); top = Math.max(top, shareOfPeople(a, x, 'orcs')); }
+  check('чужаки: 200 лет прихода торговлей — доля орков в людском городе не выше mingleMax, никто не сделан и не потерян', top <= DIPLOMACY.mingleMax + 1e-9 && Math.abs(total() - t0) < 1e-6, `доля ${Math.round(top * 1000) / 10} % (предел ${DIPLOMACY.mingleMax * 100} %), ${t0} → ${total()}`);
+  // moving: a horde's overflow pours into a human town with room, up to the cap for its people
+  const b = copy(), x2 = b.towns.find(t => t.alive && t.people === 'humans'), o2 = b.towns.find(t => t.alive && t.people === 'orcs');
+  x2.heads = {human: [100, 800, 100]}; sync(x2); o2.heads = {orc: [2000, 10000, 2000]}; sync(o2);
+  for (const t of b.towns) if (t.alive && t !== x2 && t !== o2) t.alive = false;   // (two towns of one realm: the move is between them)
+  o2.realm = x2.realm; o2.x = x2.x + 1; o2.y = x2.y;
+  const all0 = x2.pop + o2.pop; let top2 = 0, moved = 0;
+  for (let y = 0; y < 50; y++) { moved += migrate(b); top2 = Math.max(top2, shareOfPeople(b, x2, 'orcs')); }
+  check('чужаки: переселение — доля орков в людском городе не выше mingleMax, сумма жителей та же', top2 <= DIPLOMACY.mingleMax + 1e-9 && Math.abs(x2.pop + o2.pop - all0) < 1e-6, `доля ${Math.round(top2 * 1000) / 10} %, переехало ${Math.round(moved)}, ${all0} → ${x2.pop + o2.pop}`);
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

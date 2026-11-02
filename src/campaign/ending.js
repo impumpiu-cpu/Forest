@@ -6,6 +6,7 @@
 // chronicle. When the epilogue is told, the campaign goes into the world's archive (a.campaignsDone): its
 // chronicle stays with the world, and another caravan may set out.
 import {drawTo} from '../atlas/demography.js';
+import {memberFate} from '../atlas/persons.js';
 import {stepHistory} from '../atlas/history.js';
 import {townLabel} from '../atlas/towns.js';
 import {realmLabel, realmLabelGen, realmTowns} from '../atlas/realms.js';
@@ -50,6 +51,9 @@ export function finish(a, K) {
     if (K.phase === 'won') { A.holder = {kind: 'capital', town: capital?.id ?? K.capital}; A.trail.push({year: a.hist.year, era: a.hist.era, i: A.i, text: 'принесён караваном в столицу'}); }
     else { const i = Math.min(a.n - 1, Math.floor(K.y) * a.w + Math.floor(K.x)); A.holder = {kind: 'lost'}; A.i = i; A.trail.push({year: a.hist.year, era: a.hist.era, i, text: 'потерян вместе с караваном'}); }
   }
+  // the persons of the world among its members go back to the world (atlas/persons.js memberFate): a captive brought home is
+  // held at the capital; the rest — one unbound, one who joined — go their own ways (a caravan lost let them go already: march.js)
+  if (K.phase !== 'lost') for (const m of K.members.filter(x => x.alive && x.person != null)) memberFate(a, m, m.captive && K.phase === 'won' ? 'kept' : 'freed', capital || null);
   const used = new Set(), tellFate = (m, list) => { const w = words(a, K, m, r); m.fate = fate(r, list, used)(m, w); lines.push({text: m.fate, who: [m.id]}); };
   if (K.phase === 'won') {
     // the crown home: people of the realm's towns flock to the capital (E.pop × its people: drawn from them, not made —

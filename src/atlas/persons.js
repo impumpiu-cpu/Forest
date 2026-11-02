@@ -79,14 +79,21 @@ export function nameOut(a, p, t) {
 }
 // a person off its office goes back into the crowd of its town (the court's holder whose years ran out): one of its race in its
 // band of age back into the count, and the person is no longer followed apart — alive, but of the town (`inCount`); it is never
-// named out twice as the same record
+// named out twice as the same record. `inCount` is set only when the count really took it: a person not at a living town (with a
+// host on the march, say) keeps its place and the mark `crowd`, and goes into the count of the first town it comes to (landed) —
+// a person has one owner of its count at any moment: a town's count, or itself apart. An old save's person (`extra`) was never
+// out of a count: it is only let go
 export function backToCrowd(a, p, t) {
   if (!p || !p.alive || p.inCount) return false;
+  if (p.extra) { p.inCount = true; p.at = null; delete p.crowd; return true; }
+  if (!t?.alive || !(a.towns || []).includes(t)) { p.crowd = true; return false; }   // (not at a town: it stays apart till it comes to one)
   const [ad, old] = bandEdges(p.species), age = ageOf(a, p), band = age < ad ? 0 : age < old ? 1 : 2;
-  if (t?.alive && !p.extra) addHeads(a, t, p.species, 1, band);
-  p.inCount = true; p.at = null;
+  addHeads(a, t, p.species, 1, band);
+  p.inCount = true; p.at = null; delete p.crowd;
   return true;
 }
+// a person comes to a town: one off its office (`crowd`) goes into the town's count there, the rest are at the town
+export const landed = (a, p, t) => { if (p.crowd && backToCrowd(a, p, t)) return; moveTo(p, 'town', t.id); };
 import {addHeads, bandEdges} from './population.js';
 // is there a grown one of this race in the town to be named (a whole one: the count is fractional, a person is not)
 import {headsOf} from './population.js';
@@ -133,18 +140,23 @@ export function personCaptured(a, p, by, say = () => {}) {
   p.at = {kind: by, id: null};
   return true;
 }
-// a captive's fate in the caravan (campaign/: a member with `person` is this person): 'escaped' or 'freed' — free again, back
-// at the head of its lair if that lair still waits for a leader, else loose in the world; 'dead' — dead by the caravan's
-// hand; 'sold' — a slave of the town that bought it; 'taken' — led off by raiders, a captive of no one in particular
+// a captive's fate in the caravan (campaign/: a member with `person` is this person). A person is in ONE place: while the member
+// walks with the caravan — bound, or unbound as one of its own — the person is with the caravan and nowhere else; it is back in
+// the world only when the member has left it.
+//   'unbound' — its bonds off, it walks on with the caravan (campaign/captives.js freedomEvening): no captive, still with it
+//   'escaped', 'freed' — gone from the caravan, free: back at the head of its lair if that lair still waits for a leader, else loose
+//   'dead' — dead by the caravan's hand; 'sold' — a slave of the town that bought it; 'kept' — a captive held at the town the
+//   caravan came home to; 'taken' — led off by raiders, a captive of no one in particular
 export function memberFate(a, m, how, town = null) {
   if (m?.person == null) return;
   const p = personOf(a, m.person); if (!p || !p.alive) return;
   if (how === 'dead') { personDies(a, p, 'caravan'); return; }
-  if (how === 'sold') { p.captive = {...(p.captive || {}), by: 'town', year: a.hist?.year ?? 0}; p.at = town ? {kind: 'town', id: town.id} : null; return; }
+  if (how === 'unbound') { if (p.captive?.seat) p.was = p.captive.seat; p.captive = null; p.at = {kind: 'caravan', id: null}; return; }   // (`was`: the seat it was taken from, for the day it is let go)
+  if (how === 'sold' || how === 'kept') { p.captive = {...(p.captive || {}), by: 'town', year: a.hist?.year ?? 0}; p.at = town ? {kind: 'town', id: town.id} : null; return; }
   if (how === 'taken') { p.captive = {...(p.captive || {}), by: 'raiders', year: a.hist?.year ?? 0}; p.at = null; return; }
-  // escaped, freed: free
-  const seat = p.captive?.seat, l = seat?.kind === 'lair' ? (a.lairs || []).find(x => x.id === seat.id) : null;
-  p.captive = null;
+  // escaped, freed: free — and the member is no longer of the caravan (its caller has let it go)
+  const seat = p.captive?.seat || p.was, l = seat?.kind === 'lair' ? (a.lairs || []).find(x => x.id === seat.id) : null;
+  p.captive = null; delete p.was;
   if (l?.alive && !l.leader) { l.leader = p; l.heirAt = null; moveTo(p, 'lair', l.id); } else p.at = null;
 }
 
@@ -174,7 +186,7 @@ export function townGone(a, t, say) {
   const realm = (a.realms || []).find(r => r.id === t.realm);
   const towns = (a.towns || []).filter(o => o.alive && o !== t && o.realm === t.realm);
   const to = towns.find(o => realm && o.id === realm.capital) || towns.sort((p, q) => Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y))[0] || null;
-  for (const p of personsAt(a, 'town', t.id)) { if (to) moveTo(p, 'town', to.id); else personDies(a, p, 'lost', say); }
+  for (const p of personsAt(a, 'town', t.id)) { if (to) landed(a, p, to); else personDies(a, p, 'lost', say); }
 }
 // a party gone where it stands (lost its way, disbanded): the persons with it make their own way to the town it came from, or
 // to the nearest living town of its owner's realm — a person is never left at a party that is no more
@@ -187,11 +199,11 @@ export function stranded(a, party) {
   }
   const home = (a.towns || []).find(t => t.id === party.from && t.alive);
   const to = home || (a.towns || []).filter(t => t.alive && (party.owner != null ? t.realm === party.owner : true)).sort((p, q) => Math.hypot(p.x - party.x, p.y - party.y) - Math.hypot(q.x - party.x, q.y - party.y))[0] || null;
-  for (const p of ps) { if (to) moveTo(p, 'town', to.id); else personDies(a, p, 'lost'); }
+  for (const p of ps) { if (to) landed(a, p, to); else personDies(a, p, 'lost'); }
 }
-// the host is home: its persons step off at the town
+// the host is home: its persons step off at the town (one off its office goes into the town's count — backToCrowd)
 export function stepOff(a, party, t) {
-  for (const p of personsAt(a, 'party', party.id)) moveTo(p, 'town', t.id);
+  for (const p of personsAt(a, 'party', party.id)) landed(a, p, t);
 }
 
 // ── a year of the persons (spring): age takes those whose years are out. The lairs' leaders are counted by their own
@@ -200,4 +212,5 @@ export function stepPersons(a, say) {
   if (!a.persons || a.hist.season !== 0) return;
   const y = a.hist.year;
   for (const p of a.persons) if (p.alive && p.dies != null && y >= p.dies && !(a.lairs || []).some(l => l.leader?.id === p.id)) personDies(a, p, 'age', say);
+  for (const p of a.persons) if (p.alive && p.crowd && !p.inCount && p.at?.kind === 'town') backToCrowd(a, p, whereIs(a, p));   // (one off its office that found itself at a town: into its count)
 }
