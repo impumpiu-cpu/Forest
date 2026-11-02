@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ткацкий станок: рама, нити, полотно -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="9" d="M18 90V24M82 90V24M14 26H86"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M18 90V24M82 90V24M14 26H86"/><path fill="none" stroke="trim" stroke-width="2" d="M26 28V58M34 28V58M42 28V58M50 28V58M58 28V58M66 28V58M74 28V58"/><path fill="#c8402e" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M24 56H76V78H24Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke="#e8dcb8" stroke-width="2" d="M24 64H76M24 72H76"/><rect x="20" y="78" width="60" height="6" fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round"/>
+</svg>

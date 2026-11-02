@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- логово пауков: хижина в паутине -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="darkwood" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M14 90L50 24L86 90Z"/><path fill="#1e1a18" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M40 90L50 66L60 90Z"/><g fill="none" stroke="light" stroke-width="2" opacity="0.9"><path d="M2 40L98 60M4 70L96 30M50 4V96M20 10L80 92M80 8L20 94"/><circle cx="50" cy="50" r="14"/><circle cx="50" cy="50" r="28"/></g><g fill="ink"><circle cx="70" cy="32" r="5"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M64 28L58 22M64 34L58 38M76 28L82 22M76 34L82 38"/></g>
+</svg>

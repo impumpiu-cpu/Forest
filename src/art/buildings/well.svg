@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- колодец: каменный сруб, навес, ведро -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M20 72V24"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M20 72V24"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M80 72V24"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M80 72V24"/><path fill="roof" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M10 30L50 6L90 30Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M50 26V54"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M44 52H56L54 62H46Z"/><path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M14 64Q50 52 86 64V88Q50 98 14 88Z"/><path fill="water" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M22 64Q50 56 78 64Q50 70 22 64Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M14 76Q50 86 86 76M30 66V92M50 70V96M70 66V92"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- охотничий навес: крыша на столбах, шкура на распорке, рога -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M18 90V46"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M18 90V46"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M82 90V46"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M82 90V46"/><path fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M8 48L20 26H80L92 48Z"/><path class="figure" fill="shade" d="M8 48L20 26H26L16 48Z"/><path fill="hide" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 52H62L66 84H34Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M38 52L34 84M62 52L66 84"/><path fill="none" stroke="ink" stroke-linecap="round" stroke="bone" stroke-width="4" d="M44 30L38 16M42 24L34 20M56 30L62 16M58 24L66 20"/>
+</svg>

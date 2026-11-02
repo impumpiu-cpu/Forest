@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- поле: сноп у края участка -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="straw" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 90L38 40Q50 30 62 40L70 90Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke="gold" stroke-width="3" d="M38 40L30 20M44 36L42 14M50 34V12M56 36L58 14M62 40L70 20"/><path fill="none" stroke="ink" stroke-width="6" d="M34 62H66"/><path fill="none" stroke="rope" stroke-width="3" d="M34 62H66"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- грибная пещера: каменный холм с пещерой, большие грибы -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 90Q10 30 50 24Q90 30 96 90Z"/><path fill="#1e1a18" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M34 90V70Q50 54 66 70V90Z"/><path fill="canvas" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M16 90V64H24V90Z"/><path fill="#c86a4a" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 66Q20 38 34 66Z"/><path fill="canvas" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M76 90V58H86V90Z"/><path fill="#a87ad0" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 60Q81 26 96 60Z"/><g class="detail" fill="light"><circle cx="16" cy="56" r="3"/><circle cx="26" cy="58" r="2"/><circle cx="78" cy="46" r="3.5"/><circle cx="88" cy="52" r="2.5"/></g>
+</svg>

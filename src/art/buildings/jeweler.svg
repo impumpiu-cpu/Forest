@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- верстак резчика: стол, самоцветы, лупа -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M16 90V60M84 90V60"/><path fill="none" stroke="wood" stroke-width="4" stroke-linecap="round" d="M16 90V60M84 90V60"/><rect x="8" y="50" width="84" height="12" fill="plank" stroke="ink" stroke-width="4" stroke-linejoin="round"/><g stroke="ink" stroke-width="3" stroke-linejoin="round"><path fill="#58b3a8" d="M22 50L28 38L36 50Z"/><path fill="#d0303a" d="M42 50L48 34L56 50Z"/><path fill="#a87ad0" d="M62 50L66 40L72 50Z"/></g><circle cx="76" cy="30" r="9" fill="crystal" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="5" d="M70 37L62 46"/>
+</svg>
