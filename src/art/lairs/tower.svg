@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: башня некроманта: тёмный шпиль, зелёный свет -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="night" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M34 92V30H66V92Z"/><path fill="#4a4060" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M28 32L50 2L72 32Z"/><path fill="night" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M28 92V70H40V92ZM60 92V70H72V92Z"/><g class="figure" fill="#9ff0b0"><path d="M45 46H55V58H45Z"/><circle cx="50" cy="20" r="3"/></g><path class="detail" fill="none" stroke="#9ff0b0" stroke-width="2" opacity="0.6" d="M36 46Q24 40 30 28M64 46Q76 40 70 28"/>
+</svg>

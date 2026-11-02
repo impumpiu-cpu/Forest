@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- удочка: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="74" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M50 90L66 6"/><path fill="none" stroke="wood" stroke-width="2.5" stroke-linecap="round" d="M50 90L66 6"/>
+  <path class="figure" fill="none" stroke="trim" stroke-width="1.4" d="M66 6Q78 30 76 50"/>
+</svg>

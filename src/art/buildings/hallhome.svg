@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- подгорное жилище: каменная арка в холме, трава поверху -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 90Q8 34 50 26Q92 34 96 90Z"/><path fill="grass" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M14 46Q50 14 86 46Q70 34 50 32Q30 34 14 46Z"/><path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M28 90V60Q50 34 72 60V90Z"/><path fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 90V62Q50 46 64 62V90Z"/><circle class="figure" cx="58" cy="76" r="2.5" fill="gold"/><rect class="figure" x="14" y="64" width="7" height="7" fill="#f4d67a" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect class="figure" x="79" y="64" width="7" height="7" fill="#f4d67a" stroke="ink" stroke-width="3" stroke-linejoin="round"/>
+</svg>

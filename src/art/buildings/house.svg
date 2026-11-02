@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- изба: сруб из брёвен, соломенная крыша, дверь и окно -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<rect x="14" y="48" width="72" height="40" fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="1.8" d="M16 54H84M16 60H84M16 66H84M16 72H84M16 78H84M16 84H84"/><path fill="thatch" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M10 50L50.0 14L90 50Z"/><rect x="44" y="68" width="12" height="20" fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect class="figure" x="22" y="58" width="8" height="8" fill="#f4d67a" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect class="figure" x="70" y="58" width="8" height="8" fill="#f4d67a" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="64" y="10" width="8" height="18" fill="stone" stroke="ink" stroke-width="3" stroke-linejoin="round"/><g class="detail" fill="smoke"><circle cx="68" cy="6" r="4"/><circle cx="72" cy="-1" r="5"/><circle cx="69" cy="-9" r="5.5"/></g>
+</svg>

@@ -5,6 +5,7 @@ import {createReadStream, statSync} from 'node:fs';
 import {join, normalize, extname, resolve} from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {buildSprites} from './art-build.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -13,6 +14,8 @@ const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const server = createServer((req, res) => {
   let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (path.endsWith('/')) path += 'forest.html';
+  // the pictures: made again from src/art/**/*.svg whenever the game asks for them, so an edited SVG shows on a reload
+  if (path === '/src/art/sprites.js') { try { buildSprites(); } catch (e) { console.log('Картинки: ' + e.message); } }
   const file = join(ROOT, normalize(path));
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   let st;

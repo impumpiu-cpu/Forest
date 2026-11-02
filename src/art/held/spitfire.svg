@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- огнеметатель: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="76" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M50 92V54"/><path fill="none" stroke="wood" stroke-width="3.5" stroke-linecap="round" d="M50 92V54"/>
+  <path fill="clay" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M40 56Q40 40 50 38Q60 40 60 56Z"/>
+  <path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 8C60 18 62 30 56 38H44C38 30 42 18 50 8Z"/><path fill="flame" d="M50 22C54 28 54 34 52 38H48C46 34 46 28 50 22Z"/>
+</svg>

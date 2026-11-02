@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «bones» — костяк: рёбра и таз, лохмотья цвета одежды -->
+  <circle data-anchor="head" cx="50" cy="31" r="28"/>
+  <circle data-anchor="hand" cx="70" cy="76" r="5"/>
+  <circle data-anchor="off" cx="30" cy="76" r="5"/>
+  <circle data-anchor="back" cx="41" cy="60" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 80L70 80L72 97L64 92L58 98L50 92L42 98L36 92L28 97Z"/>
+  <path fill="bone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M33 56Q33 52 38 52L62 52Q67 52 67 56L66 76Q50 84 34 76Z"/>
+  <path class="figure" fill="none" stroke="ink" stroke-width="3.5" d="M50 54V82M38 60H62M37 66H63M38 72H62"/>
+</svg>

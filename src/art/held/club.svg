@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- дубина: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="74" r="5"/>
+  <path fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M47 86L45 40Q46 28 52 26Q59 28 58 40L53 86Z"/>
+  <g class="detail" fill="darkwood"><circle cx="50" cy="38" r="2"/><circle cx="54" cy="48" r="1.6"/></g>
+</svg>

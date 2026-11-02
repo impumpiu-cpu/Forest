@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «robe» — ряса до земли: некромант, вампир. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="32" r="29"/>
+  <circle data-anchor="hand" cx="70.6" cy="75.5" r="5"/>
+  <circle data-anchor="off" cx="29.4" cy="75.5" r="5"/>
+  <circle data-anchor="back" cx="40.5" cy="60" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M29 64Q29 54 39 54L61 54Q71 54 71 64L76.2 92Q76.2 97 71.2 97L28.8 97Q23.8 97 23.8 92Z"/>
+  <path class="figure" fill="shade" d="M44.8 54L50 63L55.2 54Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M26 66Q26 53 37 53L63 53Q74 53 74 66L80.2 94L60.5 98L54.2 94L45.8 98L39.5 94L19.8 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M31 55Q50 70 69 55Q50 60 31 55Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 60L45 57L50 70L55 57L68 60L72.3 89L27.7 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M33 68Q33 58 43 58L57 58Q67 58 67 68L71.2 86Q71.2 91 66.2 91L33.8 91Q28.8 91 28.8 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M35 66H65M33.9 74H66.1M32.9 82H67.1"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M39.5 66Q43 70.5 46.5 66M46.5 66Q50 70.5 53.5 66M53.5 66Q57 70.5 60.5 66M39.5 73Q43 77.5 46.5 73M46.5 73Q50 77.5 53.5 73M53.5 73Q57 77.5 60.5 73M39.5 80Q43 84.5 46.5 80M46.5 80Q50 84.5 53.5 80M53.5 80Q57 84.5 60.5 80"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M35 66h0.1M40 66h0.1M45 66h0.1M50 66h0.1M55 66h0.1M60 66h0.1M65 66h0.1M35 72h0.1M40 72h0.1M45 72h0.1M50 72h0.1M55 72h0.1M60 72h0.1M65 72h0.1M35 78h0.1M40 78h0.1M45 78h0.1M50 78h0.1M55 78h0.1M60 78h0.1M65 78h0.1M35 84h0.1M40 84h0.1M45 84h0.1M50 84h0.1M55 84h0.1M60 84h0.1M65 84h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M35 66L65 72M33.8 75L66.2 81M32.7 84L67.3 90"/>
+    <rect class="figure" x="46.6" y="58" width="6.7" height="33" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M28.1 77.7H71.9"/>
+  <rect class="detail" x="46" y="74.2" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="32" cy="59" rx="6.2" ry="5.0"/>
+    <ellipse cx="68" cy="59" rx="6.2" ry="5.0"/>
+  </g>
+</svg>

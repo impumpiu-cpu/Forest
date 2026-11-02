@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- бойцовские ямы: вкопанная яма, колья, кровь -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<ellipse cx="50" cy="64" rx="44" ry="26" fill="soil" stroke="ink" stroke-width="4" stroke-linejoin="round"/><ellipse cx="50" cy="66" rx="32" ry="17" fill="#3a2a1a" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path class="detail" fill="blood" d="M40 66Q46 62 52 66Q48 70 40 66Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M8 58V40L11 34L14 40V58Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M24 44V26L27 20L30 26V44Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M46 40V22L49 16L52 22V40Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M68 44V26L71 20L74 26V44Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M86 58V40L89 34L92 40V58Z"/>
+</svg>

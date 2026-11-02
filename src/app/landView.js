@@ -108,7 +108,7 @@ export class LandView extends MapView {
     $('landMap').addEventListener('lostpointercapture', () => { if (this.painting != null) { this.painting = null; this.paintEnd(); } });
 
     this.buildLandLibrary();
-    this.wireCamera({map: 'landMap', readout: 'landReadout', zoomIn: 'landZoomIn', zoomOut: 'landZoomOut', zoomFit: 'landZoomFit', screen: 'land', legend: 'landLegend',
+    this.wireCamera({map: 'landMap', readout: 'landReadout', zoomIn: 'landZoomIn', zoomOut: 'landZoomOut', zoomFit: 'landZoomFit', skin: 'landSkin', screen: 'land', legend: 'landLegend',
       hint: 'Наведите на карту, чтобы увидеть клетку. «Плиты» — щелчок выбирает плиту; «Поднять», «Опустить» — ведите кистью (сдвиг карты — правой кнопкой).'});
   }
 

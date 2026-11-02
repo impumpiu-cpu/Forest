@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- магмовая кузня: тёмный камень, лава, наковальня -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 90V40L22 24H78L94 40V90Z"/><path fill="#2a1a12" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M26 90V56Q50 36 74 56V90Z"/><path fill="ember" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M30 90Q34 70 50 66Q66 70 70 90Z"/><path fill="flame" d="M40 90Q44 78 50 76Q56 78 60 90Z"/><path class="detail" fill="none" stroke="ember" stroke-width="3" d="M14 44L20 60L14 74M86 44L80 60L86 74"/><path fill="iron" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M78 82H98L94 86H90V90H84V86H80Z"/>
+</svg>

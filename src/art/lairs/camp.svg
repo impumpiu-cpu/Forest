@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: стан племени: шатры, частокол, знамя -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="hide" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M8 86L28 44L48 86Z"/><path fill="leather" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M52 86L74 40L96 86Z"/><path fill="ink" class="figure" d="M24 86L28 70L32 86ZM70 86L74 66L78 86Z"/><g fill="wood" stroke="ink" stroke-width="2.5"><path d="M4 92V80L6 76L8 80V92ZM44 92V78L46 74L48 78V92ZM90 92V80L92 76L94 80V92Z"/></g><path fill="none" stroke="ink" stroke-width="4" d="M50 86V14"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M50 14L72 20L50 28Z"/>
+</svg>

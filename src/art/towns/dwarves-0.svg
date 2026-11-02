@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- застава: скала с высеченной дверью -->
+<ellipse cx="50" cy="92" rx="46" ry="8" fill="darkstone" opacity="0.55"/>
+<path fill="darkstone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M2 92L14 60L34 30L50 44L66 22L86 54L98 92Z"/>
+<path class="figure" fill="snow" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M60 31L66 22L73 34L68 32L64 36Z"/>
+<path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M33 92V76.4Q46 60 59 76.4V92Z"/>
+<path fill="#3a2e24" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M38 92V76.4Q46 66 54 76.4V92Z"/>
+<path class="detail" fill="none" stroke="#f4d67a" stroke-width="2" d="M46 92V73.8"/>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

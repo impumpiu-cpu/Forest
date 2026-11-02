@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- сторожевая вышка: высокие опоры, площадка, крыша, знамя -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="9" d="M24 92L34 34M76 92L66 34M28 70H72M30 52H70"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M24 92L34 34M76 92L66 34M28 70H72M30 52H70"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="3" d="M28 70L70 52M72 70L30 52"/><rect x="26" y="26" width="48" height="12" fill="plank" stroke="ink" stroke-width="4" stroke-linejoin="round"/><path fill="roof" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M22 26L50 6L78 26Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M50 30V0"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M50 30V0"/><path fill="faction" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 0L64 5L50 10Z"/>
+</svg>

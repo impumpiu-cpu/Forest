@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- сеть: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="60" r="5"/>
+  <path fill="rope" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 40Q50 30 64 40L62 70Q50 78 38 70Z"/>
+  <path class="figure" fill="none" stroke="darkwood" stroke-width="2" d="M40 46L60 66M40 58L54 72M46 40L62 56M60 46L40 66M60 58L46 72M54 40L38 56"/>
+</svg>

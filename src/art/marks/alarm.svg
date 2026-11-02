@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тревога, бегство: синие штрихи над головой справа -->
+  <g fill="none" stroke="alarm" stroke-width="10" stroke-linecap="round">
+    <path d="M62 8L58 26"/><path d="M78 14L68 32"/><path d="M90 32L74 40"/>
+  </g>
+</svg>

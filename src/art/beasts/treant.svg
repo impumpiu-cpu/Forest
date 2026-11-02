@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- древень: толстый ствол на корнях, ветви-руки, зелёная крона; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 88Q32 66 38 46H62Q68 66 64 88Z"/><path fill="none" stroke="ink" stroke-width="10" stroke-linecap="round" d="M40 56L14 40M60 56L86 38M38 86L24 92M62 86L76 92"/><path fill="none" stroke="fur" stroke-width="5" stroke-linecap="round" d="M40 56L14 40M60 56L86 38M38 86L24 92M62 86L76 92"/><g fill="darkleaf" stroke="ink" stroke-width="4" stroke-linejoin="round"><circle cx="50" cy="26" r="20"/><circle cx="30" cy="34" r="13"/><circle cx="70" cy="32" r="13"/></g><g class="figure" fill="#e8d27a"><circle cx="44" cy="58" r="3"/><circle cx="56" cy="58" r="3"/></g><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M44 70Q50 74 56 70M46 80V86"/>
+</svg>

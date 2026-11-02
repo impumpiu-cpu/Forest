@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- угодье: каменоломня: тёсаные блоки -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<g fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><rect x="10" y="60" width="34" height="26"/><rect x="48" y="60" width="38" height="26"/><rect x="28" y="32" width="36" height="26"/></g><path class="detail" fill="none" stroke="shade" stroke-width="3" d="M14 72H40M52 72H82M32 44H60"/>
+</svg>

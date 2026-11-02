@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- стадо дичи: олень -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="#a8794a" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M18 52Q18 36 40 38H62Q74 36 76 30L86 28L90 38L80 46Q76 60 70 66V88H62V68H36V88H28V66Q18 62 18 52Z"/>
+<path fill="none" stroke="bone" stroke-width="4" stroke-linecap="round" d="M80 28L76 12M78 18L70 12M84 28L90 14M88 20L96 16"/>
+</svg>

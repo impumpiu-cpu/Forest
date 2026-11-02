@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- огр: голова-груша, тяжёлые щёки, нижняя губа с зубами, крошечные уши, лысина с хохлом -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <ellipse cx="22" cy="48" rx="5" ry="6" fill="skin"/>
+    <ellipse cx="78" cy="48" rx="5" ry="6" fill="skin"/>
+    <path fill="skin" d="M50 12C64 12 72 22 74 36C86 50 94 66 90 82C86 96 70 100 50 100C30 100 14 96 10 82C6 66 14 50 26 36C28 22 36 12 50 12Z"/>
+    <path fill="hair" d="M44 14C44 6 52 2 58 6C54 8 54 12 56 14Z"/>
+  </g>
+  <g class="figure" fill="ink"><circle cx="42" cy="44" r="3"/><circle cx="58" cy="44" r="3"/></g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M36 38L46 40M64 38L54 40"/>
+    <path d="M45 52C45 60 55 60 55 52"/>
+  </g>
+  <path fill="shade" class="figure" d="M22 74C36 66 64 66 78 74C74 88 26 88 22 74Z"/>
+  <path class="figure" fill="none" stroke="ink" stroke-width="4.5" stroke-linecap="round" d="M22 74C36 66 64 66 78 74"/>
+  <g fill="light" stroke="ink" stroke-width="3" stroke-linejoin="round">
+    <path d="M34 72L37 60L42 70Z"/>
+    <path d="M58 70L63 60L66 72Z"/>
+  </g>
+</svg>

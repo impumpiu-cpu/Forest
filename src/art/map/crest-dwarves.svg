@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- герб Дварфов: молот и гора -->
+<path fill="faction" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M12 10H88V48C88 72 70 88 50 96C30 88 12 72 12 48Z"/>
+<path fill="light" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M22 74L42 40L52 54L60 44L78 74Z"/><path fill="light" stroke="ink" stroke-width="4" d="M47 22H63V34H47Z"/><path fill="none" stroke="ink" stroke-width="5" d="M55 34V60"/>
+</svg>

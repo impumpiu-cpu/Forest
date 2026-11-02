@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «slim» — стройное: эльф. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="30" r="28"/>
+  <circle data-anchor="hand" cx="67.6" cy="75" r="5"/>
+  <circle data-anchor="off" cx="32.4" cy="75" r="5"/>
+  <circle data-anchor="back" cx="41.9" cy="59" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M32 63Q32 53 42 53L58 53Q68 53 68 63L65.8 92Q65.8 97 60.8 97L39.2 97Q34.2 97 34.2 92Z"/>
+  <path class="figure" fill="shade" d="M45.5 53L50 62L54.5 53Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M29 65Q29 52 40 52L60 52Q71 52 71 65L69.8 94L59 98L53.6 94L46.4 98L41 94L30.2 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M34 54Q50 69 66 54Q50 59 34 54Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M35 59L45 56L50 69L55 56L65 59L63.2 89L36.8 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 67Q36 57 46 57L54 57Q64 57 64 67L62.3 86Q62.3 91 57.3 91L42.7 91Q37.7 91 37.7 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M39.4 65H60.6M39.8 73H60.2M40.2 81H59.8"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M39.5 65Q43 69.5 46.5 65M46.5 65Q50 69.5 53.5 65M53.5 65Q57 69.5 60.5 65M46.5 72Q50 76.5 53.5 72M46.5 79Q50 83.5 53.5 79M46.5 86Q50 90.5 53.5 86"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M40 65h0.1M45 65h0.1M50 65h0.1M55 65h0.1M60 65h0.1M40 71h0.1M45 71h0.1M50 71h0.1M55 71h0.1M60 71h0.1M40 77h0.1M45 77h0.1M50 77h0.1M55 77h0.1M60 77h0.1M45 83h0.1M50 83h0.1M55 83h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M39.4 65L60.6 71M39.8 74L60.2 80M40.3 83L59.7 89"/>
+    <rect class="figure" x="47.1" y="57" width="5.8" height="34" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M35.2 77.2H64.8"/>
+  <rect class="detail" x="46" y="73.7" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="35" cy="58" rx="5.3" ry="4.3"/>
+    <ellipse cx="65" cy="58" rx="5.3" ry="4.3"/>
+  </g>
+</svg>

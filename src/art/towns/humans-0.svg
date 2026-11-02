@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- хутор: изба, стог, ограда -->
+<g transform="translate(-14 -14) scale(1.28)">
+<ellipse cx="50" cy="90" rx="46" ry="8" fill="grass" opacity="0.55"/>
+<path fill="straw" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M66 88Q66 74 74 72Q82 74 82 88Z"/>
+<rect x="26" y="70" width="30" height="18" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="thatch" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M23 71L41 53.5L59 71Z"/>
+<rect class="figure" x="38" y="80" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="28.5" y="73" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<g class="detail" fill="smoke"><circle cx="48" cy="52" r="3"/><circle cx="51" cy="47" r="3.6"/><circle cx="49" cy="41" r="4"/></g>
+<g class="walls no-stone" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M14 92V87L16.5 84L19 87V92Z"/><path d="M19 92V87L21.5 84L24 87V92Z"/><path d="M24 92V87L26.5 84L29 87V92Z"/><path d="M29 92V87L31.5 84L34 87V92Z"/><path d="M34 92V87L36.5 84L39 87V92Z"/><path d="M39 92V87L41.5 84L44 87V92Z"/><path d="M44 92V87L46.5 84L49 87V92Z"/><path d="M49 92V87L51.5 84L54 87V92Z"/><path d="M54 92V87L56.5 84L59 87V92Z"/><path d="M59 92V87L61.5 84L64 87V92Z"/><path d="M64 92V87L66.5 84L69 87V92Z"/><path d="M69 92V87L71.5 84L74 87V92Z"/><path d="M74 92V87L76.5 84L79 87V92Z"/><path d="M79 92V87L81.5 84L84 87V92Z"/><path d="M84 92V87L86.5 84L89 87V92Z"/></g>
+<g class="walls stone"><path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M14 94V85H17V82H20V85H23V82H26V85H29V82H32V85H35V82H38V85H41V82H44V85H47V82H50V85H53V82H56V85H59V82H62V85H65V82H68V85H71V82H74V85H77V82H80V85H83V82H86V85H86V94Z"/><path class="detail" fill="none" stroke="shade" stroke-width="1.5" d="M16 90H43M57 90H84"/></g>
+</g>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

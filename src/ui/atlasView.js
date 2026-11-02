@@ -5,6 +5,9 @@
 // The cells are painted once per change into an off-screen bitmap and drawn scaled; everything on
 // top (rivers, roads, towns, lairs) is drawn in cell units over it. (Later the generation moves to
 // a Web Worker — docs/WORLD.md.)
+import {skin, SKIN_EVENT, wireSkinButton} from '../render/skin.js';
+import {ART} from '../render/art/index.js';
+import {artPick} from '../render/art/world.js';
 import {ATLAS_SIZES, ATLAS_LAND} from '../data/atlas.js';
 import {DEEDS, deedLabel} from '../data/deeds.js';
 import {cellGeology} from '../atlas/geology.js';
@@ -146,7 +149,13 @@ export class MapView {
   }
   selectAt(e) {
     const i = this.cellAt(e); if (i < 0) return;
-    this.select(pickObject(this.atlas, i), this.cellText(i));
+    let sel = pickObject(this.atlas, i);
+    // the pictures stand bigger than their cell (render/art/world.js): a click on one picks it
+    if (skin.art && sel.kind === 'cell') {
+      const r = $(this.ids.map).getBoundingClientRect(), [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
+      sel = artPick(this.atlas, fx, fy, this.unit(this.atlas)) || sel;
+    }
+    this.select(sel, this.cellText(i));
   }
   select(sel, cellText = '') {
     this.sel = sel; this.selCell = cellText;
@@ -218,6 +227,9 @@ export class MapView {
     $(ids.zoomIn).addEventListener('click', () => this.zoomCentre(1.6));
     $(ids.zoomOut).addEventListener('click', () => this.zoomCentre(1 / 1.6));
     $(ids.zoomFit).addEventListener('click', () => { if (this.cam) { this.cam.reset(); this.draw(); } });
+    // the look (render/skin.js): «Картинки» or «Схема», one for all the maps; G flips it (app/main.js)
+    if (ids.skin) wireSkinButton($(ids.skin));
+    document.addEventListener(SKIN_EVENT, () => { if (!$(ids.screen).hidden) this.draw(); });
     document.addEventListener('keydown', e => {
       if ($(ids.screen).hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
       if (e.key === '+' || e.key === '=') this.zoomCentre(1.6);
@@ -489,9 +501,12 @@ export class MapView {
       if (!t.alive) continue;
       const will = this.layer === 'will' && t.realm != null;
       const c = will ? (t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat) : (t.realm && realmOf(a, t.realm) || WORLD_PEOPLES.get(t.people)).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
-      px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
-      px.fillRect(x - s, y - s, 2 * s, 2 * s); px.strokeRect(x - s, y - s, 2 * s, 2 * s);
-      if (t.capital) { px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.beginPath(); px.arc(x, y, s * 1.9, 0, Math.PI * 2); px.stroke(); }
+      const pic = skin.art && ART.town(px, t, x, y, s, k, this.cam.S, {color: c, will, a});   // the picture (render/art/), with its own capital mark
+      if (!pic) {
+        px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
+        px.fillRect(x - s, y - s, 2 * s, 2 * s); px.strokeRect(x - s, y - s, 2 * s, 2 * s);
+      }
+      if (t.capital && !pic) { px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.beginPath(); px.arc(x, y, s * 1.9, 0, Math.PI * 2); px.stroke(); }
       if (will && t.role && leadOf(townLean(t)) !== t.role) {   // it builds against its role: a mark of the vector it leans to
         const o = ROLE_COLORS[leadOf(townLean(t))]; px.strokeStyle = `rgb(${o.join(',')})`; px.lineWidth = Math.max(this.minW, 0.6 * k);
         px.strokeRect(x - s * 1.6, y - s * 1.6, 3.2 * s, 3.2 * s);
@@ -532,6 +547,7 @@ export class MapView {
         px.beginPath(); px.moveTo(x - r * 0.6, y - r * 0.6); px.lineTo(x + r * 0.6, y + r * 0.6); px.moveTo(x + r * 0.6, y - r * 0.6); px.lineTo(x - r * 0.6, y + r * 0.6); px.stroke();
         continue;
       }
+      if (skin.art && ART.site(px, s, b, x, y, r, k, this.cam.S, a, close)) continue;   // the picture (render/art/)
       const c = SITE_COLORS[b.cat] || [200, 200, 200];
       px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.85)'; px.lineWidth = Math.max(this.minW, 0.2 * k);
       px.beginPath();
@@ -560,6 +576,7 @@ export class MapView {
       const dx = p.x - p.px, dy = p.y - p.py, d = Math.hypot(dx, dy) || 1;
       px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.lineWidth = Math.max(this.minW, 0.25 * k);
       px.beginPath(); px.moveTo(x, y); px.lineTo(x - dx / d * r * 2.2, y - dy / d * r * 2.2); px.stroke();
+      if (skin.art && ART.party(px, p, x, y, r, k, this.cam.S, a, dx / d)) continue;   // the picture (render/art/)
       px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(255,250,235,0.95)'; px.lineWidth = Math.max(this.minW, 0.22 * k);
       px.beginPath();
       if (p.kind === 'army') px.rect(x - r, y - r, 2 * r, 2 * r);
@@ -603,6 +620,7 @@ export class MapView {
     const k = this.unit(a), r = 1.6 * k;
     for (const ru of a.ruins) {
       const c = WORLD_PEOPLES.get(ru.people).color, x = ru.x + 0.5, y = ru.y + 0.5;
+      if (skin.art && ART.ruin(px, ru, x, y, r, k, this.cam.S, a)) continue;   // the picture (render/art/)
       px.strokeStyle = `rgba(${c.join(',')},0.7)`; px.lineWidth = Math.max(this.minW, 0.4 * k);
       px.beginPath(); px.arc(x, y, r * 1.3, 0, Math.PI * 2); px.stroke();
       px.strokeStyle = 'rgba(20,14,12,0.95)'; px.lineWidth = Math.max(this.minW, 0.6 * k);
@@ -616,6 +634,7 @@ export class MapView {
     const k = this.unit(a), sz = Math.max(1.6 / Math.pow(this.cam.zoom, 0.6), 2.2 * k), ring = Math.min(a.w, a.h) / 192;
     for (const l of a.lairs) {
       const L = LAIRS.get(l.kind), x = l.x + 0.5, y = l.y + 0.5;
+      if (skin.art && ART.lair(px, l, L, x, y, sz, k, this.cam.S, a, ring)) continue;   // the picture (render/art/): its own ring
       if (!l.alive) {
         px.strokeStyle = 'rgba(30,20,20,0.6)'; px.lineWidth = Math.max(this.minW, 0.5 * k);
         px.beginPath(); px.moveTo(x - sz * 0.6, y - sz * 0.6); px.lineTo(x + sz * 0.6, y + sz * 0.6); px.moveTo(x + sz * 0.6, y - sz * 0.6); px.lineTo(x - sz * 0.6, y + sz * 0.6); px.stroke();
@@ -652,6 +671,7 @@ export class MapView {
     px.strokeStyle = silver; px.lineWidth = Math.max(this.minW, 0.7 * k);
     for (const l of a.lairs) {
       if (!l.alive || !l.leader) continue;
+      if (skin.art && ART.leader(px, l, l.x + 0.5, l.y + 0.5, sz, k, this.cam.S, a)) continue;
       px.beginPath(); px.arc(l.x + 0.5, l.y + 0.5, sz * 1.3, 0, Math.PI * 2); px.stroke();
     }
   }
@@ -662,10 +682,12 @@ export class MapView {
     const k = this.unit(a), sz = Math.max(2.2 / Math.pow(this.cam.zoom, 0.6), 3 * k), gold = 'rgba(255,214,90,0.95)', w = Math.max(this.minW, 0.5 * k);
     if (a.sanctuary?.i >= 0) {
       const x = a.sanctuary.i % a.w + 0.5, y = ((a.sanctuary.i / a.w) | 0) + 0.5;
+      if (!(skin.art && ART.sanctuary(px, x, y, sz, k, this.cam.S, a))) {
       px.fillStyle = gold; px.strokeStyle = 'rgba(20,14,8,0.9)'; px.lineWidth = w;
       px.beginPath();
       for (let n = 0; n < 10; n++) { const r = n % 2 ? sz * 0.45 : sz, ang = -Math.PI / 2 + n * Math.PI / 5; px.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r); }
       px.closePath(); px.fill(); px.stroke();
+      }
     }
     for (const l of a.lairs || []) {
       if (l.boss == null || !l.alive) continue;
@@ -674,6 +696,7 @@ export class MapView {
     }
     for (const g of a.graves || []) {
       const x = g.i % a.w + 0.5, y = ((g.i / a.w) | 0) + 0.5;
+      if (skin.art && ART.grave(px, g, x, y, sz, k, this.cam.S, a)) continue;
       px.fillStyle = 'rgba(30,24,20,0.9)'; px.beginPath(); px.arc(x, y, sz * 0.9, 0, Math.PI * 2); px.fill();
       px.strokeStyle = gold; px.lineWidth = Math.max(this.minW, 0.7 * k);
       px.beginPath(); px.moveTo(x, y - sz * 0.7); px.lineTo(x, y + sz * 0.7); px.moveTo(x - sz * 0.45, y - sz * 0.25); px.lineTo(x + sz * 0.45, y - sz * 0.25); px.stroke();

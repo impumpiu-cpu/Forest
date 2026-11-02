@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- щит: лицо в цвете державы, обод и умбон из металла: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="50" r="5"/>
+  <circle cx="50" cy="50" r="23" fill="faction" stroke="ink" stroke-width="5"/>
+  <circle class="figure" cx="50" cy="50" r="20" fill="none" stroke="metal" stroke-width="4"/>
+  <path class="detail" fill="none" stroke="shade" stroke-width="3" d="M30 50H70M50 30V70"/>
+  <circle cx="50" cy="50" r="6.5" fill="metal" stroke="ink" stroke-width="3.5"/>
+</svg>

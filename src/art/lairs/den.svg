@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: звериное логово: нора под корнями -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="soil" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M6 92Q14 54 50 50Q86 54 94 92Z"/><path fill="#1e1a18" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M30 92Q34 66 50 66Q66 66 70 92Z"/><path fill="none" stroke="wood" stroke-width="6" stroke-linecap="round" d="M14 62Q30 44 40 54M86 62Q70 40 58 54"/><g class="detail" fill="bone" stroke="ink" stroke-width="2"><path d="M74 86L88 80L90 84L76 90Z"/></g>
+</svg>

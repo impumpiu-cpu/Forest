@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гончарная яма: печь-купол, кувшины -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="clay" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M14 88Q14 36 50 32Q86 36 86 88Z"/><path fill="#2a1a12" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 88V70Q50 60 62 70V88Z"/><path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 73.6C56.3 79.9 57.2 84.4 53.6 88H46.4C42.8 84.4 43.7 79.9 50 73.6Z"/><path fill="flame" d="M50 79.9C52.7 82.6 52.7 86.2 51.8 88H48.2C47.3 86.2 47.3 82.6 50 79.9Z"/><g fill="#c87a48" stroke="ink" stroke-width="3" stroke-linejoin="round"><path d="M4 90Q2 74 10 70V64H16V70Q24 74 22 90Z"/><path d="M78 90Q76 76 84 72V66H90V72Q98 76 96 90Z"/></g><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M26 50Q50 40 74 50"/>
+</svg>

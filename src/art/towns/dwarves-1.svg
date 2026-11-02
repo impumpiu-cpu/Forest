@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- посёлок: гора с воротами, каменный дом, дымящие трубы кузен -->
+<ellipse cx="50" cy="92" rx="46" ry="8" fill="darkstone" opacity="0.55"/>
+<path fill="darkstone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M2 92L8 56L30 22L46 38L64 14L90 50L98 92Z"/>
+<path class="figure" fill="snow" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M58 23L64 14L72 28L66 25L62 30Z"/>
+<rect x="70" y="60" width="6" height="16" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><rect x="22" y="56" width="6" height="18" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><g class="detail" fill="smoke"><circle cx="72" cy="54" r="3"/><circle cx="75" cy="49" r="3.6"/><circle cx="73" cy="43" r="4"/></g>
+<g class="detail" fill="smoke"><circle cx="24" cy="50" r="3"/><circle cx="27" cy="45" r="3.6"/><circle cx="25" cy="39" r="4"/></g>
+<path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M35 92V71.6Q50 52 65 71.6V92Z"/>
+<path fill="#3a2e24" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M40 92V71.6Q50 58 60 71.6V92Z"/>
+<path class="detail" fill="none" stroke="#f4d67a" stroke-width="2" d="M50 92V68.2"/>
+<rect x="72" y="76" width="22" height="16" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M70 77H96L91 70H75Z"/>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

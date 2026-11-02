@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- походная кузня: наковальня на колоде, огонь горна, молот -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 90V62Q20 54 34 62V90Z"/><path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M20 49.2C25.6 54.8 26.4 58.8 23.2 62H16.8C13.6 58.8 14.399999999999999 54.8 20 49.2Z"/><path fill="flame" d="M20 54.8C22.4 57.2 22.4 60.4 21.6 62H18.4C17.6 60.4 17.6 57.2 20 54.8Z"/><rect x="46" y="64" width="30" height="26" rx="3" fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round"/><path fill="iron" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M38 50H86L80 58H70V64H54V58H46Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M70 46L88 26"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M70 46L88 26"/><rect x="82" y="14" width="10" height="14" fill="iron" stroke="ink" stroke-width="3" stroke-linejoin="round" transform="rotate(42 87 21)"/>
+</svg>

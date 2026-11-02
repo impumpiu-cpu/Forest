@@ -74,7 +74,7 @@ export class SettleView extends MapView {
       onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); this.syncRun(); }});
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
-    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
+    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', skin: 'setSkin', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
   show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }

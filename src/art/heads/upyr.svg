@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- упырь: лысый, острые уши, впалые красные глаза, клыки -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="skin" d="M28 46L6 30L24 62Z"/>
+    <path fill="skin" d="M72 46L94 30L76 62Z"/>
+    <path fill="skin" d="M50 12C70 12 78 26 78 46C78 62 70 74 64 82L58 96C54 99 46 99 42 96L36 82C30 74 22 62 22 46C22 26 30 12 50 12Z"/>
+  </g>
+  <g class="figure">
+    <ellipse cx="39" cy="50" rx="8" ry="7" fill="shade"/><ellipse cx="61" cy="50" rx="8" ry="7" fill="shade"/>
+    <circle cx="39" cy="51" r="3.2" fill="#ff4a3a"/><circle cx="61" cy="51" r="3.2" fill="#ff4a3a"/>
+  </g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M30 40L46 44M70 40L54 44" stroke-width="3.5"/>
+    <path d="M47 58L46 66M53 58L54 66" stroke-width="3"/>
+    <path d="M38 78Q50 72 62 78"/>
+  </g>
+  <g fill="light" stroke="ink" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M41 76L43 86L46 75Z"/>
+    <path d="M54 75L57 86L59 76Z"/>
+  </g>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гнолл: гиенья голова, круглые уши, грива, тёмная морда с носом, пятна -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="12" fill="skin"/>
+    <circle cx="76" cy="24" r="12" fill="skin"/>
+    <path fill="hair" d="M38 18L42 4L50 14L56 2L60 16L66 8L64 22Z"/>
+    <path fill="skin" d="M50 16C70 16 80 30 80 48C80 60 74 66 70 70L66 92C60 99 40 99 34 92L30 70C26 66 20 60 20 48C20 30 30 16 50 16Z"/>
+    <path fill="hair" d="M34 66C36 80 40 94 50 96C60 94 64 80 66 66C60 70 40 70 34 66Z"/>
+  </g>
+  <g class="detail" fill="hair" opacity="0.7"><circle cx="30" cy="42" r="3"/><circle cx="70" cy="40" r="3"/><circle cx="66" cy="54" r="2.5"/><circle cx="33" cy="55" r="2.5"/></g>
+  <g class="figure">
+    <circle cx="24" cy="25" r="5" fill="shade"/><circle cx="76" cy="25" r="5" fill="shade"/>
+    <circle cx="40" cy="46" r="3.8" fill="#ffd36a" stroke="ink" stroke-width="2.5"/><circle cx="60" cy="46" r="3.8" fill="#ffd36a" stroke="ink" stroke-width="2.5"/>
+  </g>
+  <ellipse cx="50" cy="70" rx="8" ry="5.5" fill="ink"/>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M50 76V84M42 86Q50 90 58 86"/>
+  </g>
+</svg>

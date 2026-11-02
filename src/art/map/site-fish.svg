@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- угодье: рыбная хижина, причал: лодка и сеть -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="water" opacity="0.6" d="M4 70H96V92H4Z"/><path fill="wood" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M14 62H86L74 78H26Z"/><path fill="none" stroke="ink" stroke-width="4" d="M50 62V20"/><path fill="canvas" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M52 22L80 56H52Z"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- дубильня: рамы с распяленными шкурами, чан -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="7" d="M8 90V22H48V90M52 90V30H92V90"/><path fill="none" stroke="wood" stroke-width="3.5" stroke-linecap="round" d="M8 90V22H48V90M52 90V30H92V90"/><path fill="hide" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M14 28Q28 22 42 28L40 62Q28 70 16 62Z"/><path fill="leather" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M58 36Q72 30 86 36L84 68Q72 76 60 68Z"/><path fill="#6a4a2a" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 72H70L66 92H34Z"/><path fill="#4a3a2a" d="M32 74H68V78H32Z"/>
+</svg>

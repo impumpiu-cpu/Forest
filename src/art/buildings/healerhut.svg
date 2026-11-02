@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- хижина лекаря: дом с пучками трав и зелёным знаком -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<rect x="16" y="46" width="68" height="42" fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="1.8" d="M18 52H82M18 58H82M18 64H82M18 70H82M18 76H82M18 82H82"/><path fill="thatch" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 48L50.0 16L88 48Z"/><rect x="44" y="66" width="12" height="22" fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="#8fcf86" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M24 54H32V60H38V68H32V74H24V68H18V60H24Z"/><g fill="leaf" stroke="ink" stroke-width="3" stroke-linejoin="round"><path d="M62 54L60 70L66 66L68 72L70 54Z"/><path d="M74 54L72 66L78 62L80 54Z"/></g><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M58 54H84"/>
+</svg>

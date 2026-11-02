@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- святилище эпического мира: золотой знак над камнем -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M28 90V56Q50 44 72 56V90Z"/>
+<path fill="gold" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M50 6L56 22L72 24L60 34L64 50L50 42L36 50L40 34L28 24L44 22Z"/>
+</svg>

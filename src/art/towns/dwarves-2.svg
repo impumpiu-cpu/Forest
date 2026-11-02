@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- крепость: гора, монументальные ворота, башни-статуи, знамёна -->
+<ellipse cx="50" cy="94" rx="46" ry="8" fill="darkstone" opacity="0.55"/>
+<path fill="darkstone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M2 92L4 50L24 16L40 30L56 6L74 26L96 46L98 92Z"/>
+<path class="figure" fill="snow" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M50 15L56 6L64 20L58 17L54 22Z"/>
+<path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M12 94V52L18 46L24 52V94Z"/><path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M76 94V52L82 46L88 52V94Z"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M14 58H22V76L18 72L14 76Z"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M78 58H86V76L82 72L78 76Z"/>
+<path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M28 94V54H72V94Z"/><path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M26 56H74V48H26Z"/>
+<path fill="#3a2e24" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M39 94V73.6Q50 60 61 73.6V94Z"/>
+<path class="detail" fill="none" stroke="#f4d67a" stroke-width="2" d="M50 94V70.2"/>
+<path class="detail" fill="none" stroke="shade" stroke-width="2" d="M30 64H44M56 64H70M30 74H40M60 74H70M30 84H40M60 84H70"/>
+<path fill="gold" stroke="ink" stroke-width="2.5" d="M44 50L50 44L56 50L50 53Z"/>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

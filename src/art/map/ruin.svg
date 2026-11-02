@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- пепелище: обгорелые стены, дым, обломок стяга народа -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M12 88V56L20 50L24 60L30 46L34 88Z"/><path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M58 88V40L66 34L70 48L78 42L84 54V88Z"/>
+<path fill="#3a2e24" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M30 88L40 74L52 80L62 70L74 88Z"/>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M44 88L50 58"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M50 58L66 62L54 70Z"/>
+<g class="detail" fill="smoke"><circle cx="70" cy="28" r="6"/><circle cx="76" cy="18" r="7"/><circle cx="72" cy="6" r="6"/></g>
+</svg>

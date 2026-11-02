@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- караван похода: крытая повозка и знамя народа -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="canvas" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M14 66V46Q14 26 34 26H62Q82 26 82 46V66Z"/>
+<path class="figure" fill="none" stroke="shade" stroke-width="3" d="M34 28V64M50 26V64M66 28V64"/>
+<path fill="plank" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M8 64H90V74H8Z"/>
+<g fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><circle cx="26" cy="80" r="11"/><circle cx="72" cy="80" r="11"/></g><g class="figure" fill="ink"><circle cx="26" cy="80" r="3"/><circle cx="72" cy="80" r="3"/></g>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M84 64V6"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M84 6H100V24H84Z"/>
+</svg>

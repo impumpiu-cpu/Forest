@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- очаг: каменное кольцо, огонь, котёл на треноге -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="5" d="M24 88L50 20L76 88"/><path fill="none" stroke="wood" stroke-width="2.5" stroke-linecap="round" d="M24 88L50 20L76 88"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M50 22V46"/><path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 66.4C57.7 74.1 58.8 79.6 54.4 84H45.6C41.2 79.6 42.3 74.1 50 66.4Z"/><path fill="flame" d="M50 74.1C53.3 77.4 53.3 81.8 52.2 84H47.8C46.7 81.8 46.7 77.4 50 74.1Z"/><path fill="iron" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 46H64L60 64Q50 70 40 64Z"/><g fill="stone" stroke="ink" stroke-width="3" stroke-linejoin="round"><ellipse cx="18" cy="86" rx="10" ry="7"/><ellipse cx="38" cy="90" rx="10" ry="6"/><ellipse cx="62" cy="90" rx="10" ry="6"/><ellipse cx="82" cy="86" rx="10" ry="7"/></g>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- боевой молот: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="66" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M50 96V22"/><path fill="none" stroke="wood" stroke-width="4" stroke-linecap="round" d="M50 96V22"/>
+  <path fill="metal" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M38 14H56V30H38ZM56 18L70 22L56 26Z"/>
+</svg>

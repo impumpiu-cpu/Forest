@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- великан: квадратная голова, тяжёлый лоб, маленькие глаза, космы и щетина -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <ellipse cx="17" cy="55" rx="6" ry="8" fill="skin"/>
+    <ellipse cx="83" cy="55" rx="6" ry="8" fill="skin"/>
+    <path fill="skin" d="M22 30C22 18 34 12 50 12C66 12 78 18 78 30L80 72C80 90 68 98 50 98C32 98 20 90 20 72Z"/>
+    <path fill="hair" d="M19 44C14 18 32 6 50 7C68 6 86 18 81 44C78 34 74 28 66 26C60 30 54 28 50 25C45 29 38 30 33 27C26 30 22 36 19 44Z"/>
+    <path fill="hair" d="M21 70C26 82 36 90 50 90C64 90 74 82 79 70C79 86 68 98 50 98C32 98 21 86 21 70Z"/>
+  </g>
+  <path class="figure" fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M27 46L45 50M73 46L55 50"/>
+  <g class="figure" fill="ink"><circle cx="38" cy="57" r="3"/><circle cx="62" cy="57" r="3"/></g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M45 62L43 72L55 72L53 62"/>
+    <path d="M38 82L62 82"/>
+  </g>
+</svg>

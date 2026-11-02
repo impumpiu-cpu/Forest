@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ручные жернова: два камня, рукоять, мешки муки -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<ellipse cx="44" cy="76" rx="32" ry="12" fill="darkstone" stroke="ink" stroke-width="4" stroke-linejoin="round"/><ellipse cx="44" cy="62" rx="30" ry="11" fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round"/><ellipse cx="44" cy="60" rx="5" ry="2.5" fill="ink"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M64 58V38"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M64 58V38"/><path fill="canvas" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M76 84Q74 74 79 72L78 68H86L85 72Q90 74 88 84Z"/><path fill="canvas" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 70Q80 60 85 58L84 54H92L91 58Q96 60 94 70Z"/>
+</svg>

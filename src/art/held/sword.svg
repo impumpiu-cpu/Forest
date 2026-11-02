@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- меч: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="76" r="5"/>
+  <path fill="metal" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M46 68L46 18L50 8L54 18L54 68Z"/>
+  <path class="detail" fill="none" stroke="shine" stroke-width="2" d="M50 16V64"/>
+  <path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M38 69H62"/><path fill="none" stroke="trim" stroke-width="3" stroke-linecap="round" d="M38 69H62"/>
+  <path fill="none" stroke="leather" stroke-width="5" stroke-linecap="round" d="M50 72V82"/><circle cx="50" cy="86" r="3.5" fill="trim" stroke="ink" stroke-width="2.5"/>
+</svg>

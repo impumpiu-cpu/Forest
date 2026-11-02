@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- некромант: глубокий капюшон цвета одежды, лицо в тени, светящиеся глаза -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="cloth" d="M50 4C76 6 88 30 88 58C88 78 86 92 84 98L16 98C14 92 12 78 12 58C12 30 24 6 50 4Z"/>
+    <path fill="#2d2a3a" d="M50 26C66 26 72 40 72 58C72 76 62 90 50 92C38 90 28 76 28 58C28 40 34 26 50 26Z"/>
+  </g>
+  <path class="detail" fill="skin" opacity="0.5" d="M50 62C58 62 62 70 60 80C56 86 44 86 40 80C38 70 42 62 50 62Z"/>
+  <g class="figure" fill="#9ff0b0"><ellipse cx="41" cy="54" rx="4" ry="3"/><ellipse cx="59" cy="54" rx="4" ry="3"/></g>
+  <path class="detail" fill="none" stroke="shine" stroke-width="3" d="M30 22C40 12 60 12 70 22"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- крылатое: тело, раскинутые крылья, клюв, хвост; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M44 54Q30 22 6 26Q16 36 14 46Q24 44 30 52Q34 48 40 58Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M10 62L24 54Q40 46 62 50Q74 52 80 44Q88 38 94 44L98 50L88 52Q80 64 64 68Q40 74 24 66Z"/><path fill="gold" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M94 44L100 48L94 50Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M56 54Q66 22 90 18Q84 30 86 40Q76 42 70 50Q66 48 62 58Z"/><circle class="figure" cx="90" cy="44" r="2.2" fill="ink"/><g class="up" fill="none" stroke="ink" stroke-linecap="round" stroke-width="4"><path d="M44 70L40 86M56 70L58 86"/></g>
+</svg>

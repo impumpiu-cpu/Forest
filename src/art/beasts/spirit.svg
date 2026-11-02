@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- дух: парящий сгусток с глазами и хвостом-вихрем; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<circle class="detail" cx="50" cy="48" r="38" fill="fur" opacity="0.25"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M50 14Q78 16 80 46Q80 66 66 74Q56 80 52 90Q46 78 38 82Q40 72 30 70Q20 62 20 46Q22 16 50 14Z"/><g class="figure" fill="light"><ellipse cx="40" cy="42" rx="6" ry="8"/><ellipse cx="60" cy="42" rx="6" ry="8"/></g><g class="figure" fill="ink"><circle cx="41" cy="44" r="3"/><circle cx="61" cy="44" r="3"/></g><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="3" d="M40 60Q50 66 60 60"/>
+</svg>
