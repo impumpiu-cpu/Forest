@@ -13,7 +13,7 @@ import {SettleView} from './settleView.js';
 import {CampaignView} from '../ui/campaignView.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
-import {skin} from '../render/skin.js';
+import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
@@ -57,6 +57,14 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
   show(b.dataset.go);
 });
+// the look of the maps on the settings screen: a row of two buttons that follows the switch
+{
+  const box = $('setSkinSeg');
+  const sync = () => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === skin.mode)));
+  box.innerHTML = SKINS.map(s => `<button type="button" data-val="${s.id}">${s.label}</button>`).join('');
+  box.addEventListener('click', e => { const b = e.target.closest('button'); if (b) skin.set(b.dataset.val); });
+  document.addEventListener(SKIN_EVENT, sync); sync();
+}
 // G (П in the Russian layout): the look of the maps, pictures or the plain scheme (render/skin.js), on any screen
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select')) return;
