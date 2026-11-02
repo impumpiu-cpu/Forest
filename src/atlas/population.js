@@ -23,7 +23,7 @@ export const bandEdges = race => { const B = bodyOf(race), L = B.life || B.lifeF
 export const bandAge = (race, b, L = null) => { const [ad, old] = bandEdges(race), life = L ?? (bodyOf(race).life || 70); return b === 0 ? ad / 2 : b === 1 ? (ad + old) / 2 : (old + life) / 2; };
 
 // ── the composition of a town, made once from what the town had (an old save: its people and mean age; a town of no
-// composition yet: its races in the standing bands, TOWN_LIFE.age.bands); a founding band is made grown by foundHeads
+// composition yet: its races in the standing bands — as the growth comes, TOWN_LIFE.age births / arrive); a founding band is made grown by foundHeads
 export function headsOf(a, t) {
   if (t.heads) {
     // a hand set the people (a scenario, a probe, «Заселение мира»): the composition follows, its shares kept
@@ -51,7 +51,7 @@ export function foundHeads(a, t, pop) {
 function bandsFor(race, n, meanAge) {
   const [ad, old] = bandEdges(race), L = bodyOf(race).life || 70;
   if (!(n > 0)) return [0, 0, 0];
-  if (meanAge == null) return TL.age.bands.map(x => x * n);
+  if (meanAge == null) { const A = TL.age, y = A.births + (1 - A.births) * A.arrive[0]; return [y, (1 - A.births) * A.arrive[1], (1 - A.births) * A.arrive[2]].map(x => x * n); }   // (the standing bands: as the growth comes — children born and folk off the land)
   // the young and the old by how the mean sits between the edges: a young town has children, an old one elders
   const y = Math.max(0, Math.min(1 / 2, (ad / L) * (1 - Math.min(1, meanAge / ((ad + old) / 2))))), o = Math.max(0, Math.min(1 / 2, ((L - old) / L) * Math.min(1, meanAge / ((ad + old) / 2))));
   return [n * y, n * (1 - y - o), n * o];
