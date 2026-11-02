@@ -5,6 +5,8 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
+import {skin} from '../render/skin.js';
+import {ART} from '../render/art/index.js';
 import {segOf, loadDetail, saveDetail, exportChronicle, MapView} from './atlasView.js';
 import {DETAILS} from '../atlas/chronicle.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
@@ -73,7 +75,7 @@ export class CampaignView extends MapView {
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
-    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
+    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', skin: 'campSkin', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     const lay = $('campLayer');
     lay.innerHTML = LAYERS.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join('');
@@ -443,6 +445,7 @@ export class CampaignView extends MapView {
       const s = Math.max(0.35, 0.7 * k);
       for (const t of K.bubble?.things || []) {
         const mood = THINGS[t.kind].mood, hunt = THINGS[t.kind].hunts && t.sated < K.day;
+        if (skin.art && ART.thing(px, t, THINGS[t.kind], hunt, s, k, this.cam.S, a)) continue;   // the picture (render/art/)
         px.lineWidth = Math.max(this.minW, 0.12 * k); px.strokeStyle = 'rgba(20,20,16,0.8)';
         px.beginPath();
         if (mood === 'hostile') { px.fillStyle = hunt ? 'rgb(230,80,60)' : 'rgb(160,90,80)'; px.moveTo(t.x, t.y - s); px.lineTo(t.x + s, t.y + s * 0.8); px.lineTo(t.x - s, t.y + s * 0.8); px.closePath(); }
@@ -452,6 +455,7 @@ export class CampaignView extends MapView {
       }
     }
     // the caravan: a banner in the people's colour
+    if (skin.art && ART.caravan(px, K, x, y, r, k, this.cam.S, a, col)) return;   // the picture (render/art/)
     px.fillStyle = ended(K) && K.phase !== 'won' ? 'rgb(90,90,90)' : `rgb(${col.join(',')})`; px.strokeStyle = 'rgba(255,250,235,0.95)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
     px.beginPath(); px.arc(x, y, r, 0, Math.PI * 2); px.fill(); px.stroke();
     px.beginPath(); px.moveTo(x, y - r); px.lineTo(x, y - 3 * r); px.lineTo(x + 1.6 * r, y - 2.5 * r); px.lineTo(x, y - 2 * r); px.stroke();

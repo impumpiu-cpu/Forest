@@ -13,6 +13,7 @@ import {SettleView} from './settleView.js';
 import {CampaignView} from '../ui/campaignView.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
+import {skin} from '../render/skin.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
@@ -55,6 +56,11 @@ document.addEventListener(MARCH_EVENT, e => openCampaign(v => { v.show('library'
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
   show(b.dataset.go);
+});
+// G (П in the Russian layout): the look of the maps, pictures or the plain scheme (render/skin.js), on any screen
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select')) return;
+  if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') skin.toggle();
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || screen === 'home' || e.target.closest('input, textarea, select')) return;
