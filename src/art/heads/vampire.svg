@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- вампир: бледное лицо, гладкие тёмные волосы мысом, высокий воротник цвета одежды -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="cloth" d="M14 96L18 50L34 72L50 84L66 72L82 50L86 96Z"/>
+    <path fill="#c8323a" class="figure" d="M30 74L50 86L70 74L66 92L34 92Z"/>
+    <path fill="skin" d="M50 16C68 16 74 30 74 48C74 66 62 82 50 86C38 82 26 66 26 48C26 30 32 16 50 16Z"/>
+    <path fill="hair" d="M26 46C22 22 36 12 50 12C64 12 78 22 74 46C70 34 62 26 58 26L50 36L42 26C38 26 30 34 26 46Z"/>
+  </g>
+  <g class="figure" fill="#d0202a"><ellipse cx="41" cy="54" rx="3.4" ry="2.6"/><ellipse cx="59" cy="54" rx="3.4" ry="2.6"/></g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M34 48L46 50M66 48L54 50" stroke-width="3.5"/>
+    <path d="M42 72Q50 76 58 72" stroke-width="3"/>
+  </g>
+  <g class="detail" fill="light"><path d="M44 73L45.5 79L47 74Z"/><path d="M53 74L54.5 79L56 73Z"/></g>
+</svg>

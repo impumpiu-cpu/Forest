@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- эльф: узкое лицо, длинные уши вверх и назад, светлые волосы до плеч -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="hair" d="M26 34C26 10 74 10 74 34L77 84C66 79 34 79 23 84Z"/>
+    <path fill="skin" d="M30 52L2 22L26 64Z"/>
+    <path fill="skin" d="M70 52L98 22L74 64Z"/>
+    <path fill="skin" d="M50 24C66 24 72 36 72 52C72 70 60 84 50 87C40 84 28 70 28 52C28 36 34 24 50 24Z"/>
+    <path fill="hair" d="M28 46C30 23 46 17 56 25C63 20 74 29 72 46C64 37 54 34 44 33C38 37 32 41 28 46Z"/>
+  </g>
+  <g class="figure" fill="eye"><ellipse cx="41" cy="57" rx="3.4" ry="2.6"/><ellipse cx="59" cy="57" rx="3.4" ry="2.6"/></g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M34 55L46 52M54 52L66 55"/>
+    <path d="M50 61L48 69" stroke-width="3"/>
+    <path d="M45 76L55 76" stroke-width="3"/>
+  </g>
+</svg>

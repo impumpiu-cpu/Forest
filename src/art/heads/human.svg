@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- человек: круглая голова, шапка волос, уши по бокам -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <ellipse cx="23" cy="58" rx="7" ry="8" fill="skin"/>
+    <ellipse cx="77" cy="58" rx="7" ry="8" fill="skin"/>
+    <ellipse cx="50" cy="58" rx="27" ry="31" fill="skin"/>
+    <path fill="hair" d="M22 56C16 25 37 14 52 15C73 15 85 30 78 56C73 42 60 35 48 37C37 39 29 46 22 56Z"/>
+  </g>
+  <g class="figure" fill="ink"><circle cx="40" cy="62" r="3.8"/><circle cx="60" cy="62" r="3.8"/></g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M33 53L45 52M55 52L67 53"/>
+    <path d="M50 64L47 72L52 72"/>
+    <path d="M41 80Q50 84 59 80"/>
+  </g>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- топор: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="74" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M48 90L50 22"/><path fill="none" stroke="wood" stroke-width="4" stroke-linecap="round" d="M48 90L50 22"/>
+  <path fill="metal" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M50 26L64 18Q74 30 66 46L50 38Z"/>
+</svg>

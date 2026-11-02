@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- дварф: широкое лицо, шлем, борода на всю нижнюю половину, нос картошкой -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <ellipse cx="50" cy="55" rx="28" ry="27" fill="skin"/>
+    <path fill="beard" d="M21 57C19 80 35 98 50 99C65 98 81 80 79 57C70 68 30 68 21 57Z"/>
+    <path fill="metal" d="M22 49C22 15 78 15 78 49Z"/>
+    <rect x="16" y="44" width="68" height="10" rx="3" fill="metal"/>
+  </g>
+  <path class="detail" fill="none" stroke="ink" stroke-width="3.5" d="M50 21V44"/>
+  <g class="figure">
+    <path fill="shade" d="M29 68C39 59 48 61 50 65C52 61 61 59 71 68C62 74 55 72 50 70C45 72 38 74 29 68Z"/>
+    <circle cx="39" cy="59" r="3.2" fill="ink"/><circle cx="61" cy="59" r="3.2" fill="ink"/>
+  </g>
+  <ellipse cx="50" cy="63" rx="7.5" ry="7" fill="skin" stroke="ink" stroke-width="4"/>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M31 55L44 56M56 56L69 55" stroke="beard" stroke-width="5"/>
+    <path d="M42 84L50 92L58 84" stroke-width="3"/>
+  </g>
+</svg>

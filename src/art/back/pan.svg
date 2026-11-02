@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- котелок: висит за плечом, точка strap — в back тела -->
+  <circle data-anchor="strap" cx="50" cy="40" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="3" d="M34 34Q50 14 66 34"/><path fill="iron" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 34H70L66 58Q50 66 34 58Z"/>
+</svg>

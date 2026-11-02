@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- орк: широкая челюсть, клыки вверх, уши в стороны, тяжёлые брови -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="skin" d="M22 36C14 31 5 31 0 33C8 40 12 50 17 57Z"/>
+    <path fill="skin" d="M78 36C86 31 95 31 100 33C92 40 88 50 83 57Z"/>
+    <path fill="skin" d="M50 14C72 14 80 22 82 34L84 50C88 62 96 74 95 86C94 96 80 100 50 100C20 100 6 96 5 86C4 74 12 62 16 50L18 34C20 22 28 14 50 14Z"/>
+  </g>
+  <g class="figure">
+    <ellipse cx="37" cy="48" rx="6" ry="4.5" fill="light"/><ellipse cx="63" cy="48" rx="6" ry="4.5" fill="light"/>
+    <path fill="none" stroke="ink" stroke-width="4" d="M37 45V50M63 45V50"/>
+    <path fill="none" stroke="ink" stroke-width="6" stroke-linecap="round" d="M27 39L45 44M73 39L55 44"/>
+  </g>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M30 26L42 30M70 26L58 30" stroke-width="3.5"/>
+    <path d="M46 54V61M54 54V61"/>
+    <path d="M22 88C40 76 62 76 80 88"/>
+  </g>
+  <g fill="light" stroke="ink" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M29 86L35 56L44 86Z"/>
+    <path d="M56 86L65 58L72 86Z"/>
+  </g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- булава: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="76" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M50 90V40"/><path fill="none" stroke="wood" stroke-width="3.5" stroke-linecap="round" d="M50 90V40"/>
+  <path fill="metal" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M50 20L58 26L60 36L54 44L46 44L40 36L42 26Z"/>
+  <path class="detail" fill="none" stroke="shade" stroke-width="2" d="M50 22V43M43 30L57 38M57 30L43 38"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- колчан со стрелами: висит за плечом, точка strap — в back тела -->
+  <circle data-anchor="strap" cx="50" cy="40" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="3" d="M44 8L46 30M52 6L52 30M60 8L58 30"/>
+  <path fill="trim" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M40 4L44 12L48 4ZM48 2L52 10L56 2ZM56 4L60 12L64 4Z"/>
+  <rect x="40" y="26" width="24" height="44" rx="6" fill="leather" stroke="ink" stroke-width="4" transform="rotate(-12 52 48)"/>
+</svg>
