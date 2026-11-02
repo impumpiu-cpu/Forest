@@ -25,7 +25,14 @@ export const bandAge = (race, b, L = null) => { const [ad, old] = bandEdges(race
 // ── the composition of a town, made once from what the town had (an old save: its people and mean age; a town of no
 // composition yet: its races in the standing bands, TOWN_LIFE.age.bands); a founding band is made grown by foundHeads
 export function headsOf(a, t) {
-  if (t.heads) return t.heads;
+  if (t.heads) {
+    // a hand set the people (a scenario, a probe, «Заселение мира»): the composition follows, its shares kept
+    const n = groupSize(t.heads);
+    if (t.pop != null && Math.abs(n - t.pop) > 1e-6) {
+      if (n > 0) { for (const b of Object.values(t.heads)) for (let i = 0; i < 3; i++) b[i] *= t.pop / n; return t.heads; }
+      delete t.heads;
+    } else return t.heads;
+  }
   const K = t.kin || townKin(a, t), H = {};
   for (const [race, sh] of Object.entries(K)) H[race] = bandsFor(race, sh * Math.max(0, t.pop || 0), t.kinAge?.[race] ?? t.age ?? null);
   t.heads = H;

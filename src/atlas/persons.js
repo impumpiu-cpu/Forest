@@ -94,6 +94,14 @@ export function townGone(a, t, say) {
   const to = towns.find(o => realm && o.id === realm.capital) || towns.sort((p, q) => Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y))[0] || null;
   for (const p of personsAt(a, 'town', t.id)) { if (to) moveTo(p, 'town', to.id); else personDies(a, p, 'lost', say); }
 }
+// a party gone where it stands (lost its way, disbanded): the persons with it make their own way to the town it came from, or
+// to the nearest living town of its owner's realm — a person is never left at a party that is no more
+export function stranded(a, party) {
+  const ps = personsAt(a, 'party', party.id); if (!ps.length) return;
+  const home = (a.towns || []).find(t => t.id === party.from && t.alive);
+  const to = home || (a.towns || []).filter(t => t.alive && (party.owner != null ? t.realm === party.owner : true)).sort((p, q) => Math.hypot(p.x - party.x, p.y - party.y) - Math.hypot(q.x - party.x, q.y - party.y))[0] || null;
+  for (const p of ps) { if (to) moveTo(p, 'town', to.id); else personDies(a, p, 'lost'); }
+}
 // the host is home: its persons step off at the town
 export function stepOff(a, party, t) {
   for (const p of personsAt(a, 'party', party.id)) moveTo(p, 'town', t.id);
