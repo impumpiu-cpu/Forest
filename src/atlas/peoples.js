@@ -12,7 +12,7 @@
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
-import {takeHeads, sync} from './population.js';
+import {takeHeads, sync, foundHeads} from './population.js';
 import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
 import {seasonMoney} from './treasury.js';
@@ -129,6 +129,7 @@ function foundTown(a, pe, i, rnd, pop, say) {
   const t = {id: (H.nextTown = (H.nextTown || 0) + 1), people: P.id, name: townName(P, rnd, H.names), i, x: i % a.w, y: (i / a.w) | 0,
     founded: H.year, pop, tier: 0, built: [], alive: true};
   a.towns.push(t);
+  if (pop > 0) foundHeads(a, t, pop);   // a founding band: grown ones of the races its land gives (atlas/population.js)
   return t;
 }
 

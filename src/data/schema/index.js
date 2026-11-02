@@ -13,6 +13,9 @@ import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {POLITIES, SUCCESSION} from '../polities.js';
+import {FACTS, OPS} from '../requirements.js';
+import {reqErrors} from '../../core/requirements.js';
+import {buildingNeedText} from '../../atlas/requirements.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
 import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
 import {STATS} from '../special.js';
@@ -364,13 +367,18 @@ export const TABLES = [
       col('ruler.channels', 'Личные каналы', 'ids', {ref: new Set(['undead', 'summons']), note: 'что держится на самом правителе и теряется с ним (atlas/control.js): undead — мертвецы некроманта, summons — звери призывателя'}),
     ]},
   {id: 'successionRules', label: 'Преемство: правила', group: 'Народы', ...params(() => paramRows(SUCCESSION))},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', ')})),
+  {id: 'facts', label: 'Факты', group: 'Народы', key: 'id', computed: true, rows: () => FACTS.all().map(f => ({...f, scope: f.scope === 'either' ? 'город или держава' : 'город', ops: Object.entries(OPS).map(([k, v]) => `${k} — ${v}`).join(', ')})),
+    note: 'Что мир может сказать о городе, когда постройка, рецепт или дело спрашивает (data/requirements.js FACTS; читаются с города в момент проверки — atlas/requirements.js, в таблице их значений нет). Условие сравнивает факт со значением; пороги — в требовании, не в факте: доля гноллов одна, а «гноллов не больше 5 %» — условие того, кто просит.',
+    columns: [col('id', 'id'), col('label', 'Факт'), col('type', 'Тип', 'enum', {values: {bool: 'да/нет', num: 'число', enum: 'значение'}}), col('arg', 'О чём', 'text', {nullable: true}), col('scope', 'Где читается'), col('ops', 'Операции'), col('note', 'Примечание')]},
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', '), needText: buildingNeedText(b)})),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
       col('kind', 'Вид строки', 'enum', {values: {base: 'здание', variant: 'вариант', tier: 'тир', annex: 'пристройка', upgrade: 'улучшение'}, note: 'здание — основа; вариант — другая основа для народа; тир — строится на месте прежнего («Улучшает»); пристройка — своё здание при основе («Нужно в самом городе»); улучшение — меняет мощность основы («Усиливает»)'}),
       col('line', 'Карточка', 'text', {note: 'линия построек: основа, её тиры, пристройки, улучшения'}),
+      col('needText', 'Требования', 'text', {computed: true, note: 'всё, что постройка просит у города, одной строкой (data/requirements.js needsOf: столбцы ниже и «Требование»); проверяет одна проверка (core/requirements.js) — совет, стройка, карточки'}),
+      col('need', 'Требование', 'json', {nullable: true, check: v => reqErrors(v), note: 'требование, записанное явно: {fact, arg, op, value, scope} или {all: […]} / {any: […]} — факты из «Фактов» (уклад, доля расы, число расы, постройка, место, индикатор, склад…); добавляется к столбцам ниже'}),
       col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
       col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
       col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),

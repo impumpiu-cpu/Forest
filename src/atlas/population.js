@@ -22,8 +22,8 @@ export const bandEdges = race => { const B = bodyOf(race), L = B.life || B.lifeF
 // the middle age of a band of a race (the death rate reads it: atlas/demography.js)
 export const bandAge = (race, b, L = null) => { const [ad, old] = bandEdges(race), life = L ?? (bodyOf(race).life || 70); return b === 0 ? ad / 2 : b === 1 ? (ad + old) / 2 : (old + life) / 2; };
 
-// ── the composition of a town, made once from what the town had (an old save: its people and mean age; a new town: the
-// land's races, grown as a founding band is — TOWN_LIFE.age.found)
+// ── the composition of a town, made once from what the town had (an old save: its people and mean age; a town of no
+// composition yet: its races in the standing bands, TOWN_LIFE.age.bands); a founding band is made grown by foundHeads
 export function headsOf(a, t) {
   if (t.heads) return t.heads;
   const K = t.kin || townKin(a, t), H = {};
@@ -33,10 +33,18 @@ export function headsOf(a, t) {
   sync(t);
   return H;
 }
-// n of a race spread over the bands as a town of that mean age would hold them (null — a founding band: grown ones)
+// a founding band (atlas/peoples.js foundTown): `pop` grown ones of the races its land gives
+export function foundHeads(a, t, pop) {
+  const K = kinOfLand(a, t) || {[WORLD_PEOPLES.get(t.people).race]: 1};
+  t.heads = Object.fromEntries(Object.entries(K).map(([race, sh]) => [race, [0, sh * pop, 0]]));
+  sync(t);
+  return t.heads;
+}
+// n of a race spread over the bands as a town of that mean age would hold them (null: the standing bands)
 function bandsFor(race, n, meanAge) {
   const [ad, old] = bandEdges(race), L = bodyOf(race).life || 70;
-  if (meanAge == null || !(n > 0)) return [0, n, 0];
+  if (!(n > 0)) return [0, 0, 0];
+  if (meanAge == null) return TL.age.bands.map(x => x * n);
   // the young and the old by how the mean sits between the edges: a young town has children, an old one elders
   const y = Math.max(0, Math.min(1 / 2, (ad / L) * (1 - Math.min(1, meanAge / ((ad + old) / 2))))), o = Math.max(0, Math.min(1 / 2, ((L - old) / L) * Math.min(1, meanAge / ((ad + old) / 2))));
   return [n * y, n * (1 - y - o), n * o];

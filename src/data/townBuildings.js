@@ -67,6 +67,8 @@
 //                 the rest exist only on the world map for now
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
 import {Registry} from '../core/registry.js';
+import {reqNeeds, litFacts} from './requirements.js';
+import {meets} from '../core/requirements.js';
 import {RESOURCES as PRICE, CAMPAIGN} from './balance/prices.js';
 
 export const CATEGORIES = {
@@ -445,8 +447,9 @@ export const TIERS_OF = Object.fromEntries(TOWN_BUILDINGS.all().map(b => [b.id, 
 export const lineHas = (built, id) => { const has = built instanceof Set ? x => built.has(x) : x => built.includes(x); return has(id) || (TIERS_OF[id] || []).some(has); };
 // the recipes of a building, and what a building or a recipe takes and gives (its own and its recipes')
 export const recipesOf = b => b.recipes || [];
-// the indicators an entry asks for (a building of `req`: the steelworks while iron ingots are in the store)
-export const reqLit = (req, lit) => (req || []).every(r => r.split('|').some(x => lit.has(x)));
+// the indicators an entry asks for (a building of `req`: the steelworks while iron ingots are in the store), by the one
+// checker (data/requirements.js reqNeeds, core/requirements.js) against the town's lights
+export const reqLit = (req, lit) => meets(reqNeeds(req), litFacts(lit));
 
 // what a building gives, as one number for each effect (0 where it gives nothing)
 // (`people`: the town's people — a building may give some peoples more, `fxBy`: the humans' temple teaches)

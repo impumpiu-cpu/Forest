@@ -26,6 +26,9 @@ import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_
 const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
+import {needsOf, tierNeed, reqNeeds} from '../data/requirements.js';
+import {meets} from '../core/requirements.js';
+import {townFacts} from './requirements.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {SPECIES} from '../data/species.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -190,19 +193,13 @@ export function kinOfLand(a, t) {
 // the town's leading race
 export const leadKin = (a, t) => Object.entries(townKin(a, t)).sort((p, q) => q[1] - p[1])[0][0];
 
-export function canBuild(a, t, b, inRealm = null) {
-  if (b.peoples && !b.peoples.includes(t.people)) return false;
-  if (b.kin && !((townKin(a, t)?.[b.kin] ?? 0) >= KIN.least)) return false;   // a kind's own building wants that kind in the town
-  if (b.requires || b.requiresAny) {
-    const has = inRealm || realmBuilt(a, t);
-    if (b.requires && !b.requires.every(id => lineHas(has, id))) return false;
-    if (b.requiresAny && !b.requiresAny.some(id => lineHas(has, id))) return false;
-  }
-  // in the town itself (a harbour — its own pier; an annex — its host; a tier — what it is built in place of, or a unit of itself)
-  if (b.here && !b.here.some(id => (id === b.id ? t.built.includes(id) : lineHas(t.built, id)))) return false;
-  if ((b.tierBy?.[t.people] ?? b.tier) > t.tier) return false;   // (tierBy: a step of its own for a people — the dwarves' stone walls)
-  if (b.pop && t.pop < b.pop) return false;
-  if (b.capital && !t.capital) return false;
+// what a building asks of the town — its people or its realm's uklad, the races among its people, what stands in the town or
+// the realm, its step, its size, the land — is one requirement (data/requirements.js needsOf: the row's short fields and its
+// `need`), checked by one checker (core/requirements.js) against the town's facts (atlas/requirements.js townFacts); the
+// limits of count, slot, line and site are rules of their own below
+export function canBuild(a, t, b, inRealm = null, facts = null) {
+  const src = facts || townFacts(a, t, {inRealm});
+  if (!meets(tierNeed(b, t.people), src) || !meets(needsOf(b), src)) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
   if (lineFull(t, b)) return false;
@@ -210,10 +207,6 @@ export function canBuild(a, t, b, inRealm = null) {
   const sk = slotKind(b);
   if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
-  const pk = t.place ||= {};
-  const has = need0 => { const need = placeNeed(t.people, need0); return need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)); };   // the land does not change; roads and graves do
-  if (b.needs && !b.needs.every(has)) return false;
-  if (b.needsAny && !b.needsAny.some(has)) return false;
   return true;
 }
 
@@ -237,9 +230,9 @@ export function townNeeds(a, t, fx, ctx) {
 export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
   let best = null, bv = 0.02;
-  const inRealm = realmBuilt(a, t);
+  const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
   for (const b of TOWN_BUILDINGS.all()) {
-    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm)) continue;   // (skip: what it could not pay for this time)
+    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
     for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k, t.people)) * need[k] * (P.taste[k] ?? 1);
@@ -251,7 +244,8 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
       // makes: it may be bought)
       const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
-      const may = req => (req || []).every(r => r.split('|').some(x => (x.startsWith('stock:') ? !none(x.slice(6)) : lit.has(x))));
+      // (a good of the store as one the town has, makes or its realm makes: it may be bought — the council's forecast, not the store's fact)
+      const may = req => meets(reqNeeds(req), {get: (f, arg, sc) => (f === 'stock' ? (none(arg) ? 0 : 1) : facts.get(f, arg, sc))});
       const R = recipesOf(b).filter(q => may(q.req));
       const bin = {...(b.in || {})}; for (const q of R) for (const [g, v] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + v / R.length;
       const bout = {...(b.out || {})}; for (const q of R) for (const [g, v] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + v / R.length;

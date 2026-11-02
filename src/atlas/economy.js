@@ -27,7 +27,10 @@
 //               (its hands: a tier's, however many recipes) by what the store holds of what each takes; a recipe gone dark gives its
 //               share to the others
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf, reqLit} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf} from '../data/townBuildings.js';
+import {workNeeds} from '../data/requirements.js';
+import {meets} from '../core/requirements.js';
+import {townFacts} from './requirements.js';
 import {handsOf} from './population.js';
 import {WORLD_PEOPLES, swapOf, KIN, placeNeed} from '../data/peoples.js';
 import {placeHas, townKin} from './towns.js';
@@ -192,7 +195,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   };
   for (const r of yielders) r.yout = {};
   // the town's indicators this round: the fixed ones, and the goods it has (stock and made, of the last round)
-  let lit = new Set(lit0);
+  let lit = new Set(lit0), facts = townFacts(a, t, {lit, stock: sup});   // (the facts the recipes ask: the town's lights, the season's supply — and the rest of the town)
   const litOf = () => { const L = new Set(lit0); for (const [g, v] of Object.entries(sup)) if (v > TOWN_MONEY.dust) L.add(`stock:${g}`); return L; };
   // the shares of the recipes of a building: those lit share its strength by what the store holds of what each takes (a recipe
   // that takes nothing of the store — as one that has all it takes); a building of `req` (the steelworks) stands while it is dark
@@ -200,14 +203,14 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
-      const on = reqLit(x.q.req, lit), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
+      const on = meets(workNeeds(x.q), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
       x.w = on ? Math.max(F.recipeFloor, ins.length ? Math.min(...ins.map(avail)) : 1) : 0;
       by.set(x.of, (by.get(x.of) || 0) + x.w);
     }
     for (const x of recRows) x.share = x.w > 0 ? x.w / by.get(x.of) : 0;
   };
   for (let k = 0; k < F.rounds; k++) {
-    if (k > 0) { lit = litOf(); shareOut(); } else shareOut();
+    if (k > 0) { lit = litOf(); facts = townFacts(a, t, {lit, stock: sup}); shareOut(); } else shareOut();
     sup = {...(imports || {})}; dem = {};
     for (const r of yielders) for (const [g, v] of Object.entries(r.yout)) sup[g] = (sup[g] || 0) + v;
     for (const [g, v] of Object.entries(F.gather || {})) sup[g] = (sup[g] || 0) + v * t.pop;   // gathered by hand (brushwood)
@@ -225,7 +228,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
       let m = 1;
       for (const g of Object.keys(r.in)) m = Math.min(m, soft(r.of || r, g) ? F.soft + (1 - F.soft) * got(g) : got(g));
       for (const id of Object.keys(r.pool)) m = Math.min(m, POOL_SOFT.has(id) ? F.soft + (1 - F.soft) * pgot[id] : pgot[id]);
-      if (r.b.req && !reqLit(r.b.req, lit)) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
+      if ((r.b.req || r.b.need) && !meets(workNeeds(r.b), facts)) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
       // a recipe: its share of what its building works at (the building's own goods — its tools — weigh on it too)
       r.eff = r.of ? r.share * Math.min(r.of.eff, r.staff * r.own * m) : r.staff * r.own * m;
     }
