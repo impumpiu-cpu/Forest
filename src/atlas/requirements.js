@@ -27,7 +27,7 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
         case 'kinShare': { if (!(t.pop > 0)) return undefined; const b = headsOf(a, t)[arg]; return b ? (b[0] + b[1] + b[2]) / t.pop : 0; }   // (the exact share: t.kin is rounded for the cards)
         case 'kinCount': { const b = headsOf(a, t)[arg]; return b ? b[0] + b[1] + b[2] : 0; }
         case 'kinHands': { const b = headsOf(a, t)[arg]; return (b ? b[1] : 0) * (WORLD_PEOPLES.get(t.people)?.hands ?? 0); }
-        case 'built': return scope === 'realm' ? lineHas(realm(), arg) : lineHas(t.built, arg);
+        case 'built': return scope === 'realm' ? lineHas(realm(), arg) : scope == null || scope === 'town' ? lineHas(t.built, arg) : undefined;
         case 'exact': return t.built.includes(arg);
         case 'place': return a?.f ? has(arg) : true;
         case 'opens': return lights ? lights.has(arg) : (t.econ?.lit ? t.econ.lit.includes(arg) : false);

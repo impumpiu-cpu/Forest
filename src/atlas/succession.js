@@ -12,7 +12,7 @@ import {makeName} from '../data/names.js';
 import {profileOf, officeOf, rulerTitle} from './polities.js';
 import {realmLabel, realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
 import {townLabel, townFx} from './towns.js';
-import {newPerson, moveTo, personLabel, nameOut} from './persons.js';
+import {newPerson, moveTo, personLabel, nameOut, hasGrown, personOf} from './persons.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {abilitiesFor} from './control.js';
 
@@ -59,7 +59,8 @@ const officeLabel = (o, f = false) => (f ? OFFICES.get(o).labelF : OFFICES.get(o
 // of the realm's race, a grown one, named as the court names its people
 export function crownRuler(a, r, rnd, {g = null, name = null} = {}) {
   const K = r.kingdom, race = WORLD_PEOPLES.get(r.people).race, cap = capitalOf(a, r.id);
-  const used = new Set(Object.values(K.court).filter(Boolean).map(h => h.name));
+  if (!cap || !hasGrown(a, cap, race)) return null;   // (nobody grown of the race at the seat: no one to crown)
+  const used = new Set(Object.values(K.court).filter(Boolean).map(h => personOf(a, h.person)?.name).filter(Boolean));
   const f = g ? g === 'f' : rnd() < COURT.female, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
   if (!nm) return null;
   const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r)});

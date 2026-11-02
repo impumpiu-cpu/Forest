@@ -352,9 +352,10 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
   // the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land buries its children);
   // a year ages a band's share into the next. The growth of a town (atlas/peoples.js bornOf) is two things, booked apart
   // (t.vital born / came): its BIRTHS — `births` of it, children of the town's grown ones, shared out by each race's share of
-  // the town × its fertility against the people's race, all of them young — and the folk of its people's LAND that come to
+  // the town × its fertility against the people's race, all of them young and never more than `perGrown` × that fertility a
+  // grown one a year (few grown ones, few children) — and the folk of its people's LAND that come to
   // it (the rest), in the bands `arrive` [young, grown, old] as a people on the move is; a founding band comes grown
-  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, most: 0.5, oldAt: 0.7, births: 0.35, arrive: [0, 0.92, 0.08]}};
+  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, most: 0.5, oldAt: 0.7, births: 0.35, perGrown: 0.08, arrive: [0, 0.92, 0.08]}};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's

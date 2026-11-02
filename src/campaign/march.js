@@ -25,8 +25,8 @@ import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
-import {personOf, personDies, personCaptured} from '../atlas/persons.js';
-import {armyLosses} from '../atlas/army.js';
+import {personOf, personDies, personCaptured, memberFate} from '../atlas/persons.js';
+import {sceneLosses} from '../atlas/army.js';
 import {goHome} from '../atlas/parties.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
@@ -125,6 +125,7 @@ export function pace(a, K, seasonId) {
 export function die(a, K, m, why) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
+  memberFate(a, m, 'dead');   // (a person of the world dies with it — atlas/persons.js)
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
@@ -585,31 +586,31 @@ function leaderRumour(a, K, t) {
 // its own rule. A party gone or a person dead already is not touched again (atlas/persons.js personDies applies once)
 export function worldOutcome(a, K, t, win) {
   const S = CAMPAIGN.scene, rec = K.fights?.at(-1), local = rec && rec.mode === 'local';
-  // the party: its losses in the share of the foes that fell (the scene is the party, as many of it as came)
+  // the party: the scene's dead and taken are that many of its men (the rest did not fight); whoever won, they are gone
   if (t.party != null) {
     const p = (a.parties || []).find(x => x.id === t.party && x.state !== 'gone');
     if (p && !(K.partyHit ||= {})[`${p.id}:${K.day}`]) {
       K.partyHit[`${p.id}:${K.day}`] = true;
-      const share = local ? (rec.foes > 0 ? Math.min(1, (rec.killed || 0) / rec.foes) : win ? 1 : 0) : win ? S.auto.won : S.auto.lost;
-      const fallen = Math.min(1, Math.max(0, win ? share : Math.min(share, S.lostShare)));
-      if (fallen > 0) {
-        if (p.kind === 'army') armyLosses(p, fallen, () => 1 / 2, win ? 'beaten' : 'won');
-        else p.might = Math.max(0, (p.might || 0) * (1 - fallen));
-      }
-      if (win && (fallen >= 1 || p.kind === 'leader' || p.kind === 'raid' || p.kind === 'brood')) goHome(a, p);   // beaten, it turns home
+      const men = p.kind === 'army' ? Math.max(0, p.men) : null;
+      const dead = local ? rec.killed || 0 : (win ? S.auto.won : S.auto.lost) * (men ?? 1), taken = local ? rec.taken || 0 : 0;
+      if (p.kind === 'army') { const gone = sceneLosses(a, p, dead, taken); if (gone > 0) p.result = win ? 'beaten' : 'won'; }
+      else if (local) { const n = Math.max(1, rec.foes || 1); p.might = Math.max(0, (p.might || 0) * (1 - Math.min(1, (dead + taken) / n))); }
+      else p.might = Math.max(0, (p.might || 0) * (1 - dead));
+      if (win) goHome(a, p);   // beaten by the caravan, it turns home
     }
   }
-  // the person at its head
+  // the person at its head: by its own fate in the scene
   if (t.person == null) return;
-  const p = personOf(a, t.person); if (!p || !p.alive) return;
-  const fate = local ? rec.boss?.fate || (win ? 'dead' : 'stood') : win ? S.auto.boss : 'stood';
+  const p = personOf(a, t.person); if (!p || !p.alive || p.captive) return;
+  let fate = local ? rec.boss?.fate || (win ? 'dead' : 'stood') : win ? S.auto.boss : 'stood';
+  if (fate === 'bound' && !K.members.some(m => m.alive && m.captive && m.person === p.id)) fate = 'fled';   // bound but left behind (no room): it got away
   const lair = (a.lairs || []).find(l => l.leader?.id === p.id);
   if (fate === 'dead') {
     if (!personDies(a, p, 'caravan', line => say(a, K, line, 'fight', true))) return;
     K.stats.leaders = (K.stats.leaders || 0) + 1;
     say(a, K, `${t.boss.name} пал от рук каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
   } else if (fate === 'bound') {
-    personCaptured(a, p, 'caravan', line => say(a, K, line, 'fight', true));
+    if (!personCaptured(a, p, 'caravan', line => say(a, K, line, 'fight', true))) return;
     K.stats.leaders = (K.stats.leaders || 0) + 1;
     say(a, K, `${t.boss.name} в путах каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
   }
@@ -736,7 +737,7 @@ export function caravanDay(a, K, day) {
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
     K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)
-    for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year}; }
+    for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year}; memberFate(a, m, 'freed'); }
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
   }

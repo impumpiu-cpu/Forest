@@ -78,7 +78,7 @@ export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
     // the growth: the births — children of the grown ones of this race (none, no children), by its share and fertility against
     // the people's race — and the folk of the land that come, in the bands of TOWN_LIFE.age.arrive
     const gk = P0 > 0 ? born * (n0 / P0) * (bodyOf(k).fertility ?? ref) / ref : 0;
-    const births = grown > 0 ? gk * A.births : 0, came = gk - births;
+    const births = Math.min(gk * A.births, grown * A.perGrown * (bodyOf(k).fertility ?? ref) / ref), came = gk - births;   // (as many children as its grown ones can have)
     b[0] += births; for (let i = 0; i < 3; i++) b[i] += came * A.arrive[i];
     V.born += births; V.came += came;
   }

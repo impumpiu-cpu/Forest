@@ -7,6 +7,7 @@
 //   takeFromCamp(a, K, o, say)  — the captives the camp on the local map took (campaign/camp.js outcome)
 //   bondsSets(K)                — how many more the baggage can bind
 import {freesCaptives} from '../data/slavery.js';
+import {memberFate} from '../atlas/persons.js';
 import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
@@ -59,7 +60,7 @@ export function takeFromCamp(a, K, o, say) {
   const got = [];
   for (const t of o.taken || []) {
     if (!room(K, 'captive')) break;
-    const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: t.name, gender: t.gender, race: t.race, people: t.people || null,
+    const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: t.name, gender: t.gender, race: t.race, people: t.people || null, ...(t.person != null ? {person: t.person} : {}),
       role: 'captive', core: false, hp: t.hp, alive: true, joined: K.day, back: 1, ride: null, special: t.special, align: t.align || null, values: t.values || null,
       gear: {hand: [...(t.gear?.hand || [])], body: t.gear?.body || C.gear.body}, local: t.local || null,
       // its wounds and traumas, as a member's (campaign/potions.js woundsIn: the last day a wound is borne, null — for life)
@@ -93,6 +94,7 @@ export const mouths = K => free(K).length + held(K).length * (K.captiveCut ? ESC
 // one got away: gone from the caravan with its bonds
 export function escaped(a, K, m, text, say) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, escaped: true};
+  memberFate(a, m, 'escaped');   // (a person of the world: it is free again — atlas/persons.js)
   K.stats.escaped = (K.stats.escaped || 0) + 1;
   say(text + '.', 'leave', [m.id]); assign(K);
 }
@@ -170,7 +172,7 @@ export function freedomEvening(a, K, say) {
     }
     unbind(K, m);
     setPlace(m, 'former', {since: K.day, fought: false, service: m.captive.service || 0}); m.loyalty = FREEDOM.bond.start;
-    K.stats.freed = (K.stats.freed || 0) + 1;
+    K.stats.freed = (K.stats.freed || 0) + 1; memberFate(a, m, 'freed');
     say(`С ${m.name} сняли путы: за ${gw(m, 'него', 'неё')} поручился ${vouch.name}. Теперь ${gw(m, 'бывший раб', 'бывшая рабыня')} — без оружия, но не в путах.`, 'people', [m.id, vouch.id]);
   }
   for (const m of K.members.filter(x => x.alive && x.former)) {

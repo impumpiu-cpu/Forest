@@ -20,7 +20,7 @@ import {attitude} from './diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {newPerson, personOf, moveTo, nameOut} from './persons.js';
+import {newPerson, personOf, moveTo, nameOut, hasGrown, backToCrowd, whereIs} from './persons.js';
 import {rulerTitle} from './polities.js';
 import {strangersOf} from './population.js';
 import {abilitiesFor} from './control.js';
@@ -96,9 +96,10 @@ export function stepKingdom(a, say) {
     for (const O of OFFICES.all()) {
       const h = K.court[O.id], hp = h ? personOf(a, h.person) : null;
       if (h && (!hp || !hp.alive)) K.court[O.id] = null;   // (its holder is dead: the office was freed by its death — atlas/succession.js; an old save's holder of no person is let go)
-      else if (h && year >= h.until) { K.court[O.id] = null; tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }
+      else if (h && year >= h.until) { K.court[O.id] = null; backToCrowd(a, hp, whereIs(a, hp) || seat); tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }   // (back into the crowd of its town: atlas/persons.js)
       const held = O.id === 'ruler' && ((realm.mourn ?? -1) > year || realm.contest != null);
-      if (!K.court[O.id] && !held && r() < COURT.fill) {
+      // (one of the seat's own: a grown one of the realm's race must be there to be named — none, the office waits)
+      if (!K.court[O.id] && !held && seat && hasGrown(a, seat, race) && r() < COURT.fill) {
         // a name nobody at this court has yet; a people without names leaves the office empty
         const used = new Set(Object.values(K.court).filter(Boolean).map(x => personOf(a, x.person)?.name).filter(Boolean));
         const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));

@@ -244,8 +244,10 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
       // makes: it may be bought)
       const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
-      // (a good of the store as one the town has, makes or its realm makes: it may be bought — the council's forecast, not the store's fact)
-      const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? (none(arg) ? 0 : 1) : facts.get(f, arg, sc))});
+      // the council's forecast of the store (not the store's fact, which the works read each season — atlas/economy.js): what the
+      // town has and made this season, as the number it is; a good it has none of but its realm makes may be bought — enough for
+      // «any of it» (stock > 0), never for a quantity asked
+      const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? Math.max(0, (t.stock?.[arg] || 0) + (E.made[arg] || 0)) || (none(arg) ? 0 : Number.EPSILON) : facts.get(f, arg, sc))});
       const R = recipesOf(b).filter(q => may(q, true));
       const bin = {...(b.in || {})}; for (const q of R) for (const [g, v] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + v / R.length;
       const bout = {...(b.out || {})}; for (const q of R) for (const [g, v] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + v / R.length;

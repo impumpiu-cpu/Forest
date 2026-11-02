@@ -4,6 +4,7 @@
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
 import {isFighter, inLine, toolOf} from '../data/campaign.js';
+import {memberFate} from '../atlas/persons.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
@@ -124,7 +125,7 @@ export function applyCamp(a, K, S, o, d, how) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     if (mo.taken) {   // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
-      m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1;
+      m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken');
       say(a, K, `На стоянке ${m.name} ${m.gender === 'f' ? 'уведена' : 'уведён'} налётчиками в плен.`, 'leave', false, [m.id]); assign(K); continue;
     }
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }

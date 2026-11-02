@@ -302,7 +302,7 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   const {sendParty} = await import('../src/atlas/parties.js');
   const party = sendParty(a, 'leader', lair.i, t.i, {owner: lair.id, plan: 'raid', target: t.id, might: 3, label: 'тест', color: [1, 1, 1], leader: true});
   moveTo(p0, 'party', party.id);
-  const K = {day: 1, fights: [{mode: 'local', foes: 10, killed: 4, boss: {fate: 'fled'}}], stats: {}, log: []};
+  const K = {day: 1, members: [], fights: [{mode: 'local', foes: 10, killed: 4, boss: {fate: 'fled'}}], stats: {}, log: []};
   const thing = {party: party.id, person: p0.id, boss: {name: 'X'}, kind: 'tribe'};
   const {worldOutcome} = await import('../src/campaign/march.js');
   const m0 = party.might;
@@ -312,7 +312,7 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   check('F03: тот же исход дважды — потери не удваиваются', Math.abs(party.might - m0 * 0.6) < 1e-9);
   K.fights.push({mode: 'local', foes: 10, killed: 2, boss: {fate: 'bound'}}); K.day = 2;
   worldOutcome(a, K, thing, true);
-  check('F02: главарь связан — жив, в плену, логово без главаря', p0.alive && p0.captive && !lair.leader, `${JSON.stringify(p0.captive)}`);
+  check('F02: главарь связан, но в караване его нет — бежал: жив, не в плену, при логове', p0.alive && !p0.captive && lair.leader?.id === p0.id, `${JSON.stringify(p0.captive)}`);
   K.fights.push({mode: 'auto'}); K.day = 3;
   const l2 = lairOf(a, 'gnolls') || lairOf(a, 'ogres'); const p2 = l2 && (l2.leader || lead(a, l2));
   if (p2) { worldOutcome(a, K, {person: p2.id, boss: {name: 'Y'}}, false); check('F02: быстрый режим, караван проиграл — главарь стоит', p2.alive && !p2.captive); worldOutcome(a, K, {person: p2.id, boss: {name: 'Y'}}, true); check('F02: быстрый режим, караван победил — главарь мёртв (явное правило CAMPAIGN.scene.auto)', !p2.alive && p2.died.how === 'caravan'); }
@@ -390,6 +390,62 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     const {able, heldDead} = await import('../src/atlas/control.js');
     check('A3: хозяин башни держит мертвецов искусством: без некромантии — не держит, канала нет', able(master, 'undead') && heldDead(tw) && (() => { master.abilities = []; const held = heldDead(tw) || channelsOf(b, master).length > 0; master.abilities = ['necromancy']; return !held; })());
   }
+}
+
+// ── the second review (N01–N10): the scene's counts, the captive person, the court's candidates, the validator
+{
+  const a = copy(), t = a.towns.find(x => x.alive && x.people === 'humans' && x.realm != null), goal = a.towns.find(x => x.alive && x !== t).i;
+  t.heads = {human: [0, 400, 0]}; sync(t); t.stock = {...(t.stock || {}), herbs: 50, stores: 100}; t.warBeasts = {list: {varg: 100}, men: 100}; t.golems = {auto: {}, guard: ['iron', 'iron'], since: 0};
+  const p = sendArmy(a, t, goal, 100, {owner: t.realm}); p.warBeasts = {varg: 100}; p.golems = ['iron', 'iron']; p.kit.herbs = 10;
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  const K = {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 100, killed: 10, taken: 2}]};
+  worldOutcome(a, K, {party: p.id, kind: 'army'}, true);
+  check('N01–N03: павшие и уведённые сцены — ровно столько из отряда, травы мёртвых не лечат; N05: звери и големы той же долей', Math.abs(p.men - 88) < 1e-9 && p.kit.herbs === 10 && p.warBeasts.varg === 88 && p.golems.length === 2 && Math.abs(groupSize(p.group) - 88) < 1e-6, `men ${p.men}, варгов ${p.warBeasts.varg}, трав ${p.kit.herbs}`);
+  check('N04: разбитый караваном отряд поворачивает домой', p.state === 'home' || p.state === 'gone', p.state);
+  K.fights.push({mode: 'local', foes: 10, killed: 8, taken: 0}); K.day = 2; p.state = 'go';
+  worldOutcome(a, K, {party: p.id, kind: 'army'}, false);
+  check('N03: караван проиграл — подтверждённые павшие всё равно списаны', Math.abs(p.men - 80) < 1e-9 && p.state === 'go', `men ${p.men}`);
+}
+{
+  // N06: the bound person is the caravan's captive member; its escape frees it, back at the head of its lair if that waits
+  const a = copy(), l = lairOf(a, 'goblins'), p = l.leader || lead(a, l);
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  const {memberFate} = await import('../src/atlas/persons.js');
+  const K = {day: 1, members: [], stats: {}, fights: [{mode: 'local', foes: 5, killed: 0, taken: 0, boss: {fate: 'bound'}}], log: []};
+  worldOutcome(a, K, {person: p.id, boss: {name: p.name}}, true);
+  check('N06: связан, но в караван не взят (нет места) — считается бежавшим: жив, свободен, при логове', p.alive && !p.captive && l.leader?.id === p.id);
+  const m = {id: 1, name: p.name, race: p.species, person: p.id, alive: true, captive: {since: 1, bonds: 'rope'}};
+  K.members.push(m); K.day = 2; K.fights.push({mode: 'local', foes: 5, killed: 0, taken: 1, boss: {fate: 'bound'}});
+  worldOutcome(a, K, {person: p.id, boss: {name: p.name}}, true);
+  check('N06: связан и уведён — пленник каравана, логово без главаря, статистика +1', p.alive && p.captive?.by === 'caravan' && !l.leader && K.stats.leaders === 1);
+  worldOutcome(a, K, {person: p.id, boss: {name: p.name}}, true);
+  check('N06: тот же исход дважды — ничего', K.stats.leaders === 1 && p.captive?.by === 'caravan');
+  m.alive = false; m.left = {escaped: true}; memberFate(a, m, 'escaped');   // (campaign/captives.js escaped does this)
+  check('N06: бежал из каравана — свободен и снова во главе своего логова', p.alive && !p.captive && l.leader?.id === p.id && isAt(p, 'lair', l.id), JSON.stringify(p.at));
+}
+{
+  // N07: an office is filled only from a grown one of the race at the seat; a holder off its office goes back into the crowd
+  const a = copy(), r = realmsOf(a, 'humans')[0], seat = capitalOf(a, r.id);
+  for (const o of Object.keys(r.kingdom.court)) r.kingdom.court[o] = null;
+  seat.heads = {human: [100, 0, 0], elf: [0, 50, 0]}; sync(seat); const n0 = seat.pop;
+  a.hist.season = SEASONS_PER_YEAR - 1;
+  stepKingdom(a, say);
+  check('N07: при столице нет взрослых людей — должности пусты, жителей столько же', Object.values(r.kingdom.court).every(h => !h) && Math.abs(seat.pop - n0) < 1e-6 && crownRuler(a, r, mulberry(1)) == null, `${n0} → ${seat.pop}`);
+  seat.heads = {human: [100, 10, 0]}; sync(seat);
+  for (let k = 0; k < 8 && !Object.values(r.kingdom.court).some(Boolean); k++) { a.hist.year++; stepKingdom(a, say); }
+  const held = Object.values(r.kingdom.court).filter(Boolean).length;
+  check('N07: взрослые есть — должности заняты, каждый взят из счёта', held > 0 && Math.abs(seat.pop - (110 - held)) < 1e-6, `занято ${held}, жителей ${seat.pop}`);
+  const h = Object.values(r.kingdom.court).find(Boolean), hp = personOf(a, h.person); h.until = a.hist.year;
+  stepKingdom(a, say);
+  check('N07: срок вышел — обратно в счёт города, личность больше не ведётся отдельно', hp.alive && hp.inCount && Math.abs(seat.pop - (110 - Object.values(r.kingdom.court).filter(Boolean).length)) < 1e-6 && !livingPersons(a).includes(hp));
+}
+{
+  // N08–N10: the validator holds the tree; explain reads a list as meets does; an unknown scope is an error and not met
+  const src = {get: () => 100};
+  check('N08: группа не списком, пустая группа, лишние поля — ошибки; проверка не падает', reqErrors({all: {fact: 'pop', op: '>', value: 0}}).length === 1 && reqErrors({all: []}).length === 1 && reqErrors({fact: 'pop', op: '>', value: 0, extra: 1}).length === 1 && meets({all: {fact: 'pop', op: '>', value: 0}}, src) === false);
+  check('N09: область только town/realm; чужая — ошибка и не выполняется', reqErrors({fact: 'built', arg: 'field', op: '=', value: true, scope: 'galaxy'}).length === 1 && meets({fact: 'built', arg: 'field', op: '=', value: true, scope: 'galaxy'}, {get: () => true}) === false);
+  const r = {any: [[C('pop', '>', 0), C('pop', '<', 0)]]};
+  check('N10: список внутри группы — ошибка; читается как «все»: проверка и объяснение сходятся', reqErrors(r).length === 1 && meets(r, src) === explain(r, src)[0].ok);
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

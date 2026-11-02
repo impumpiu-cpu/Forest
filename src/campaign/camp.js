@@ -239,7 +239,7 @@ function spawnFoe(w) {
   if (F.boss && group.length) {
     const own = group.filter(g => g.species === F.boss.species), b = (own.length ? own : group).slice().sort((p, q) => maxHp(q) - maxHp(p))[0];   // its own kind, if it came
     b.special = {...b.special}; for (const [id, v] of Object.entries(F.boss.add || {})) b.special[id] = (b.special[id] ?? 5) + v;
-    refreshBody(b); b.hp = maxHp(b); b.name = F.boss.name; b.boss = true; C.boss = b;
+    refreshBody(b); b.hp = maxHp(b); b.name = F.boss.name; b.boss = true; b.person = F.person || null; C.boss = b;   // (the person of the world it is: atlas/persons.js)
     // grown, it is worth more than the budget bought: the weakest of its retinue go, while what is left still covers the budget
     trimBand(w, group, budget, CAMP.boss.atLeast);
     // the boss's aura (agents/auras.js): its side stands while it stands; its band's leader is an officer who holds to the end
@@ -365,7 +365,7 @@ export function campOutcome(w) {
   const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;
   // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
   const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
-    name: o.name, gender: o.gender, race: o.species, people: o.people || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
+    name: o.name, gender: o.gender, race: o.species, people: o.people || null, person: o.person || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
     hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, wounds: (o.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), from: S.foe?.kind || null, will: o.captive.will,
     gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(gearToken))].filter(id => !!gearDef(id)), body: (b => (b ? gearToken(b) : 'clothes'))(allItems(o).find(it => itemOf(it).slot === 'body'))},
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));

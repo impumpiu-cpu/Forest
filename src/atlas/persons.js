@@ -13,7 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {SUCCESSION} from '../data/polities.js';
 
 export const personOf = (a, id) => (id == null ? null : (a.persons || []).find(p => p.id === id) || null);
-export const livingPersons = a => (a.persons || []).filter(p => p.alive);
+export const livingPersons = a => (a.persons || []).filter(p => p.alive && !p.inCount);   // (one back in the crowd is counted with its town, not as a person)
 export const personLabel = p => (p.title ? `${p.title[0]} ${p.name}` : p.name);
 export const ageOf = (a, p) => (a.hist?.year ?? 0) - p.born;
 
@@ -58,6 +58,7 @@ export function upgradePersons(a) {
       if (!h || h.person != null) continue;
       const race = WORLD_PEOPLES_RACE(r.people);
       const p = newPerson(a, {name: h.name, g: h.f ? 'f' : 'm', species: race, at: seat ? {kind: 'town', id: seat.id} : null});
+      p.extra = true;   // (never named out of a town's count: it goes back into none)
       K.court[o] = {person: p.id, since: h.since ?? H.year, until: h.until ?? H.year};
     }
   }
@@ -72,10 +73,24 @@ const WORLD_PEOPLES_RACE = people => WORLD_PEOPLES.get(people).race;
 // counts that never hold the same head twice; a person dead is not put back (it left the count when it was named)
 import {takeHeads, groupSize} from './population.js';
 export function nameOut(a, p, t) {
-  if (!t || !t.alive || !(t.pop > 0)) return 0;
+  if (!hasGrown(a, t, p.species)) return 0;
   const G = takeHeads(a, t, 1, {race: p.species, band: 1, how: 'named'});
   return groupSize(G);
 }
+// a person off its office goes back into the crowd of its town (the court's holder whose years ran out): one of its race in its
+// band of age back into the count, and the person is no longer followed apart — alive, but of the town (`inCount`); it is never
+// named out twice as the same record
+export function backToCrowd(a, p, t) {
+  if (!p || !p.alive || p.inCount) return false;
+  const [ad, old] = bandEdges(p.species), age = ageOf(a, p), band = age < ad ? 0 : age < old ? 1 : 2;
+  if (t?.alive && !p.extra) addHeads(a, t, p.species, 1, band);
+  p.inCount = true; p.at = null;
+  return true;
+}
+import {addHeads, bandEdges} from './population.js';
+// is there a grown one of this race in the town to be named (a whole one: the count is fractional, a person is not)
+import {headsOf} from './population.js';
+export const hasGrown = (a, t, race) => !!t && !!t.alive && t.pop > 0 && (headsOf(a, t)[race]?.[1] || 0) >= 1;
 
 // where a person is: {kind, id} → the town, the lair or the party, or null
 export function whereIs(a, p) {
@@ -111,11 +126,26 @@ export function personDies(a, p, how, say = () => {}, ctx = {}) {
 // and what it held by its own power goes, as at death; it comes back only by a rule of its own (none yet) → true if taken now
 export function personCaptured(a, p, by, say = () => {}) {
   if (!p || !p.alive || p.captive) return false;
-  p.captive = {year: a.hist?.year ?? 0, by};
+  const seat = ruledBy(a, p);
+  p.captive = {year: a.hist?.year ?? 0, by, seat: seat ? {kind: 'people' in seat ? 'realm' : 'lair', id: seat.id} : null};   // (where it ruled: it may come back to it)
   loseChannels(a, p, say, {captured: true});
   rulerFell(a, p, 'captured', say, {captured: true});
   p.at = {kind: by, id: null};
   return true;
+}
+// a captive's fate in the caravan (campaign/: a member with `person` is this person): 'escaped' or 'freed' — free again, back
+// at the head of its lair if that lair still waits for a leader, else loose in the world; 'dead' — dead by the caravan's
+// hand; 'sold' — a slave of the town that bought it; 'taken' — led off by raiders, a captive of no one in particular
+export function memberFate(a, m, how, town = null) {
+  if (m?.person == null) return;
+  const p = personOf(a, m.person); if (!p || !p.alive) return;
+  if (how === 'dead') { personDies(a, p, 'caravan'); return; }
+  if (how === 'sold') { p.captive = {...(p.captive || {}), by: 'town', year: a.hist?.year ?? 0}; p.at = town ? {kind: 'town', id: town.id} : null; return; }
+  if (how === 'taken') { p.captive = {...(p.captive || {}), by: 'raiders', year: a.hist?.year ?? 0}; p.at = null; return; }
+  // escaped, freed: free
+  const seat = p.captive?.seat, l = seat?.kind === 'lair' ? (a.lairs || []).find(x => x.id === seat.id) : null;
+  p.captive = null;
+  if (l?.alive && !l.leader) { l.leader = p; l.heirAt = null; moveTo(p, 'lair', l.id); } else p.at = null;
 }
 
 // ── the persons on the march. A ruler whose profile says it leads (data/polities.js ruler.leads) rides with the host its

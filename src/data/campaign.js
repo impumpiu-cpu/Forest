@@ -62,12 +62,15 @@ export const CAMPAIGN = {
   goal: {near: 0.22, far: 0.4, wide: [0.06, 0.6]},
   // the campaign gives up after this many years
   maxYears: 25,
-  // what a fight of the caravan does to the world (campaign/march.js worldOutcome): a world party (an army, a raid, a leader's
-  // band) met in the bubble loses the share of its men the scene's foes lost (killed / came) when the caravan wins, and `lostShare`
-  // of it when the caravan loses; the quick mode has no scene — its own fate: `auto.won` / `auto.lost` of the party, the named one
-  // (a leader, a chief) dead when the caravan wins (`auto.boss`), standing when it loses. On the local map the named one's own
-  // fate rules: dead — dead; bound — a captive of the caravan, its seat freed; fled or stood — alive
-  scene: {lostShare: 0.1, auto: {won: 0.5, lost: 0.1, boss: 'dead'}},
+  // what a fight of the caravan does to the world (campaign/march.js worldOutcome). The scene's foes ARE that many of the world
+  // party met in the bubble (an army, a raid, a leader's band; the rest of it did not fight): its dead are the scene's dead, its
+  // taken are the scene's taken — the very ones that walk on with the caravan — whoever won; nothing is healed after the scene
+  // (the scene's dead are dead) and the party's beasts and golems fall in the same share, rounded. A party the caravan beat turns
+  // home. The quick mode has no scene — its own fate: `auto.won` / `auto.lost` of the party dead, the named one (a leader, a
+  // chief) dead when the caravan wins (`auto.boss`), standing when it loses. On the local map the named one's own fate rules:
+  // dead — dead; bound and led off — a captive of the caravan, its seat freed; bound but left (no room) — fled; fled or stood —
+  // alive. Applied once a fight (K.partyHit)
+  scene: {auto: {won: 0.5, lost: 0.1, boss: 'dead'}},
 };
 
 // game a cell's beasts give (data/species.js ids) — weight of each against a deer

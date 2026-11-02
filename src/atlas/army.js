@@ -72,6 +72,21 @@ export function armyLosses(p, share, rnd, battle = null) {
   refreshArmy(p);
 }
 
+// the dead of a scene the caravan played (campaign/march.js worldOutcome): `dead` of its men lie dead, `taken` walk off bound —
+// no herbs (the scene's dead are dead), its beasts and golems in the same share, rounded; its levy's composition follows
+export function sceneLosses(a, p, dead, taken) {
+  const men = Math.max(0, p.men), gone = Math.min(men, Math.max(0, dead) + Math.max(0, taken));
+  if (!(gone > 0) || !(men > 0)) return 0;
+  const share = gone / men, keep = 1 - share;
+  p.men = men - gone;
+  if (p.group) for (const b of Object.values(p.group)) for (let i = 0; i < 3; i++) b[i] *= keep;
+  const trim = list => { for (const [sp, n] of Object.entries(list || {})) { const left = Math.round(n * keep); if (left > 0) list[sp] = left; else delete list[sp]; } };
+  trim(p.warBeasts); trim(p.wild);
+  if (p.golems) p.golems = p.golems.slice(0, Math.round(p.golems.length * keep));
+  refreshArmy(p);
+  return gone;
+}
+
 export function returnArmy(a, p) {
   if (p.returned) return;
   p.returned = true;
