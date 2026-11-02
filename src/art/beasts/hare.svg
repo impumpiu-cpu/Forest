@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- заяц: круглое тело, длинные уши; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 74Q16 52 40 50Q62 50 66 68Q66 84 48 86H26Q18 84 18 74Z"/><circle cx="18" cy="70" r="7" fill="light" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M58 56Q60 42 72 42Q84 44 84 56Q82 66 70 66Q60 66 58 56Z"/><path class="up" fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M64 44Q58 22 64 12Q72 22 70 44Z"/><path class="up" fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M72 44Q74 20 82 14Q86 28 76 46Z"/><path class="rest" fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M64 46Q50 40 40 46Q52 50 64 50Z"/><circle class="figure" cx="76" cy="52" r="2.6" fill="ink"/><path class="up" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M56 78Q66 80 72 86H54Z"/>
+</svg>

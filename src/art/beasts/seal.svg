@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тюлень: гладкое тело, ласты; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 78Q4 66 18 70Q30 60 52 58Q74 56 84 68Q92 78 84 86H30Q10 88 6 78Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M10 74L2 66L4 82Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M70 64Q72 46 84 46Q96 48 96 60Q94 70 84 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M56 82L64 92L70 84Z"/><circle class="figure" cx="84" cy="56" r="2.6" fill="ink"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="1.5" d="M92 62L100 60M92 64L100 66"/>
+</svg>

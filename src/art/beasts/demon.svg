@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- демон: рогатый, багровый, крылья, огонь у ног; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M34 46Q14 22 2 30Q12 36 8 46Q18 44 22 54Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 46Q86 22 98 30Q88 36 92 46Q82 44 78 54Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 50Q30 34 50 32Q70 34 70 50L66 84H34Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 30Q36 12 50 12Q64 12 64 30Q62 40 50 42Q38 40 36 30Z"/><path fill="bone" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 18Q28 8 32 0Q36 10 42 14ZM62 18Q72 8 68 0Q64 10 58 14Z"/><g class="figure" fill="#ffd36a"><path d="M42 24L48 26L42 28Z"/><path d="M58 24L52 26L58 28Z"/></g><path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M26 92Q30 78 38 84Q42 74 50 82Q58 74 62 84Q70 78 74 92Z"/>
+</svg>

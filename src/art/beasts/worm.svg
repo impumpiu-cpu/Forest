@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- червь: кольчатое тело из земли, пасть с зубами; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="soil" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M2 90Q20 76 40 90Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M14 88Q16 40 50 30Q82 24 90 46Q94 58 84 62Q70 64 66 50Q60 44 50 50Q36 60 36 88Z"/><path class="figure" fill="none" stroke="ink" stroke-linecap="round" stroke-width="3" d="M22 70H38M24 56L40 60M34 44L44 52M56 34L60 46M70 30L72 42"/><path fill="#3a1a1a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M80 46Q94 44 92 56Q86 60 80 54Z"/><path class="detail" fill="light" d="M84 46L86 50L88 46ZM84 56L86 52L88 56Z"/>
+</svg>

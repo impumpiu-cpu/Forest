@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- верблюд: горб, длинная шея; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<g class="up"><rect x="28" y="58" width="5" height="30" rx="2.5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="36" y="58" width="5" height="30" rx="2.5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="62" y="58" width="5" height="30" rx="2.5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="70" y="58" width="5" height="30" rx="2.5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/></g><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 52Q18 40 32 40Q36 22 48 22Q58 22 62 40H66Q74 40 76 50L74 64Q54 68 36 66Q18 64 18 52Z"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M68 46Q76 30 76 18Q78 10 88 10Q98 12 98 18L90 22L84 24Q84 36 76 52Z"/><circle class="figure" cx="88" cy="14" r="2.2" fill="ink"/>
+</svg>
