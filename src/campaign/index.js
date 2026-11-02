@@ -2,8 +2,9 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/history.js';
-import {caravanDay, ended, finished, alive} from './march.js';
+import {caravanDay, ended, finished, alive, die} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
+import {personOf, agedOut} from '../atlas/persons.js';
 
 export {newCampaign, capitals} from './start.js';
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
@@ -22,9 +23,18 @@ export function stepCampaign(a) {
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
   K.track = []; K.seasonFrom = K.day;   // (the camps of this season are all kept for the screen: campaign/fight.js play)
+  const spring = a.hist.season === 0;
   stepHistory(a, () => caravanDay(a, K, K.day));
+  if (spring && !ended(K)) agePersons(a, K);
   if (ended(K)) finish(a, K);
   return !finished(K);
+}
+
+// the persons of the world walking with the caravan (a member with `person`: a captive, one unbound) are the caravan's to
+// count: the world's spring (atlas/persons.js stepPersons) leaves them to it, and here age takes them as members — one death,
+// the member's, and the person dies with it (campaign/march.js die → memberFate)
+export function agePersons(a, K) {
+  for (const m of alive(K)) { if (m.person == null) continue; const p = personOf(a, m.person); if (p && agedOut(a, p)) die(a, K, m, 'умер от старости'); }
 }
 
 // the whole campaign at once (tests, headless); at most `seasons`

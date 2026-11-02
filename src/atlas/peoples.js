@@ -244,19 +244,29 @@ export function arrive(a, era, rnd, say) {
       const empty = j => Math.max(0, 1 - a.peoples.filter(o => o !== pe).reduce((s, o) => s + o.u[j], 0));
       const score = j => fit[j] * (mode === 'far' ? 0.3 + far(j) : 1) * (P.arrive.free ? 1 - P.arrive.free + P.arrive.free * empty(j) : 1) * (0.8 + 0.2 * ((j * 7919) % 13) / 13);
       const order = [...fit.keys()].filter(j => fit[j] > 0.3 && (mode !== 'coast' || coast(j))).sort((p, q) => score(q) - score(p));
-      for (const j of order) {
-        if (picks.some(q => Math.hypot(q % F.W - j % F.W, ((q / F.W) | 0) - ((j / F.W) | 0)) < F.W / 4)) continue;
-        const i = bestSite(a, pe, j, rnd);
-        if (i < 0) continue;
-        picks.push(j);
-        for (const [dx, dy] of [[0, 0], ...DIRS8]) {
-          const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
-          if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = TL.band;
+      // the bands keep apart (TOWN_LIFE.apart): from their own people's, and from every town that stands — the elves' and the
+      // dwarves' bands do not all land in one corner; only when no such land is left does a band take the best there is
+      const cd = (j, x, y) => Math.hypot(j % F.W - x, ((j / F.W) | 0) - y);
+      const nearOwn = j => picks.some(q => cd(j, q % F.W, (q / F.W) | 0) < F.W * TL.apart.own);
+      const nearAny = j => a.towns.some(t => t.alive && cd(j, t.x / F.c, t.y / F.c) < F.W * TL.apart.others);
+      let i = -1, pick = -1;
+      for (const strict of [true, false]) {
+        for (const j of order) {
+          if (nearOwn(j) || (strict && nearAny(j))) continue;
+          i = bestSite(a, pe, j, rnd);
+          if (i >= 0) { pick = j; break; }
         }
-        const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t);
-        say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
-        break;
+        if (pick >= 0) break;
       }
+      if (pick < 0) continue;
+      const j = pick;
+      picks.push(j);
+      for (const [dx, dy] of [[0, 0], ...DIRS8]) {
+        const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
+        if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = TL.band;
+      }
+      const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t);
+      say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
     }
     if (!picks.length) say(`${cap1(P.label)} не нашли в этом мире земли себе по душе.`);
   }

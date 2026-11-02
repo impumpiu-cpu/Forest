@@ -207,10 +207,11 @@ export function stepOff(a, party, t) {
 }
 
 // ── a year of the persons (spring): age takes those whose years are out. The lairs' leaders are counted by their own
-// stream in atlas/leaders.js (LEADER.life) — here the rest: a realm's ruler, its court
+// stream in atlas/leaders.js (LEADER.life); one with the caravan — a captive, one unbound — by the caravan, which owns its
+// record (campaign/index.js agePersons: the member dies, and the person with it); here the rest: a realm's ruler, its court
+export const agedOut = (a, p) => p.alive && p.dies != null && (a.hist?.year ?? 0) >= p.dies;
 export function stepPersons(a, say) {
   if (!a.persons || a.hist.season !== 0) return;
-  const y = a.hist.year;
-  for (const p of a.persons) if (p.alive && p.dies != null && y >= p.dies && !(a.lairs || []).some(l => l.leader?.id === p.id)) personDies(a, p, 'age', say);
+  for (const p of a.persons) if (agedOut(a, p) && p.at?.kind !== 'caravan' && !(a.lairs || []).some(l => l.leader?.id === p.id)) personDies(a, p, 'age', say);
   for (const p of a.persons) if (p.alive && p.crowd && !p.inCount && p.at?.kind === 'town') backToCrowd(a, p, whereIs(a, p));   // (one off its office that found itself at a town: into its count)
 }

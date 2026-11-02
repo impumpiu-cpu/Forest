@@ -535,6 +535,68 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   check('B04: связаны двое, уведён один — войско меньше на одного; второй ушёл', Math.abs(p.men - 99) < 1e-9 && p.taken === 1, `men ${p.men}`);
 }
 
+// ── the fourth review (C01–C02): the named person at a host's head is counted apart — the scene's one body of it is not a man of
+//    the host too; a person walking with the caravan dies of age as a member, once
+{
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  const {returnArmy: back} = await import('../src/atlas/army.js');
+  const cases = [['погиб только вождь', {fate: 'dead', killed: 1, led: 0, member: false}, 100, false],
+    ['пленён только вождь', {fate: 'bound', killed: 0, led: 1, member: true}, 100, true],
+    ['погиб боец, вождь жив', {fate: 'stood', killed: 1, led: 0, member: false}, 99, true],
+    ['погибли оба', {fate: 'dead', killed: 2, led: 0, member: false}, 99, false],
+    ['вождь связан, но не уведён', {fate: 'bound', killed: 0, led: 0, member: false}, 100, true]];
+  for (const [name, c, menAfter, aliveAfter] of cases) {
+    const a = copy(), r = realmsOf(a, 'orcs')[0], seat = capitalOf(a, r.id), goal = a.towns.find(x => x.alive && x !== seat).i;
+    seat.heads = {orc: [0, 1000, 0]}; sync(seat); seat.book = null;
+    const chief = makeRuler(a, r), army = sendArmy(a, seat, goal, 100, {owner: r.id}); moveTo(chief, 'party', army.id);
+    const total = () => seat.pop + Math.max(0, army.men) + (chief.alive && !chief.captive ? 1 : 0);   // (a captive chief is the caravan's: gone from the realm's count, as the led away are)
+    const K = {day: 1, log: [], members: c.member ? [{id: 1, name: chief.name, alive: true, captive: {since: 1}, person: chief.id}] : [], stats: {}, fights: [{mode: 'local', foes: 101, killed: c.killed, taken: c.led + (c.fate === 'bound' ? 1 : 0), led: c.led, boss: {came: true, fate: c.fate}}]};
+    worldOutcome(a, K, {party: army.id, kind: 'army', person: chief.id, boss: {name: chief.name}}, true);
+    const lost = 1000 - total();
+    check(`C01 (${name}): бойцов ${menAfter}, вождь ${aliveAfter ? 'жив' : 'мёртв'}, из тысячи не стало ровно столько, сколько ушло`, Math.abs(army.men - menAfter) < 1e-9 && chief.alive === aliveAfter && Math.abs(lost - (c.killed + c.led)) < 1e-9, `men ${army.men}, вождь ${chief.alive}, пленник ${!!chief.captive}, недостаёт ${lost}`);
+    back(a, army);
+    check(`C01 (${name}): войско дома — город + войско + вождь + книга = 1000`, Math.abs(seat.pop + (chief.alive && !chief.inCount && !chief.captive ? 1 : 0) + (seat.book?.war || 0) + (seat.book?.taken || 0) + (c.fate === 'dead' ? 1 : 0) + (chief.captive ? 1 : 0) - 1000) < 0.11, `pop ${seat.pop}, книга ${JSON.stringify(seat.book)}`);
+  }
+}
+{
+  const {stepPersons, personOf: pOf} = await import('../src/atlas/persons.js');
+  const {agePersons} = await import('../src/campaign/index.js');
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  for (const way of ['в плену', 'без пут']) {
+    const a = copy(), l = lairOf(a, 'goblins'), p = l.leader || lead(a, l);
+    const m = {id: 1, name: p.name, gender: 'm', race: p.species, alive: true, hp: 1, role: 'captive', person: p.id, captive: {since: 1, bonds: 'rope'}, gear: {hand: [], body: null}};
+    const K = {day: 2, members: [m], stats: {}, cargo: {}, beasts: [], vehicles: [], log: [], fights: [{mode: 'local', foes: 5, killed: 0, taken: 1, led: 1, boss: {came: true, fate: 'bound'}}]};
+    a.campaign = K;
+    worldOutcome(a, K, {person: p.id, boss: {name: p.name}}, true);
+    if (way === 'без пут') { const {memberFate} = await import('../src/atlas/persons.js'); m.captive = null; m.role = 'former'; m.former = {since: 2}; memberFate(a, m, 'unbound'); }
+    p.dies = a.hist.year; a.hist.season = 0;
+    stepPersons(a, say);
+    check(`C02 (${way}): весна мира не трогает личность при караване — жива, участник жив`, p.alive && m.alive && p.at?.kind === 'caravan');
+    agePersons(a, K);
+    check(`C02 (${way}): караван ведёт её смерть: участник умер от старости, личность мертва, одна запись`, !m.alive && m.died?.why?.includes('старости') && !p.alive && p.died?.how === 'caravan' && a.persons.filter(x => x.id === p.id).length === 1, `${m.died?.why}, ${JSON.stringify(p.died)}`);
+    agePersons(a, K); stepPersons(a, say);
+    check(`C02 (${way}): повтор — ничего`, !m.alive && !p.alive && a.persons.filter(x => x.id === p.id).length === 1);
+  }
+  // sold to a town: the person is the town's, the member's record is closed — the world's spring takes it, the record stays closed
+  const a = copy(), l = lairOf(a, 'goblins'), p = l.leader || lead(a, l), t = a.towns.find(x => x.alive);
+  const {memberFate, personCaptured} = await import('../src/atlas/persons.js');
+  personCaptured(a, p, 'caravan', () => {});
+  const m = {id: 1, name: p.name, alive: false, left: {sold: true}, person: p.id}; memberFate(a, m, 'sold', t);
+  p.dies = a.hist.year; a.hist.season = 0; stepPersons(a, say);
+  check('C02 (продан в город): личность при городе умирает весной мира; запись каравана закрыта и не оживает', !p.alive && p.died?.how === 'age' && !m.alive);
+}
+
+// ── the founding bands keep apart (TOWN_LIFE.apart): the first town of each elder people and the second of its own are no nearer
+//    than `others` / `own` of the coarse grid's width to one another — the elves and the dwarves do not all land in one corner
+{
+  const a = copy(), {TOWN_LIFE: T} = await import('../src/data/peoples.js'), F = a.fauna;
+  const elder = WORLD_PEOPLES.all().filter(P => P.era === 'elder').map(P => P.id), first = {};
+  for (const t of a.towns) if (elder.includes(t.people) && (first[t.people] ||= []).length < 2) first[t.people].push(t);
+  const pts = Object.values(first).flat(); let worst = Infinity, pair = '';
+  for (const t of pts) for (const u of pts) if (t !== u) { const d = Math.hypot(t.x - u.x, t.y - u.y) / F.c / F.W, lim = t.people === u.people ? T.apart.own : T.apart.others; if (d - lim < worst - 0) { worst = d - lim; pair = `${t.people} ${Math.round(t.x)},${Math.round(t.y)} — ${u.people} ${Math.round(u.x)},${Math.round(u.y)}`; } }
+  check('первые города древних народов стоят врозь: не ближе apart.own / apart.others ширины сетки', pts.length >= 4 && worst >= -1e-9, `${pts.length} городов, худшая пара ${pair} (${worst >= 0 ? 'в норме' : 'ближе на ' + Math.round(-worst * F.W) + ' кл. сетки'})`);
+}
+
 // ── the strangers' coming (atlas/diplomacy.js mingle, atlas/demography.js migrate): the operation never passes DIPLOMACY.mingleMax
 //    and makes nobody — the cap is on the coming; what the standing do afterwards (atlas/demography.js lifeYear) is their own
 //    races' births and deaths, and no cap on it is claimed (tools/atlas-check.mjs checks only that the count stays a count)

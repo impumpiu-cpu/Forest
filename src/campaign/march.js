@@ -593,7 +593,11 @@ export function worldOutcome(a, K, t, win) {
     if (p && !(K.partyHit ||= {})[`${p.id}:${K.day}`]) {
       K.partyHit[`${p.id}:${K.day}`] = true;
       const men = p.kind === 'army' ? Math.max(0, p.men) : null;
-      const dead = local ? rec.killed || 0 : (win ? S.auto.won : S.auto.lost) * (men ?? 1), taken = local ? rec.led || 0 : 0;
+      // (the person at its head is counted apart — out of its town's count, not among `men`: its death or capture is its own
+      // event below, so the scene's one body of it is not a man of the host as well)
+      const named = local && t.person != null && rec.boss?.came, bossDead = named && rec.boss.fate === 'dead' ? 1 : 0;
+      const bossLed = named && rec.boss.fate === 'bound' && K.members.some(m => m.alive && m.captive && m.person === t.person) ? 1 : 0;
+      const dead = local ? Math.max(0, (rec.killed || 0) - bossDead) : (win ? S.auto.won : S.auto.lost) * (men ?? 1), taken = local ? Math.max(0, (rec.led || 0) - bossLed) : 0;
       if (p.kind === 'army') { const gone = sceneLosses(a, p, dead, taken); if (gone > 0) p.result = win ? 'beaten' : 'won'; }
       else if (local) { const n = Math.max(1, rec.foes || 1); p.might = Math.max(0, (p.might || 0) * (1 - Math.min(1, (dead + taken) / n))); }
       else p.might = Math.max(0, (p.might || 0) * (1 - dead));
