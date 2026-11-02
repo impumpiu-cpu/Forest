@@ -20,6 +20,7 @@ import {WORLD_PEOPLES, placeNeed} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES} from '../src/data/townBuildings.js';
 import {placeHas, townFx, room} from '../src/atlas/towns.js';
+import {shareOfPeople} from '../src/atlas/population.js';
 import {ROADS, SEA} from '../src/data/roads.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
@@ -150,7 +151,9 @@ function townsCheck(a, tag) {
   if (razed !== (a.ruins || []).length) relBad ||= `сожжено ${razed}, пепелищ ${(a.ruins || []).length}`;
   const battles = Object.values(a.rel || {}).reduce((x, r) => x + (r.war?.battles || 0), 0) + a.chronicle.filter(c => /Битва под|сожгли/.test(c.text)).length;
   if (battles && !(a.f.barrows && a.f.barrows.some(v => v > 0))) relBad ||= 'битвы были, курганов нет';
-  for (const t of a.towns) for (const v of Object.values(t.folk || {})) if (v > DIPLOMACY.mingleMax + 1e-9) relBad ||= `${t.name}: чужих больше предела`;
+  // the strangers of a town — the races of other peoples among its people (atlas/population.js) — come by trade and moving up to
+  // the cap for each people (the levy and the deaths shift the shares a little after)
+  for (const t of a.towns) if (t.alive && t.pop > 0) for (const P of WORLD_PEOPLES.all()) if (P.id !== t.people && shareOfPeople(a, t, P.id) > DIPLOMACY.mingleMax + 0.1) relBad ||= `${t.name}: чужих (${P.label}) больше предела: ${Math.round(shareOfPeople(a, t, P.id) * 100)}%`;
   // realms: every town holds to one of its people; a seat is its realm's; one throne hall a realm
   for (const t of a.towns) if (t.alive) { const r = a.realms.find(x => x.id === t.realm); if (!r) relBad ||= `${t.name}: без державы`; else if (r.people !== t.people) relBad ||= `${t.name}: держава чужого народа`; }
   for (const r of a.realms) { const thrones = a.towns.filter(t => t.alive && t.realm === r.id && t.built.includes('throne')); if (thrones.length > 1) relBad ||= `${r.name}: тронных залов ${thrones.length}`; if (thrones.length && !thrones[0].capital) relBad ||= `${r.name}: тронный зал не в столице`; }

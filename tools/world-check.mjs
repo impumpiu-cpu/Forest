@@ -469,7 +469,7 @@ scene_('W23b', 'сколько пришло — по плотности: гус�
   const B = CAMP.foe, mid = B.skirmish[0] + 0.5 * (B.skirmish[1] - B.skirmish[0]);
   if (Math.abs(thin - mid * D.lo) > 1e-9 || Math.abs(thick - mid * D.hi) > 1e-9) return `пределы: ${thin} / ${thick}`;
   if (w({kind: 'army', strength: 3}) !== w({kind: 'army', strength: 0.3})) return 'войско зависит от плотности';
-  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, leaderLair: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, leaderLair: 1})) return 'именной бой зависит от плотности';
+  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, person: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, person: 1})) return 'именной бой зависит от плотности';
   return true;
 });
 scene_('W23c', 'что пришло в пузыре, то и в бою: второй вид, пул культа, логово (его пленные), главарь — не теряются по дороге', () => {

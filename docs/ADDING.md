@@ -131,7 +131,7 @@
 Запись в `RACES` (`data/races.js`): `home` (насколько ей подходит каждый биом — обязательно), физиология `body`, множители `mods` (`hunger`, `cold`, `sleep`, `regen`…), врождённые черты `innate`, мировоззрение `align` (`order`, `mercy`, `spread`), веса ценностей `values`, строка таблицы отношений `rel`, `settle` (вес среди переселенцев; 0 — сама не приходит), `names: personNames('<id>')`. Подрасы — `peoples` со своими `mods` и `innate`.
 
 Ещё нужно:
-- тело и SPECIAL — строка в `data/balance/creatures.js`, сдвиги подрас — в её `peoples`; затем `npm run arena:calibrate`;
+- тело и SPECIAL — строка в `data/balance/creatures.js` (разновидность расы — своя строка, подрас нет); затем `npm run arena:calibrate`;
 - имена — строка в `PERSON` (`data/names.js`): мужские, женские, прозвища;
 - новая линия `rel` — запись в `KINS`, столбец в `COLS` и строка в `ROWS` (`data/relations.js`);
 - языки — строка в `SPEAKS` (`data/tongues.js`);
