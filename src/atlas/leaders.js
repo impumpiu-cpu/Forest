@@ -50,7 +50,8 @@ export function raise(a, l, r) {
   const roll = sp.special ? bossSpecial(sp, r, {stats: [], add: [0, 0], cap: LEADER.cap}) : {special: null};
   if (roll.special) for (const id of LEADER.stats) roll.special[id] = Math.min(LEADER.cap, roll.special[id] + add[id]);
   const y = a.hist.year;
-  l.leader = newPerson(a, {name, title, species: L.species, race: l.race || null, g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), at: {kind: 'lair', id: l.id}});
+  // (a tower's master is a necromancer by ability, of the race he was — `race`; his body on the local map is the necromancer's template)
+  l.leader = newPerson(a, {name, title, species: L.species, race: l.race || null, g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), at: {kind: 'lair', id: l.id}, abilities: L.domain ? ['necromancy'] : []});
   l.leader.since = a.hist.step;   // (born: the year it rose — a leader is grown past its kind when it rises)
   l.heirAt = null;
   return `${cap1(L.label)} «${l.name}» ${wherePhrase(a, l.i)}: поднялся ${title[0].toLowerCase()} — ${name}, ${l.race ? necroLabel(l.race) : sp.label} сильнее всех своих. Теперь ${L.domain ? 'мертвецы' : sp.plural} оттуда не бродят, а ходят за ним.`;
