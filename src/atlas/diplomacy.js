@@ -266,9 +266,11 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     const own = new Set(Object.keys(WORLD_PEOPLES.get(t.people).kin || {}));
     for (const [race, sh] of Object.entries(townKin(a, t))) {
       if (own.has(race) || !(sh > 0)) continue;
-      const n = Math.min(sh, ex) * t.pop, G = takeHeads(a, t, n, {race, how: 'expelled'});
+      // (nowhere to go — no town takes their race — they stay: nobody leaves the world by being unwanted)
       const home = towns.filter(o => o !== t && WORLD_PEOPLES.get(o.people).kin?.[race]).sort((p, q) => Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y))[0];
-      if (home) addGroup(a, home, G);
+      if (!home) continue;
+      const n = Math.min(sh, ex) * t.pop, G = takeHeads(a, t, n, {race, how: 'expelled'});
+      addGroup(a, home, G);
       if (sh >= D.folkSeen && sh - n / Math.max(1, t.pop) < D.folkSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${SPECIES.get(race).plural} уходят.`);
     }
   }

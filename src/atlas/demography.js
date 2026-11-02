@@ -60,10 +60,10 @@ export function breedOf(a, t) {
 export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
   const A = TL.age, P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, H = headsOf(a, t), P0 = Math.max(0, t.pop);
   const health = fx.health || 0, br = brawlRate(a, t, fx);
-  const V = {born: 0, dead: 0, brawl: 0, want: 0};
+  const V = {born: 0, came: 0, dead: 0, brawl: 0, want: 0};
   for (const [k, b] of Object.entries(H)) {
     const L = lifeOf(k, health), fight = Math.min(1, br * (bodyOf(k).brawled ?? 1)), [ad, old] = bandEdges(k);
-    const n0 = b[0] + b[1] + b[2];
+    const n0 = b[0] + b[1] + b[2], grown = b[1];
     for (let i = 0; i < 3; i++) {
       const n = b[i]; if (!(n > 0)) continue;
       const dead = n * deathRate(L, bandAge(k, i, L), health);
@@ -75,11 +75,12 @@ export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
     // a year older: a share of the young grow up, of the grown grow old
     const up0 = b[0] / Math.max(1, ad), up1 = b[1] / Math.max(1, old - ad);
     b[0] -= up0; b[1] += up0 - up1; b[2] += up1;
-    // the growth: the people's births and the folk of the land, shared out by each race's share of the town × its fertility
-    // against the people's race, in the bands of TOWN_LIFE.age.bands
-    const bk = P0 > 0 ? born * (n0 / P0) * (bodyOf(k).fertility ?? ref) / ref : 0;
-    for (let i = 0; i < 3; i++) b[i] += bk * A.bands[i];
-    V.born += bk;
+    // the growth: the births — children of the grown ones of this race (none, no children), by its share and fertility against
+    // the people's race — and the folk of the land that come, in the bands of TOWN_LIFE.age.arrive
+    const gk = P0 > 0 ? born * (n0 / P0) * (bodyOf(k).fertility ?? ref) / ref : 0;
+    const births = grown > 0 ? gk * A.births : 0, came = gk - births;
+    b[0] += births; for (let i = 0; i < 3; i++) b[i] += came * A.arrive[i];
+    V.born += births; V.came += came;
   }
   sync(t);
   if (P?.kin && t.pop > 0) pullToLand(a, t);   // the land's wild tribes pull the races back a little (KIN.pull)

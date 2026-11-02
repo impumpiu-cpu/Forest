@@ -142,7 +142,7 @@ check('ни в одном живом городе нет меньше, чем д
   {
     const t = {people: 'humans', pop: 1000, age: 30}, young0 = () => (t.heads?.human?.[0] || 0);
     const v = lifeYear(null, t, 50, 10, {health: 0, housing: 0}), y1 = young0();
-    check('год жизни: родились + выжили, умершие не возвращаются; дети рождаются детьми', Math.abs(t.pop - (1000 - v.dead - v.brawl - v.want + v.born)) < 0.1 && v.born > 0 && y1 > 0 && t.age > 20 && t.age < 50, `жителей ${t.pop.toFixed(1)}, родилось ${v.born}, умерло ${v.dead}, детей ${y1.toFixed(1)}, возраст ${t.age}`);
+    check('год жизни: родились и пришли + выжили, умершие не возвращаются; дети рождаются детьми, пришедшие — по полосам', Math.abs(t.pop - (1000 - v.dead - v.brawl - v.want + v.born + v.came)) < 0.1 && v.born > 0 && v.came > 0 && y1 >= v.born && t.age > 20 && t.age < 50, `жителей ${t.pop.toFixed(1)}, родилось ${v.born}, пришло ${v.came}, умерло ${v.dead}, детей ${y1.toFixed(1)}, возраст ${t.age}`);
   }
   {
     const a = {realms: [{id: 'r1', kingdom: {ruin: {crime: 10}}}]};

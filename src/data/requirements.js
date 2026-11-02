@@ -13,7 +13,8 @@
 //
 // The old fields of the buildings' rows (data/townBuildings.js `peoples`, `kin`, `requires`, `requiresAny`, `here`, `tier`,
 // `pop`, `capital`, `needs`, `needsAny`, a recipe's `req`) are read as requirements by needsOf (below): the rows keep their
-// short form, the checker sees one shape. A row may also carry `need` — a requirement written out — which is added to them.
+// short form, the checker sees one shape. A row may also carry `need` — a requirement written out for its building — and
+// `workNeed` — for its running; a recipe's `need` is for its running.
 import {Registry} from '../core/registry.js';
 
 export const FACTS = new Registry('fact');
@@ -33,6 +34,19 @@ FACTS.registerAll([
   {id: 'capital', label: 'столица', type: 'bool'},
   {id: 'ruler', label: 'правитель жив', type: 'bool', note: 'есть ли у державы города живой правитель (atlas/persons.js)'},
 ]);
+
+// what an `arg` of a fact must be — a known id of its kind — and what an enum fact's value may be (core/requirements.js reqErrors):
+// a race of the species, a building of the catalogue, a place need, an indicator (its own, or `people:` / `kin:` / `stock:` of
+// a known id), a good of the towns; a people, an uklad. A typo is an error of data, never a share of zero
+import {SPECIES} from './species.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, PLACE_NEEDS, INDICATORS} from './townBuildings.js';
+import {WORLD_PEOPLES} from './peoples.js';
+import {POLITIES} from './polities.js';
+export const ARG_KNOWN = {
+  race: id => SPECIES.has(id), building: id => TOWN_BUILDINGS.has(id), need: id => id in PLACE_NEEDS, good: id => TOWN_GOODS.has(id),
+  id: id => { if (id in INDICATORS) return true; const [k, v] = String(id).split(':'); return k === 'people' ? WORLD_PEOPLES.has(v) : k === 'kin' ? SPECIES.has(v) : k === 'stock' ? TOWN_GOODS.has(v) : false; },
+};
+export const VALUE_KNOWN = {people: v => WORLD_PEOPLES.has(v), polity: v => POLITIES.has(v)};
 
 export const OPS = {'=': 'равно', '!=': 'не', '>': 'больше', '>=': 'не меньше', '<': 'меньше', '<=': 'не больше', in: 'одно из', 'not-in': 'ни одно из'};
 
@@ -69,8 +83,10 @@ export const litFacts = lit => ({get(fact, arg) {
   if (fact === 'stock') return lit.has(`stock:${arg}`) ? 1 : 0;
   return undefined;
 }});
-// what a recipe asks to run: its `req` (below) and its `need` written out; a building's own `req`/`need` for its works
-export const workNeeds = q => { const r = reqNeeds(q.req); return q.need ? ALL([r, q.need].filter(Boolean)) : r; };
+// the stages are apart (docs/WORLD.md «Требования»): what a building asks to be BUILT is `need` (with its short fields, needsOf);
+// what it asks to WORK is `req` and `workNeed` — a threshold of the building's rise is never copied into its running. A recipe
+// only runs: its `req` and its `need` are its work
+export const workNeeds = (x, recipe = false) => { const r = reqNeeds(x.req), w = recipe ? x.need : x.workNeed; return w ? ALL([r, w].filter(Boolean)) : r; };
 // a recipe's `req` (or a building's: the steelworks while iron ingots are in the store) as a requirement: an indicator lit,
 // 'kin:x' — the race's share, 'people:x' — the people, 'stock:g' — the good in the store; 'a|b' — either
 export function reqNeeds(req) {

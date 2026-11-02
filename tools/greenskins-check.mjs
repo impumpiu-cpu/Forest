@@ -12,7 +12,7 @@ import {recomputeMods} from '../src/settlement/mods.js';
 import {penSpace} from '../src/settlement/herd.js';
 import {raise, breakToWar} from '../src/settlement/warbeasts.js';
 import {spawnGroup} from '../src/settlement/migration.js';
-import {groupSize} from '../src/atlas/population.js';
+import {groupSize, sync} from '../src/atlas/population.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {townKin, leadKin, canBuild, townFx, roughShare, might} from '../src/atlas/towns.js';
 import {stepWarBeasts} from '../src/atlas/beasts.js';
@@ -53,8 +53,9 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   const leads = new Set(gtowns.map(x => leadKin(a, x)));
   check('в городе зеленокожих живут все виды; главный — по биому', Math.abs(sum - 1) < 0.01 && Object.keys(k).length === 5 && leads.size >= 1, `${t.name}: ${JSON.stringify(k)}; главные: ${[...leads].join(', ')}`);
   // the kinds' own: a recipe of the beast dens each, lit by the kind the town holds (data/townBuildings.js dens, KIN.least)
-  const hyenas = kin => townEconomy(a, {...t, built: ['dens'], kin: {...t.kin, ...kin}, stock: {}}, 1, {food: 100}).recipes.find(x => x.id === 'dens:hyenas').on;
-  const no = hyenas({gnoll: 0}), yes = hyenas({gnoll: 0.3});
+  // (the share is read of the composition itself, atlas/population.js: the heads are set, the sums follow)
+  const hyenas = share => { const H = JSON.parse(JSON.stringify(t.heads)); H.gnoll = [0, share * t.pop, 0]; const x = {...t, built: ['dens'], heads: H, stock: {}}; sync(x); return townEconomy(a, x, 1, {food: 100}).recipes.find(r => r.id === 'dens:hyenas').on; };
+  const no = hyenas(0), yes = hyenas(0.3);
   check('свои рецепты видов: гиены в логове зверей — только где живут гноллы', !no && yes, `без гноллов ${no}, с гноллами ${yes}`);
   const hut = {...t, built: ['yurts'], realm: t.realm}, fx = townFx(hut);
   check('не любят тесноты: шатры на 150, а не 200; грубое жильё коррупции не растит', Math.abs(fx.housing * 100 - 150) < 1e-6 && roughShare(hut) === 0, `жильё ${fx.housing * 100}, доля грубого ${roughShare(hut)}`);

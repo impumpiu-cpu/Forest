@@ -2,7 +2,7 @@
 // with `get(fact, arg, scope)` → the value, or undefined when the fact cannot be told (an empty town has no shares: a
 // comparison of a share there is not made and fails). `meets` says yes or no; `explain` says why, for the cards:
 // [{text, ok, value}] — «гноллы 4 %, нужно не больше 5 % — да».
-import {FACTS, OPS} from '../data/requirements.js';
+import {FACTS, OPS, ARG_KNOWN, VALUE_KNOWN} from '../data/requirements.js';
 
 const cmp = (op, v, want) => {
   switch (op) {
@@ -29,12 +29,14 @@ export function meets(req, src) {
   return cmp(req.op, v, req.value);
 }
 
-// why: each condition with its reading and verdict, groups as nested lists → [{text, ok, value, any?, items?}]
+// why: each condition with its reading and verdict; a group is one node whose verdict is its own children's (all — every
+// one, any — any one), so the tree of the requirement is kept and the verdict of the whole is meets' → [{text, ok, value,
+// all?, any?, items?}] (a list at the top is a list of its parts)
 export function explain(req, src, words = {}) {
   if (req == null) return [];
   if (Array.isArray(req)) return req.flatMap(r => explain(r, src, words));
-  if (req.all) return req.all.flatMap(r => explain(r, src, words));
-  if (req.any) { const items = req.any.flatMap(r => explain(r, src, words)); return [{any: true, ok: items.some(x => x.ok), items, text: items.map(x => x.text).join(' или ')}]; }
+  if (req.all) { const items = req.all.flatMap(r => explain(r, src, words)); return [{all: true, ok: items.every(x => x.ok), items, text: items.map(x => x.text).join(' и ')}]; }
+  if (req.any) { const items = req.any.flatMap(r => explain(r, src, words)); return [{any: true, ok: items.some(x => x.ok), items, text: `(${items.map(x => x.text).join(' или ')})`}]; }
   const v = src.get(req.fact, req.arg, req.scope), ok = v !== undefined && cmp(req.op, v, req.value);
   return [{text: wording(req, v, words), ok, value: v}];
 }
@@ -71,10 +73,15 @@ export function reqErrors(req, where = 'требование') {
     if (!FACTS.has(r.fact)) { errs.push(`${path}: нет факта «${r.fact}»`); return; }
     const F = FACTS.get(r.fact);
     if (F.arg && r.arg == null) errs.push(`${path}: факт «${r.fact}» просит ${F.arg}`);
+    else if (F.arg && ARG_KNOWN[F.arg] && !ARG_KNOWN[F.arg](r.arg)) errs.push(`${path}: нет такого ${F.arg}: «${r.arg}»`);
     if (!(r.op in OPS)) errs.push(`${path}: нет операции «${r.op}»`);
-    if ((r.op === 'in' || r.op === 'not-in') && !Array.isArray(r.value)) errs.push(`${path}: «${r.op}» просит список`);
-    else if (F.type === 'num' && r.op !== 'in' && r.op !== 'not-in' && typeof r.value !== 'number') errs.push(`${path}: число ждали, получили ${JSON.stringify(r.value)}`);
-    else if (F.type === 'bool' && r.op !== 'in' && r.op !== 'not-in' && typeof r.value !== 'boolean') errs.push(`${path}: да/нет ждали, получили ${JSON.stringify(r.value)}`);
+    const list = r.op === 'in' || r.op === 'not-in', vals = list ? (Array.isArray(r.value) ? r.value : null) : [r.value];
+    if (list && !vals) errs.push(`${path}: «${r.op}» просит список`);
+    else if (F.type === 'num') { for (const v of vals) if (typeof v !== 'number' || !Number.isFinite(v)) errs.push(`${path}: число ждали, получили ${JSON.stringify(v)}`); }
+    else if (F.type === 'bool') { for (const v of vals) if (typeof v !== 'boolean') errs.push(`${path}: да/нет ждали, получили ${JSON.stringify(v)}`); }
+    else if (F.type === 'enum') { for (const v of vals) if (typeof v !== 'string' || (VALUE_KNOWN[r.fact] && !VALUE_KNOWN[r.fact](v))) errs.push(`${path}: нет такого значения «${JSON.stringify(v)}» у факта «${r.fact}»`); }
+    if (F.type === 'enum' && !['=', '!=', 'in', 'not-in'].includes(r.op)) errs.push(`${path}: факт «${r.fact}» не число: «${r.op}» не годится`);
+    if (F.type === 'bool' && !['=', '!=', 'in', 'not-in'].includes(r.op)) errs.push(`${path}: факт «${r.fact}» не число: «${r.op}» не годится`);
     if (r.scope && F.scope !== 'either' && r.scope !== (F.scope || 'town')) errs.push(`${path}: факт «${r.fact}» читается только в городе`);
   };
   walk(req, where);

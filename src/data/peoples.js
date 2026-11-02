@@ -350,11 +350,11 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
   // old past `oldAt` of its life. A race lives L = from + (to − from) × (1 − e^(−health / health)) years — the town's health
   // its soft lift; a band dies at (1 / L) × (base + (its middle age / (L / 2))^hazard) a year (at most `most`), where base —
   // the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land buries its children);
-  // a year ages a band's share into the next. The growth of a town (atlas/peoples.js bornOf) is its births and the folk of
-  // its people's land that come to it: it is shared out by each race's share of the town × its fertility against the
-  // people's race, and comes in the bands `bands` [young, grown, old] — children born, and grown folk and elders off the land;
-  // a founding band comes grown
-  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, most: 0.5, oldAt: 0.7, bands: [0.35, 0.6, 0.05]}};
+  // a year ages a band's share into the next. The growth of a town (atlas/peoples.js bornOf) is two things, booked apart
+  // (t.vital born / came): its BIRTHS — `births` of it, children of the town's grown ones, shared out by each race's share of
+  // the town × its fertility against the people's race, all of them young — and the folk of its people's LAND that come to
+  // it (the rest), in the bands `arrive` [young, grown, old] as a people on the move is; a founding band comes grown
+  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, most: 0.5, oldAt: 0.7, births: 0.35, arrive: [0, 0.92, 0.08]}};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's

@@ -12,16 +12,25 @@
 import {LAIRS} from '../data/lairs.js';
 import {profileOf} from './polities.js';
 
+// a channel is held by an ABILITY of the person (atlas/persons.js `abilities`), not by its title: the dead by necromancy, the
+// beasts by summoning. The profile of a polity says which channels its seat offers (data/polities.js ruler.channels); the
+// person at the seat holds one only with the ability for it — a chief of a tower who is no necromancer raises nobody
+export const ABILITY_OF = {undead: 'necromancy', summons: 'summoning'};
+export const able = (p, kind) => !!p && (p.abilities || []).includes(ABILITY_OF[kind]);
+
+// the arts the throne of a realm asks of the one the court picks for it (data/polities.js ruler.channels)
+export const abilitiesFor = x => (profileOf(x).ruler.channels || []).map(k => ABILITY_OF[k]).filter(Boolean);
+
 // the channels a person holds now: [{kind, holder: person, of: lair | realm}]
 export function channelsOf(a, p) {
   const out = [];
-  for (const l of a.lairs || []) if (l.alive && l.leader?.id === p.id) for (const kind of profileOf(l).ruler.channels || []) out.push({kind, holder: p, of: l});
-  for (const r of a.realms || []) if (r.fallen == null && r.kingdom?.court?.ruler?.person === p.id) for (const kind of profileOf(r).ruler.channels || []) out.push({kind, holder: p, of: r});
+  for (const l of a.lairs || []) if (l.alive && l.leader?.id === p.id) for (const kind of profileOf(l).ruler.channels || []) if (able(p, kind)) out.push({kind, holder: p, of: l});
+  for (const r of a.realms || []) if (r.fallen == null && r.kingdom?.court?.ruler?.person === p.id) for (const kind of profileOf(r).ruler.channels || []) if (able(p, kind)) out.push({kind, holder: p, of: r});
   return out;
 }
 
-// is a tower's dead held: a master sits in it (its leader) — the dead rise; without one they only fade
-export const heldDead = l => !!l?.leader;
+// is a tower's dead held: a master with the ability sits in it — the dead rise; without one they only fade
+export const heldDead = l => !!l?.leader && able(l.leader, 'undead');
 
 // the holder died: each channel by its rule
 export function loseChannels(a, p, say, ctx = {}) {

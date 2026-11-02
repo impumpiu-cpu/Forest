@@ -20,9 +20,10 @@ import {attitude} from './diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {newPerson, personOf, moveTo} from './persons.js';
+import {newPerson, personOf, moveTo, nameOut} from './persons.js';
 import {rulerTitle} from './polities.js';
 import {strangersOf} from './population.js';
+import {abilitiesFor} from './control.js';
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
@@ -102,8 +103,8 @@ export function stepKingdom(a, say) {
         const used = new Set(Object.values(K.court).filter(Boolean).map(x => personOf(a, x.person)?.name).filter(Boolean));
         const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
         if (nm) {
-          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r});
-          if (seat) moveTo(p, 'town', seat.id);
+          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r, abilities: O.id === 'ruler' ? abilitiesFor(realm) : []});   // (the throne's channels: one who has their art is chosen — atlas/control.js)
+          if (seat) { moveTo(p, 'town', seat.id); nameOut(a, p, seat); }   // (one of the seat's own: out of its count — atlas/persons.js)
           K.court[O.id] = {person: p.id, since: year, until: year + years};
           tell(`${f ? 'Новая' : 'Новый'} ${O.id === 'ruler' ? rulerTitle(realm, p) : f ? O.labelF : O.label} ${name} — ${nm}.`);
         }

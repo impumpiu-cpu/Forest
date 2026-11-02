@@ -16,6 +16,7 @@ import {ATLAS_SIZES} from '../data/atlas.js';
 import {shapeCount} from './shape.js';
 import {yearsLived} from './history.js';
 import {questHint} from './calamity.js';
+import {upgradePersons} from './persons.js';
 
 export const WORLD_KIND = 'forest-world';
 // a land («Создать землю»): the atlas made to the end of its land stages, with no peoples and no history yet, and
@@ -75,6 +76,7 @@ export function loadAtlas(save) {
   if (a.hist) {
     a.hist.rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:history`));
     a.hist.rnd.state = save.histRnd;
+    upgradePersons(a);   // a world saved before the persons: its leaders and courts become persons (atlas/persons.js)
   }
   return a;
 }

@@ -36,6 +36,47 @@ export function newPerson(a, {name, g = 'm', species, race = null, title = null,
   return p;
 }
 
+// a world saved before the persons (atlas/save.js loadAtlas): the leaders of its lairs and the holders of its courts become
+// persons of the world — the same names, species, years and stats; nothing is invented beyond what the record had (a court's
+// holder gets its race's body at the seat, and an age drawn as a new one's would be). Done once; a world of the new format
+// is left as it is
+export function upgradePersons(a) {
+  a.persons ||= [];
+  const H = a.hist; if (!H) return;
+  const known = new Set(a.persons.map(p => p.id));
+  for (const l of a.lairs || []) {
+    const ld = l.leader; if (!ld || (ld.id != null && known.has(ld.id) && ld.alive != null)) continue;
+    const p = newPerson(a, {name: ld.name, title: ld.title || null, species: ld.species, race: ld.race || null, g: ld.g || 'm', born: ld.born ?? H.year, dies: ld.dies ?? null,
+      special: ld.special || null, add: ld.add || null, at: {kind: 'lair', id: l.id}, abilities: LAIRS_DOMAIN(l) ? ['necromancy'] : []});
+    p.deeds = ld.deeds || 0; if (ld.since != null) p.since = ld.since;
+    l.leader = p;
+  }
+  for (const r of a.realms || []) {
+    const K = r.kingdom; if (!K?.court) continue;
+    const seat = (a.towns || []).find(t => t.id === r.capital && t.alive);
+    for (const [o, h] of Object.entries(K.court)) {
+      if (!h || h.person != null) continue;
+      const race = WORLD_PEOPLES_RACE(r.people);
+      const p = newPerson(a, {name: h.name, g: h.f ? 'f' : 'm', species: race, at: seat ? {kind: 'town', id: seat.id} : null});
+      K.court[o] = {person: p.id, since: h.since ?? H.year, until: h.until ?? H.year};
+    }
+  }
+}
+import {LAIRS} from '../data/lairs.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
+const LAIRS_DOMAIN = l => !!LAIRS.get(l.kind)?.domain;
+const WORLD_PEOPLES_RACE = people => WORLD_PEOPLES.get(people).race;
+
+// a person named out of a town's people (a court's holder, a crowned ruler): one grown one of its race leaves the count of
+// the town (atlas/population.js, booked `named`) and lives on as the person — the town's people and its persons are two
+// counts that never hold the same head twice; a person dead is not put back (it left the count when it was named)
+import {takeHeads, groupSize} from './population.js';
+export function nameOut(a, p, t) {
+  if (!t || !t.alive || !(t.pop > 0)) return 0;
+  const G = takeHeads(a, t, 1, {race: p.species, band: 1, how: 'named'});
+  return groupSize(G);
+}
+
 // where a person is: {kind, id} → the town, the lair or the party, or null
 export function whereIs(a, p) {
   const at = p?.at; if (!at) return null;
@@ -63,6 +104,17 @@ export function personDies(a, p, how, say = () => {}, ctx = {}) {
   // then its offices: the realm's throne, the lair's leadership, a court's chair
   rulerFell(a, p, how, say, ctx);
   p.at = null;
+  return true;
+}
+
+// ── a person bound and led off (the caravan's captive, campaign/march.js): alive, but out of its seat — the office is freed
+// and what it held by its own power goes, as at death; it comes back only by a rule of its own (none yet) → true if taken now
+export function personCaptured(a, p, by, say = () => {}) {
+  if (!p || !p.alive || p.captive) return false;
+  p.captive = {year: a.hist?.year ?? 0, by};
+  loseChannels(a, p, say, {captured: true});
+  rulerFell(a, p, 'captured', say, {captured: true});
+  p.at = {kind: by, id: null};
   return true;
 }
 
@@ -98,6 +150,11 @@ export function townGone(a, t, say) {
 // to the nearest living town of its owner's realm — a person is never left at a party that is no more
 export function stranded(a, party) {
   const ps = personsAt(a, 'party', party.id); if (!ps.length) return;
+  if (party.kind === 'leader' || party.kind === 'raid' || party.kind === 'brood') {   // a lair's band: its leader makes its way back to the lair, or is lost with it
+    const l = (a.lairs || []).find(x => x.id === party.owner);
+    for (const p of ps) { if (l?.alive) moveTo(p, 'lair', l.id); else personDies(a, p, 'lost'); }
+    return;
+  }
   const home = (a.towns || []).find(t => t.id === party.from && t.alive);
   const to = home || (a.towns || []).filter(t => t.alive && (party.owner != null ? t.realm === party.owner : true)).sort((p, q) => Math.hypot(p.x - party.x, p.y - party.y) - Math.hypot(q.x - party.x, q.y - party.y))[0] || null;
   for (const p of ps) { if (to) moveTo(p, 'town', to.id); else personDies(a, p, 'lost'); }

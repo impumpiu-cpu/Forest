@@ -12,8 +12,9 @@ import {makeName} from '../data/names.js';
 import {profileOf, officeOf, rulerTitle} from './polities.js';
 import {realmLabel, realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
 import {townLabel, townFx} from './towns.js';
-import {newPerson, moveTo, personLabel} from './persons.js';
+import {newPerson, moveTo, personLabel, nameOut} from './persons.js';
 import {mulberry, seedNumber} from '../core/rng.js';
+import {abilitiesFor} from './control.js';
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const draw = a => { const r = mulberry(a.succRnd ?? seedNumber(`${a.cfg.seed}:atlas:succession`)); return {r, done: () => { a.succRnd = r.state; }}; };
@@ -34,6 +35,7 @@ export function rulerFell(a, p, how, say, ctx = {}) {
       battle: `${who} пал в бою, и «${l.name}» осталось без главаря.`,
       lair: `${who} сгинул вместе с «${l.name}».`,
       caravan: `${who} из «${l.name}» убит караваном.`,
+      captured: `${who} из «${l.name}» уведён в путах: логово без главаря.`,
       boss: null}[how] || `${who} из «${l.name}» пропал.`);
   }
   // a realm's office: the throne by the profile, a chair of the court simply emptied
@@ -44,7 +46,7 @@ export function rulerFell(a, p, how, say, ctx = {}) {
     if (o !== 'ruler') { say?.(`${cap1(p.g === 'f' ? officeLabel(o, true) : officeLabel(o))} ${name} ${p.name} умер${p.g === 'f' ? 'ла' : ''}.`); return; }
     const V = profileOf(r).ruler, title = rulerTitle(r, p);
     const died = {age: `умер${p.g === 'f' ? 'ла' : ''} своей смертью`, storm: `погиб${p.g === 'f' ? 'ла' : ''} при штурме столицы`, razed: `погиб${p.g === 'f' ? 'ла' : ''} в сожжённой столице`,
-      battle: `пал${p.g === 'f' ? 'а' : ''} в бою`, caravan: `убит${p.g === 'f' ? 'а' : ''} караваном`}[how] || `погиб${p.g === 'f' ? 'ла' : ''}`;
+      battle: `пал${p.g === 'f' ? 'а' : ''} в бою`, caravan: `убит${p.g === 'f' ? 'а' : ''} караваном`, captured: `в плену`}[how] || `погиб${p.g === 'f' ? 'ла' : ''}`;
     if (V.vacancy === 'court') { r.mourn = y + SUCCESSION.mourn; say?.(`${cap1(title)} ${name} ${p.name} ${died}: трон пуст, правит совет.`); }
     else if (V.vacancy === 'contest') { r.contest = y; say?.(`${cap1(title)} ${name} ${p.name} ${died}: орда без вождя, и за место у костра уже дерутся.`); }
     else say?.(`${cap1(title)} ${name} ${p.name} ${died}.`);
@@ -60,8 +62,8 @@ export function crownRuler(a, r, rnd, {g = null, name = null} = {}) {
   const used = new Set(Object.values(K.court).filter(Boolean).map(h => h.name));
   const f = g ? g === 'f' : rnd() < COURT.female, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
   if (!nm) return null;
-  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd});
-  if (cap) moveTo(p, 'town', cap.id);
+  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r)});
+  if (cap) { moveTo(p, 'town', cap.id); nameOut(a, p, cap); }
   return p;
 }
 

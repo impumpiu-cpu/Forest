@@ -2,6 +2,7 @@
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
 import {realmBand} from '../atlas/towns.js';
+import {isAt} from '../atlas/persons.js';
 import {cellRegion as regionOf} from '../seam/cell.js';
 
 // a cell's region (seam/cell.js) is asked several times a day; the beasts in it change once a season, so it
@@ -141,7 +142,7 @@ export function dangers(a, i, K = null) {
   if (lair) {
     const L = LAIRS.get(lair.kind), kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
-    const ld = lair.leader, M = ld ? LEADER.camp : null;
+    const ld = lair.leader && isAt(lair.leader, 'lair', lair.id) ? lair.leader : null, M = ld ? LEADER.camp : null;   // (a leader out with its band is not at home: atlas/persons.js)
     out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
       lair: lair.id, species: L.species,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, person: ld.id} : {})});

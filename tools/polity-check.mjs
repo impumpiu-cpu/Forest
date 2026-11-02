@@ -20,6 +20,7 @@ import {meets, explain, reqText, reqErrors} from '../src/core/requirements.js';
 import {townFacts, whyBuild} from '../src/atlas/requirements.js';
 import {profileOf, rulerOf, ruledBy, polities, seatOf, holdingsOf, vassalsOf, lordOf, mayBend} from '../src/atlas/polities.js';
 import {personOf, personDies, livingPersons, partyBeaten, townStormed, isAt, moveTo} from '../src/atlas/persons.js';
+import {sendArmy} from '../src/atlas/army.js';
 import {crownRuler, stepSuccession} from '../src/atlas/succession.js';
 import {channelsOf} from '../src/atlas/control.js';
 import {stepKingdom} from '../src/atlas/kingdom.js';
@@ -199,7 +200,9 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
 
 // ── 12. a dragon dead: its polity ends; the lair is no more a living polity
 {
-  const a = copy(), L = LAIRS.get('dragon'), i = findSpot(a, L, mulberry(11), null);
+  const a = copy(), L = LAIRS.get('dragon');
+  let i = findSpot(a, L, mulberry(11), null);
+  if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (!a.f.ocean[j] && a.f.lake[j] < 0 && !a.towns.some(t => t.alive && Math.hypot(t.x - j % a.w, t.y - ((j / a.w) | 0)) < 6)) i = j;   // (any dry ground: the dragon's ground is not what is tested)
   const dr = i >= 0 ? newLair(a, L, i, mulberry(12), 0.9, a.hist.year - 50) : null;
   if (!dr) check('есть логово дракона', false, 'дракону негде встать');
   else {
@@ -278,6 +281,115 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   const bad = TOWN_BUILDINGS.all().flatMap(b2 => reqErrors(needsOf(b2), b2.id));
   check('требования всех построек правильно сложены', bad.length === 0, bad.slice(0, 3).join('; '));
   check('таблица укладов: у каждого народа свой', WORLD_PEOPLES.all().every(P => POLITIES.has(P.polity || P.id)));
+}
+
+// ── the review's scenarios (docs/MIGRATION.md «Ревизия»): the seams between the systems
+{
+  // F01: the levy is what the town has of grown ones; fewer than ARMY.minMen is no host
+  const a = copy(), t = a.towns.find(x => x.alive && x.people === 'humans' && x.realm != null);
+  t.heads = {human: [990, 10, 0]}; sync(t); t.stock = {...(t.stock || {}), stores: 100};
+  const goal = a.towns.find(x => x.alive && x !== t).i;
+  const before = new Set(a.parties.map(p => p.id)), p = sendArmy(a, t, goal, 100, {owner: t.realm});
+  check('F01: войско не больше взрослых города; взрослых меньше minMen — войска нет, никто не взят', p == null && !a.parties.some(x => !before.has(x.id)) && Math.abs(t.pop - 1000) < 1e-6, `pop ${t.pop}`);
+  t.heads = {human: [900, 40, 0]}; sync(t);
+  const q = sendArmy(a, t, goal, 100, {owner: t.realm});
+  check('F01: просили 100, взрослых 40 — войско из 40, men = men0 = взятые, город 900', !!q && q.men === 40 && q.men0 === 40 && Math.abs(groupSize(q.group) - 40) < 1e-6 && Math.abs(t.pop - 900) < 1e-6, q ? `men ${q.men}, pop ${t.pop}` : 'нет войска');
+}
+{
+  // F02/F03: the scene's outcome for the world — the person's own fate, the party's losses, once
+  const a = copy(), lair = a.lairs.find(l => l.alive && l.leader) || (() => { const l = lairOf(a, 'goblins'); lead(a, l); return l; })();
+  const p0 = lair.leader, t = a.towns.find(x => x.alive);
+  const {sendParty} = await import('../src/atlas/parties.js');
+  const party = sendParty(a, 'leader', lair.i, t.i, {owner: lair.id, plan: 'raid', target: t.id, might: 3, label: 'тест', color: [1, 1, 1], leader: true});
+  moveTo(p0, 'party', party.id);
+  const K = {day: 1, fights: [{mode: 'local', foes: 10, killed: 4, boss: {fate: 'fled'}}], stats: {}, log: []};
+  const thing = {party: party.id, person: p0.id, boss: {name: 'X'}, kind: 'tribe'};
+  const {worldOutcome} = await import('../src/campaign/march.js');
+  const m0 = party.might;
+  worldOutcome(a, K, thing, true);
+  check('F02: караван победил, главарь бежал — он жив; F03: отряд потерял долю павших и повернул домой, один раз', p0.alive && !p0.died && party.might < m0 && Math.abs(party.might - m0 * 0.6) < 1e-9 && party.state === 'home', `жив ${p0.alive}, сила ${m0} → ${party.might}, ${party.state}`);
+  worldOutcome(a, K, thing, true);
+  check('F03: тот же исход дважды — потери не удваиваются', Math.abs(party.might - m0 * 0.6) < 1e-9);
+  K.fights.push({mode: 'local', foes: 10, killed: 2, boss: {fate: 'bound'}}); K.day = 2;
+  worldOutcome(a, K, thing, true);
+  check('F02: главарь связан — жив, в плену, логово без главаря', p0.alive && p0.captive && !lair.leader, `${JSON.stringify(p0.captive)}`);
+  K.fights.push({mode: 'auto'}); K.day = 3;
+  const l2 = lairOf(a, 'gnolls') || lairOf(a, 'ogres'); const p2 = l2 && (l2.leader || lead(a, l2));
+  if (p2) { worldOutcome(a, K, {person: p2.id, boss: {name: 'Y'}}, false); check('F02: быстрый режим, караван проиграл — главарь стоит', p2.alive && !p2.captive); worldOutcome(a, K, {person: p2.id, boss: {name: 'Y'}}, true); check('F02: быстрый режим, караван победил — главарь мёртв (явное правило CAMPAIGN.scene.auto)', !p2.alive && p2.died.how === 'caravan'); }
+}
+{
+  // F04: a world saved before the persons: its leaders and courts become persons and die as persons
+  const leader = {name: 'Старый', title: ['Главарь', 'Главаря'], species: 'goblin', born: 0, dies: 20, deeds: 3};
+  const l = {id: 1, kind: 'goblins', strength: 1, alive: true, leader};
+  const a = {cfg: {seed: 'x'}, hist: {year: 100, season: 0}, lairs: [l], realms: [{id: 'r1', people: 'humans', capital: 1, kingdom: {court: {ruler: {name: 'Яр', f: false, since: 90, until: 110}, general: null}}}], towns: [{id: 1, alive: true, pop: 100, people: 'humans', heads: {human: [20, 60, 20]}}]};
+  const {upgradePersons} = await import('../src/atlas/persons.js');
+  upgradePersons(a);
+  const {leaderFalls} = await import('../src/atlas/leaders.js');
+  leaderFalls(a, l, 'age', say);
+  check('F04: старый мир — главарь и двор стали личностями; главарь умирает по-новому', a.persons.length === 2 && l.leader == null && a.fallenLeaders?.length === 1 && a.realms[0].kingdom.court.ruler.person === 2 && personOf(a, 2).alive);
+}
+{
+  // F05: a leader out with its band is at the band, not at the lair; home again at its lair
+  const a = copy(), l = lairOf(a, 'goblins'), p = l.leader || lead(a, l);
+  const {sendParty, goHome, stepParties} = await import('../src/atlas/parties.js');
+  const {dangers} = await import('../src/campaign/land.js');
+  const t = a.towns.find(x => x.alive);
+  const party = sendParty(a, 'leader', l.i, t.i, {owner: l.id, plan: 'raid', target: t.id, might: 3, label: 'тест', color: [1, 1, 1], leader: true});
+  moveTo(p, 'party', party.id);   // (leaderRole.setOut does this when the brain sends it: tested through the same move)
+  const home = dangers(a, l.i, null).find(d => d.lair === l.id);
+  check('F05: главарь в походе — у логова его нет (встреча без главаря), он при отряде', isAt(p, 'party', party.id) && home && home.person == null, JSON.stringify(home?.person));
+  goHome(a, party); for (let k = 0; k < 6 && party.state !== 'gone'; k++) stepParties(a, mulberry(1), say);
+  check('F05: отряд дома или пропал — главарь снова в логове', isAt(p, 'lair', l.id), JSON.stringify(p.at));
+}
+{
+  // F06: a project begun re-checks what it asks; F07: the build need is not the work need
+  const a = copy(), t = a.towns.find(x => x.alive && x.people === 'humans' && x.pop > 100 && x.realm != null);
+  const b = TOWN_BUILDINGS.get('woodcut'), keep = {...b};
+  b.need = C('pop', '>', 1e9); t.project = 'woodcut'; (t.works ||= {})['woodcut'] = {done: 1e9};
+  t.wants ||= {feeds: 1, threat: 0};
+  const {stepBuilds} = await import('../src/atlas/build.js');
+  const n0 = t.built.filter(id => id === 'woodcut').length;
+  stepBuilds(a, mulberry(1), say);
+  check('F06: начатая стройка, требование утрачено — здание не вводится, работа ждёт', t.built.filter(id => id === 'woodcut').length === n0 && t.works?.woodcut, `${t.built.filter(id => id === 'woodcut').length} vs ${n0}`);
+  delete b.need; Object.assign(b, keep);
+  const E0 = (await import('../src/atlas/economy.js')).townEconomy(null, {people: 'humans', pop: 1000, heads: {human: [0, 790, 0], elf: [0, 210, 0]}, built: ['woodcut'], slaves: 0}, 1);
+  b.need = C('kinShare', 'human', '>', 0.8);
+  const E1 = (await import('../src/atlas/economy.js')).townEconomy(null, {people: 'humans', pop: 1000, heads: {human: [0, 790, 0], elf: [0, 210, 0]}, built: ['woodcut'], slaves: 0}, 1);
+  b.workNeed = C('kinShare', 'human', '>', 0.8); delete b.need;
+  const E2 = (await import('../src/atlas/economy.js')).townEconomy(null, {people: 'humans', pop: 1000, heads: {human: [0, 790, 0], elf: [0, 210, 0]}, built: ['woodcut'], slaves: 0}, 1);
+  delete b.workNeed; Object.assign(b, keep);
+  check('F07: порог стройки (need) не гасит работу стоящей постройки; порог работы (workNeed) — гасит', E0.made.wood > 0 && E1.made.wood === E0.made.wood && !(E2.made.wood > 0), `${E0.made.wood} / ${E1.made.wood} / ${E2.made.wood}`);
+}
+{
+  // F08–F11: exact shares, the land's pull keeps the count, explain is meets, typos are errors
+  const t = {people: 'humans', built: [], heads: {human: [0, 800.04, 0], gnoll: [0, 50.04, 0], elf: [0, 149.92, 0]}};
+  sync(t);
+  const f = townFacts({realms: [], towns: []}, t);
+  check('F08: доли читаются из точных чисел, не из округлённых: 80,004 % > 80 %, 5,004 % не ≤ 5 %', meets(C('kinShare', 'human', '>', 0.8), f) && !meets(C('kinShare', 'gnoll', '<=', 0.05), f));
+  const a = copy(); let drift = 0;
+  for (const x of a.towns.filter(o => o.alive).slice(0, 40)) { const n = x.pop; (await import('../src/atlas/population.js')).pullToLand(a, x); drift = Math.max(drift, Math.abs(x.pop - n)); }
+  check('F09: тяга земли не меняет число жителей (доли земли точные)', drift < 1e-6, `дрейф ${drift}`);
+  const req = ANY(ALL(C('pop', '>', 0), C('pop', '<', 0)), ALL(C('pop', '<', 0), C('pop', '>', 0))), src = {get: () => 10};
+  check('F10: объяснение вложенных И/ИЛИ совпадает с проверкой', meets(req, src) === explain(req, src)[0].ok && meets(req, src) === false);
+  check('F11: опечатка в расе, чужое значение уклада, «больше» у перечисления — ошибки данных', reqErrors({fact: 'kinShare', arg: 'typo_missing_species', op: '<=', value: 0.05}).length === 1 && reqErrors({fact: 'polity', op: '=', value: 123}).length === 1 && reqErrors(C('polity', '>', 'humans')).length === 1 && reqErrors(C('kinShare', 'troll', '<', 0.1)).length === 0);
+}
+{
+  // F12: nobody is expelled into nothing; A4: a person named out of a town leaves its count; A3: the art holds the channel
+  const a = copy(), t = a.towns.find(x => x.alive && x.people === 'dwarves');
+  for (const o of a.towns) if (o !== t) o.alive = false;
+  addHeads(a, t, 'human', 100, 1); const p0 = t.pop;
+  (await import('../src/atlas/diplomacy.js')).stepDiplomacy(a, mulberry(1), say, () => 0);
+  check('F12: выселять некуда — чужаки остаются, жители не пропадают', Math.abs(t.pop - p0) < 1e-6, `${p0} → ${t.pop}`);
+  const b = copy(), r = realmsOf(b, 'humans')[0], seat = capitalOf(b, r.id), n0 = seat.pop;
+  for (const o of Object.keys(r.kingdom.court)) r.kingdom.court[o] = null;
+  makeRuler(b, r);   // (crownRuler names it out of the seat)
+  check('A4: именованный ко двору — из счёта города: жителей на одного меньше, в книге «ко двору»', Math.abs(seat.pop - (n0 - 1)) < 1e-6 && seat.book?.named === 1, `${n0} → ${seat.pop}`);
+  const tw = lairOf(b, 'necromancer');
+  if (tw) {
+    const master = tw.leader || lead(b, tw);
+    const {able, heldDead} = await import('../src/atlas/control.js');
+    check('A3: хозяин башни держит мертвецов искусством: без некромантии — не держит, канала нет', able(master, 'undead') && heldDead(tw) && (() => { master.abilities = []; const held = heldDead(tw) || channelsOf(b, master).length > 0; master.abilities = ['necromancy']; return !held; })());
+  }
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

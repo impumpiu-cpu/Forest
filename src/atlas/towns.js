@@ -26,7 +26,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_
 const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
-import {needsOf, tierNeed, reqNeeds} from '../data/requirements.js';
+import {needsOf, tierNeed, workNeeds} from '../data/requirements.js';
 import {meets} from '../core/requirements.js';
 import {townFacts} from './requirements.js';
 import {ORE_GENESIS} from '../data/geology.js';
@@ -188,7 +188,7 @@ export function kinOfLand(a, t) {
   const P = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people) : null, K = P?.kin; if (!K || !a?.f) return null;
   const b = biomeAt(a, t.i)?.id, w = Object.fromEntries(Object.entries(K).map(([sp, k]) => [sp, k.base * (KIN.any + (SPECIES.get(sp).home?.[b] || 0))])), sum = Object.values(w).reduce((s, v) => s + v, 0);
   if (!(sum > 0)) return {[P.race]: 1};
-  return Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000]));
+  return Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, v / sum]));   // (exact: the shares sum to one, and the land's pull keeps the count — atlas/population.js)
 }
 // the town's leading race
 export const leadKin = (a, t) => Object.entries(townKin(a, t)).sort((p, q) => q[1] - p[1])[0][0];
@@ -245,8 +245,8 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // makes: it may be bought)
       const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
       // (a good of the store as one the town has, makes or its realm makes: it may be bought — the council's forecast, not the store's fact)
-      const may = req => meets(reqNeeds(req), {get: (f, arg, sc) => (f === 'stock' ? (none(arg) ? 0 : 1) : facts.get(f, arg, sc))});
-      const R = recipesOf(b).filter(q => may(q.req));
+      const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? (none(arg) ? 0 : 1) : facts.get(f, arg, sc))});
+      const R = recipesOf(b).filter(q => may(q, true));
       const bin = {...(b.in || {})}; for (const q of R) for (const [g, v] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + v / R.length;
       const bout = {...(b.out || {})}; for (const q of R) for (const [g, v] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + v / R.length;
       const ins = Object.keys(swapGoods(t.people, bin)), softIn = g => TOWN_GOODS.get(g).soft || (b.soft || []).some(s => swapGoods(t.people, {[s]: 1})[g]);
@@ -276,7 +276,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
       // (so with a pool none of whose goods the town has or its realm makes: a furnace with no fuel at all; and a work of recipes
       // none of which may run here — a brewery with no raw food of its kinds, a forge with no ingots to be had; a work of `req` dark)
       const pools = [...Object.keys(b.any || {}), ...(b.fire || R.some(q => q.fire) ? ['fuel'] : [])];
-      const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b.req);
+      const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b, false);
       if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && none(g)) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
     }
     // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)

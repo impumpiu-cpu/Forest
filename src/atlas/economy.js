@@ -203,7 +203,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
-      const on = meets(workNeeds(x.q), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
+      const on = meets(workNeeds(x.q, true), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
       x.w = on ? Math.max(F.recipeFloor, ins.length ? Math.min(...ins.map(avail)) : 1) : 0;
       by.set(x.of, (by.get(x.of) || 0) + x.w);
     }
@@ -228,7 +228,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
       let m = 1;
       for (const g of Object.keys(r.in)) m = Math.min(m, soft(r.of || r, g) ? F.soft + (1 - F.soft) * got(g) : got(g));
       for (const id of Object.keys(r.pool)) m = Math.min(m, POOL_SOFT.has(id) ? F.soft + (1 - F.soft) * pgot[id] : pgot[id]);
-      if ((r.b.req || r.b.need) && !meets(workNeeds(r.b), facts)) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
+      if ((r.b.req || r.b.workNeed) && !meets(workNeeds(r.b, false), facts)) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
       // a recipe: its share of what its building works at (the building's own goods — its tools — weigh on it too)
       r.eff = r.of ? r.share * Math.min(r.of.eff, r.staff * r.own * m) : r.staff * r.own * m;
     }

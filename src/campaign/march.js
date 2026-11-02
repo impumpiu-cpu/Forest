@@ -25,7 +25,9 @@ import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
-import {personOf, personDies} from '../atlas/persons.js';
+import {personOf, personDies, personCaptured} from '../atlas/persons.js';
+import {armyLosses} from '../atlas/army.js';
+import {goHome} from '../atlas/parties.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
@@ -577,16 +579,42 @@ function leaderRumour(a, K, t) {
   return `говорят, ${wherePhrase(a, near.i)} хозяйничает ${near.leader.title[0].toLowerCase()} ${near.leader.name} из «${near.name}»`;
 }
 
-// a person of the world beaten at the head of its own — a leader of an old lair, a chief with its host: it lies dead, and the
-// world learns of it once (atlas/persons.js personDies: a scene applied twice kills nobody twice)
-function leaderBeaten(a, K, t, win) {
-  if (!win || t.person == null) return;
-  const p = personOf(a, t.person); if (!p) return;
-  const lair = (a.lairs || []).find(l => l.leader === p);
-  if (!personDies(a, p, 'caravan', line => say(a, K, line, 'fight', true))) return;
-  K.stats.leaders = (K.stats.leaders || 0) + 1;
-  say(a, K, `${t.boss.name} пал от рук каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
+// the fight's outcome for the world (data/campaign.js CAMPAIGN.scene), applied once: the world party the caravan met loses the
+// share of its men the scene's foes lost; the person at its head — a leader of an old lair, a chief with its host — goes by its
+// own fate in the scene (the fight's record: dead, bound, fled, stood), not by the side that won. The quick mode has no scene:
+// its own rule. A party gone or a person dead already is not touched again (atlas/persons.js personDies applies once)
+export function worldOutcome(a, K, t, win) {
+  const S = CAMPAIGN.scene, rec = K.fights?.at(-1), local = rec && rec.mode === 'local';
+  // the party: its losses in the share of the foes that fell (the scene is the party, as many of it as came)
+  if (t.party != null) {
+    const p = (a.parties || []).find(x => x.id === t.party && x.state !== 'gone');
+    if (p && !(K.partyHit ||= {})[`${p.id}:${K.day}`]) {
+      K.partyHit[`${p.id}:${K.day}`] = true;
+      const share = local ? (rec.foes > 0 ? Math.min(1, (rec.killed || 0) / rec.foes) : win ? 1 : 0) : win ? S.auto.won : S.auto.lost;
+      const fallen = Math.min(1, Math.max(0, win ? share : Math.min(share, S.lostShare)));
+      if (fallen > 0) {
+        if (p.kind === 'army') armyLosses(p, fallen, () => 1 / 2, win ? 'beaten' : 'won');
+        else p.might = Math.max(0, (p.might || 0) * (1 - fallen));
+      }
+      if (win && (fallen >= 1 || p.kind === 'leader' || p.kind === 'raid' || p.kind === 'brood')) goHome(a, p);   // beaten, it turns home
+    }
+  }
+  // the person at its head
+  if (t.person == null) return;
+  const p = personOf(a, t.person); if (!p || !p.alive) return;
+  const fate = local ? rec.boss?.fate || (win ? 'dead' : 'stood') : win ? S.auto.boss : 'stood';
+  const lair = (a.lairs || []).find(l => l.leader?.id === p.id);
+  if (fate === 'dead') {
+    if (!personDies(a, p, 'caravan', line => say(a, K, line, 'fight', true))) return;
+    K.stats.leaders = (K.stats.leaders || 0) + 1;
+    say(a, K, `${t.boss.name} пал от рук каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
+  } else if (fate === 'bound') {
+    personCaptured(a, p, 'caravan', line => say(a, K, line, 'fight', true));
+    K.stats.leaders = (K.stats.leaders || 0) + 1;
+    say(a, K, `${t.boss.name} в путах каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
+  }
 }
+const leaderBeaten = worldOutcome;
 
 // ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
 function dayMeetings(a, K, r, marched) {

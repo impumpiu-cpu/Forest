@@ -9,7 +9,8 @@
 // (campaign/land.js, data/raids.js `cultists`). Born in the wild it is hidden, as any lair; with a leader in it, it is a
 // seat that is hard to keep secret: a season's chance it is found.
 import {LAIRS, NECRO} from '../data/lairs.js';
-import {takeHeads} from './population.js';
+import {heldDead} from './control.js';
+import {takeHeads, groupSize} from './population.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {faunaCell} from './fauna.js';
@@ -76,7 +77,7 @@ export function seatMap(a, list = towers(a)) {
 export function bend(a, lair, say) {
   const L = LAIRS.get(lair.kind);
   if (!lair.alive || !L.undead || L.domain || lair.lord != null) return null;
-  const t = towerAt(a, lair.x, lair.y); if (!t || !t.leader) return null;   // (a tower holds its vassals by its master: atlas/control.js)
+  const t = towerAt(a, lair.x, lair.y); if (!t || !heldDead(t)) return null;   // (a tower holds its vassals by its master, a necromancer: atlas/control.js)
   lair.lord = t.id;
   return `${cap1(L.label)} «${lair.name}» склонил${L.g === 'f' ? 'ась' : L.g === 'pl' ? 'ись' : L.g === 'n' ? 'ось' : 'ся'} перед башней «${t.name}»${t.leader ? `, где правит ${t.leader.name}` : ''}: теперь ${L.g === 'pl' ? 'они платят' : 'платит'} ей дань.`;
 }
@@ -121,7 +122,7 @@ export function stepTower(a, lair, L, rnd, lines, revealLair) {
   for (let y = Math.max(0, (cy | 0) - R0); y <= Math.min(F.H - 1, (cy | 0) + R0); y++) for (let x = Math.max(0, (cx | 0) - R0); x <= Math.min(F.W - 1, (cx | 0) + R0); x++) {
     const j = y * F.W + x, w = 1 - Math.hypot(x + 1 / 2 - cx, y + 1 / 2 - cy) / (r + 1); if (w <= 0 || dead.K[j] <= 0) continue;
     const v = a.rot[j]; sum += v * w; ws += w;
-    if (!lair.leader) continue;   // no master, no raising: the dead of a tower are its master's (atlas/control.js)
+    if (!heldDead(lair)) continue;   // no master with the art, no raising: the dead of a tower are its master's (atlas/control.js)
     const take = NECRO.take * v * w;
     a.rot[j] = v - take;
     dead.N[j] = Math.min(NECRO.deadCap * dead.K[j], dead.N[j] + take * NECRO.raise);
@@ -133,7 +134,9 @@ export function stepTower(a, lair, L, rnd, lines, revealLair) {
     for (const pe of a.peoples || []) pe.u[j] *= 1 - NECRO.recruit.land * w;
     for (const s of F.list) if (s.role === 'folk') s.N[j] *= 1 - NECRO.recruit.land * w;
   }
-  for (const t of a.towns || []) { if (!t.alive) continue; const d = dist(t, lair); if (d < zone) takeHeads(a, t, t.pop * NECRO.recruit.town * (1 - d / zone), {how: 'cult'}); }   // (they go to the cult, not to the grave)
+  // the living of the towns in its seat go to its cult: out of the town's count, into the tower's (lair.cult — the heads of the cult it
+  // has drawn over the years; the raids' company still comes of the fields about, atlas/necro.js cultPool)
+  for (const t of a.towns || []) { if (!t.alive) continue; const d = dist(t, lair); if (d < zone) lair.cult = Math.round(((lair.cult || 0) + groupSize(takeHeads(a, t, t.pop * NECRO.recruit.town * (1 - d / zone), {how: 'cult'}))) * 100) / 100; }
   // a seat with a leader is hard to keep secret
   if (lair.hidden && lair.leader && rnd() < NECRO.reveal) {
     revealLair(a, lair, 'молва');

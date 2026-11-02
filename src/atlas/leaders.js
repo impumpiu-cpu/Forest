@@ -24,7 +24,8 @@ import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 import {wherePhrase, power} from './lairs.js';
 import {actorStep} from './actor.js';
 import {DOES} from './deeds/index.js';
-import {newPerson, personDies, moveTo} from './persons.js';
+import {newPerson, personDies, moveTo, personsAt} from './persons.js';
+import {heldDead} from './control.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
@@ -75,6 +76,7 @@ const leaderRole = {
     const p = sendParty(a, 'leader', l.i, plan.goal, {owner: l.id, plan: d.id, target: plan.target ?? null, might: mightOf(l, L, r),
       speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `${leaderName(l)} (${SPECIES.get(L.species).plural})`, color: L.color, leader: true});
     if (!p) return;
+    moveTo(l.leader, 'party', p.id);   // the leader rides at its head: it is not at the lair while it is out (atlas/persons.js)
     // only a raid is told as it sets out (the towns see it coming); the rest — when it is done
     const line = DOES[d.id].told?.(a, l, plan);
     if (line) say(line);
@@ -88,7 +90,7 @@ export function freeVassals(a) {
   for (const v of a.lairs) {
     if (!v.alive || v.lord == null) continue;
     const lord = a.lairs.find(o => o.id === v.lord);
-    if (!lord?.alive || !lord.leader) v.lord = null;
+    if (!lord?.alive || !lord.leader || (LAIRS.get(lord.kind).domain && !heldDead(lord))) v.lord = null;
   }
 }
 
@@ -137,6 +139,7 @@ BEHAVIOURS.leader = {
   home(a, p) {
     const l = a.lairs.find(x => x.id === p.owner);
     if (l?.alive) DOES[p.plan]?.home?.(a, p, l);
+    for (const q of personsAt(a, 'party', p.id)) moveTo(q, 'lair', p.owner);   // the leader is home
   },
 };
 

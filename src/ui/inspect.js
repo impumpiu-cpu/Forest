@@ -114,10 +114,10 @@ function roleLine(t) {
 }
 
 // the races of a town, the larger first («орки 61%, гоблины 24%, гноллы 9%»), the bands of age, the year's losses by cause
-const LOSS_WORDS = {dead: 'от старости', brawl: 'в драках', want: 'от голода и тесноты', war: 'на войне', storm: 'при штурме', siege: 'в осаде', raid: 'в набегах', taken: 'уведено', levy: 'в войско', moved: 'уехало', mingled: 'ушло к соседям', settlers: 'поселенцами', cult: 'ушло в культ', cold: 'в лютую зиму', drought: 'в засуху', dragon: 'от дракона', vampire: 'выпито', expelled: 'выжито', calamity: 'от бедствия', field: 'на сожжённых угодьях', left: 'ушло', scattered: 'разбрелось', drawn: 'в столицу'};
+const LOSS_WORDS = {dead: 'от старости', brawl: 'в драках', want: 'от голода и тесноты', war: 'на войне', storm: 'при штурме', siege: 'в осаде', raid: 'в набегах', taken: 'уведено', levy: 'в войско', moved: 'уехало', mingled: 'ушло к соседям', settlers: 'поселенцами', cult: 'ушло в культ', cold: 'в лютую зиму', drought: 'в засуху', dragon: 'от дракона', vampire: 'выпито', expelled: 'выжито', calamity: 'от бедствия', field: 'на сожжённых угодьях', left: 'ушло', scattered: 'разбрелось', drawn: 'в столицу', named: 'ко двору'};
 export const kinLine = (a, t) => Object.entries(townKin(a, t)).filter(([, v]) => v >= 0.005).sort((p, q) => q[1] - p[1]).map(([id, v]) => `${SPECIES.has(id) ? SPECIES.get(id).plural : id} ${Math.round(v * 100)}%`).join(', ');
 export const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
-export const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && v >= 0.5).map(([k, v]) => `${LOSS_WORDS[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
+export const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : '', V.came >= 0.5 ? `пришло с земли ${Math.round(V.came)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && k !== 'came' && v >= 0.5).map(([k, v]) => `${LOSS_WORDS[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
 
 function realmHtml(a, R) {
   if (!R) return '';
@@ -215,7 +215,7 @@ function lairHtml(a, l) {
     row('уклад', `${esc(prof.label)}${!ld && L.domain ? ' — без хозяина: мертвецов не поднимают' : !ld && prof.rule !== 'pack' ? ' — без главаря' : ''}`) +
     row('хозяева', `${esc(sp.plural)}${L.tribe ? ' (племя)' : L.undead ? ' (мёртвые)' : L.fiend ? ' (демоны)' : L.dragon ? '' : ' (чудовища)'}; мощь вида ${r1(power(L.species))}`) +
     row('сила', `${Math.round(l.strength * 100)}%${l.boss != null ? ', логово босса бедствия' : ''}`) +
-    (L.domain ? row('некромант', `${esc(necroLabel(l.race))}; владения — ${Math.round(zoneOf(a, l))} клеток вокруг, данников ${(a.lairs || []).filter(o => o.alive && o.lord === l.id).length}`) : '') +
+    (L.domain ? row('некромант', `${esc(necroLabel(l.race))}; владения — ${Math.round(zoneOf(a, l))} клеток вокруг, данников ${(a.lairs || []).filter(o => o.alive && o.lord === l.id).length}${l.cult >= 1 ? `; в культе ${Math.round(l.cult)} из городов` : ''}`) : '') +
     row('известно', l.hidden ? 'скрыто: ни одна держава о нём не знает, выжечь его нельзя' : l.found ? `найдено в ${l.found.year} г. (${esc(l.found.by)})` : 'с давних пор') +
     row('возраст', `с ${l.born <= 0 ? 'незапамятных времён' : `${l.born} г.`}${l.ancient ? ', древнее' : ''}`) +
     row('владения', `${Math.round(L.radius * scaleOf(a))} клеток`) +

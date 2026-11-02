@@ -24,7 +24,7 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
       switch (fact) {
         case 'people': return t.people;
         case 'polity': { const r = (a?.realms || []).find(x => x.id === t.realm); const P = WORLD_PEOPLES.get(r?.people || t.people); return POLITIES.has(P.polity || P.id) ? P.polity || P.id : undefined; }
-        case 'kinShare': return t.pop > 0 ? (townKin(a, t)[arg] || 0) : undefined;
+        case 'kinShare': { if (!(t.pop > 0)) return undefined; const b = headsOf(a, t)[arg]; return b ? (b[0] + b[1] + b[2]) / t.pop : 0; }   // (the exact share: t.kin is rounded for the cards)
         case 'kinCount': { const b = headsOf(a, t)[arg]; return b ? b[0] + b[1] + b[2] : 0; }
         case 'kinHands': { const b = headsOf(a, t)[arg]; return (b ? b[1] : 0) * (WORLD_PEOPLES.get(t.people)?.hands ?? 0); }
         case 'built': return scope === 'realm' ? lineHas(realm(), arg) : lineHas(t.built, arg);
@@ -55,6 +55,7 @@ export const townExplain = (a, t, req, opts) => explain(req, townFacts(a, t, opt
 // the words of what a building asks (its row's short fields and its `need`), for the tables and the cards
 import {needsOf, tierNeed, workNeeds} from '../data/requirements.js';
 export const buildingNeedText = (b, people = null) => reqText([tierNeed(b, people), needsOf(b)].filter(Boolean), WORDS) || '—';
-export const recipeNeedText = q => reqText(workNeeds(q), WORDS) || '—';
+export const recipeNeedText = q => reqText(workNeeds(q, true), WORDS) || '—';
+export const workNeedText = b => reqText(workNeeds(b, false), WORDS) || '—';
 // why a town may or may not build this now: [{text, ok}] (the limits of count, slot, line and site are not asked here)
-export const whyBuild = (a, t, b, opts) => townExplain(a, t, [tierNeed(b, t.people), needsOf(b)].filter(Boolean), opts);
+export const whyBuild = (a, t, b, opts) => townExplain(a, t, [tierNeed(b, t.people), needsOf(b)].filter(Boolean), opts).flatMap(x => (x.all ? x.items : [x]));   // (the building's own «all» opened into its lines)

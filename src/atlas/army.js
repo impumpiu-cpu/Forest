@@ -11,7 +11,7 @@ import {wildOfArmy} from './wilds.js';
 import {sendParty} from './parties.js';
 import {YEAR_DAYS} from '../data/atlas.js';
 import {rideWith, stepOff} from './persons.js';
-import {takeHeads, addGroup, book} from './population.js';
+import {takeHeads, addGroup, book, grownOf, groupSize} from './population.js';
 
 const r2 = n => Math.round(n * 100) / 100;
 const beastMen = list => Object.entries(list || {}).reduce((s, [sp, n]) => s + n * beastWorth(SPECIES.get(sp)), 0);
@@ -25,7 +25,10 @@ export function refreshArmy(p) {
   return p.might;
 }
 
-export function sendArmy(a, t, goal, men, props) {
+export function sendArmy(a, t, goal, men0, props) {
+  // the levy is of the town's grown ones: no more than it has, and fewer than ARMY.minMen is no host (nothing is spent)
+  const men = Math.min(men0, grownOf(a, t));
+  if (!(men >= A.minMen)) return null;
   const share = WORLD_PEOPLES.get(t.people)?.beastLevy ?? A.beasts;
   const warBeasts = Object.fromEntries(Object.entries(t.warBeasts?.list || {}).map(([sp, n]) => [sp, Math.ceil(n * share)]).filter(([, n]) => n > 0));
   const wild = wildOfArmy(a, t, men, goal);   // the elves' beasts of the land and treants of the forest (atlas/wilds.js)
@@ -42,6 +45,7 @@ export function sendArmy(a, t, goal, men, props) {
   if (!p) return null;
   rideWith(a, t, p);   // a chief that leads rides with it (atlas/persons.js)
   p.group = takeHeads(a, t, men, {band: 1, how: 'levy'});   // the levy: grown ones of the town's races, as they are (atlas/population.js)
+  p.men = p.men0 = groupSize(p.group); refreshArmy(p);   // (the host is exactly what was taken)
   if (t.warBeasts) { for (const [sp, n] of Object.entries(warBeasts)) { t.warBeasts.list[sp] -= n; if (!t.warBeasts.list[sp]) delete t.warBeasts.list[sp]; } t.warBeasts.men = beastMen(t.warBeasts.list); }
   if (t.golems) t.golems.guard = guards.slice(golems.length);
   for (const [g, n] of Object.entries(kit)) if (n > 0) { t.stock[g] = r2(t.stock[g] - n); if (t.stock[g] <= 0) delete t.stock[g]; }
