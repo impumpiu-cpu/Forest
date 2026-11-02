@@ -104,5 +104,5 @@ export function stepOff(a, party, t) {
 export function stepPersons(a, say) {
   if (!a.persons || a.hist.season !== 0) return;
   const y = a.hist.year;
-  for (const p of a.persons) if (p.alive && p.dies != null && y >= p.dies && !(a.lairs || []).some(l => l.leader === p)) personDies(a, p, 'age', say);
+  for (const p of a.persons) if (p.alive && p.dies != null && y >= p.dies && !(a.lairs || []).some(l => l.leader?.id === p.id)) personDies(a, p, 'age', say);
 }

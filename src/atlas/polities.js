@@ -54,7 +54,7 @@ export function rulerOf(a, x) {
 export function ruledBy(a, p) {
   if (!p) return null;
   for (const r of a.realms || []) if (r.fallen == null && r.kingdom?.court?.ruler?.person === p.id) return r;
-  for (const l of a.lairs || []) if (l.alive && l.leader === p) return l;
+  for (const l of a.lairs || []) if (l.alive && l.leader?.id === p.id) return l;
   return null;
 }
 // a person's seat in the court of a realm (any office), or null → [realm, officeId]

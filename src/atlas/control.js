@@ -15,7 +15,7 @@ import {profileOf} from './polities.js';
 // the channels a person holds now: [{kind, holder: person, of: lair | realm}]
 export function channelsOf(a, p) {
   const out = [];
-  for (const l of a.lairs || []) if (l.alive && l.leader === p) for (const kind of profileOf(l).ruler.channels || []) out.push({kind, holder: p, of: l});
+  for (const l of a.lairs || []) if (l.alive && l.leader?.id === p.id) for (const kind of profileOf(l).ruler.channels || []) out.push({kind, holder: p, of: l});
   for (const r of a.realms || []) if (r.fallen == null && r.kingdom?.court?.ruler?.person === p.id) for (const kind of profileOf(r).ruler.channels || []) out.push({kind, holder: p, of: r});
   return out;
 }

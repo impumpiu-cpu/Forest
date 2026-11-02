@@ -23,7 +23,7 @@ export function rulerFell(a, p, how, say, ctx = {}) {
   const y = a.hist?.year ?? 0;
   // a lair's leader (atlas/leaders.js): the lair is a field again; its vassals go free with the season (freeVassals)
   for (const l of a.lairs || []) {
-    if (l.leader !== p) continue;
+    if (l.leader?.id !== p.id) continue;
     const L = LAIRS.get(l.kind), who = personLabel(p), V = profileOf(l).ruler;
     (a.fallenLeaders ||= []).push({lair: l.id, name: who, species: p.species, year: y, how, deeds: p.deeds});
     l.leader = null;
