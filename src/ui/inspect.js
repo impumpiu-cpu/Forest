@@ -20,6 +20,7 @@ import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
 import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {personOf} from '../atlas/persons.js';
+import {profileOf, rulerOf, rulerTitle} from '../atlas/polities.js';
 import {headsOf, bandSum} from '../atlas/population.js';
 import {townKin} from '../atlas/towns.js';
 import {scaleOf} from '../atlas/tectonics.js';
@@ -137,10 +138,22 @@ function realmHtml(a, R) {
   const kingdom = fisc + (R.gold != null ? row('казна державы', `${Math.round(R.gold)} зол.${store ? `, на складе: ${store}` : ''}${R.keep ? `; за сезон гарнизонам ${Math.round(R.keep.garrison)} (${Math.round(R.keep.men)} человек)` : ''}${R.spent?.build != null ? `; за год на стройку ${Math.round(R.spent.build)}` : ''}`) : '') + (Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
     row('разруха', RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ') || 'нет') +
     row('двор', OFFICES.all().map(o => `${o.label}: ${personOf(a, Kd.court[o.id]?.person)?.name || '—'}`).join(', ')) : '');
+  // the polity (atlas/polities.js): its uklad, its ruler as a person, the races of its people, the year's losses over its towns
+  const prof = profileOf(R), ruler = rulerOf(a, R), year = a.hist?.year ?? 0;
+  const throne = ruler ? `${esc(rulerTitle(R, ruler))} ${esc(ruler.name)}, ${year - ruler.born} лет${ruler.at?.kind === 'party' ? ', в походе' : ''}${Kd?.court?.ruler ? `, на троне с ${Kd.court.ruler.since} г.` : ''}`
+    : R.contest != null ? 'орда без вождя: за место у костра дерутся' : (R.mourn ?? -1) > year ? `трон пуст, правит совет (до ${R.mourn} г.)` : 'трон пуст, правит совет';
+  const heads = {}; for (const t of towns) for (const [race, b] of Object.entries(headsOf(a, t))) heads[race] = (heads[race] || 0) + b[0] + b[1] + b[2];
+  const races = Object.entries(heads).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([race, n]) => `${SPECIES.has(race) ? SPECIES.get(race).plural : race} ${Math.round(n)}`).join(', ');
+  const vital = {}; for (const t of towns) for (const [k, v] of Object.entries(t.vital || {})) vital[k] = (vital[k] || 0) + v;
+  const losses = lossLine({vital});
   return sec(`Держава: ${realmLabel(a, R.id)}`,
+    row('уклад', `${esc(prof.label)}, ${esc({council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}[prof.rule] || prof.rule)}`) +
+    row('правитель', throne) +
     row('народ', `${esc(P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +
     row('города', `${towns.length}, жителей ${pop}: ${esc(towns.map(t => t.name).join(', '))}`) +
+    row('по расам', races || null) +
+    row('за год', losses || null) +
     row('основана', R.founded != null ? `${R.founded} г.${R.from != null ? `, расколом от «${esc(realmOf(a, R.from)?.name || '…')}»` : ''}` : null) +
     row('металлы', cap ? (realmMetalWords(a, cap).join(', ') || 'только кость, дерево и камень') : null) +
     row('войска', armies || null) +
@@ -197,7 +210,9 @@ function lairHtml(a, l) {
     row('правит', `с ${ld.born} г., до ~${ld.dies} г.; дел на счету ${ld.deeds}`) +
     row('отряд', (() => { const p = (a.parties || []).find(x => x.kind === 'leader' && x.owner === l.id && x.state !== 'gone'); return p ? `${esc(deedLabel(p.plan, p.plan))}, ${STATE[p.state]}, ${p.days} дн.` : 'дома'; })())) : '';
   const parties = (a.parties || []).filter(p => p.owner === l.id && p.kind !== 'leader' && p.state !== 'gone').map(p => `${KIND[p.kind] || p.kind} (${esc(deedLabel(p.plan, p.plan || ''))}), ${STATE[p.state]}, ${p.days} дн.`).join('; ');
+  const prof = profileOf(l);
   return sec(`${L.label.replace(/^./, c => c.toUpperCase())} «${l.name}»`,
+    row('уклад', `${esc(prof.label)}${!ld && L.domain ? ' — без хозяина: мертвецов не поднимают' : !ld && prof.rule !== 'pack' ? ' — без главаря' : ''}`) +
     row('хозяева', `${esc(sp.plural)}${L.tribe ? ' (племя)' : L.undead ? ' (мёртвые)' : L.fiend ? ' (демоны)' : L.dragon ? '' : ' (чудовища)'}; мощь вида ${r1(power(L.species))}`) +
     row('сила', `${Math.round(l.strength * 100)}%${l.boss != null ? ', логово босса бедствия' : ''}`) +
     (L.domain ? row('некромант', `${esc(necroLabel(l.race))}; владения — ${Math.round(zoneOf(a, l))} клеток вокруг, данников ${(a.lairs || []).filter(o => o.alive && o.lord === l.id).length}`) : '') +

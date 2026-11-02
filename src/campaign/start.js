@@ -7,6 +7,7 @@
 //   food, gold, i, x, y, path, k, camp, why, hungry, seen (Uint8Array, 1 — known), log: [{day, year,
 //   season, i, text, kind}], track, stats, rng: {name → position}, party (id)}
 import {mulberry, seedNumber} from '../core/rng.js';
+import {rulerOf, rulerTitle} from '../atlas/polities.js';
 import {gearDef} from '../agents/equipment.js';
 import {rollCreature} from '../agents/special.js';
 import {SPECIES} from '../data/species.js';
@@ -37,8 +38,12 @@ export function draw(K, name) {
 // the capitals that may send a caravan: living capitals of the major peoples' realms
 export function capitals(a) {
   return (a.realms || []).filter(r => CAMPAIGN.peoples.includes(r.people)).map(r => a.towns.find(t => t.id === r.capital && t.alive))
-    .filter(Boolean).map(t => ({town: t.id, name: t.name, label: `${townLabel(t, 0)} ${t.name}`, realm: t.realm, realmLabel: realmLabel(a, t.realm), people: t.people,
-      peopleLabel: WORLD_PEOPLES.get(t.people).label, align: realmAlign(a, t.realm), x: t.x, y: t.y, pop: Math.round(t.pop), towns: realmTowns(a, t.realm).length}));
+    .filter(Boolean).map(t => {
+      const R = a.realms.find(r => r.id === t.realm), ruler = rulerOf(a, R);   // (the ruler as a person: atlas/persons.js)
+      return {town: t.id, name: t.name, label: `${townLabel(t, 0)} ${t.name}`, realm: t.realm, realmLabel: realmLabel(a, t.realm), people: t.people,
+        peopleLabel: WORLD_PEOPLES.get(t.people).label, align: realmAlign(a, t.realm), x: t.x, y: t.y, pop: Math.round(t.pop), towns: realmTowns(a, t.realm).length,
+        ruler: ruler ? `${rulerTitle(R, ruler)} ${ruler.name}` : null};
+    });
 }
 
 // someone who walks with the caravan: a creature of a race, rolled as the local map rolls
