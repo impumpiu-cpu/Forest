@@ -1,5 +1,6 @@
 // Physical stores and repeated seasonal calculations: small fixtures through the production modules.
 import assert from 'node:assert/strict';
+import {headsOf} from '../src/atlas/population.js';
 import {planBuild, doBuild, seasonMoney, goodsFor} from '../src/atlas/treasury.js';
 import {TOWN_MONEY} from '../src/data/townBuildings.js';
 import {sendArmy, armyLosses, returnArmy} from '../src/atlas/army.js';
@@ -82,7 +83,9 @@ check('боевые звери и стражевые големы в пути з
   assert.equal(stepGolems(a, t), null); assert.equal(t.stock.bar_iron, 100);
 });
 check('неудачная отправка не забирает людей и материальные запасы', () => {
-  const t = town({stock: {arms: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = flat(t), before = JSON.stringify(t);
+  const t = town({stock: {arms: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = flat(t);
+  headsOf(a, t);   // (the composition is made once, lazily: made before the snapshot)
+  const before = JSON.stringify(t);
   a.f.ocean.fill(1); const p = sendArmy(a, t, 22, 100, {});
   assert.equal(p, null); assert.equal(JSON.stringify(t), before);
 });
