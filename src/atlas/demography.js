@@ -19,6 +19,7 @@ import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin, kinOfLand} from './towns.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
+import {townGone} from './persons.js';
 import {trades} from './diplomacy.js';
 import {scaleOf} from './tectonics.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -158,6 +159,7 @@ export function abandonEmpty(a, rnd, say) {
     (a.ruins ||= []).push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by: null, year: a.hist.year, how: 'опустел'});
     say(`Последние жители покинули ${townLabel(t, 1)} ${t.name}${best ? ` и ушли в ${townLabel(best, 1)} ${best.name}` : ''}.`);
     if (t.capital) seatFallen(a, t, rnd, say);
+    townGone(a, t, say);
   }
 }
 

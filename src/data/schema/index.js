@@ -357,7 +357,7 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('rule', 'Правление', 'enum', {values: {council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}}),
       col('lairs', 'Для кого', 'text', {computed: true}), col('seat', 'Где правитель', 'enum', {values: {capital: 'столица', lair: 'логово'}}),
       col('systems', 'Своды правил', 'json', {note: 'court — двор и должности, edicts — указы, treasury — казна, towns — города, mind — совет державы; пусто — логово живёт как логово'}),
-      col('ruler.leads', 'Ведёт войско', 'bool'), col('ruler.storm', 'Гибнет при штурме', 'num', {min: 0, max: 1, note: 'шанс погибнуть, когда столицу взяли штурмом (он там)'}),
+      col('ruler.leads', 'Ведёт войско', 'bool'), col('ruler.battle', 'Гибнет в разбитом войске', 'num', {min: 0, max: 1}), col('ruler.storm', 'Гибнет при штурме', 'num', {min: 0, max: 1, note: 'шанс погибнуть, когда столицу взяли штурмом (он там)'}),
       col('ruler.razed', 'Гибнет с пепелищем', 'num', {min: 0, max: 1}),
       col('ruler.vacancy', 'Преемство', 'enum', {values: {court: 'двор назначает', contest: 'борьба за власть', heir: 'поднимется новый', none: 'держава кончается'}}),
       col('ruler.split', 'Раскол при борьбе', 'num', {min: 0, max: 1, nullable: true}),

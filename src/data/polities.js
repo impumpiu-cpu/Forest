@@ -17,6 +17,7 @@
 //   seat       where its ruler lives: 'capital' — the crowned town; 'lair' — the lair itself
 //   ruler      the ruler as a person (atlas/persons.js):
 //                leads    — it rides with the realm's host (the horde's chief): it may fall in a battle the host loses
+//                battle   — chance it dies when the host it rides with is beaten (it is there): a number to calibrate
 //                storm    — chance it dies when its seat is stormed (it is there): a number to calibrate
 //                razed    — chance it dies when its seat is burnt to the ground
 //                vacancy  — how the office is filled again (atlas/succession.js):
@@ -37,31 +38,31 @@ POLITIES.registerAll([
   // ── the peoples' realms (data/peoples.js `polity`)
   {id: 'humans', label: 'людское королевство', labelGen: 'людского королевства', rule: 'council', title: ['король', 'королева'], seat: 'capital',
     systems: {court: true, edicts: true, treasury: true, towns: true, mind: true},
-    ruler: {leads: false, storm: 0.5, razed: 1, vacancy: 'court', channels: []}},
+    ruler: {leads: false, battle: 0.3, storm: 0.5, razed: 1, vacancy: 'court', channels: []}},
   {id: 'elves', label: 'эльфийское королевство', labelGen: 'эльфийского королевства', rule: 'council', title: ['владыка', 'владычица'], seat: 'capital',
     systems: {court: true, edicts: true, treasury: true, towns: true, mind: true},
-    ruler: {leads: false, storm: 0.5, razed: 1, vacancy: 'court', channels: ['summons']}},
+    ruler: {leads: false, battle: 0.3, storm: 0.5, razed: 1, vacancy: 'court', channels: ['summons']}},
   {id: 'dwarves', label: 'дварфийское королевство', labelGen: 'дварфийского королевства', rule: 'council', title: ['король-под-горой', 'королева-под-горой'], seat: 'capital',
     systems: {court: true, edicts: true, treasury: true, towns: true, mind: true},
-    ruler: {leads: false, storm: 0.5, razed: 1, vacancy: 'court', channels: []}},
+    ruler: {leads: false, battle: 0.3, storm: 0.5, razed: 1, vacancy: 'court', channels: []}},
   {id: 'orcs', label: 'орда', labelGen: 'орды', rule: 'chief', title: ['вождь', 'вождиха'], seat: 'capital',
     systems: {court: true, edicts: true, treasury: true, towns: true, mind: true},
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'contest', split: 0.25, channels: []}},
+    ruler: {leads: true, battle: 0.35, storm: 0.7, razed: 1, vacancy: 'contest', split: 0.25, channels: []}},
   // ── the lairs (atlas/lairs.js): micro-polities of the wild, the dead and the rifts
   {id: 'camp', label: 'племенной стан', labelGen: 'племенного стана', rule: 'chief', seat: 'lair', simple: true, lairs: L => !!L.tribe,
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'tower', label: 'башня некроманта', labelGen: 'башни некроманта', rule: 'personal', seat: 'lair', simple: true, lairs: L => !!L.domain,
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']}},
   {id: 'rift', label: 'владение демонов', labelGen: 'владения демонов', rule: 'chief', seat: 'lair', simple: true, lairs: L => !!L.fiend,
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'manor', label: 'усадьба вампира', labelGen: 'усадьбы вампира', rule: 'personal', seat: 'lair', simple: true, lairs: L => L.at === 'town',
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'barrow', label: 'логово мертвецов', labelGen: 'логова мертвецов', rule: 'pack', seat: 'lair', simple: true, lairs: L => !!L.undead,
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'dragon', label: 'одинокий дракон', labelGen: 'одинокого дракона', rule: 'solo', seat: 'lair', simple: true, lairs: L => !!L.dragon,
-    ruler: {leads: true, storm: 1, razed: 1, vacancy: 'none', channels: []}},
+    ruler: {leads: true, battle: 1, storm: 1, razed: 1, vacancy: 'none', channels: []}},
   {id: 'den', label: 'звериное логово', labelGen: 'звериного логова', rule: 'pack', seat: 'lair', simple: true, lairs: () => true,
-    ruler: {leads: true, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
 ]);
 
 // the profile of a lair kind: the first whose test fits (the order above matters: a tower before the dead, a dragon

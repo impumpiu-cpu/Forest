@@ -19,6 +19,7 @@ import {captiveCount, power} from '../atlas/lairs.js';
 import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
 import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
+import {personOf} from '../atlas/persons.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
@@ -127,7 +128,7 @@ function realmHtml(a, R) {
   const store = Object.entries(R.stock || {}).filter(([, n]) => n >= 0.5).map(([g, n]) => `${TOWN_GOODS.has(g) ? TOWN_GOODS.get(g).label : g} ${Math.round(n)}`).join(', ');
   const kingdom = fisc + (R.gold != null ? row('казна державы', `${Math.round(R.gold)} зол.${store ? `, на складе: ${store}` : ''}${R.keep ? `; за сезон гарнизонам ${Math.round(R.keep.garrison)} (${Math.round(R.keep.men)} человек)` : ''}${R.spent?.build != null ? `; за год на стройку ${Math.round(R.spent.build)}` : ''}`) : '') + (Kd ? row('показатели', REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ')) +
     row('разруха', RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ') || 'нет') +
-    row('двор', OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ')) : '');
+    row('двор', OFFICES.all().map(o => `${o.label}: ${personOf(a, Kd.court[o.id]?.person)?.name || '—'}`).join(', ')) : '');
   return sec(`Держава: ${realmLabel(a, R.id)}`,
     row('народ', `${esc(P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +

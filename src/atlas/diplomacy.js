@@ -7,6 +7,7 @@
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
+import {townStormed, partyBeaten, townGone} from './persons.js';
 import {TOWN_MONEY} from '../data/townBuildings.js';
 import {sendArmy, refreshArmy, armyLosses, returnArmy} from './army.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -112,6 +113,7 @@ function raze(a, t, by, how, rnd, say) {
   a.ruins ||= [];
   a.ruins.push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by, year: a.hist.year, how});
   if (t.capital) seatFallen(a, t, rnd, say);
+  townGone(a, t, say);   // the persons that lived through it go to the seat (atlas/persons.js)
 }
 
 // old graves around a battlefield: `v` at the middle, fading out to `r` cells. A raid on a town
@@ -212,12 +214,14 @@ BEHAVIOURS.army = {
       t.pop *= 1 - loss; armyLosses(p, A.winLoss, rnd, 'won'); t.raided = a.hist.year;
       const loot = plunderWords(plunder(home, t, TOWN_MONEY.plunder.storm)) + (slaves >= 1 ? `, угнали в рабство ${Math.round(slaves)}` : '');   // the storm's loot goes home with the army
       if (t.capital) lootSeat(a, realmOf(a, p.owner), realmOf(a, t.realm));   // a seat stormed: its realm's treasury too (atlas/treasury.js)
-      if (t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0) {   // beaten down, bled, or broken by the siege
-        say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}${loot}.`);
-        raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++;
-      } else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}${loot}.`);
+      const razed = t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0;   // beaten down, bled, or broken by the siege
+      if (razed) say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}${loot}.`);
+      else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}${loot}.`);
+      townStormed(a, t, razed, rnd, say);   // the persons in it — its realm's ruler and court — may fall with it (atlas/persons.js)
+      if (razed) { raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++; }
     } else {
       armyLosses(p, A.beatenLoss, rnd, 'beaten');
+      partyBeaten(a, p, rnd, say);   // a chief that rode with it may fall (atlas/persons.js)
       say(`${cap1(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} отбили штурм ${p.label.replace(/^войско /, 'войска ')} и сняли осаду${burnt}${hunger}.`);
     }
     goHome(a, p);

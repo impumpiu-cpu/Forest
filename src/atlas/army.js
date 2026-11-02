@@ -10,6 +10,7 @@ import {townFx} from './towns.js';
 import {wildOfArmy} from './wilds.js';
 import {sendParty} from './parties.js';
 import {YEAR_DAYS} from '../data/atlas.js';
+import {rideWith, stepOff} from './persons.js';
 
 const r2 = n => Math.round(n * 100) / 100;
 const beastMen = list => Object.entries(list || {}).reduce((s, [sp, n]) => s + n * beastWorth(SPECIES.get(sp)), 0);
@@ -38,6 +39,7 @@ export function sendArmy(a, t, goal, men, props) {
   refreshArmy(army);
   const p = sendParty(a, 'army', t.i, goal, army);
   if (!p) return null;
+  rideWith(a, t, p);   // a chief that leads rides with it (atlas/persons.js)
   t.pop -= men;
   if (t.warBeasts) { for (const [sp, n] of Object.entries(warBeasts)) { t.warBeasts.list[sp] -= n; if (!t.warBeasts.list[sp]) delete t.warBeasts.list[sp]; } t.warBeasts.men = beastMen(t.warBeasts.list); }
   if (t.golems) t.golems.guard = guards.slice(golems.length);
@@ -72,6 +74,7 @@ export function returnArmy(a, p) {
   const home = a.towns.find(t => t.id === p.from), near = o => Math.hypot(o.x - (home?.x ?? 0), o.y - (home?.y ?? 0));
   const t = home?.alive ? home : (a.towns || []).filter(o => o.alive && (p.owner != null ? o.realm === p.owner : o.people === p.people)).sort((x, y) => near(x) - near(y) || x.id - y.id)[0];
   if (!t) return;
+  stepOff(a, p, t);
   t.pop += Math.max(0, p.men);
   if (p.warBeasts && Object.keys(p.warBeasts).length) { const b = t.warBeasts ||= {list: {}, men: 0}; for (const [sp, n] of Object.entries(p.warBeasts)) b.list[sp] = (b.list[sp] || 0) + n; b.men = beastMen(b.list); }
   if (p.golems?.length) { t.golems ||= {auto: {}, guard: [], since: null}; t.golems.guard.push(...p.golems); }

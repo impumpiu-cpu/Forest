@@ -123,7 +123,7 @@ function divide(a, oldId, newId, seatOld, seatNew) {
 }
 
 // a town breaks away with the towns nearer to it: a new realm, wary of the old one, sometimes at war
-function breakAway(a, r, seat, rnd, say, why) {
+export function breakAway(a, r, seat, rnd, say, why) {
   const old = capitalOf(a, r.id), nr = foundRealm(a, seat, r), went = old ? divide(a, r.id, nr.id, old, seat) : 0;
   a.contacts[r.id < nr.id ? `${r.id}:${nr.id}` : `${nr.id}:${r.id}`] = {year: a.hist.year, feeling: SCHISM.attitude};
   const rel = meet(a, r.id, nr.id, a.hist.year);

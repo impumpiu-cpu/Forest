@@ -75,7 +75,7 @@ export function seatMap(a, list = towers(a)) {
 export function bend(a, lair, say) {
   const L = LAIRS.get(lair.kind);
   if (!lair.alive || !L.undead || L.domain || lair.lord != null) return null;
-  const t = towerAt(a, lair.x, lair.y); if (!t) return null;
+  const t = towerAt(a, lair.x, lair.y); if (!t || !t.leader) return null;   // (a tower holds its vassals by its master: atlas/control.js)
   lair.lord = t.id;
   return `${cap1(L.label)} «${lair.name}» склонил${L.g === 'f' ? 'ась' : L.g === 'pl' ? 'ись' : L.g === 'n' ? 'ось' : 'ся'} перед башней «${t.name}»${t.leader ? `, где правит ${t.leader.name}` : ''}: теперь ${L.g === 'pl' ? 'они платят' : 'платит'} ей дань.`;
 }
@@ -120,6 +120,7 @@ export function stepTower(a, lair, L, rnd, lines, revealLair) {
   for (let y = Math.max(0, (cy | 0) - R0); y <= Math.min(F.H - 1, (cy | 0) + R0); y++) for (let x = Math.max(0, (cx | 0) - R0); x <= Math.min(F.W - 1, (cx | 0) + R0); x++) {
     const j = y * F.W + x, w = 1 - Math.hypot(x + 1 / 2 - cx, y + 1 / 2 - cy) / (r + 1); if (w <= 0 || dead.K[j] <= 0) continue;
     const v = a.rot[j]; sum += v * w; ws += w;
+    if (!lair.leader) continue;   // no master, no raising: the dead of a tower are its master's (atlas/control.js)
     const take = NECRO.take * v * w;
     a.rot[j] = v - take;
     dead.N[j] = Math.min(NECRO.deadCap * dead.K[j], dead.N[j] + take * NECRO.raise);

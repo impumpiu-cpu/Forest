@@ -27,8 +27,8 @@ const vassals = a.lairs.filter(l => l.alive && l.lord != null);
 check('данники: у каждого есть живое логово-господин', vassals.length > 0 && vassals.every(v => a.lairs.find(o => o.id === v.lord)?.alive), `данников ${vassals.length}`);
 const deeds = a.chronicle.filter(c => /Вёл их|подчинил|основал «|разорил «|разбил /.test(c.text)).length;
 check('главари действуют: набеги, выводки, подчинение, войны логов', deeds > 20, `строк о делах главарей: ${deeds}`);
-// (a party the lair sent before its leader rose may still be on its way: only those sent after count)
-const noRaids = live.every(l => !(a.parties || []).some(p => p.owner === l.id && (p.kind === 'raid' || p.kind === 'brood') && (p.sent ?? 0) >= (l.leader.since ?? 0)));
+// (a party the lair sent before its leader rose — or the very step it rose, the lair's own turn going first — may still be on its way: only those sent after count)
+const noRaids = live.every(l => !(a.parties || []).some(p => p.owner === l.id && (p.kind === 'raid' || p.kind === 'brood') && (p.sent ?? 0) > (l.leader.since ?? 0)));
 check('логово с главарём не шлёт набегов и выводков само', noRaids);
 const took = worlds.flatMap(w => (w.calamities || []).filter(c => c.boss?.wasLeader).map(c => `${c.boss.wasLeader} → ${c.label}`));
 check('бедствие берёт боссом живого главаря', took.length > 0, took.join('; '));
@@ -43,7 +43,7 @@ if (!met) {   // no leader out at the end of history: send one
 }
 const things = worldThings(met.w, {x: met.p.x, y: met.p.y, realm: null});
 const th = things.find(t => t.party === met.p.id), lair = met.w.lairs.find(l => l.id === met.p.owner);
-check('встреча каравана с отрядом главаря: главарь — именной противник', !!th?.boss?.name && th.leaderLair === lair.id && th.boss.add, th ? `${th.label} · ${th.boss?.name}` : 'нет встречи');
+check('встреча каравана с отрядом главаря: главарь — именной противник', !!th?.boss?.name && th.person === lair.leader.id && th.boss.add, th ? `${th.label} · ${th.boss?.name}` : 'нет встречи');
 const was = (met.w.fallenLeaders || []).length;
 leaderSlain(met.w, lair.id);
 check('главарь, разбитый караваном, мёртв', !lair.leader && (met.w.fallenLeaders || []).length === was + 1 && met.w.fallenLeaders.at(-1).how === 'caravan');

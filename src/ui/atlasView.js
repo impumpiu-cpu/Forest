@@ -25,6 +25,7 @@ import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {ruinAt} from '../atlas/diplomacy.js';
 import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
+import {personOf} from '../atlas/persons.js';
 import {townLean} from '../atlas/mind.js';
 import {leadOf} from '../data/mind.js';
 // the roles of the towns on the layer «Воля державы» (atlas/mind.js), and the seat's
@@ -741,7 +742,7 @@ export class MapView {
       if (Kd) {
         const st = REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ');
         const ru = RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ');
-        const court = OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ');
+        const court = OFFICES.all().map(o => `${o.label}: ${personOf(a, Kd.court[o.id]?.person)?.name || '—'}`).join(', ');
         parts.push(`держава: ${st}${ru ? `; разруха: ${ru}` : ''}; двор — ${court}`);
       }
     }

@@ -28,6 +28,8 @@ import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom, stepRealmKeep} from './kingdom.js';
+import {stepPersons} from './persons.js';
+import {stepSuccession} from './succession.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -144,6 +146,8 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepPersons(a, t => say(a, t));   // age takes the rulers and the courts whose years are out (atlas/persons.js)
+  stepSuccession(a, t => say(a, t));   // the hordes without a chief settle it (atlas/succession.js)
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   if (H.era !== 'wild') stepRealmKeep(a);   // the realms keep their garrisons and armies, a season's pay, food and kit (atlas/treasury.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)

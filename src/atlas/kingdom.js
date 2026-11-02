@@ -4,7 +4,10 @@
 // view, its offices filled or emptied, its edicts, the year's event, its upkeep and its four kinds of ruin.
 //
 // realm.kingdom = {stats: {culture, economy, loyalty, stability}, ruin: {corruption, crime, decay, strife}, upkeep,
-//                  edicts: {taxes: level, …}, court: {ruler: {name, since, until} | null, …}, event: id | null}
+//                  edicts: {taxes: level, …}, court: {ruler: {person, since, until} | null, …}, event: id | null}
+// A holder of an office is a person of the world (atlas/persons.js): it lives at the seat, ages and dies by its own
+// event; its term running out (`until`) only sends it off the office. The throne after a ruler's death goes by the realm's
+// profile (data/polities.js, atlas/succession.js): a kingdom's court mourns `mourn` years and fills it again; a horde fights
 // What it does back to the world: data/kingdom.js FEEDBACK — schismFactor (atlas/realms.js), t.realmFx (growth, might).
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK} from '../data/kingdom.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -17,6 +20,8 @@ import {attitude} from './diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
+import {newPerson, personOf, moveTo} from './persons.js';
+import {rulerTitle} from './polities.js';
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
@@ -83,18 +88,23 @@ export function stepKingdom(a, say) {
     const K = realm.kingdom ||= {ruin: zero(RUINS), court: Object.fromEntries(OFFICES.all().map(o => [o.id, null])), edicts: {}, stats: zero(REALM_STATS)};
     const name = realmLabelGen(a, realm.id), Name = cap1(realmLabel(a, realm.id)), war = atWarAny(a, realm);
     const stats = baseStats(a, realm, towns);
-    // the court: a holder's years run out, an empty office is filled
-    const race = WORLD_PEOPLES.get(realm.people).race;
+    // the court: a holder's years run out (it lives on), an empty office is filled with a person of the realm's race at
+    // its seat — the throne not while the realm mourns or the horde fights over it (atlas/succession.js)
+    const race = WORLD_PEOPLES.get(realm.people).race, seat = towns.find(t => t.id === realm.capital) || towns[0];
     for (const O of OFFICES.all()) {
-      const h = K.court[O.id];
-      if (h && year >= h.until) { K.court[O.id] = null; tell(`${cap1(h.f ? O.labelF : O.label)} ${name} ${h.name} оставил${h.f ? 'а' : ''} свой пост.`); }
-      if (!K.court[O.id] && r() < COURT.fill) {
+      const h = K.court[O.id], hp = h ? personOf(a, h.person) : null;
+      if (h && (!hp || !hp.alive)) K.court[O.id] = null;   // (its holder is dead: the office was freed by its death — atlas/succession.js; an old save's holder of no person is let go)
+      else if (h && year >= h.until) { K.court[O.id] = null; tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }
+      const held = O.id === 'ruler' && ((realm.mourn ?? -1) > year || realm.contest != null);
+      if (!K.court[O.id] && !held && r() < COURT.fill) {
         // a name nobody at this court has yet; a people without names leaves the office empty
-        const used = new Set(Object.values(K.court).filter(Boolean).map(x => x.name));
+        const used = new Set(Object.values(K.court).filter(Boolean).map(x => personOf(a, x.person)?.name).filter(Boolean));
         const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
         if (nm) {
-          K.court[O.id] = {name: nm, f, since: year, until: year + years};
-          tell(`${f ? 'Новая' : 'Новый'} ${f ? O.labelF : O.label} ${name} — ${nm}.`);
+          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r});
+          if (seat) moveTo(p, 'town', seat.id);
+          K.court[O.id] = {person: p.id, since: year, until: year + years};
+          tell(`${f ? 'Новая' : 'Новый'} ${O.id === 'ruler' ? rulerTitle(realm, p) : f ? O.labelF : O.label} ${name} — ${nm}.`);
         }
       }
       addTo(stats, K.court[O.id] ? O.adds : O.vacant);

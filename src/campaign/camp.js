@@ -78,7 +78,7 @@ export function campSetup(a, K, ev) {
     met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
     // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
   };
 }
 
@@ -184,7 +184,7 @@ const foodNow = w => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.n
 // and a sway at random on top. Shared with the quick mode (campaign/fight.js autoFight)
 const refOf = F => CAMP.foe.density.ref[F.kind] ?? CAMP.foe.density.ref.else;
 export function foeWeight(r, F, kind) {
-  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.leaderLair ? B.leader : B.mini) : null, D = B.density;
+  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.person ? B.leader : B.mini) : null, D = B.density;
   // a chance meeting: as many as the land holds (the thing's strength: its density), the named and the forces as they are
   const base = named ?? (kind === 'guard' || F.kind === 'army' ? B.force : (B.skirmish[0] + r() * (B.skirmish[1] - B.skirmish[0])) * Math.max(D.lo, Math.min(D.hi, (F.strength ?? refOf(F)) / refOf(F))));
   return Math.max(B.floor, base + (2 * r() - 1) * B.sway);

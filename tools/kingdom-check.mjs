@@ -7,6 +7,7 @@ import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {lineLevel} from '../src/atlas/chronicle.js';
 import {holds, baseStats, schismFactor} from '../src/atlas/kingdom.js';
 import {realmTowns} from '../src/atlas/realms.js';
+import {personOf} from '../src/atlas/persons.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
 import {trade, standing} from '../src/campaign/town.js';
 import {REALM_STATS, RUINS, RUIN_RULES, OFFICES, EDICTS, FEEDBACK, MARKET_TIERS, marketTierOf} from '../src/data/kingdom.js';
@@ -25,7 +26,7 @@ for (const r of living) {
   if (!K) { bad.push(`держава ${r.name}: нет состояния`); continue; }
   for (const S of REALM_STATS.all()) expect(Number.isFinite(K.stats[S.id]), `${r.name}: ${S.label} — ${K.stats[S.id]}`);
   for (const R of RUINS.all()) expect(K.ruin[R.id] >= 0 && K.ruin[R.id] <= RUIN_RULES.max, `${r.name}: ${R.label} — ${K.ruin[R.id]}`);
-  for (const O of OFFICES.all()) expect(O.id in K.court && (K.court[O.id] === null || K.court[O.id].name), `${r.name}: должность ${O.label}`);
+  for (const O of OFFICES.all()) expect(O.id in K.court && (K.court[O.id] === null || (personOf(a, K.court[O.id].person)?.alive && personOf(a, K.court[O.id].person).name)), `${r.name}: должность ${O.label}`);
   for (const Ed of EDICTS.all()) expect(Ed.levels.some(l => l.id === K.edicts[Ed.id]), `${r.name}: указ ${Ed.label} — «${K.edicts[Ed.id]}»`);
 }
 expect(JSON.stringify(a.realms.map(r => r.kingdom)) === JSON.stringify(b.realms.map(r => r.kingdom)), 'тот же сид дал другие державы');

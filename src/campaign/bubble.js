@@ -21,6 +21,7 @@ import {EPIC} from '../data/calamities.js';
 import {GAME, FOES} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
 import {cultPool} from '../atlas/necro.js';
+import {personsAt, personLabel} from '../atlas/persons.js';
 import {REALM_BANDS} from '../data/seam.js';
 import {dist} from '../core/util.js';
 
@@ -74,7 +75,7 @@ function spawn(a, K, guided) {
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
     const named = dg => dg.label || THINGS[dg.kind].label || FOES[dg.kind]?.label || dg.kind;   // (a road's bandits, an army, the risen dead have no name of their own: the foe's)
     const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {}), ...(dg.pool ? {pool: dg.pool} : {}),
-      ...(!small && dg.lair != null ? {lair: dg.lair} : {}), ...(!small && dg.boss ? {boss: dg.boss, leaderLair: dg.leaderLair} : {})});   // (a lair's: its captives freed by a win; its leader at the head)
+      ...(!small && dg.lair != null ? {lair: dg.lair} : {}), ...(!small && dg.boss ? {boss: dg.boss, person: dg.person} : {})});   // (a lair's: its captives freed by a win; its leader at the head — a person of the world, atlas/persons.js)
     const ds = dangers(a, i, K);
     for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
@@ -122,13 +123,18 @@ export function worldThings(a, K) {
   for (const p of a.parties || []) {
     if (p.kind === 'caravan' || p.state === 'gone' || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
     let kind = null, who = {};
-    if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: realmBand(a, p.owner, p.people) || 'bandits'}; }
+    if (p.kind === 'army') {
+      kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: realmBand(a, p.owner, p.people) || 'bandits'};
+      // a chief that rides with its host (atlas/persons.js): the named one among them, and it may fall to the caravan
+      const chief = personsAt(a, 'party', p.id)[0];
+      if (chief) who = {...who, boss: {name: personLabel(chief), g: chief.g, species: chief.species, add: chief.add || null}, person: chief.id};
+    }
     else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.domain ? 'cultists' : L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; if (who.band === 'cultists') who.pool = cultPool(a, p.i); }
     else if (p.kind === 'brood' || p.kind === 'dragon') { kind = 'lair'; const l = (a.lairs || []).find(x => x.id === p.owner); who = l ? lairFoe(l.kind) : {}; }
     // a leader of an old lair at the head of its own (atlas/leaders.js): on the local map it is the named one among them
     else if (p.kind === 'leader') {
       const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind);
-      if (l?.leader) { kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair'; who = {...lairFoe(l.kind), boss: {name: `${l.leader.title[0]} ${l.leader.name}`, g: 'm', species: l.leader.species, add: l.leader.add}, leaderLair: l.id}; }
+      if (l?.leader) { kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair'; who = {...lairFoe(l.kind), boss: {name: personLabel(l.leader), g: 'm', species: l.leader.species, add: l.leader.add}, person: l.leader.id}; }
     }
     if (!kind) continue;
     out.push({id: `p${p.id}`, party: p.id, kind, ...who, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,

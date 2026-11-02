@@ -25,6 +25,7 @@ import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
+import {personOf, personDies} from '../atlas/persons.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
@@ -47,7 +48,7 @@ import {GOLEM_REPAIR} from '../data/constructs.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
-import {leaderSlain, livingLeaders} from '../atlas/leaders.js';
+import {livingLeaders} from '../atlas/leaders.js';
 import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
 import {LEADER, TRIBE_RAID, LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
@@ -566,7 +567,7 @@ function night(a, K) {
 // what a thing of the bubble brings to a fight: its foe, its strength, and who it is on the local map
 // (all a thing carries into the fight: its second kind, a cult's pool, the lair whose captives a win frees, a leader)
 export const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {}), ...(t.boss ? {boss: t.boss} : {}),
-  ...(t.with ? {with: t.with} : {}), ...(t.pool ? {pool: t.pool} : {}), ...(t.leaderLair != null ? {leaderLair: t.leaderLair} : {}), ...(t.lair != null ? {lair: t.lair} : {}), ...(t.species ? {species: t.species} : {})});
+  ...(t.with ? {with: t.with} : {}), ...(t.pool ? {pool: t.pool} : {}), ...(t.person != null ? {person: t.person} : {}), ...(t.lair != null ? {lair: t.lair} : {}), ...(t.species ? {species: t.species} : {})});
 // what a town tells of the leaders near it: the nearest living one within a leader's reach, once per leader
 function leaderRumour(a, K, t) {
   const reach = TRIBE_RAID.reach * LEADER.reach * scaleOf(a), told = (K.leadersTold ||= []);
@@ -576,12 +577,15 @@ function leaderRumour(a, K, t) {
   return `говорят, ${wherePhrase(a, near.i)} хозяйничает ${near.leader.title[0].toLowerCase()} ${near.leader.name} из «${near.name}»`;
 }
 
-// a leader of an old lair beaten with its own: it lies dead, the world learns of it (atlas/leaders.js)
+// a person of the world beaten at the head of its own — a leader of an old lair, a chief with its host: it lies dead, and the
+// world learns of it once (atlas/persons.js personDies: a scene applied twice kills nobody twice)
 function leaderBeaten(a, K, t, win) {
-  if (!win || t.leaderLair == null) return;
-  leaderSlain(a, t.leaderLair);
+  if (!win || t.person == null) return;
+  const p = personOf(a, t.person); if (!p) return;
+  const lair = (a.lairs || []).find(l => l.leader === p);
+  if (!personDies(a, p, 'caravan', line => say(a, K, line, 'fight', true))) return;
   K.stats.leaders = (K.stats.leaders || 0) + 1;
-  say(a, K, `${t.boss.name} пал от рук каравана: его логово осталось без главаря.`, 'fight', true);
+  say(a, K, `${t.boss.name} пал от рук каравана${lair ? ': его логово осталось без главаря' : ''}.`, 'fight', true);
 }
 
 // ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
