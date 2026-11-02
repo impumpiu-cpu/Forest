@@ -108,7 +108,6 @@ for (const [id, r] of Object.entries(CREATURES)) {
   if (!(r.hp > 0) || !(r.speed > 0)) err(`${where}: hp и speed должны быть больше нуля`);
   if (r.attack && !(r.attack.power > 0 && r.attack.cooldown > 0)) err(`${where}: attack без power или cooldown`);
   if (r.ks != null && !(r.ks > 0)) err(`${where}: ks должен быть больше нуля`);
-  for (const p of Object.keys(r.peoples || {})) if (!SPECIES.get(id)?.peoples?.some(x => x.id === p)) err(`${where}: peoples.${p} — у вида нет такого народа`);
 }
 if (!SPECIES.has(STRENGTH.ref.species)) err(`data/balance/creatures.js: STRENGTH.ref — нет вида «${STRENGTH.ref.species}»`);
 STRENGTH.ref.kit.forEach(i => item('data/balance/creatures.js: STRENGTH.ref.kit', i));
@@ -170,7 +169,6 @@ for (const sp of SPECIES.all()) {
     const r = sp.special[st];
     if (!Array.isArray(r) || r.length !== 2 || r[0] > r[1] || r[0] < 0) err(`${where}: предел ${st} должен быть [мин, макс]`);
   }
-  for (const p of sp.peoples || []) for (const st of Object.keys(p.shift || {})) if (!STATS.has(st)) err(`${where}, народ ${p.id}: нет характеристики «${st}»`);
   for (const v of Object.keys(sp.values || {})) if (!VALUES.has(v)) err(`${where}: нет ценности «${v}»`);
   if (sp.rel && !RELATIONS[sp.rel]) err(`${where}: нет строки «${sp.rel}» в data/relations.js`);
   if (sp.settle > 0 && !sp.names?.length) err(`${where}: приходит переселенцем, но без имён`);

@@ -4,7 +4,6 @@
 //   special  — SPECIAL limits [min, max] per letter (data/special.js says what each letter does).
 //              around({S: 6, …}, spread) — the typical one ± spread; beasts (`relativeStats`) are described
 //              by their typical animal, so their SPECIAL only moves one animal against its kin
-//   peoples  — how a sub-race shifts the limits: {hill: {C: 1, E: -1}} (its names and tastes: data/races.js)
 //   hp       — health of the typical one (Endurance moves it, data/special.js EFFECTS.hp)
 //   speed    — cells a tick (Agility moves it)
 //   attack   — the bare blow: {power, cooldown, reach?, type?}; type — pierce (a bite, a sting), slash (claws),
@@ -58,13 +57,13 @@ export const CREATURES = {
   human:       {special: {S: [1, 10], P: [1, 10], E: [1, 10], C: [1, 10], I: [1, 10], A: [1, 10], L: [1, 10]}, hp: 1, speed: 0.13, attack: {power: 1, cooldown: 12}},
   halfling:    {special: {S: [1, 6], P: [3, 11], E: [2, 9], C: [3, 10], I: [1, 10], A: [4, 12], L: [4, 13]}, hp: 0.8, speed: 0.12, attack: {power: 0.8, cooldown: 11}, ks: 1.02},
   giant:       {special: {S: [8, 15], P: [1, 8], E: [7, 14], C: [1, 8], I: [1, 7], A: [1, 6], L: [1, 8]}, hp: 1.5, speed: 0.13, attack: {power: 1.3, cooldown: 14}, ks: 0.99},
-  elf:         {special: {S: [1, 7], P: [5, 13], E: [1, 7], C: [3, 11], I: [3, 11], A: [5, 13], L: [1, 10]}, peoples: {high: {I: 1, C: 1, S: -1}}, hp: 0.9, speed: 0.14, attack: {power: 0.9, cooldown: 11}, ks: 1.01},
+  elf:         {special: {S: [1, 7], P: [5, 13], E: [1, 7], C: [3, 11], I: [3, 11], A: [5, 13], L: [1, 10]}, hp: 0.9, speed: 0.14, attack: {power: 0.9, cooldown: 11}, ks: 1.01},
   darkelf:     {special: {S: [1, 7], P: [6, 13], E: [2, 8], C: [2, 10], I: [4, 12], A: [5, 13], L: [1, 10]}, hp: 0.9, speed: 0.14, attack: {power: 0.9, cooldown: 11}, ks: 1.03},
-  dwarf:       {special: {S: [4, 12], P: [3, 10], E: [6, 14], C: [1, 8], I: [3, 11], A: [1, 8], L: [1, 10]}, peoples: {hill: {C: 1, E: -1}, deep: {P: 2, E: 1, C: -1, A: 0, S: -1}}, hp: 1.15, speed: 0.115, attack: {power: 1.1, cooldown: 12}, ks: 0.99},
+  dwarf:       {special: {S: [4, 12], P: [3, 10], E: [6, 14], C: [1, 8], I: [3, 11], A: [1, 8], L: [1, 10]}, hp: 1.15, speed: 0.115, attack: {power: 1.1, cooldown: 12}, ks: 0.99},
   orc:         {special: {S: [5, 13], P: [2, 9], E: [5, 13], C: [1, 9], I: [1, 8], A: [3, 10], L: [1, 9]}, hp: 1.15, speed: 0.13, attack: {power: 1.2, cooldown: 12}, ks: 1},
   goblin:      {special: {S: [1, 5], P: [4, 11], E: [1, 7], C: [1, 8], I: [2, 11], A: [5, 12], L: [3, 11]}, hp: 0.65, speed: 0.135, attack: {power: 0.7, cooldown: 10}, ks: 1.01},
   ogre:        {special: {S: [10, 15], P: [1, 6], E: [8, 14], C: [1, 6], I: [1, 5], A: [1, 5], L: [1, 8]}, hp: 1.8, speed: 0.115, attack: {power: 1.6, cooldown: 16}, ks: 0.96},
-  troll:       {special: {S: [7, 13], P: [3, 10], E: [6, 13], C: [1, 7], I: [1, 7], A: [4, 11], L: [1, 8]}, peoples: {swamp: {E: 1, A: -1}, ice: {S: 1, I: -1}}, hp: 1.5, speed: 0.135, attack: {power: 1.5, cooldown: 13}, ks: 0.98},
+  troll:       {special: {S: [7, 13], P: [3, 10], E: [6, 13], C: [1, 7], I: [1, 7], A: [4, 11], L: [1, 8]}, hp: 1.5, speed: 0.135, attack: {power: 1.5, cooldown: 13}, ks: 0.98},
   gnoll:       {special: {S: [4, 11], P: [5, 12], E: [5, 12], C: [1, 6], I: [1, 7], A: [4, 11], L: [1, 8]}, hp: 1.05, speed: 0.14, attack: {power: 1.2, cooldown: 12}, ks: 1.02},
   // raid monsters (data/monsters.js)
   demon:       {special: {S: [12, 16], P: [8, 12], E: [12, 16], C: [2, 6], I: [5, 9], A: [8, 12], L: [2, 6]}, hp: 3.2, speed: 0.12, attack: {power: 2.2, cooldown: 13, type: 'slash'}, resist: {ranged: 0.6}, ks: 0.86},
@@ -121,7 +120,6 @@ export function bodyFor(entry) {
   else delete out.attack;
   if (row.resist) out.resist = {...row.resist};
   else delete out.resist;
-  if (row.peoples && entry.peoples) out.peoples = entry.peoples.map(p => (row.peoples[p.id] ? {...p, shift: row.peoples[p.id]} : p));
   if (row.ks != null) out.ks = row.ks; else delete out.ks;
   return out;
 }

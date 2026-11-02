@@ -23,7 +23,9 @@
 //   ground 'home':  stands where the race's home suits the biome at least TRIBE_HOME
 //   needsAny:       and in addition on this kind of ground (as `ground` of a beast lair), if given
 //   gen:            the owners in the genitive («набег гоблинов»);  riders / on: their beasts and «on» them
-//   sub:            the race's sub-race (data/races.js peoples) whose home the camp stands on, and whose name it bears
+//   plural:         what its folk are called in the chronicle, where it differs from the race («лесные тролли»)
+//   home:           the camp's own biomes (0..1), where the kind of lair differs from its race's `home` (the trolls of the
+//                   forest, the swamp and the ice are one race, data/races.js, with three kinds of lair)
 //   undead lairs:   rotAt, at, spawn (see ROT below); might — the owner's SPECIAL power × this (a necromancer
 //                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid;
 //                   at 'town' — the lair sits in a mixed town and `drinks` that share of its people a year
@@ -62,14 +64,14 @@ LAIRS.registerAll([
   {id: 'ogres', tribe: true, gen: 'огров', species: 'ogre', from: 'из логова', label: 'логово огров', g: 'n', color: [160, 110, 90], radius: 8, ground: 'home',
     density: 5, max: 6, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['пещера', 'f'], ['котёл', 'm'], ['холм', 'm']]},
-  // trolls by sub-race (data/races.js peoples): each kind of troll its own ground
-  {id: 'trolls', tribe: true, sub: 'forest', gen: 'лесных троллей', species: 'troll', from: 'из логова', label: 'логово лесных троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
+  // the trolls: one race, three kinds of lair, each on its own ground (`home`)
+  {id: 'trolls', tribe: true, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}, plural: 'лесные тролли', gen: 'лесных троллей', species: 'troll', from: 'из логова', label: 'логово лесных троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
     density: 5, max: 5, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['мост', 'm'], ['бурелом', 'm'], ['валуны', 'pl']]},
-  {id: 'swamptrolls', tribe: true, sub: 'swamp', gen: 'болотных троллей', species: 'troll', from: 'из логова', label: 'логово болотных троллей', g: 'n', color: [80, 110, 80], radius: 8, ground: 'home',
+  {id: 'swamptrolls', tribe: true, home: {swamp: 1, jungle: 0.5, forest: 0.3}, plural: 'болотные тролли', gen: 'болотных троллей', species: 'troll', from: 'из логова', label: 'логово болотных троллей', g: 'n', color: [80, 110, 80], radius: 8, ground: 'home',
     density: 25, max: 4, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['топь', 'f'], ['гать', 'f'], ['омут', 'm']]},
-  {id: 'icetrolls', tribe: true, sub: 'ice', gen: 'ледяных троллей', species: 'troll', from: 'из логова', label: 'логово ледяных троллей', g: 'n', color: [150, 180, 200], radius: 9, ground: 'home',
+  {id: 'icetrolls', tribe: true, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}, plural: 'ледяные тролли', gen: 'ледяных троллей', species: 'troll', from: 'из логова', label: 'логово ледяных троллей', g: 'n', color: [150, 180, 200], radius: 9, ground: 'home',
     density: 4, max: 4, breed: 0.04, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['ледник', 'm'], ['наст', 'm'], ['торосы', 'pl']]},
   // ── the dead

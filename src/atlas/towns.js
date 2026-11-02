@@ -27,6 +27,7 @@ const MAKERS = new Map();
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
+import {SPECIES} from '../data/species.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
@@ -171,22 +172,23 @@ export function placeHas(a, i, need) {
 
 // can this town build this now: its people, what its realm has, its size, how many it has, the place
 // (`inRealm` — realmBuilt(a, t), passed in when many buildings are asked about at once)
-// the kinds a town of a people of many kinds holds (data/peoples.js `kin`): {species: share}, the shares summing to 1, by
-// the biome of its cell — worked out once and kept; null for a people of one kind
+// the races a town holds (data/peoples.js `kin`; atlas/population.js): {race: share}, the shares summing to 1 — set by the
+// land when the town is founded and kept as its people live and die; a town of no world (no fields) — its people's race
 export function townKin(a, t) {
   if (t.kin) return t.kin;
-  const K = kinOfLand(a, t); if (!K) return null;
+  const K = kinOfLand(a, t); if (!K) return {[WORLD_PEOPLES.get(t.people).race]: 1};
   return (t.kin = K);
 }
-// the kinds the land of a town gives a people of many kinds (its biome: base + home), {species: share} — a new town's, and
-// what its wild tribes keep bringing to it (atlas/demography.js lifeYear, KIN.pull)
+// the races the land of a town gives its people (each × base × (KIN.any + its race's home of the biome), data/races.js),
+// {race: share} — a new town's, and what its wild tribes keep bringing to it (atlas/population.js, KIN.pull)
 export function kinOfLand(a, t) {
-  const K = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).kin : null; if (!K || !a?.f) return null;
-  const b = biomeAt(a, t.i)?.id, w = Object.fromEntries(Object.entries(K).map(([sp, k]) => [sp, k.base + (k.home[b] || 0)])), sum = Object.values(w).reduce((s, v) => s + v, 0);
+  const P = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people) : null, K = P?.kin; if (!K || !a?.f) return null;
+  const b = biomeAt(a, t.i)?.id, w = Object.fromEntries(Object.entries(K).map(([sp, k]) => [sp, k.base * (KIN.any + (SPECIES.get(sp).home?.[b] || 0))])), sum = Object.values(w).reduce((s, v) => s + v, 0);
+  if (!(sum > 0)) return {[P.race]: 1};
   return Object.fromEntries(Object.entries(w).map(([sp, v]) => [sp, Math.round(v / sum * 1000) / 1000]));
 }
-// the town's leading kind (its race for a people of one kind)
-export const leadKin = (a, t) => { const k = townKin(a, t); return k ? Object.entries(k).sort((p, q) => q[1] - p[1])[0][0] : WORLD_PEOPLES.get(t.people)?.race; };
+// the town's leading race
+export const leadKin = (a, t) => Object.entries(townKin(a, t)).sort((p, q) => q[1] - p[1])[0][0];
 
 export function canBuild(a, t, b, inRealm = null) {
   if (b.peoples && !b.peoples.includes(t.people)) return false;

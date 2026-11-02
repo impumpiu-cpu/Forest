@@ -31,7 +31,7 @@ import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess, seaFeed} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmHome, worldSubs, subHomeField} from './realms.js';
+import {foundRealm, joinRealm, realmLabel, realmHome} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 import {abandonEmpty, lifeYear} from './demography.js';
@@ -234,10 +234,10 @@ export function arrive(a, era, rnd, say) {
     // where they may come: the best of their land, its best coast, or as far from every town as it lets them
     const coast = j => { const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c; for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true; return false; };
     const far = j => { const x = (j % F.W) * F.c + F.c / 2, y = ((j / F.W) | 0) * F.c + F.c / 2; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
-    // each founding band is its own sub-race (data/races.js peoples) and looks for the land that suits it
-    const subs = worldSubs(P.race), mode = P.arrive.mode;
+    // each founding band looks for the land that suits its people
+    const mode = P.arrive.mode;
     for (let g = 0; g < P.arrive.groups; g++) {
-      const sub = subs.length ? subs[g % subs.length] : null, fit = sub ? subHomeField(a, P.race, sub) : pe.K;
+      const fit = pe.K;
       // (`free`: a people that will not land in another's crowded land — the humans look for an empty shore, not the elves' coast)
       const empty = j => Math.max(0, 1 - a.peoples.filter(o => o !== pe).reduce((s, o) => s + o.u[j], 0));
       const score = j => fit[j] * (mode === 'far' ? 0.3 + far(j) : 1) * (P.arrive.free ? 1 - P.arrive.free + P.arrive.free * empty(j) : 1) * (0.8 + 0.2 * ((j * 7919) % 13) / 13);
@@ -251,8 +251,8 @@ export function arrive(a, era, rnd, say) {
           const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
           if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = TL.band;
         }
-        const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t, sub?.id);
-        say(`${cap1(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
+        const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t);
+        say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
         break;
       }
     }
@@ -261,9 +261,9 @@ export function arrive(a, era, rnd, say) {
 }
 
 // «Заселение мира» (atlas/settle.js): a band of a people landed by hand near a cell — its town at the best spot within
-// a coarse cell or two of it (as good as its land there lets, without the arrival's bar), its own realm of the sub-race
-// given (or the one that fits the land), the field of the people woken around it. → {town, realm} or {error}
-export function landBand(a, peopleId, i, subId, rnd, say) {
+// a coarse cell or two of it (as good as its land there lets, without the arrival's bar), its own realm, the field of the
+// people woken around it. → {town, realm} or {error}
+export function landBand(a, peopleId, i, rnd, say) {
   const P = WORLD_PEOPLES.get(peopleId), pe = initPeople(a, P), F = a.fauna, k = scaleOf(a);
   const x0 = i % a.w, y0 = (i / a.w) | 0, Rr = 2 * F.c;
   let best = -1, bv = -Infinity;
@@ -277,9 +277,8 @@ export function landBand(a, peopleId, i, subId, rnd, say) {
     const x = jc % F.W + dx, y = ((jc / F.W) | 0) + dy;
     if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = Math.max(pe.u[y * F.W + x], TL.band);
   }
-  const t = foundTown(a, pe, best, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), sub = subId ? worldSubs(P.race).find(s => s.id === subId) : null, r = foundRealm(a, t, sub?.id);
-  const S = sub || worldSubs(P.race).find(s => s.id === r.sub);
-  say?.(`${cap1(S?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, best)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
+  const t = foundTown(a, pe, best, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t);
+  say?.(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, best)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
   return {town: t, realm: r};
 }
 

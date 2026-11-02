@@ -16,7 +16,7 @@ import {townFx, room, realmMetalWords, slotsUsed, slotsOf} from '../atlas/towns.
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
-import {realmOf, realmLabel, realmTowns, subOf} from '../atlas/realms.js';
+import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
 import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {scaleOf} from '../atlas/tectonics.js';
@@ -111,7 +111,7 @@ function roleLine(t) {
 
 function realmHtml(a, R) {
   if (!R) return '';
-  const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race), sub = subOf(a, R.id);
+  const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race);
   const cap = towns.find(t => t.id === R.capital);
   const rels = (a.realms || []).filter(o => o.id !== R.id && relation(a, R.id, o.id) && realmTowns(a, o.id).length).map(o => {
     const r = relation(a, R.id, o.id), st = stateOf(a, R.id, o.id);
@@ -129,7 +129,7 @@ function realmHtml(a, R) {
     row('разруха', RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ') || 'нет') +
     row('двор', OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ')) : '');
   return sec(`Держава: ${realmLabel(a, R.id)}`,
-    row('народ', `${esc(sub?.plural || P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
+    row('народ', `${esc(P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +
     row('города', `${towns.length}, жителей ${pop}: ${esc(towns.map(t => t.name).join(', '))}`) +
     row('основана', R.founded != null ? `${R.founded} г.${R.from != null ? `, расколом от «${esc(realmOf(a, R.from)?.name || '…')}»` : ''}` : null) +

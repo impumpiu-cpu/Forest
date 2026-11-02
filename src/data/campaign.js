@@ -85,8 +85,8 @@ export const FOES = {
 // (data/roles.js) drawn by the kind's weights in «Роли видов», in that role's kit (roleKit at `level`: bone and wood, now
 // and then bronze).
 //   title  — the people's word for a fighter of the core: one, many, of many («вышел караван: 8 хирдманов»)
-//   kinds  — whom it is drawn from: {species: weight}; `kin` — by the capital's shares of its kinds (the greenskins,
-//            data/peoples.js kin)
+//   kinds  — whom it is drawn from: `kin` — by the capital's shares of its races (data/peoples.js kin, atlas/population.js);
+//            or a fixed {species: weight}
 // Shared by all:
 //   least  — the roles a core has at least: line (the first rank: shield, spear, cleaver…), a shooter, a healer — the rest drawn
 //   big    — the great kinds, at most `max` of them in a core (a giant, an ogre, a troll)
@@ -97,9 +97,9 @@ export const FOES = {
 //            them, the game is skinned and the gold washed)
 //   skip   — the roles never drawn for a core: the mounted (no horse at the start) and those of a link only
 export const RETINUE = {
-  humans:  {title: ['ратник', 'ратники', 'ратников'], kinds: {human: 6, halfling: 1, giant: 0.5}},
-  elves:   {title: ['страж', 'стражи', 'стражей'], kinds: {elf: 1}},
-  dwarves: {title: ['хирдман', 'хирдманы', 'хирдманов'], kinds: {dwarf: 1}},
+  humans:  {title: ['ратник', 'ратники', 'ратников'], kinds: 'kin'},
+  elves:   {title: ['страж', 'стражи', 'стражей'], kinds: 'kin'},
+  dwarves: {title: ['хирдман', 'хирдманы', 'хирдманов'], kinds: 'kin'},
   orcs:    {title: ['рубака', 'рубаки', 'рубак'], kinds: 'kin'},
   least: {line: 2, shooter: 1, healer: 1},
   big: {kinds: ['giant', 'ogre', 'troll'], max: 1},

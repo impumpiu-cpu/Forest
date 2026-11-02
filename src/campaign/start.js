@@ -41,12 +41,12 @@ export function capitals(a) {
       peopleLabel: WORLD_PEOPLES.get(t.people).label, align: realmAlign(a, t.realm), x: t.x, y: t.y, pop: Math.round(t.pop), towns: realmTowns(a, t.realm).length}));
 }
 
-// someone who walks with the caravan: a creature of a race (and sub-race), rolled as the local map rolls
+// someone who walks with the caravan: a creature of a race, rolled as the local map rolls
 // them, with a name nobody in the caravan has. `core` — one of the eight who set out (the campaign is lost
 // when none of them is left); the rest are hired (`contract`) or joined on the way (`loyalty`)
 // `align` — the world view it stands near (its realm's: data/values.js); none — its race's
-export function makeMember(K, rnd, {race, sub = null, role, gear, core = false, lean = null, align = null, ...more}) {
-  const sp = SPECIES.get(race), spOf = sub && sp.peoples ? {...sp, peoples: sp.peoples.filter(p => p.id === sub)} : sp;
+export function makeMember(K, rnd, {race, role, gear, core = false, lean = null, align = null, ...more}) {
+  const sp = SPECIES.get(race), spOf = sp;
   const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: sp.label, gender: 'm', race, role, core, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more};
   rollCreature({rngs: {birth: rnd}}, m, spOf, {...(lean ? {lean} : {}), ...(align ? {align} : {})});
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
@@ -78,7 +78,7 @@ export function drawCore(a, K, rnd) {
   for (const m of out) if (!m.role) m.role = weighted(rnd, rolesFor(m.species)) || null;
   return out;
 }
-// one of the core: of its kind (the realm's sub-race for the realm's own race), in its role's kit, a camp's tool on its back
+// one of the core: of its kind, in its role's kit, a camp's tool on its back
 function member(K, a, rnd, {species, role}, k) {
   const r = realmOf(a, K.realm), R = role ? COMBAT_ROLES.get(role) : null;
   const kit = role ? roleKit(species, role, rnd, RETINUE.level) : [];
@@ -86,7 +86,7 @@ function member(K, a, rnd, {species, role}, k) {
   const hand = [...kit.filter(id => gearDef(id)?.slot !== 'body'), ...(RETINUE.tools[k] || [])];   // (the tool goes on the back: agents/equipment.js dress)
   const lean = R ? RETINUE.lean[R.group] || [] : [];
   const own = species === WORLD_PEOPLES.get(K.people).race;
-  return makeMember(K, rnd, {race: species, sub: own ? r.sub : null, role: 'fighter', fight: role, potions: R?.potions || 0, gear: {hand, body}, core: true, lean, align: own ? realmAlign(a, K.realm) : null});
+  return makeMember(K, rnd, {race: species, role: 'fighter', fight: role, potions: R?.potions || 0, gear: {hand, body}, core: true, lean, align: own ? realmAlign(a, K.realm) : null});
 }
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)

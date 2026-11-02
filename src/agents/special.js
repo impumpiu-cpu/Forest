@@ -1,5 +1,4 @@
 // A creature's own body and world view, rolled at birth (or arrival) inside its species' limits:
-//   a.people  — sub-race id, when the species has peoples
 //   a.special — {S, P, E, C, I, A, L}, each inside the (shifted) limits of the species
 //   a.maxHp   — health from the species and Endurance
 //   a.align   — {order, mercy} near the race's default; a.values — 2–3 values it holds dear
@@ -16,23 +15,21 @@ import {WOUNDS} from '../data/wounds.js';
 import {exhaustionRow, taintRow, marksOf, effectsOf, CONDITIONS} from '../data/conditions.js';
 import {illStage} from '../data/afflictions.js';
 
-export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
-
-// the limits after the people's shift
-export function limits(sp, people) {
+// the limits of the species (a variety of a race is a race of its own: data/races.js)
+export function limits(sp) {
   const out = {};
   for (const id of STATS.ids()) {
-    const [lo, hi] = sp.special?.[id] ?? [5, 5], s = people?.shift?.[id] || 0;
-    out[id] = [Math.max(0, lo + s), Math.max(0, hi + s)];
+    const [lo, hi] = sp.special?.[id] ?? [5, 5];
+    out[id] = [Math.max(0, lo), Math.max(0, hi)];
   }
   return out;
 }
 
-// racial traits the creature carries (the species' and its people's)
-export const innateOf = (sp, a) => [...(sp.innate || []), ...(peopleOf(sp, a)?.innate || [])];
+// racial traits the creature carries
+export const innateOf = sp => [...(sp.innate || [])];
 
-// a label like «глубинный дварф»
-export const raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
+// a label like «лесной эльф»
+export const raceLabel = sp => sp.label;
 
 // keys that add up rather than multiply
 // the keys that add rather than multiply (data/mods.js CREATURE_MODS `how`)
@@ -67,8 +64,7 @@ function pool() {
 export function rollCreature(w, a, sp, opts = {}) {
   if (!sp.special) return;
   const rng = w.rngs.birth;
-  if (sp.peoples) a.people = weighted(rng, sp.peoples.map(p => [p, p.weight ?? 1])).id;
-  const people = peopleOf(sp, a), lim = limits(sp, people);
+  const lim = limits(sp);
   // the middle of the range is the most common; the ends are rare
   a.special = {};
   const lean = new Set(opts.lean || []), roll = (lo, hi) => Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
@@ -126,9 +122,7 @@ export function refreshBody(a) {
   let full = null;
   if (a.special && sp.special) {
     full = specialInto(m, a, sp);
-    const people = peopleOf(sp, a);
-    for (const [k, v] of Object.entries(people?.mods || {})) P.put(k, v);
-    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) P.put(k, v);
+    for (const t of innateOf(sp)) for (const [k, v] of Object.entries(t.mods || {})) P.put(k, v);
   }
   for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) P.put(k, v);
   // wounds that heal and traumas for life (data/wounds.js)

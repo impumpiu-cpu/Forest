@@ -107,7 +107,6 @@ console.log('ok   правка таблиц: значения доходят д�
   const mods = (where, m) => { for (const k of Object.keys(m || {})) if (!CREATURE_MODS.has(k)) bad.push(`${where}: модификатора «${k}» нет в словаре`); };
   for (const s of SPECIES.all()) {
     mods(`вид ${s.id}`, s.mods);
-    for (const p of s.peoples || []) mods(`народ ${p.id}`, p.mods);
     for (const t of s.innate || []) mods(`врождённое ${s.id} «${t.label}»`, t.mods);
   }
   for (const p of WORLD_PEOPLES.all()) mods(`народ мира ${p.id}`, p.mods);

@@ -5,11 +5,8 @@
 //   rel      — which line of the relations table (data/relations.js) speaks for it
 //   special, hp, speed, attack — in data/balance/creatures.js: SPECIAL limits per characteristic [min, max]
 //              (nothing pushes past them) and the body
-//   peoples  — sub-races: their shift of the limits is in data/balance/creatures.js, `mods` and `innate` add
-//              to the species'; on the world
-//              map a realm takes the sub-race that fits the land of its seat best (`home` over the race's,
-//              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные дварфы Медной горы»),
-//              `taste` leans its towns' building (data/peoples.js taste); `world: false` — never a realm
+//   (sub-races are gone from the model — docs/WORLD.md «Расы и народы»: a variety of a race is a race of its own,
+//              added by copying a row; the author's values of the old ones are kept in docs/MIGRATION.md)
 //   body     — physiology for the card and, later, for the world map (growth of a node):
 //              adult in years; lifeFrom…life — how long it lives, the town's health lifting it towards `life` (atlas/
 //              demography.js lifeYear); fertility 0…1 — on the world map, × its people's births as against the race the
@@ -74,12 +71,6 @@ export const RACES = [
     summons: 0.15,
     innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'},
       {label: 'дитя леса', note: 'в лесу удар ранит на пятую часть слабее; камень добывает вдвое медленнее, поле родит на четверть быстрее'}],
-    peoples: [
-      {id: 'wood', label: 'лесной эльф', plural: 'лесные эльфы', gen: 'лесных эльфов', weight: 3},
-      {id: 'high', label: 'высокий эльф', plural: 'высокие эльфы', gen: 'высоких эльфов', weight: 1,
-        home: {meadow: 1, forest: 0.6, shrubland: 0.6, foothills: 0.45, savanna: 0.3, jungle: 0.3, taiga: 0.3},
-        taste: {lore: 1.6, prestige: 1.3, trade: 1, defence: 0.8}, innate: [{label: 'старая кровь', note: 'помнит книги, которых другие не читали'}]},
-    ],
     align: {order: 2, mercy: 0, spread: {order: 0.8, mercy: 1}},
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
     names: personNames('elf')},
@@ -107,15 +98,6 @@ export const RACES = [
     brew: {food: 0.3, drunk: 1.1, sober: 0.85, lasts: 1.5},
     innate: [{label: 'хмельная кровь', note: 'брага кормит и бодрит; без неё по утрам хмурится'},
       {label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'жаростойкий', note: 'не боится жара горна'}],
-    peoples: [
-      {id: 'mountain', label: 'горный дварф', plural: 'горные дварфы', gen: 'горных дварфов', weight: 3,
-        home: {foothills: 1, highlands: 0.9, volcano: 0.5, taiga: 0.15, tundra: 0.15}, taste: {prod: 1.5, defence: 1.3, trade: 0.9}},
-      {id: 'hill', label: 'холмовой дварф', plural: 'холмовые дварфы', gen: 'холмовых дварфов', weight: 2,
-        home: {foothills: 0.8, meadow: 0.6, forest: 0.45, steppe: 0.4, shrubland: 0.4}, taste: {trade: 1.4, food: 1.2, prod: 1.2, defence: 1},
-        innate: [{label: 'торговая жилка', note: 'знает цену всему, что лежит на прилавке'}]},
-      {id: 'deep', label: 'глубинный дварф', plural: 'глубинные дварфы', gen: 'глубинных дварфов', weight: 1, world: false,
-        mods: {cold: 0.85}, innate: [{label: 'дитя глубин', note: 'бледен, видит во мраке ещё лучше'}]},
-    ],
     align: {order: 5, mercy: 0, spread: {order: 0.5, mercy: 0.9}},
     values: {ancestors: 2, work: 2, gold: 1.4, family: 0.8},
     names: personNames('dwarf')},
@@ -158,11 +140,6 @@ export const RACES = [
     body: {adult: 14, lifeFrom: 150, life: 250, fertility: 0.3, brawled: 0.3, diet: 'хищник'},
     mods: {hunger: 1.8, regen: 6, bravery: 1.3},
     innate: [{label: 'регенерация', note: 'рана затягивается на глазах, пока рядом нет огня'}],
-    peoples: [
-      {id: 'forest', label: 'лесной тролль', plural: 'лесные тролли', gen: 'лесных троллей', weight: 2, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}},
-      {id: 'swamp', label: 'болотный тролль', plural: 'болотные тролли', gen: 'болотных троллей', weight: 1, home: {swamp: 1, jungle: 0.5, forest: 0.3}},
-      {id: 'ice', label: 'ледяной тролль', plural: 'ледяные тролли', gen: 'ледяных троллей', weight: 1, mods: {cold: 0.3}, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}},
-    ],
     align: {order: -2, mercy: -2, spread: {order: 1.1, mercy: 1}},
     values: {nature: 1.6, faith: 1.6, strength: 1},
     names: personNames('troll')},

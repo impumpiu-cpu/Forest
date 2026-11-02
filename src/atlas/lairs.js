@@ -34,8 +34,8 @@ import {dist} from '../core/util.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
-// how well a race's home suits a cell, 0..1 (data/races.js `home`)
-const homeAt = (a, L, i) => { const R = SPECIES.get(L.species), sub = L.sub ? R.peoples.find(p => p.id === L.sub) : null; return ((sub?.home) || R.home)[biomeAt(a, i).id] || 0; };
+// how well a camp's ground suits a cell, 0..1: the lair kind's own `home` (data/lairs.js), else its race's (data/races.js)
+const homeAt = (a, L, i) => (L.home || SPECIES.get(L.species).home)[biomeAt(a, i).id] || 0;
 
 // can this kind of lair stand on this cell
 export function groundFits(a, L, i) {
@@ -401,13 +401,13 @@ export function stepLairs(a, rnd, seasonId) {
 // who comes: «Гноллы с гиенами», «Некромант повёл мертвецов» (by the kind alone; a raid that sets out reads its company
 // from the land: raidBand)
 export function raidWho(L) {
-  const race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
-  return L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : '');
+  const race = SPECIES.get(L.species);
+  return L.leads ? L.leads : cap1(L.plural || race.plural) + (L.riders ? ` ${L.on}` : '');
 }
 // who goes on this lair's raid, by the fields about it (data/lairs.js RAID_MIX): its own, its riders if they live there,
 // and maybe a second kind of its land → {who, k: × the raid's might, riders}
 export function raidBand(a, lair, L, rnd) {
-  const F = a.fauna, M = RAID_MIX, race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
+  const F = a.fauna, M = RAID_MIX, race = SPECIES.get(L.species);
   // a necromancer leads his dead and his cult: stronger with the living about him (data/lairs.js NECRO.cultMight)
   if (L.domain && F) {
     const j = faunaCell(a, lair.i), living = Math.min(1, livingAt(a, j).reduce((v, [r, x]) => v + x * darkness(r), 0));   // (the cult weighs the living as its pool does: atlas/necro.js)
@@ -415,7 +415,7 @@ export function raidBand(a, lair, L, rnd) {
   }
   if (L.leads || !F) return {who: raidWho(L), k: 1, riders: false};
   const j = faunaCell(a, lair.i), at = id => { const s = F.list[F.idx[id]]; return s ? s.N[j] : 0; };
-  let who = cap1(sub?.plural || race.plural), k = 1;
+  let who = cap1(L.plural || race.plural), k = 1;
   const riders = !!L.riders && at(L.riders) >= M.riders;
   if (riders) { who += ` ${L.on}`; k += M.ridersMight; }
   const C = F.list.filter(s => s.id !== L.species && s.id !== L.riders && s.role !== 'spirit' && (s.lair || s.role === 'folk' || s.role === 'predator') && s.N[j] >= M.at);

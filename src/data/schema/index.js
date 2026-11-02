@@ -12,6 +12,7 @@ import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
+import {POLITIES, SUCCESSION} from '../polities.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
 import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
 import {STATS} from '../special.js';
@@ -130,7 +131,7 @@ const body = [
 
 const raceRows = () => SPECIES.filter(s => s.kind === 'race').map(s => {
   const p = WORLD_PEOPLES.all().find(x => x.race === s.id);
-  return {...s, world: p?.id ?? null, era: p?.era ?? null, subraces: s.peoples || []};
+  return {...s, world: p?.id ?? null, era: p?.era ?? null};
 });
 
 // a `mods` set of a creature (a trait, a wound, a race): keys from «Модификаторы существа»
@@ -168,19 +169,8 @@ export const TABLES = [
       col('body.brawled', 'Гибнет в драках ×', 'num', {min: 0, nullable: true, note: 'во сколько раз чаще своих гибнет в драках народа (data/peoples.js brawl): слабого гоблина давят ради смеха'}), col('body.diet', 'Пища'),
       col('mods', 'Множители', 'map', {ref: 'creatureMods', note: 'голод, холод, сон… — ключи из «Модификаторов существа»'}),
       col('innate', 'Врождённое', 'list', {show: labels}),
-      col('subraces', 'Подрасы', 'list', {show: labels}),
       col('settle', 'Вес переселенцев', 'num', {min: 0, note: '0 — сам в поселение не приходит'}),
       col('heatHarm', 'Жар вредит с', 'num'),
-    ]},
-  {id: 'subraces', label: 'Подрасы', group: 'Существа', key: 'key',
-    target: (r, c) => [SPECIES.get(r.race).peoples.find(p => p.id === r.id), c.key],
-    note: 'Народы внутри расы (data/races.js `peoples`): сдвиг пределов SPECIAL — в data/balance/creatures.js.',
-    rows: () => SPECIES.filter(s => s.kind === 'race' && s.peoples).flatMap(s => s.peoples.map(p => ({...p, key: `${s.id}.${p.id}`, race: s.id, world: p.world !== false}))),
-    columns: [
-      col('key', 'id'), col('race', 'Раса', 'ref', {ref: 'races', edit: false}), col('label', 'Название'), col('plural', 'Мн. число'),
-      col('weight', 'Вес', 'num', {min: 0}), col('world', 'Держава на карте', 'bool'),
-      col('shift', 'Сдвиг SPECIAL', 'shift'), col('home', 'Свои биомы', 'map', {ref: 'biomes', min: 0, max: 1}),
-      col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}), col('innate', 'Врождённое', 'list', {show: labels}),
     ]},
   {id: 'creatures', label: 'Монстры и звери', group: 'Существа', key: 'id',
     rows: () => SPECIES.filter(s => s.kind !== 'race'),
@@ -336,7 +326,9 @@ export const TABLES = [
   {id: 'peoples', label: 'Народы мира', group: 'Народы', key: 'id', rows: () => WORLD_PEOPLES.all(),
     note: 'Народы карты мира (data/peoples.js): когда и как приходят, как растут и расселяются, что строят.',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('race', 'Раса', 'ref', {ref: 'races'}), col('era', 'Эпоха', 'ref', {ref: ERAS}),
+      col('id', 'id'), col('label', 'Название'), col('race', 'Раса', 'ref', {ref: 'races', note: 'раса, по которой народ назван: мировоззрение и нравы его держав, эталон рождаемости'}),
+      col('kin', 'Расы народа', 'json', {note: '{раса: {base}} — какие расы держат его города: каждая × base × (KIN.any + её «Биомы расселения» биома города); доли дрейфуют по рождениям и смертям (atlas/population.js)', check: v => Object.keys(v || {}).filter(k => !SPECIES.has(k)).map(k => `нет расы «${k}»`)}),
+      col('polity', 'Уклад', 'ref', {ref: 'polities', nullable: true, note: 'уклад его держав (data/polities.js); пусто — по id народа'}), col('era', 'Эпоха', 'ref', {ref: ERAS}),
       col('arrive.groups', 'Групп на старте', 'int', {min: 1}), col('arrive.mode', 'Откуда приходят'),
       col('spread', 'Расселение', 'num', {min: 0}), col('growth', 'Рост', 'num', {min: 0}),
       col('spacing', 'Между городами', 'int', {min: 0}), col('ores', 'Вес руд', 'num', {min: 0}),
@@ -359,6 +351,19 @@ export const TABLES = [
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
+  {id: 'polities', label: 'Уклады', group: 'Народы', key: 'id', rows: () => POLITIES.all().map(p => ({...p, lairs: p.lairs ? 'логова' : 'держава народа'})),
+    note: 'Уклады держав и логов (data/polities.js): как правят, какие своды правил действуют, где живёт правитель и что бывает, когда он гибнет (atlas/polities.js, atlas/persons.js, atlas/succession.js).',
+    columns: [
+      col('id', 'id'), col('label', 'Название'), col('rule', 'Правление', 'enum', {values: {council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}}),
+      col('lairs', 'Для кого', 'text', {computed: true}), col('seat', 'Где правитель', 'enum', {values: {capital: 'столица', lair: 'логово'}}),
+      col('systems', 'Своды правил', 'json', {note: 'court — двор и должности, edicts — указы, treasury — казна, towns — города, mind — совет державы; пусто — логово живёт как логово'}),
+      col('ruler.leads', 'Ведёт войско', 'bool'), col('ruler.storm', 'Гибнет при штурме', 'num', {min: 0, max: 1, note: 'шанс погибнуть, когда столицу взяли штурмом (он там)'}),
+      col('ruler.razed', 'Гибнет с пепелищем', 'num', {min: 0, max: 1}),
+      col('ruler.vacancy', 'Преемство', 'enum', {values: {court: 'двор назначает', contest: 'борьба за власть', heir: 'поднимется новый', none: 'держава кончается'}}),
+      col('ruler.split', 'Раскол при борьбе', 'num', {min: 0, max: 1, nullable: true}),
+      col('ruler.channels', 'Личные каналы', 'ids', {ref: new Set(['undead', 'summons']), note: 'что держится на самом правителе и теряется с ним (atlas/control.js): undead — мертвецы некроманта, summons — звери призывателя'}),
+    ]},
+  {id: 'successionRules', label: 'Преемство: правила', group: 'Народы', ...params(() => paramRows(SUCCESSION))},
   {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', ')})),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',

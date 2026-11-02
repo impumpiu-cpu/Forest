@@ -37,7 +37,7 @@ export class SettleView extends MapView {
   setup() { this.cfg = {...DEFAULT_ATLAS_CFG}; this.seq = 0; }
 
   build() {
-    this.tool = 'look'; this.people = 'elves'; this.sub = ''; this.calIn = FREE.calIn[1]; this.layer = 'peoples';
+    this.tool = 'look'; this.people = 'elves'; this.calIn = FREE.calIn[1]; this.layer = 'peoples';
     this.detail = loadDetail();
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => {
       const key = box.dataset.skey;
@@ -50,8 +50,7 @@ export class SettleView extends MapView {
     };
     seg('setTool', TOOLS, v => { this.tool = v; this.note(NOTES[v]); });
     const peoples = PLACEABLE.peoples();
-    seg('setPeople', peoples.map(P => [P.id, P.label]), v => { this.people = v; this.sub = ''; this.syncSubs(); });
-    $('setSub').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { this.sub = b.dataset.val; this.sync(); } });
+    seg('setPeople', peoples.map(P => [P.id, P.label]), v => { this.people = v; });
     this.peoples = peoples;
     const groups = {};
     for (const L of PLACEABLE.lairs()) (groups[L.kind] ||= []).push(L);
@@ -82,17 +81,13 @@ export class SettleView extends MapView {
 
   note(text, kind = '') { const n = $('setNote'); n.textContent = text; n.className = `hand-note${kind ? ' ' + kind : ''}`; }
 
-  syncSubs() {
-    const P = this.peoples.find(p => p.id === this.people);
-    $('setSub').innerHTML = [['', 'по земле'], ...P.subs.map(s => [s.id, s.label])].map(([v, l]) => `<button type="button" data-val="${v}" title="${v ? '' : 'тот род народа, что подходит земле'}">${esc(l)}</button>`).join('');
-  }
 
   sync() {
     const val = {layer: this.layer, ore: this.ore, fauna: this.fauna};
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.skey])))));
     $('setOre').hidden = this.layer !== 'ores'; $('setFauna').hidden = this.layer !== 'fauna';
     const press = (id, v) => $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(v))));
-    press('setTool', this.tool); press('setPeople', this.people); if (!$('setSub').children.length) this.syncSubs(); press('setSub', this.sub); press('setCalIn', this.calIn);
+    press('setTool', this.tool); press('setPeople', this.people); press('setCalIn', this.calIn);
     $('setPeopleRow').hidden = this.tool !== 'people'; $('setLairRow').hidden = this.tool !== 'lair'; $('setCalRow').hidden = this.tool !== 'calamity';
     $('setMap').classList.toggle('hand', this.tool !== 'look');
     const a = this.atlas, running = !!a && !atlasDone(a);
@@ -133,7 +128,7 @@ export class SettleView extends MapView {
     const a = this.atlas; if (!a || !this.cam) return;
     if (this.tool === 'look') { this.selectAt(e); return; }   // the eye: the card of what is here (ui/inspect.js)
     const i = this.cellAt(e); if (i < 0) return;
-    if (this.tool === 'people') { const res = landPeople(a, this.people, i, this.sub || null); this.after(res.error ? res : {ok: `${res.town.name} заложен — держава «${realmLabel(a, res.realm.id)}».`}); }
+    if (this.tool === 'people') { const res = landPeople(a, this.people, i); this.after(res.error ? res : {ok: `${res.town.name} заложен — держава «${realmLabel(a, res.realm.id)}».`}); }
     else if (this.tool === 'lair') { const res = addLair(a, $('setLairKind').value, i); this.after(res.error ? res : {ok: `«${res.name}» стоит.`}); }
     else if (this.tool === 'calamity') this.calamityAt(i);
   }

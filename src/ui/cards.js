@@ -45,7 +45,7 @@ import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
 import {squadText, fighterLabel} from '../agents/squad.js';
 import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
-import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
+import {raceLabel, innateOf, limits} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -62,7 +62,7 @@ const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100)
 // SPECIAL as seven small cells; the tooltip gives the race's limits
 function specialHtml(a) {
   if (!a.special) return '';
-  const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
+  const sp = SPECIES.get(a.species), lim = limits(sp);
   return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
 }
 
