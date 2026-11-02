@@ -188,10 +188,10 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   // workers by tier: a building's hands are one number, however many recipes run
   const one = townEconomy(null, {people: 'humans', pop: 2000, built: ['brewery', 'field'], slaves: 0}, 1), two = townEconomy(null, {people: 'humans', pop: 2000, built: ['brewery', 'field', 'grove'], slaves: 0}, 1);
   check('рабочие — одно число по тиру, не по числу рецептов', one.jobs - TOWN_BUILDINGS.get('field').jobs === two.jobs - TOWN_BUILDINGS.get('field').jobs - TOWN_BUILDINGS.get('grove').jobs, `пивоварня ${one.jobs - TOWN_BUILDINGS.get('field').jobs}`);
-  // hands: few people — the field works at a share; a soft good short — half strength
-  const thin = townEconomy(null, {people: 'humans', pop: 20, built: ['field'], slaves: 0}, 1);
-  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'field').staff - 10 / 30) < 1e-6 && Math.abs(row(thin, 'field').eff - row(thin, 'field').staff * TF.soft) < 1e-6,
-    `штат ${row(thin, 'field').staff.toFixed(2)}, сила ${row(thin, 'field').eff.toFixed(2)}`);
+  // hands: few people — the ploughland (the humans' field) works at a share; a soft good short — half strength
+  const thin = townEconomy(null, {people: 'humans', pop: 20, built: ['ploughland'], slaves: 0}, 1);
+  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'ploughland').staff - 10 / 30) < 1e-6 && Math.abs(row(thin, 'ploughland').eff - row(thin, 'ploughland').staff * TF.soft) < 1e-6,
+    `штат ${row(thin, 'ploughland').staff.toFixed(2)}, сила ${row(thin, 'ploughland').eff.toFixed(2)}`);
   // slaves: they take up to 80% of the places at 0.6 of a free hand; the rest free
   const orc = townEconomy(null, {people: 'orcs', pop: 1000, built: ['mineshaft'], slaves: 100}, 1);
   check('рабы: занимают до 80% мест и работают хуже вольных; остальное — вольные', Math.abs(row(orc, 'mineshaft').slaves - TF.slaves.share) < 1e-6 && Math.abs(orc.slavesIdle - (100 - 12 * TF.slaves.share / TF.slaves.work)) < 1e-6,
