@@ -28,7 +28,7 @@ export const DIPLOMACY = {
   compete: {war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02},
   mingle: 0.012, mingleMax: 0.3, folkSeen: 0.1,   // (folkSeen: the share of a town's people of strangers the chronicle tells of)
   front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,
-  raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, barrows: 3,
+  raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, raidTake: 0.3, repelled: 0.1, barrows: 3,
   states: [
     {id: 'friends', from: 2, label: 'дружба'},
     {id: 'peace', from: -0.5, label: 'мир'},

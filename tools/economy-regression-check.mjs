@@ -1,6 +1,7 @@
 // Physical stores and repeated seasonal calculations: small fixtures through the production modules.
 import assert from 'node:assert/strict';
-import {planBuild, doBuild, seasonMoney} from '../src/atlas/treasury.js';
+import {planBuild, doBuild, seasonMoney, goodsFor} from '../src/atlas/treasury.js';
+import {TOWN_MONEY} from '../src/data/townBuildings.js';
 import {sendArmy, armyLosses, returnArmy} from '../src/atlas/army.js';
 import {stepWarBeasts} from '../src/atlas/beasts.js';
 import {stepGolems} from '../src/atlas/golems.js';
@@ -24,12 +25,14 @@ const flat = t => {
 const game = () => { const w = newGame({...DEFAULT_CFG, seed: 'herd-regression', size: 'small', colonists: 0, wildlife: 'none', predators: 'none', raids: 'off'}); w.agents = []; return w; };
 
 check('стройка объединяет дерево и заменённые доски до резервирования; склад остаётся конечным', () => {
-  for (const wood of [20, 35]) {
+  // (what a house takes, as the orcs take it: TOWN_MONEY.build.mats — boards swapped for logs; one stock short of it, one over it)
+  const need = goodsFor('orcs', TOWN_MONEY.build.mats.housing).wood;
+  for (const wood of [need * 0.6, need + 5]) {
     const t = town({people: 'orcs', stock: {wood}, econ: {dem: {}, freeHands: 100}}), a = world([t]);
     const p = planBuild(a, t, {tier: 1, cat: 'housing'});
     assert.ok(p); assert.equal(p.own.filter(([g]) => g === 'wood').length, 1);
-    assert.equal(p.own[0][1], wood); assert.equal(p.gather > 0, wood === 20);
-    doBuild(p); assert.ok(Object.values(t.stock).every(v => Number.isFinite(v) && v >= 0)); assert.equal(t.stock.wood || 0, 0);
+    assert.equal(p.own[0][1], Math.min(wood, need)); assert.equal(p.gather > 0, wood < need);
+    doBuild(p); assert.ok(Object.values(t.stock).every(v => Number.isFinite(v) && v >= 0)); assert.ok(Math.abs((t.stock.wood || 0) - Math.max(0, wood - need)) < 0.01);
   }
 });
 check('запас базовых нужд учитывает кость вместо горшков и меньшие нужды орды', () => {
@@ -37,22 +40,26 @@ check('запас базовых нужд учитывает кость вмес
   a.net.links.set('1:2', {p: s, q: b, c: 1}); seasonMoney(a, [s, b]);
   assert.ok(s.stock.bone >= 0.19); assert.equal(b.econ.people?.bone?.got || 0, 0);
 });
-check('загон даёт мясо, шкуры и кости за реальный расход обычного скота; боевые звери целы', () => {
-  const t = town({built: ['pen'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);
+check('бойня даёт мясо, шкуры и кости за реальный расход обычного скота; загон без бойни не забивает; боевые звери целы', () => {
+  const p = town({built: ['pen'], stock: {beasts: 10}}), ap = world([p]);
+  seasonMoney(ap, [p]);
+  assert.equal(p.econ.used.beasts || 0, 0); assert.equal(p.econ.made.raw || 0, 0); assert.ok(p.stock.beasts > 10);   // (the increase goes to the store)
+  const t = town({built: ['pen', 'slaughter'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);
   seasonMoney(a, [t]);
   const e = t.econ;
-  assert.ok(e.herd.slaughtered > 0); assert.ok(e.made.food > 0 && e.made.hide > 0 && e.made.bone > 0);
+  assert.ok(e.herd.slaughtered > 0); assert.ok(e.made.raw > 0 && e.made.hide > 0 && e.made.bone > 0 && e.lit.includes('meat'));   // (meat: raw food, the kitchens cook it; it lights «мясо»)
   assert.equal(e.used.beasts / 4, e.herd.slaughtered);
   assert.ok(Math.abs(t.stock.beasts - (10 + (e.made.beasts - e.used.beasts) / 4)) < 0.011);
   assert.deepEqual(t.warBeasts.list, {varg: 2}); assert.ok(t.stock.beasts >= 2);
 });
 check('логова выращивают отмеченных боевых зверей, а не мясной скот; неработающее логово не плодит', () => {
-  for (const [den, species] of [['wargden', 'varg'], ['spiderden', 'spider']]) {
-    const t = town({people: 'orcs', pop: 500, built: [den], work: {[den]: 1}}), a = world([t]);
+  // (a den is a recipe of the beast dens, by the kind the town holds: atlas/beasts.js, data/peoples.js WAR_BEASTS)
+  for (const [den, species] of [['dens:wargs', 'varg'], ['dens:spiders', 'spider']]) {
+    const t = town({people: 'orcs', pop: 500, built: ['dens'], work: {[den]: 1}}), a = world([t]);
     assert.equal(stepWarBeasts(a, t), species); assert.equal(t.warBeasts.list[species], 1); assert.equal(t.stock.beasts, undefined);
     t.work[den] = 0; assert.equal(stepWarBeasts(a, t), null);
   }
-  const t = town({people: 'orcs', pop: 1000, built: ['wargden', 'spiderden']}), a = world([t]);
+  const t = town({people: 'orcs', pop: 1000, built: ['dens'], work: {'dens:wargs': 1, 'dens:spiders': 1}}), a = world([t]);
   assert.equal(stepWarBeasts(a, t), 'varg'); a.hist.step = 2; assert.equal(stepWarBeasts(a, t), 'spider');
 });
 check('армия забирает боевых зверей, големов и снаряжение; обычный скот остаётся дома; возврат однократный', () => {
@@ -67,12 +74,12 @@ check('армия забирает боевых зверей, големов и 
   assert.deepEqual(t.warBeasts.list, {varg: 2}); assert.deepEqual(t.golems.guard, ['iron']); assert.equal(t.stock.beasts, 20);
 });
 check('боевые звери и стражевые големы в пути занимают место в пределе города', () => {
-  const t = town({pop: 200, built: ['wargden'], warBeasts: {list: {}, men: 0}}), a = world([t]);
+  const t = town({pop: 200, built: ['dens'], work: {'dens:wargs': 1}, warBeasts: {list: {}, men: 0}}), a = world([t]);
   a.parties = [{kind: 'army', from: t.id, state: 'go', warBeasts: {varg: 1}, golems: ['iron']}];
   assert.equal(stepWarBeasts(a, t), null);
-  t.built = ['golemforge', 'forge', 'mineshaft']; t.stock.metal = 100; t.work.golemforge = 1;
+  t.built = ['golemforge', 'forge', 'mineshaft']; t.stock.bar_iron = 100; t.work.golemforge = 1;
   t.golems = {auto: {mineshaft: ['iron']}, guard: [], since: 0};
-  assert.equal(stepGolems(a, t), null); assert.equal(t.stock.metal, 100);
+  assert.equal(stepGolems(a, t), null); assert.equal(t.stock.bar_iron, 100);
 });
 check('неудачная отправка не забирает людей и материальные запасы', () => {
   const t = town({stock: {arms: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = flat(t), before = JSON.stringify(t);

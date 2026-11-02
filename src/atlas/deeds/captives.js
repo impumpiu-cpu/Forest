@@ -37,8 +37,8 @@ const heads = n => `${n} ${plural(n, 'жителя', 'жителей', 'жите
 // the raid for captives (lairs.js hitTown): the town loses people into captivity, not into graves; they live at the lair
 export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
   return hitTown(a, lair, L, target, tribe, rnd, atOnce, fx => {
-    const n = Math.max(1, Math.round(target.pop * CR.loss * raidShare(fx)));
-    target.pop = Math.max(0, target.pop - n);
+    const n = Math.min(target.pop, Math.max(1, Math.round(target.pop * CR.loss * raidShare(fx))));   // no more than there are
+    target.pop -= n;
     (lair.captives ||= {})[target.people] = (lair.captives[target.people] || 0) + n;
     if (atOnce) lair.strength = Math.min(1, lair.strength + CR.feed);
     barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);   // a few fall on the way to the ropes
@@ -111,15 +111,15 @@ export const captives = {
     const rel = meet(a, actor.id, target.realm, y);
     rel.att = Math.max(-5, rel.att - D.raid * (cultOf(actor)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {
-      const n = Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target))));
-      target.pop = Math.max(0, target.pop - n); t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
+      const n = Math.min(target.pop, Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target)))));   // no more than there are
+      target.pop -= n; t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
       (t.slavesOf ||= {})[target.people] = (t.slavesOf[target.people] || 0) + n * CR.realm.grow;   // whose kin they are (the dwarves free theirs: atlas/deeds/liberate.js)
       (actor.captives ||= {})[target.people] = (actor.captives[target.people] || 0) + n;
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
       const got = plunder(t, target, TOWN_MONEY.plunder.raid);   // and what they could carry: goods and gold (atlas/treasury.js)
       return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}${plunderWords(got)}.`;
     }
-    t.pop *= 0.9;
+    t.pop *= 1 - D.repelled;   // a beaten raid costs the raiders
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, actor.id)} на ${townLabel(target, 1)} ${target.name}: в полон никого не дали.`;
   },
   // the lair's party at the town

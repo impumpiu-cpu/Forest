@@ -142,7 +142,7 @@ for (let s = 0; s < seeds; s++) {
     const epi = K.log.filter(l => l.kind === 'epilogue');
     if (!finished(K) || a.campaignsDone?.length !== 1 || !epi.length) bad.push(`${c.label}: эпилог не рассказан или поход не в архиве мира`);
     if (K.members.some(m => m.alive && !m.fate) || (K.lostWith || []).some(id => !K.members.find(m => m.id === id)?.fate)) bad.push(`${c.label}: не у всех оставшихся есть судьба`);
-    if (K.phase === 'won' && !(a.towns.find(t => t.id === K.capital)?.relic && a.realms.find(r => r.id === K.realm)?.crown)) bad.push(`${c.label}: корона дома, а держава о ней не знает`);
+    if (K.phase === 'won' && !(a.towns.find(t => t.relic && (t.id === K.capital || (t.alive && t.realm === K.realm))) && a.realms.find(r => r.id === K.realm)?.crown)) bad.push(`${c.label}: корона дома, а держава о ней не знает`);   // (a capital burnt while away: the crown goes to the realm's seat now)
     const text = chronicleText(a, a.campaignsDone?.[0] || K);
     if (!text.includes('ЛЕТОПИСЬ ПОХОДА') || text.split('\n').length < K.log.length + K.members.length) bad.push(`${c.label}: летопись текстом неполна`);
     ending[K.phase] = (ending[K.phase] || 0) + 1; ending.lines += epi.length;
@@ -232,9 +232,12 @@ for (let s = 0; s < seeds; s++) {
     hire('Остался', 0.95); hire('Продлил', 0.6); hire('Ушёл', 0.1);
     stepCampaign(a);
     const by = n => K.members.find(m => m.name === n);
-    const ends = [by('Остался').alive && !by('Остался').contract, by('Продлил').alive && by('Продлил').contract?.until > 1, !by('Ушёл').alive || !!by('Ушёл').left];
+    // the day is walked in the world: a hireling may fall in a fight before his term ends — that one tells nothing
+    const fell = n => !by(n).alive && !by(n).left;
+    const ends = [fell('Остался') || (by('Остался').alive && !by('Остался').contract), fell('Продлил') || (by('Продлил').alive && by('Продлил').contract?.until > 1), !by('Ушёл').alive || !!by('Ушёл').left];
     got.hireEnds += ends.filter(Boolean).length;
-    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл`, ends.every(Boolean), ends.join(', '));
+    const fallen = ['Остался', 'Продлил'].filter(fell);
+    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл${fallen.length ? ` (пал в бою: ${fallen.join(', ')})` : ''}`, ends.every(Boolean), ends.join(', '));
   }
 
   // digging (data/campaign.js MINE): on the local map the caravan works the outcrop of the ore it stopped for and
@@ -314,7 +317,8 @@ check('караваны обзаводятся обозом и выбирают 
   const E = generateAtlas({seed: '7', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 40, elder: 40, young: 40}});
   const frozenE = JSON.stringify(saveAtlas(E)), freshE = () => loadAtlas(JSON.parse(frozenE)), capsE = capitals(E);
   const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
-  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
+  const laid = Q?.epic && Q.clues.length >= 2 && Q.clues.length <= (a.graves || []).length &&   // (a grave the caravan cannot walk to is no clue: which it can is the world's)
+    Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
     a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
   check(`эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — ${EPIC.doom} лет`, laid,
     Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');

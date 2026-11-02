@@ -21,10 +21,13 @@ import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
+import {stepMinds} from './mind.js';
+import {stepBuilds} from './build.js';
+import {migrate, freeCaptives} from './demography.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
-import {stepKingdom} from './kingdom.js';
+import {stepKingdom, stepRealmKeep} from './kingdom.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -135,10 +138,14 @@ export function stepHistory(a, onDay = null) {
       for (const [p, q] of sailLanes(a)) say(a, `Корабли ${townLabel(p, 2)} ${p.name} проложили морской путь в ${townLabel(q, 1)} ${q.name}.`);
   }
   if (H.era !== 'wild' && season !== 'spring') seasonTowns(a, t => say(a, t));
+  if (H.era !== 'wild') { freeCaptives(a); migrate(a); }   // the freed go home, the people move to the towns they like better (atlas/demography.js)
+  if (H.era !== 'wild') stepBuilds(a, rnd, t => say(a, t));   // the towns raise their projects (atlas/build.js)
+  if (H.era !== 'wild') stepMinds(a, t => say(a, t));   // the realms' councils: course, wind, roles (atlas/mind.js)
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
+  if (H.era !== 'wild') stepRealmKeep(a);   // the realms keep their garrisons and armies, a season's pay, food and kit (atlas/treasury.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);

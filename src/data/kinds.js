@@ -26,7 +26,8 @@ WOODS.registerAll([
   // the two of a kind: ironwood of the jungles — nearly as good as iron for anyone; the sacred tree of the elves' groves —
   // in an elf's hands better than steel, in anyone else's a fine ash
   {id: 'ironwood', label: 'железное дерево', adj: 'железнодревный', biomes: {jungle: 0.35, savanna: 0.1}, dmg: 1.2, dur: 1.8, weight: 1.3, fuel: 1.4, price: 3, color: '#5a4030'},
-  {id: 'holywood', label: 'святое дерево',  adj: 'святодревный',   biomes: {forest: 0.04, jungle: 0.04}, special: true, plain: 'ash',
+  // (`silver`: a weapon of it made by its master bites what fears silver as a silver one does — agents/equipment.js def)
+  {id: 'holywood', label: 'святое дерево',  adj: 'святодревный',   biomes: {forest: 0.04, jungle: 0.04}, special: true, plain: 'ash', silver: true,
     dmg: 1.5, dur: 2.8, weight: 0.8, fuel: 1, price: 8, color: '#e8f0d0'},
 ]);
 

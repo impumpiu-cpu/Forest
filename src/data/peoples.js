@@ -13,26 +13,57 @@
 //             race belongs; `ores`: weight of the rock's ore wealth (dwarves live off the mountains)
 //   moves:    how easily they spread through a biome (×), the rest at `movesElse`
 //   spread / growth: diffusion and logistic growth of the people field a year (Fisher–KPP)
-//   found:    a town is founded where the people field is this dense, at least `spacing` cells
-//             (of a 192-cell-high world) from any other town
+//   spacing:  a town stands at least this many cells (of a 192-cell-high world) from any other town
+//   settlers: a full town sends `pop` of its people to found a new town (atlas/peoples.js sendSettlers; docs/WORLD.md
+//             «Демография»): only from `from` people, keeping at least `keep`; on a free spot within `reach` × spacing;
+//             they carry what its store can spare of `goods`; `oreLand` — they settle off their people's land too where
+//             the ore under the spot is at least so rich (the dwarves follow the veins; atlas/peoples.js settleSpot); `avoid` —
+//             never nearer than so many × its spacing to a town of that people ({orcs: 2}: the dwarves keep off the camps)
+//   migrate:  share of a town's people ready to move in a season to a better town (fame and how well their needs are met
+//             draw them): of their realm, or of another realm that trades with it, nearby (atlas/demography.js)
+//   welcome:  the other peoples whose folk this people takes into its towns by migration (its own kin of other realms always)
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
+//   rose:     the course the people keeps its realm to over the years, along the three vectors (data/mind.js): the
+//             greenskins to war, the dwarves to craft and hoard, the humans to growth, the elves to a warded, crafted home
+//   rosePull: how hard its realms' councils pull back to the rose (× MIND.pull's place; data/mind.js)
+//   bureau:   how fast a realm of this people breeds corruption (× RUINS corruption `grows`, data/kingdom.js; from the branch Elves)
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   flows:    × on what its buildings give of a good (data/townBuildings.js TOWN_GOODS, `out`): the elves' gardens
 //             yield more, their humane quarries less; none — ×1
 //   hands:    the share of its people who work (the rest are children, the old, those who keep house): the hands its
 //             town's buildings share out (atlas/economy.js); elves have few children and many elders, orcs put everyone to work
+//   brawl:    a people that kills its own for a place at the fire: a share a year by its realm's crime and its crowding
 //   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   placeFlows: more × where its town stands on such a place (data/townBuildings.js PLACE_NEEDS, any of `needsAny`)
-//   swaps:    a good its buildings never take, and what they take instead: {metal: {to: 'wood', k: 3}} — an elven
+//   swaps:    a good its buildings never take, and what they take instead: {silver: {to: 'wood', k: 3}} — an elven
 //             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal; its people's needs and the
 //             materials of its building swap the same way (atlas/treasury.js)
 //   levy:     × the share of a town's people its army takes (data/parties.js ARMY.levy); breed — × how fast its towns grow;
 //             needs — × the goods its people want a head (atlas/treasury.js); none — ×1
+//   eatsRaw:  raw foods it eats as they are (data/townBuildings.js TOWN_GOODS `raw`): they feed it as cooked food does
+//   wilds:    the wild allies of the people (atlas/wilds.js): {guard, beasts, treants, grove: {grow, cap}} — the elves' beasts of
+//             the land and the treants of their forest, in a town's might and with its armies
+//   lineMax:  at most so many buildings of a line in a town of this people, its tiers counted together ({kitchen: 1}: the elves
+//             eat raw, one hearth for the strangers among them; atlas/towns.js canBuild)
+//   bunks:    room for so many of its people (by the town's step) in every building that is not housing (the dwarves sleep in the workshop under
+//             the hammers; atlas/towns.js townFx)
+//   stoneLore: the dwarves' knowledge of stone: {reach, k} — a rare ore anywhere within `reach` cells of a mine counts at
+//             its richest there × k[ore] among what the mine digs (atlas/economy.js digOf)
+//   ruinGrow: × how fast a ruin grows in its realms ({crime: 0.25}: the dwarves' clans, where everyone knows everyone; atlas/kingdom.js)
+//   workSwaps: a good a building of the people takes in place of another ({handshop: {wood: {to: 'stone', k: 1}}}: the dwarves
+//             make tools of stone where others need logs; atlas/economy.js)
+//   tradeUp:  goods it sells as soon as it has them, for another at `rate` of the worth ({sells, buys, rate}: the greenskins sell
+//             luxury, gems and silver for arms — atlas/peoples.js tradeUp, a season)
+//   places:   a place need as it reads it ({pasture: 'grazing'}: nomads graze and hunt on any open land; atlas/towns.js placeHas)
+//   workFlows: × what a building of a kind gives of a good, by building ({lodge: {raw: 2}}: the greenskins live by meat — the hunt,
+//             the pens and the slaughterhouse feed them, their fields and gardens give little; atlas/economy.js)
+//   wants:    its own wants a head beyond TOWN_MONEY.needs ({basic, comfort}: {good: amount a head a year}; 0 — it wants none of it)
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
+import {lineHas} from './townBuildings.js';
 
 // the race's own «Биомы расселения» (data/races.js), read each time: an edit of the races table reaches the peoples
 const raceHome = id => RACES.find(r => r.id === id).home;
@@ -44,13 +75,25 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
-    spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
+    // spacing 14 (was 16): as dense as the dwarves, no denser; 20 settlers (was 30) from 100 people (was 150, keeping 60, was 90) — at the
+    // same start with the others their few slow towns reach 150 only when the land about them is taken (docs/WORLD.md «Эльфы»)
+    spread: 0.22, growth: 0.18, spacing: 14,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
+    settlers: {pop: 20, from: 100, keep: 60, reach: 2.5, goods: {stores: 20, wood: 20, tools: 2}}, migrate: 0.005, welcome: [],
+    eatsRaw: ['raw'],   // the elves eat the raw food as it is — fruit, nuts, honey, greens: it feeds them as cooked food does (atlas/economy.js)
+    lineMax: {kitchen: 1},   // one kitchen a town, for the strangers among them: a kitchen turns their food into less food
+    // the wood fights for them (atlas/wilds.js): treants wake about a town in the forest, `grove.grow` a year up to `grove.cap` by
+    // its step; the town counts beasts of the land worth `guard` of its people in its might; an army takes beasts worth `beasts`
+    // of its men and, marching on a town in the forest, treants worth `treants` of them
+    wilds: {guard: 0.25, beasts: 0.25, treants: 0.25, grove: {grow: 0.5, cap: [2, 4, 6]}},
+    rose: {agg: 0.35, grow: 0.2, econ: 0.45},
+    bureau: 0.7,
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
-    // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
+    // children of the wood: the land feeds them better, herbs are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
-    flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
-    swaps: {metal: {to: 'wood', k: 3}, drink: {to: 'honey', k: 1}},   // they brew no beer: mead and honey wine of the hives
+    flows: {food: 1.25, raw: 1.25, herbs: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
+    swaps: {bar_silver: {to: 'wood', k: 3}},
+    wants: {basic: {drink: 0}, comfort: {drink: 0}},   // they brew no beer (docs/WORLD.md «Мёд»: honey is raw food and an indicator)
     breed: 0.8,   // long lives, few children: their towns grow slowest (× TOWN_LIFE.growth)
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
@@ -62,16 +105,26 @@ WORLD_PEOPLES.registerAll([
     folk: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
-    flows: {ore: 1.5, stone: 1.5, gems: 1.5, metal: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
-    // beer for the ancestors; leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
-    swaps: {honey: {to: 'drink', k: 1}, cloth: {to: 'leather', k: 1}, pots: {to: 'stone', k: 2}},
+    flows: {ore_iron: 1.5, ore_bronze: 1.5, ore_silver: 1.5, ore_gold: 1.5, ore_mithril: 1.5, stone: 1.5, gems: 1.5, bar_bronze: 1.25, bar_iron: 1.25, bar_steel: 1.25, bar_silver: 1.25, bar_gold: 1.25, bar_mithril: 1.25, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
+    // leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
+    swaps: {cloth: {to: 'leather', k: 1}, ware: {to: 'stone', k: 2}},
     breed: 0.9,   // few children, long lives
-    placeFlows: {needsAny: ['steep', 'caves'], flows: {ore: 1.25, stone: 1.25}},
+    // cramped and of one clan: a bunk in every workshop and store (`bunks`), little crime where everyone knows everyone and
+    // a crime is never washed off in a life of four centuries (`ruinGrow`); tools of stone where the mountain has no logs
+    bunks: [5, 10, 15], ruinGrow: {crime: 0.25},   // (bunks by the town's step)
+    // the knowledge of stone: a rare ore anywhere in the mountain about a mine is found and dug × k (atlas/economy.js digOf)
+    stoneLore: {reach: 5, k: {silver: 2, gold: 3, mithril: 4}},
+    workSwaps: {handshop: {wood: {to: 'stone', k: 1}}, crafthut: {wood: {to: 'stone', k: 1}}},
+    placeFlows: {needsAny: ['steep', 'caves'], flows: {ore_iron: 1.25, ore_bronze: 1.25, ore_silver: 1.25, ore_gold: 1.25, ore_mithril: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
-    moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
-    spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
+    // the mountains first, the hills seldom; the densest of all — where others see no room they set a workshop, a store and a bunk
+    moves: {highlands: 1.4, volcano: 1.1, foothills: 1}, movesElse: 0.3,
+    spread: 0.18, growth: 0.16, spacing: 8,
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
+    settlers: {pop: 30, from: 150, keep: 90, reach: 2.5, oreLand: 0.5, avoid: {orcs: 2}, goods: {stores: 30, stone: 30, tools: 4}}, migrate: 0.005, welcome: [],
+    rose: {agg: 0.2, grow: 0.2, econ: 0.6},
+    bureau: 1,
     taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
@@ -82,12 +135,15 @@ WORLD_PEOPLES.registerAll([
     // they settle among the others: on shared land another people pushes them off only × (1 − `mix`), and their town may stand
     // within `near` × their spacing of another people's town — by the elves' coast, under the dwarves' hills (atlas/peoples.js)
     folk: {take: 1.5, mix: 0.5, near: 0.7},
-    trade: 1.25, breed: 1.1,   // many children: the middling people spread faster than the elder ones
+    trade: 1.25, breed: 1.3,   // many children: the middling people spread faster than the elder ones
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast', free: 0.7},   // an empty shore: not the elves' coast (atlas/peoples.js arrive)
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
-    spread: 0.26, growth: 0.24, found: 0.28, spacing: 12,
+    spread: 0.26, growth: 0.24, spacing: 11,
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
+    settlers: {pop: 30, from: 130, keep: 80, reach: 2.5, goods: {stores: 30, wood: 30, tools: 3}}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
+    rose: {agg: 0.25, grow: 0.45, econ: 0.3},
+    bureau: 1.2,
     taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
@@ -110,26 +166,42 @@ WORLD_PEOPLES.registerAll([
     // they will not crowd: every house of theirs holds × `house` of its people (atlas/towns.js townFx); shacks and tents are
     // their homes, no rough housing to breed corruption (`roughHome`: atlas/towns.js roughShare)
     house: 0.75, roughHome: true,
+    // a fight for a place at the fire (atlas/demography.js lifeYear): each year this share of a town's people kill each other —
+    // `crime` × its realm's crime (data/kingdom.js RUINS) and `crowd` × how much fuller it is than `from` of its room; their
+    // slaves last `slaveLife` years [from, to] (atlas/peoples.js seasonTowns)
+    brawl: {crime: 0.002, crowd: 0.06, from: 0.6}, slaveLife: [1, 4],
     // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
-    levy: 10 / 3, breed: 1.25, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
-    // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
-    // for pots, rough logs for boards (atlas/economy.js swaps)
-    swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
+    // nomads and warriors (from the branch Elves): luxury, gems, silver and gold they sell as soon as they have them and buy arms
+    // at 0.8 of the worth (atlas/peoples.js tradeUp); they want no luxury, and arms are a need of theirs
+    tradeUp: {sells: ['lux', 'gems', 'bar_silver', 'bar_gold'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
+    levy: 10 / 3, breed: 1.45, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
+    // what they do without: meat smoked on the fire for salt, rough logs for boards (atlas/economy.js swaps); their ware is
+    // waterskins (the hand workshop's recipe)
+    swaps: {salt: {to: 'wood', k: 2}, planks: {to: 'wood', k: 1.5}},
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
-    placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, beasts: 1.25, hide: 1.25}},
+    placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, raw: 1.25, beasts: 1.25, hide: 1.25}},
+    // nomads live by meat: their herds graze and their hunters ride on any open land of theirs; the hunt and the slaughterhouse
+    // give more meat, the fields, gardens, fishers and gatherers less (atlas/economy.js workFlows)
+    places: {pasture: 'grazing'},
+    workFlows: {lodge: {raw: 2}, slaughter: {raw: 1.5}, pen: {beasts: 1.5}, pasture: {beasts: 1.5}, field: {raw: 0.25}, garden: {raw: 0.5}, gatherer: {raw: 0.5}, fishhut: {raw: 0.5}, pier: {raw: 0.5}},
     warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
-    spread: 0.3, growth: 0.26, found: 0.3, spacing: 13,
+    spread: 0.3, growth: 0.26, spacing: 13,
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
+    settlers: {pop: 25, from: 110, keep: 70, reach: 2.5, goods: {stores: 25, hide: 20, arms: 3}}, migrate: 0.03, welcome: ['elves', 'dwarves', 'humans'],
+    rose: {agg: 0.55, grow: 0.3, econ: 0.15}, rosePull: 3,   // the horde keeps to its ways: its council pulls back to the rose × 3 (data/mind.js MIND.pull)
+    bureau: 1.5,
     taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
 ]);
 
 // a good as a people takes it (`swaps`): [the good, × how much] — the greenskins' bone for pots, the elves' wood for metal
+// a place need as a people reads it (`places`: the greenskins' pasture is any open land of theirs, «grazing»)
+export const placeNeed = (people, need) => WORLD_PEOPLES.get(people)?.places?.[need] || need;
 export const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
 // a basket of goods as a people takes it, × k: several goods may become one (the horde's wood for both salt and boards);
 // the buildings' flows, the people's needs, the materials of a building and the town's choices all read goods through this
@@ -140,7 +212,9 @@ export function swapGoods(people, goods, k = 1) {
 }
 
 // a kind's share a town must hold for a building of that kind's own (data/townBuildings.js `kin`)
-export const KIN = {least: 0.08};
+// `pull` — each year a town's kinds move this share of the way back to what its land gives (the wild tribes of the land join
+// the horde: atlas/demography.js lifeYear), so a slow-breeding kind thins but does not die out
+export const KIN = {least: 0.08, pull: 0.05};
 
 // Town sizes: three steps, earned by what the town has built (docs/WORLD.md).
 // A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
@@ -153,11 +227,11 @@ export const TIERS = [
     label: {elves: ['приют', 'приют', 'приюта', 'приюте', 'приютом'], dwarves: ['застава', 'заставу', 'заставы', 'заставе', 'заставой'],
       humans: ['хутор', 'хутор', 'хутора', 'хуторе', 'хутором'], orcs: ['стойбище', 'стойбище', 'стойбища', 'стойбище', 'стойбищем']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'n'}},
-  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle'],
+  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle', 'ancestorhall'],
     label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
       humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
     gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},
-  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'temple', 'ancestorhall'],
+  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'warcamp', 'temple', 'ancestorhall'],
     label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
       humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'f'}},
@@ -175,7 +249,7 @@ export function tierOf(t) {
   let k = 0;
   for (let i = 1; i < TIERS.length; i++) {
     const T = TIERS[i];
-    if (t.pop >= T.pop && T.needsAny.some(id => t.built.includes(id))) k = i; else break;
+    if (t.pop >= T.pop && T.needsAny.some(id => lineHas(t.built, id))) k = i; else break;   // (a tier counts as what it grew from)
   }
   return k;
 }
@@ -243,24 +317,37 @@ export const ELDER_YEARS = [
 //   oresAway:  how much the ores count off a people's home biomes (dwarves)
 //   hearth:    a town keeps its people's field up around it: hearth[0] + hearth[1] × its tier + hearth[2] × its fame
 //   hunt:      people thin the beasts where they live: predators and monsters, the others
-//   found:     a new town where the field is dense and the land at least foundLand; at most foundMax a year per people,
-//              each with foundChance; newPop — its first people, newPop[0] + newPop[1] × a roll
+//   foundLand: the least carrying capacity of the land under a new town (the settlers' spot)
+//   settle:    a town sends settlers from `full` of what feeds and houses it, all the way at full + span (or as it grows big:
+//              all the way at (1 + big) × its people's `from`), with `chance` ×
+//              that a year, no oftener than every `every` years; at most `max` new towns a year a people; `near` — how much
+//              nearness counts for the settlers' spot (× its share of the reach)
+//   migration: a town of another realm is `abroad` as dear; people move up to moveReach × spacing away; a town over its room
+//              sends `overflow` of the surplus away a season;  abandon — a town of fewer people is left (atlas/demography.js)
 //   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
 //              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
 //              (1 + its food − what armies took + trade × its trade)
 //   hold:      a people holds its land only near its living towns: within near × its spacing the field lives as it
 //              will, past far × spacing it fades by `fade` of itself a year (between — in part); a burnt people's land
 //              goes with its towns
-//   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) + drift × a
-//              roll; never below minPop;  build — the chance a year a town builds what it needs most
+//   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) — born of its
+//              people, and over the target dying off; no roll and no floor (people are not made out of nothing)
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
-  foundLand: 0.25, foundMax: 2, foundChance: 0.35, newPop: [40, 40],
+  foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  growth: 0.14, prestige: 0.6, minTarget: 60, minPop: 10, drift: 4, build: 0.65};
+  growth: 0.22, prestige: 0.6, minTarget: 60,
+  // age and death (atlas/demography.js lifeYear; each kind's lifeFrom, life, fertility, brawled — the races table, data/races.js
+  // body): a band or settlers come at `found` × lifeFrom years of age; a kind lives L = from + (to − from) × (1 − e^(−health /
+  // health)) years — the town's health its soft lift; it dies at (1 / L) × (base + (age / (L / 2))^hazard) a year (at most
+  // `most`), where base — the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land
+  // buries its children); the dead are `dead` × the mean age old (the old die first)
+  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, dead: 1.4, most: 0.5}};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's
 // worth: health × blow) — and breaks it to war, while it holds fewer than one for every `per` of its people; a war beast
-// counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin)
+// counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin).
+// The beast dens breed their own: a recipe of the dens each (data/townBuildings.js dens: `building:recipe`), while it works
+// at `work` or better (t.work)
 export const WAR_BEASTS = {per: 200, men: 2, least: 0.002, work: 0.5,
-  dens: {wargden: {species: 'varg', every: 1}, spiderden: {species: 'spider', every: 2}, hyenadens: {species: 'hyena', every: 2}}};
+  dens: {'dens:wargs': {species: 'varg', every: 1}, 'dens:spiders': {species: 'spider', every: 2}, 'dens:hyenas': {species: 'hyena', every: 2}}};

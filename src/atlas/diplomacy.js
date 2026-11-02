@@ -6,7 +6,7 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
-import {plunder, plunderWords} from './treasury.js';
+import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
 import {TOWN_MONEY} from '../data/townBuildings.js';
 import {sendArmy, refreshArmy, armyLosses, returnArmy} from './army.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -154,7 +154,9 @@ export function muster(a, t, target, war, rnd, say) {
     label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color});
   if (!p) return;
   const beasts = Object.values(p.warBeasts).reduce((s, n) => s + n, 0);
-  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
+  // the elves' wild allies (atlas/wilds.js): the beasts of the land and the treants of the forest go with them
+  const wild = Object.entries(p.wild || {}).map(([sp, n]) => `${SPECIES.get(sp).plural} (${n})`).join(' и ');
+  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''}${wild ? `; с ними ${wild}` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
 }
 // the foragers: the land around the army is scourged this season
 function scourge(a, p) {
@@ -206,8 +208,10 @@ BEHAVIOURS.army = {
     barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
     if (we > they) {
       const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(fx);
+      const home = a.towns.find(o => o.id === p.from && o.alive), slaves = driveOff(home, t, t.pop * loss);   // the cult drives the taken off as slaves
       t.pop *= 1 - loss; armyLosses(p, A.winLoss, rnd, 'won'); t.raided = a.hist.year;
-      const loot = plunderWords(plunder(a.towns.find(o => o.id === p.from && o.alive), t, TOWN_MONEY.plunder.storm));   // the storm's loot goes home with the army
+      const loot = plunderWords(plunder(home, t, TOWN_MONEY.plunder.storm)) + (slaves >= 1 ? `, угнали в рабство ${Math.round(slaves)}` : '');   // the storm's loot goes home with the army
+      if (t.capital) lootSeat(a, realmOf(a, p.owner), realmOf(a, t.realm));   // a seat stormed: its realm's treasury too (atlas/treasury.js)
       if (t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0) {   // beaten down, bled, or broken by the siege
         say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}${loot}.`);
         raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++;
@@ -273,7 +277,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax * tw, D.trade * tw * routes) : 0);
     // the front, for the realms' deeds (atlas/deeds/warOn.js, march.js): whether the two border — shared land or towns
     // within the front — and the nearest pair of their towns
-    r.border = sh > 0 || gap <= D.front * k; r.front = pair && gap <= D.front * k ? [pair[0].id, pair[1].id] : null; r.kin = kin;
+    r.border = sh > 0 || gap <= D.front * k; r.front = pair && (gap <= D.front * k || r.war?.cult?.far) ? [pair[0].id, pair[1].id] : null; r.kin = kin;   // (a far war of the cult: its front is the nearest pair, however far)
     if (r.war) r.att += D.weariness;   // a war wears both out; who ends it, and who marches, is the realms' choice (atlas/deeds/)
     r.att = Math.max(-5, Math.min(5, r.att));
   }

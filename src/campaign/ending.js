@@ -5,6 +5,7 @@
 // that know it think better of it, the crown stays its relic); a lost caravan is a line of the world's
 // chronicle. When the epilogue is told, the campaign goes into the world's archive (a.campaignsDone): its
 // chronicle stays with the world, and another caravan may set out.
+import {drawTo} from '../atlas/demography.js';
 import {stepHistory} from '../atlas/history.js';
 import {townLabel} from '../atlas/towns.js';
 import {realmLabel, realmLabelGen, realmTowns} from '../atlas/realms.js';
@@ -40,19 +41,21 @@ function crownFate(a, K) {
 export function finish(a, K) {
   if (K.epilogue) return;
   const {r, done} = draw(K, 'epilogue'), lines = [], Q = K.quest, E = EPILOGUE.crown;
+  // home: the capital it set out from, or — burnt while the caravan was away — its realm's seat now, or its realm's biggest town
+  const capital = a.towns.find(t => t.id === K.capital && t.alive) || a.towns.filter(t => t.alive && t.realm != null && t.realm === K.realm).sort((p, q) => (q.capital ? 1 : 0) - (p.capital ? 1 : 0) || q.pop - p.pop)[0];
   // the artifact of an epic quest: home in the capital when the caravan came back with it; lost where the caravan fell
   // or gave up — free again for the next boss to take and the next caravan to seek (atlas/calamity.js questHint)
   const A = a.artifact;
   if (Q?.epic && A?.holder.kind === 'caravan') {
-    if (K.phase === 'won') { A.holder = {kind: 'capital', town: K.capital}; A.trail.push({year: a.hist.year, era: a.hist.era, i: A.i, text: 'принесён караваном в столицу'}); }
+    if (K.phase === 'won') { A.holder = {kind: 'capital', town: capital?.id ?? K.capital}; A.trail.push({year: a.hist.year, era: a.hist.era, i: A.i, text: 'принесён караваном в столицу'}); }
     else { const i = Math.min(a.n - 1, Math.floor(K.y) * a.w + Math.floor(K.x)); A.holder = {kind: 'lost'}; A.i = i; A.trail.push({year: a.hist.year, era: a.hist.era, i, text: 'потерян вместе с караваном'}); }
   }
-  const capital = a.towns.find(t => t.id === K.capital && t.alive);
   const used = new Set(), tellFate = (m, list) => { const w = words(a, K, m, r); m.fate = fate(r, list, used)(m, w); lines.push({text: m.fate, who: [m.id]}); };
   if (K.phase === 'won') {
-    // the crown home: the capital grows, the realms that know the realm think better of it
+    // the crown home: people of the realm's towns flock to the capital (E.pop × its people: drawn from them, not made —
+    // atlas/demography.js drawTo), the realms that know the realm think better of it
     let friends = 0;
-    if (capital) { capital.pop = Math.round(capital.pop * E.pop); capital.relic = {name: Q?.name || 'корона', year: a.hist.year}; }
+    if (capital) { drawTo(a, capital, capital.pop * (E.pop - 1)); capital.relic = {name: Q?.name || 'корона', year: a.hist.year}; }
     const R = (a.realms || []).find(x => x.id === K.realm);
     if (R) {
       R.crown = {name: Q?.name || 'корона', year: a.hist.year};

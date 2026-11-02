@@ -22,13 +22,15 @@ REALM_STATS.registerAll([
 //   towns — per town of the realm;  rough — per town, × the share of its room in rough housing (shacks, tents: data/
 //   townBuildings.js housing of step 0; atlas/towns.js roughShare);  pop — per 1000 people;  upkeep — per point of upkeep over the economy;
 //   folk — per town, × the share of its people of other peoples (the crowd of many peoples: the humans' towns most);
-//   wars — per war the realm is in;  raided — per town of it raided this year
+//   wars — per war the realm is in;  raided — per town of it raided this year;  unpaid — the towns' upkeep unpaid;
+//   broke — 1 with the treasury empty;  court — the share of the court's pay the treasury could not pay (atlas/treasury.js).
+//   Corruption grows × the people's bureaucracy (data/peoples.js `bureau`: the elves' few hands, the greenskins' many)
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {rough: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше городов и чем больше в них живут в шалашах и шатрах, тем больше рук, что берут; добротное жильё её сдерживает'},
   {id: 'crime', label: 'преступность', grows: {pop: 0.02, folk: 0.3}, fall: 'stability', eats: 'loyalty', note: 'людные города, пёстрая толпа чужих народов, слабая стража'},
-  {id: 'decay', label: 'упадок', grows: {unpaid: 1, broke: 0.5}, fall: 'economy', eats: 'stability', note: 'неоплаченное содержание построек и пустая казна державы (atlas/treasury.js)'},
+  {id: 'decay', label: 'упадок', grows: {unpaid: 1, broke: 0.5, court: 1}, fall: 'economy', eats: 'stability', note: 'неоплаченное содержание построек и пустая казна державы (atlas/treasury.js)'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
 export const RUIN_RULES = {fall: 0.1, penalty: 0.05, max: 20};
@@ -44,7 +46,10 @@ export const EDICTS = new Registry('edict');
 EDICTS.registerAll([
   {id: 'taxes', label: 'подати', levels: [
     {id: 'high', label: 'тяжёлые', when: {war: true}, adds: {economy: 0.15, loyalty: -0.1}},
+    // (from the branch Elves: the treasury's council — `reserve`, the years of its spending the treasury holds)
+    {id: 'need', label: 'тяжёлые: казна пуста', when: {below: {reserve: 0.5}}, adds: {economy: 0.1, loyalty: -0.1}},
     {id: 'light', label: 'лёгкие', when: {below: {loyalty: 0.2}}, adds: {economy: -0.1, loyalty: 0.1}},
+    {id: 'rich', label: 'лёгкие: казна полна', when: {above: {reserve: 4}}, adds: {loyalty: 0.15}},
     {id: 'usual', label: 'обычные', adds: {}},
   ]},
   {id: 'feasts', label: 'праздники', levels: [
@@ -103,6 +108,8 @@ MARKET_TIERS.registerAll([
 export const marketTierOf = t => MARKET_TIERS.get(t.capital ? 'capital' : `tier${Math.min(2, t.tier ?? 0)}`);
 
 // What is wrong with a condition ({war}, {below: {k: v}}, {above: {k: v}}) → [error]; k — an attribute or a ruin
+// what a condition may read besides the attributes and the ruin: reserve — the years of its spending the treasury holds
+export const COND_EXTRA = ['reserve'];
 export function whenErrors(when) {
   if (when == null) return [];
   if (typeof when !== 'object' || Array.isArray(when)) return ['условие — не набор'];
@@ -111,7 +118,7 @@ export function whenErrors(when) {
     if (k === 'war') { if (typeof v !== 'boolean') errs.push('war — да или нет'); continue; }
     if (k !== 'below' && k !== 'above') { errs.push(`в условии нет «${k}» (war, below, above)`); continue; }
     for (const [s, x] of Object.entries(v || {})) {
-      if (!REALM_STATS.has(s) && !RUINS.has(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
+      if (!REALM_STATS.has(s) && !RUINS.has(s) && !COND_EXTRA.includes(s)) errs.push(`${k}.${s}: нет такого показателя или разрухи`);
       if (typeof x !== 'number' || !Number.isFinite(x)) errs.push(`${k}.${s}: не число`);
     }
   }

@@ -1,11 +1,11 @@
 // The table of the world's buildings (data/townBuildings.js) is the one truth about a building: who builds it, what its
 // realm must have first, what it houses, employs, takes and gives, the metals it opens; the local map reads its races
 // from it. `npm run buildings`.
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, goodPrice, metalBuildings, localPeoples, POOLS, TOWN_FLOW, KITCHENS, makesOf, takesOf, recipesOf, INDICATORS, lineHas, TOWN_SLOTS} from '../src/data/townBuildings.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {MATERIALS} from '../src/data/balance/materials.js';
-import {realmBuilt, realmWorks, canBuild} from '../src/atlas/towns.js';
+import {realmBuilt, realmWorks, canBuild, slotsUsed, slotsOf} from '../src/atlas/towns.js';
 
 const fail = [];
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   ${name}${info ? `: ${info}` : ''}`); if (!ok) fail.push(name); };
@@ -16,15 +16,23 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
 {
   const bad = [];
   for (const b of all) {
-    for (const k of ['house', 'jobs', 'heat']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
-    for (const k of ['in', 'out']) for (const [g, n] of Object.entries(b[k] || {})) {
-      if (!TOWN_GOODS.has(g)) bad.push(`${b.id}: ${k}.${g} — нет такого блага`);
-      if (!(typeof n === 'number' && n > 0)) bad.push(`${b.id}: ${k}.${g} = ${n}`);
+    for (const k of ['house', 'jobs', 'heat', 'fire']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
+    for (const x of [b, ...recipesOf(b)]) for (const k of ['in', 'out']) for (const [g, n] of Object.entries(x[k] || {})) {
+      if (!TOWN_GOODS.has(g)) bad.push(`${b.id}${x === b ? '' : ':' + x.id}: ${k}.${g} — нет такого блага`);
+      if (!(typeof n === 'number' && n > 0)) bad.push(`${b.id}${x === b ? '' : ':' + x.id}: ${k}.${g} = ${n}`);
     }
+    // the indicators it lights and asks for are known (a stock one — of a good that is)
+    const known = i => INDICATORS[i] || /^people:/.test(i) && WORLD_PEOPLES.has(i.slice(7)) || /^kin:/.test(i) || /^stock:/.test(i) && TOWN_GOODS.has(i.slice(6));
+    for (const i of [...(b.opens || []), ...recipesOf(b).flatMap(q => q.opens || [])]) if (!INDICATORS[i]) bad.push(`${b.id}: открывает неизвестный индикатор ${i}`);
+    for (const r of [...(b.req || []), ...recipesOf(b).flatMap(q => q.req || [])]) for (const i of r.split('|')) if (!known(i)) bad.push(`${b.id}: рецепт ждёт неизвестный индикатор ${i}`);
     if ('housing' in (b.fx || {})) bad.push(`${b.id}: жильё в эффектах — оно задаётся полем house`);
     for (const k of Object.keys(b.fx || {})) if (!(k in EFFECTS)) bad.push(`${b.id}: эффект ${k}`);
   }
-  const used = new Set(all.flatMap(b => [...Object.keys(b.in || {}), ...Object.keys(b.out || {})]));
+  // (a good of a pool a building takes — a kitchen's raw food, the fuel of heat and fire — is used; brushwood is gathered by hand)
+  const pooled = b => [...Object.keys(b.any || {}), ...(b.heat || b.fire || recipesOf(b).some(q => q.fire) ? ['fuel'] : [])].flatMap(id => Object.keys(POOLS[id] || {}));
+  const used = new Set([...all.flatMap(b => [...takesOf(b), ...makesOf(b), ...pooled(b)]), ...Object.keys(TOWN_FLOW.gather || {})]);
+  for (const b of all) for (const id of Object.keys(b.any || {})) if (!POOLS[id]) bad.push(`${b.id}: any.${id} — нет такого набора`);
+  for (const [id, P] of Object.entries(POOLS)) for (const [g, w] of Object.entries(P)) { if (!TOWN_GOODS.has(g)) bad.push(`набор ${id}: нет блага ${g}`); if (!(w > 0)) bad.push(`набор ${id}: ${g} = ${w}`); }
   for (const G of TOWN_GOODS.all()) {
     if (!(goodPrice(G.id) > 0)) bad.push(`благо ${G.id}: нет цены`);
     if (!used.has(G.id)) bad.push(`благо ${G.id}: его никто не тратит и не даёт`);
@@ -32,6 +40,21 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
   const housed = all.filter(b => b.house > 0).length, working = all.filter(b => b.jobs > 0).length;
   check('потоки построек: числа целые, блага известны, у каждого блага есть цена и место', !bad.length,
     bad.length ? bad.slice(0, 5).join('; ') : `${all.length} построек: вмещают ${housed}, берут руки ${working}, благ ${TOWN_GOODS.all().length}`);
+}
+
+// the kitchens (docs/WORLD.md «Кухни и топливо»): three steps, every people's, each a tier in place of the one before; raw food is
+// one good, cooked on the fire into food; a building that burns names it as heat or fire, not as logs or coal it takes
+{
+  const bad = [], K = KITCHENS.map(id => TOWN_BUILDINGS.get(id));
+  if (K.map(b => b.tier).join() !== '0,1,2') bad.push(`ступени кухонь: ${K.map(b => b.tier).join()}`);
+  if (K[1].kind !== 'tier' || !K[1].upgrades.includes(K[0].id) || K[2].kind !== 'tier' || !K[2].upgrades.includes(K[1].id)) bad.push('кухни — не тиры одна другой');
+  for (const b of K) { if (b.peoples) bad.push(`${b.id}: не у всех народов`); if (!b.in?.raw || !b.out?.food || !b.fire) bad.push(`${b.id}: варит сырое на огне в еду`); }
+  const raws = TOWN_GOODS.all().filter(g => g.raw).map(g => g.id);
+  if (raws.join() !== 'raw') bad.push(`сырое — одно благо: ${raws.join(', ')}`);
+  for (const b of all) if (b.in?.fuel || recipesOf(b).some(q => q.in?.fuel)) bad.push(`${b.id}: топливо в «Тратит» — оно идёт жаром (fire)`);
+  const ratio = K.map(b => b.out.food / b.in.raw);
+  if (!(ratio[0] < ratio[1] && ratio[1] < ratio[2])) bad.push(`выход кухонь не растёт со ступенью: ${ratio.join(', ')}`);
+  check('кухни: три ступени-тира у всех народов, сырое одно и варится, топливо — жаром', !bad.length, bad.length ? bad.slice(0, 5).join('; ') : K.map(b => `${b.name} ${b.in.raw}→${b.out.food}`).join(', '));
 }
 
 // what a people may build it can reach: the buildings its realm must have first are open to that people too
@@ -42,6 +65,8 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     if (!may(b, P)) continue;
     for (const id of b.requires || []) if (!may(TOWN_BUILDINGS.get(id), P)) bad.push(`${P}: ${b.id} требует ${id}, а его они не строят`);
     if (b.requiresAny && !b.requiresAny.some(id => may(TOWN_BUILDINGS.get(id), P))) bad.push(`${P}: ${b.id} требует одну из ${b.requiresAny.join(', ')}, а их они не строят`);
+    // an annex, a tier, an upgrade: some host of it is theirs (a tier of theirs grows from what they build)
+    if (b.here && !b.here.some(id => id === b.id || may(TOWN_BUILDINGS.get(id), P))) bad.push(`${P}: ${b.id} ставится при ${b.here.join(', ')}, а их они не строят`);
   }
   check('что народу разрешено, он может построить: нужное в державе ему тоже разрешено', !bad.length, bad.length ? bad.slice(0, 6).join('; ') : '');
 }
@@ -56,22 +81,29 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
   for (const b of all) for (const id of b.upgrades || []) {
     const o = TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id) : null;
     if (!o) bad.push(`${b.id}: улучшает неизвестное ${id}`);
-    else if (o.cat !== 'housing' || b.cat !== 'housing' || !(b.house > o.house)) bad.push(`${b.id}: улучшает ${id}, но это не жильё больше прежнего`);
+    else if (b.cat === 'housing' ? o.cat !== 'housing' || !(b.house > o.house) : b.kind !== 'tier' || o.line !== b.line) bad.push(`${b.id}: строится на месте ${id}, но это не жильё больше прежнего и не тир своей линии`);
   }
-  check('множители и замены благ у народов, улучшение жилья — только жильём побольше', !bad.length, bad.length ? bad.join('; ') : '');
+  for (const b of all) if (b.kind === 'upgrade' && (b.jobs || !b.boost || !b.here?.every(id => b.boost[id] > 0))) bad.push(`${b.id}: улучшение без рук, но со своим усилением основы`);
+  for (const b of all) if (!b.line) bad.push(`${b.id}: нет карточки (line)`);
+  check('множители и замены благ у народов; на месте прежнего — жильё побольше или тир своей линии; улучшения усиливают основу', !bad.length, bad.length ? bad.slice(0, 6).join('; ') : '');
 }
 
 // a people that has gone through the asymmetry (docs/WORLD.md «Асимметрия»): every good its buildings take (after its
 // swaps) one of its own buildings gives — no chain of theirs hangs on what they may not build
 const DONE = ['elves', 'dwarves', 'orcs'];
 for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
-  const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id)), made = new Set(mine.flatMap(b => Object.keys(b.out || {})));
+  // (of the recipes — those its people and any of its kinds may run: the others' bows are not its chain)
+  const mayRun = q => (q.req || []).every(r => r.split('|').some(x => !/^people:/.test(x) || x === `people:${P.id}`));
+  const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id));
+  const made = new Set(mine.flatMap(b => [...makesOf({...b, recipes: recipesOf(b).filter(mayRun)})]));   // (a mine's ores, a smelter's ingots)
   const taken = new Map();
   for (const b of mine) {
-    for (const g of Object.keys(b.in || {})) { const to = P.swaps?.[g]?.to || g; (taken.get(to) || taken.set(to, []).get(to)).push(b.id); }
+    for (const x of [b, ...recipesOf(b).filter(mayRun)]) for (const g of Object.keys(x.in || {})) { const to = P.swaps?.[g]?.to || g; (taken.get(to) || taken.set(to, []).get(to)).push(b.id); }
     if (b.heat) (taken.get('wood') || taken.set('wood', []).get('wood')).push(b.id);
   }
-  const gaps = [...taken].filter(([g]) => !made.has(g)).map(([g, by]) => `${g} (${by.join(', ')})`);
+  // (a recipe that runs on a good of the store — brought in — is the trade's: the greenskins' forge works bought steel)
+  const bought = new Set(mine.flatMap(b => recipesOf(b).filter(mayRun).flatMap(q => (q.req || []).filter(r => r.startsWith('stock:')).map(r => r.slice(6)))));
+  const gaps = [...taken].filter(([g]) => !made.has(g) && !bought.has(g)).map(([g, by]) => `${g} (${by.join(', ')})`);
   check(`${P.label}: всё, что их постройки тратят, их же постройки и дают`, !gaps.length, gaps.length ? gaps.join('; ') : `${mine.length} построек, благ ${made.size}`);
 }
 
@@ -91,9 +123,11 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   const t3 = {id: 3, people: 'humans', realm: 'q', built: [], tier: 1, alive: true, i: 0, pop: 300};
   const a = {towns: [t1, t2, t3], realms: [{id: 'r'}, {id: 'q'}], place: {}};
   for (const t of a.towns) t.place = {forest: true, stone: true};
-  const forge = TOWN_BUILDINGS.get('forge');
-  const own = canBuild(a, t2, forge), other = canBuild(a, t3, forge);
-  check('кузню строит город, в чьей державе стоит горн, даже не в нём самом; чужая держава — нет', own && !other, `свой ${own}, чужой ${other}`);
+  const bridge = TOWN_BUILDINGS.get('stonehouse');
+  for (const t of a.towns) t.tier = 2;
+  t1.built.push('quarry');
+  const own = canBuild(a, t2, bridge), other = canBuild(a, t3, bridge);
+  check('каменные дома строит город, в чьей державе стоит карьер, даже не в нём самом; чужая держава — нет', own && !other, `свой ${own}, чужой ${other}`);
   const bronze = realmWorks(a, t2, 'bronze'), iron = realmWorks(a, t2, 'iron'), bone = realmWorks(a, t3, 'bone');
   check('металл работает вся держава: бронза есть (горн у соседа), железа нет; кость — у всех', bronze && !iron && bone && realmBuilt(a, t2).has('smelter'), `бронза ${bronze}, железо ${iron}, кость ${bone}`);
 }
@@ -102,11 +136,27 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
 {
   const bad = [];
   for (const b of BUILDINGS.all()) {
-    if (!all.some(t => t.local === b.id)) bad.push(`${b.id}: нет постройки мира с local`);
+    if (!all.some(t => t.local?.includes(b.id))) bad.push(`${b.id}: нет постройки мира с local`);
     if (JSON.stringify(b.races) !== JSON.stringify(localPeoples(b.id))) bad.push(`${b.id}: расы не из таблицы городов`);
     if (Object.keys(b).includes('races')) bad.push(`${b.id}: races лежит в самой постройке`);
   }
   check('постройки поселения берут расы из «Построек городов»', !bad.length, bad.length ? bad.slice(0, 4).join('; ') : `${BUILDINGS.all().length} построек`);
+}
+
+// tiers, annexes, slots (docs/WORLD.md «Виды строк», «Слоты»): a tier is built in place of its base and counts as it; an annex
+// wants its host in the town; a town holds TOWN_SLOTS of its own works, a tier in its base's place
+{
+  const t = {id: 1, people: 'humans', realm: 'r', built: ['shrine'], tier: 2, alive: true, i: 0, pop: 600, place: {}};
+  const a = {towns: [t], realms: [{id: 'r'}]};
+  const B = id => TOWN_BUILDINGS.get(id);
+  const temple = canBuild(a, t, B('temple')), rites = !canBuild(a, t, B('warehouse'));
+  t.built = ['temple', 'market'];
+  const after = lineHas(t.built, 'shrine') && canBuild(a, t, B('warehouse')), noShrine = !canBuild(a, {...t, built: []}, B('temple'));
+  t.tier = 1;
+  t.built = Array(slotsOf(t).town).fill('market').map((x, k) => ['market', 'well', 'granary', 'cemetery', 'eldershall', 'shrine', 'inn', 'healerhut', 'loom', 'potter', 'forge', 'tannery', 'smelter', 'charpit', 'sawmill', 'dryrack', 'quern', 'tavern', 'alchemist', 'armory'][k]);
+  const full = slotsUsed(t).town >= slotsOf(t).town && !canBuild(a, t, B('watchtower')) && canBuild(a, t, B('temple'));
+  check('тир — на месте основы и считается ею; пристройка — при основе; слоты: полный город не ставит новых, а тир ставит',
+    temple && rites && after && noShrine && full, `храм ${temple}, склады без рынка нельзя ${rites}, после храма и рынка ${after}, без святилища храма нет ${noShrine}, слоты ${slotsUsed(t).town}/${slotsOf(t).town}: ${full} (${TOWN_SLOTS.town.join('/')})`);
 }
 
 // the economy of a town by its buildings' flows (atlas/economy.js): hands, slaves, a taken building, hard and soft goods,
@@ -119,19 +169,35 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   const elf = townEconomy(null, {people: 'elves', pop: 1000, built: ['field', 'jeweler', 'forestry', 'sacredgrove'], slaves: 0}, 1);
   const hum = townEconomy(null, {people: 'humans', pop: 1000, built: ['field', 'jeweler'], slaves: 0}, 1);
   const field = TOWN_BUILDINGS.get('field');
-  check('расчёт: эльфийская пашня даёт на четверть больше зерна; ювелир эльфов берёт дерево вместо металла и работает, людской без металла стоит',
-    Math.abs(elf.made.grain - field.out.grain * 1.25 * row(elf, 'field').eff) < 1e-6 && !('metal' in (elf.used || {})) && row(elf, 'jeweler').eff > 0 && row(hum, 'jeweler').eff === 0,
-    `зерно ${elf.made.grain.toFixed(0)} против ${hum.made.grain.toFixed(0)}, ювелир эльфов ${row(elf, 'jeweler').eff.toFixed(2)}, людей ${row(hum, 'jeweler').eff.toFixed(2)}`);
-  // hands: few people — the field works at a share; a soft good short — half strength
-  const thin = townEconomy(null, {people: 'humans', pop: 20, built: ['field'], slaves: 0}, 1);
-  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'field').staff - 10 / 30) < 1e-6 && Math.abs(row(thin, 'field').eff - row(thin, 'field').staff * TF.soft) < 1e-6,
-    `штат ${row(thin, 'field').staff.toFixed(2)}, сила ${row(thin, 'field').eff.toFixed(2)}`);
+  check('расчёт: эльфийское поле даёт на четверть больше сырой еды; ювелир эльфов работает деревом, людской без материалов стоит',
+    Math.abs(elf.made.raw - field.out.raw * 1.25 * row(elf, 'field').eff) < 1e-6 && row(elf, 'jeweler').eff > 0 && row(hum, 'jeweler').eff === 0,
+    `сырой еды ${elf.made.raw.toFixed(0)} против ${hum.made.raw.toFixed(0)}, ювелир эльфов ${row(elf, 'jeweler').eff.toFixed(2)}, людей ${row(hum, 'jeweler').eff.toFixed(2)}`);
+  // indicators and recipes (docs/WORLD.md «Цепочки 6.1»): the brewery's example — a field lights «зерно», the grain brew takes all
+  // its strength; a grove lights «плоды», the two share it; the fields burnt, the fruit brew has it all
+  const brew = built => { const E = townEconomy(null, {people: 'humans', pop: 2000, built, slaves: 0}, 1); return Object.fromEntries(E.recipes.filter(x => x.of === 'brewery' && x.eff > 1e-6).map(x => [x.id.split(':')[1], Math.round(x.share * 100)])); };
+  const b1 = brew(['brewery', 'field', 'field']), b2 = brew(['brewery', 'field', 'field', 'grove']), b3 = brew(['brewery', 'field', 'grove']), b4 = brew(['brewery', 'grove']), b0 = brew(['brewery']);
+  check('рецепты: пивоварня варит то, на что горят индикаторы, и делит мощность; погас индикатор — доля уходит другим',
+    JSON.stringify(b0) === '{}' && JSON.stringify(b1) === '{"grain":100}' && b2.grain === 50 && b2.fruit === 50 && b3.grain === 50 && JSON.stringify(b4) === '{"fruit":100}',
+    `без сырья ${JSON.stringify(b0)}, поле ${JSON.stringify(b1)}, + сад ${JSON.stringify(b2)}, одно поле ${JSON.stringify(b3)}, без полей ${JSON.stringify(b4)}`);
+  // the store as an indicator: the smelter melts the ore that is in the store — dug at home or brought in; none, it stands
+  const smelt = (imports, built = ['smelter', 'charpit', 'woodcut']) => { const E = townEconomy(null, {people: 'humans', pop: 2000, built, slaves: 0}, 1, imports); return [Object.fromEntries(E.recipes.filter(x => x.of === built[0] && x.eff > 1e-6).map(x => [x.id.split(':')[1], Math.round(x.share * 100)])), E]; };
+  const [s0] = smelt(null), [s1, E1] = smelt({ore_iron: 400}), [s2] = smelt({ore_iron: 400, ore_bronze: 400}), [f1, F1] = smelt({bar_steel: 200, leather: 40}, ['forge', 'charpit', 'woodcut']);
+  check('склад как индикатор: горн плавит привозную руду, две руды — пополам, без руды стоит; кузня куёт привозную сталь',
+    JSON.stringify(s0) === '{}' && JSON.stringify(s1) === '{"iron":100}' && s2.iron === 50 && s2.bronze === 50 && E1.made.bar_iron > 0 && E1.lit.includes('stock:ore_iron') && f1.steel === 100 && F1.made.tools > 0,
+    `без руды ${JSON.stringify(s0)}, железная ${JSON.stringify(s1)} → слитков ${(E1.made.bar_iron || 0).toFixed(0)}, две ${JSON.stringify(s2)}, кузня ${JSON.stringify(f1)} → инструмента ${(F1.made.tools || 0).toFixed(1)}`);
+  // workers by tier: a building's hands are one number, however many recipes run
+  const one = townEconomy(null, {people: 'humans', pop: 2000, built: ['brewery', 'field'], slaves: 0}, 1), two = townEconomy(null, {people: 'humans', pop: 2000, built: ['brewery', 'field', 'grove'], slaves: 0}, 1);
+  check('рабочие — одно число по тиру, не по числу рецептов', one.jobs - TOWN_BUILDINGS.get('field').jobs === two.jobs - TOWN_BUILDINGS.get('field').jobs - TOWN_BUILDINGS.get('grove').jobs, `пивоварня ${one.jobs - TOWN_BUILDINGS.get('field').jobs}`);
+  // hands: few people — the ploughland (the humans' field) works at a share; a soft good short — half strength
+  const thin = townEconomy(null, {people: 'humans', pop: 20, built: ['ploughland'], slaves: 0}, 1);
+  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'ploughland').staff - 10 / 30) < 1e-6 && Math.abs(row(thin, 'ploughland').eff - row(thin, 'ploughland').staff * TF.soft) < 1e-6,
+    `штат ${row(thin, 'ploughland').staff.toFixed(2)}, сила ${row(thin, 'ploughland').eff.toFixed(2)}`);
   // slaves: they take up to 80% of the places at 0.6 of a free hand; the rest free
   const orc = townEconomy(null, {people: 'orcs', pop: 1000, built: ['mineshaft'], slaves: 100}, 1);
   check('рабы: занимают до 80% мест и работают хуже вольных; остальное — вольные', Math.abs(row(orc, 'mineshaft').slaves - TF.slaves.share) < 1e-6 && Math.abs(orc.slavesIdle - (100 - 12 * TF.slaves.share / TF.slaves.work)) < 1e-6,
     `доля рабов ${row(orc, 'mineshaft').slaves.toFixed(2)}, без дела ${orc.slavesIdle.toFixed(1)}`);
   // a taken building of another people works at half
-  const taken = townEconomy(null, {people: 'elves', pop: 1000, built: ['mushrooms'], slaves: 0}, 1);
+  const taken = townEconomy(null, {people: 'elves', pop: 1000, built: ['mushrooms'], slaves: 0}, 1, {tools: 100});
   check('захваченная постройка чужого народа работает вполсилы', Math.abs(row(taken, 'mushrooms').eff - TF.captured) < 1e-6, `${row(taken, 'mushrooms').eff}`);
 }
 
@@ -145,7 +211,7 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
     for (const t of a.towns.filter(t => t.alive && t.people === 'elves' && t.econ)) {
       n++; pop += t.pop; fed += t.econ.feeds;
       for (const [g, v] of Object.entries(t.econ.made)) if (v > 0) made.add(g);
-      for (const g of Object.keys(t.econ.used)) if (!TOWN_GOODS.get(g).soft) taken.add(g);
+      for (const g of Object.keys(t.econ.used)) if (!TOWN_GOODS.get(g).soft && !POOLS.fuel[g]) taken.add(g);   // (fuel: logs burn too)
     }
   }
   const missing = [...taken].filter(g => !made.has(g));

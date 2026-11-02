@@ -19,6 +19,8 @@ import {warOn} from '../src/atlas/deeds/warOn.js';
 import {makePeace} from '../src/atlas/deeds/makePeace.js';
 import {captives} from '../src/atlas/deeds/captives.js';
 import {muster} from '../src/atlas/diplomacy.js';
+import {tradeUp} from '../src/atlas/peoples.js';
+import {goodPrice} from '../src/data/townBuildings.js';
 import {relationsOf} from '../src/atlas/deeds/realm.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
@@ -26,6 +28,7 @@ import {SPECIES} from '../src/data/species.js';
 import {RAID_BANDS} from '../src/data/raids.js';
 import {roleKit, COMBAT_ROLES} from '../src/data/roles.js';
 import {ITEMS} from '../src/data/items.js';
+import {townEconomy} from '../src/atlas/economy.js';
 import {MATERIALS} from '../src/data/balance/materials.js';
 import {lawOf} from '../src/data/slavery.js';
 import {mulberry} from '../src/core/rng.js';
@@ -48,9 +51,10 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   const t = gtowns[0], k = townKin(a, t), sum = Object.values(k).reduce((s, v) => s + v, 0);
   const leads = new Set(gtowns.map(x => leadKin(a, x)));
   check('в городе зеленокожих живут все виды; главный — по биому', Math.abs(sum - 1) < 0.01 && Object.keys(k).length === 5 && leads.size >= 1, `${t.name}: ${JSON.stringify(k)}; главные: ${[...leads].join(', ')}`);
-  const den = TOWN_BUILDINGS.get('hyenadens'), keep = t.kin, tier = t.tier;
-  t.kin = {...keep, gnoll: 0}; const no = canBuild(a, t, den); t.kin = {...keep, gnoll: 0.3}; const yes = canBuild(a, t, den); t.kin = keep; t.tier = tier;
-  check('свои постройки видов: гиеньи норы — только где живут гноллы', !no && yes, `без гноллов ${no}, с гноллами ${yes}`);
+  // the kinds' own: a recipe of the beast dens each, lit by the kind the town holds (data/townBuildings.js dens, KIN.least)
+  const hyenas = kin => townEconomy(a, {...t, built: ['dens'], kin: {...t.kin, ...kin}, stock: {}}, 1, {food: 100}).recipes.find(x => x.id === 'dens:hyenas').on;
+  const no = hyenas({gnoll: 0}), yes = hyenas({gnoll: 0.3});
+  check('свои рецепты видов: гиены в логове зверей — только где живут гноллы', !no && yes, `без гноллов ${no}, с гноллами ${yes}`);
   const hut = {...t, built: ['yurts'], realm: t.realm}, fx = townFx(hut);
   check('не любят тесноты: шатры на 150, а не 200; грубое жильё коррупции не растит', Math.abs(fx.housing * 100 - 150) < 1e-6 && roughShare(hut) === 0, `жильё ${fx.housing * 100}, доля грубого ${roughShare(hut)}`);
 }
@@ -134,9 +138,23 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   const P = WORLD_PEOPLES.get('orcs'), H = WORLD_PEOPLES.get('humans');
   const t = gtowns.find(x => x.pop > 100) || gtowns[0], R = a.realms.find(r => r.id === t.realm), tg = a.towns.find(x => x.alive && x.realm !== t.realm);
   t.stock = {...(t.stock || {}), beasts: 20}; t.warBeasts = {list: {varg: 2}, men: 1}; const pop0 = t.pop, said = [];
+  const before = new Set((a.parties || []).map(p => p.id));   // (the town may have an army out from its history: the new one is checked)
   muster(a, t, tg, null, () => 0.5, s => said.push(s));
-  const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id);
+  const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id && !before.has(p.id));
   check('орда: в поход идёт треть города и боевые звери, скот остаётся дома; растёт почти вдвое быстрее, благ хочет вдвое меньше',
     !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > (H.breed ?? 1) && P.needs < 1 && !H.levy, said.join(' '));
 }
 
+
+// nomads (data/peoples.js tradeUp, wants; atlas/peoples.js tradeUp): the greenskins sell their finery for arms at once, at
+// 0.8 of its worth; they want arms and no luxury; another people keeps what it has
+{
+  const o = {people: 'orcs', stock: {lux: 10, gems: 2, bar_silver: 1, wood: 5}}, h = {people: 'humans', stock: {lux: 10}};
+  const worth = 10 * goodPrice('lux') + 2 * goodPrice('gems') + 1 * goodPrice('bar_silver'), sold = tradeUp(o), kept = tradeUp(h);
+  const wantsArms = WORLD_PEOPLES.get('orcs').wants?.basic?.arms > 0 && WORLD_PEOPLES.get('orcs').wants?.comfort?.lux === 0;
+  check('кочевники: роскошь, самоцветы и серебро сразу меняют на оружие по 0,8 стоимости; оружие — их нужда, роскоши не хотят; люди своё держат',
+    Math.abs(sold - worth) < 1e-9 && !o.stock.lux && !o.stock.gems && !o.stock.bar_silver && o.stock.wood === 5 && Math.abs(o.stock.arms - worth * 0.8 / goodPrice('arms')) < 1e-9 && kept === 0 && h.stock.lux === 10 && wantsArms,
+    `продано на ${worth}, оружия ${o.stock.arms?.toFixed(2)}`);
+}
+
+if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

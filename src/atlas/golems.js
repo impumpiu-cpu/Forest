@@ -6,13 +6,13 @@
 //   3. then it stands guard, one for every GOLEMS.per people: a guard golem counts as GOLEMS.men of the town's people in
 //      its might and in its armies (atlas/towns.js might, golemMen).
 // t.golems = {auto: {building id: [metal, …] — one for each unit taken over}, guard: [metal, …], since: the first season}
-import {GOLEMS as G, metalBuildings} from '../data/townBuildings.js';
+import {GOLEMS as G, metalBuildings, lineHas, barOf} from '../data/townBuildings.js';
 import {realmBuilt} from './towns.js';
 
 // the best metal the realm of a town works, of the golems' metals, or null
 export function golemMetal(a, t) {
   const built = realmBuilt(a, t);
-  for (let k = G.tiers.length - 1; k >= 0; k--) if (metalBuildings(G.tiers[k]).some(id => built.has(id))) return G.tiers[k];
+  for (let k = G.tiers.length - 1; k >= 0; k--) if (metalBuildings(G.tiers[k]).some(id => lineHas(built, id))) return G.tiers[k];
   return null;
 }
 const rank = m => G.tiers.indexOf(m);
@@ -28,8 +28,10 @@ export function stepGolems(a, t) {
   const metal = golemMetal(a, t); if (!metal) return null;
   // a golem is made of the forge's work and the metal of the store (data/townBuildings.js GOLEMS.make): an idle forge, or no
   // metal, makes none this season
-  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.metal || 0) < G.make.metal) return null;
-  const pay = () => { if (t.stock) { t.stock.metal = Math.round((t.stock.metal - G.make.metal) * 100) / 100; if (t.stock.metal <= 0) delete t.stock.metal; } };
+  // (of its own metal: a bronze golem of bronze, an iron one of iron — data/townBuildings.js metal goods)
+  const bar = barOf(metal);   // (its ingots: data/townBuildings.js METALS)
+  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.[bar] || 0) < G.make.metal) return null;
+  const pay = () => { if (t.stock) { t.stock[bar] = Math.round((t.stock[bar] - G.make.metal) * 100) / 100; if (t.stock[bar] <= 0) delete t.stock[bar]; } };
   for (const id of Object.keys(g.auto)) g.auto[id] = takersOf(t, id);   // the takers of units gone are gone with them
   const want = Math.max(1, Math.floor(t.pop / G.per));
   const taken = Object.values(g.auto).reduce((s, l) => s + l.length, 0);

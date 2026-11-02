@@ -65,7 +65,7 @@ const noIron = offers(elfTown, world).filter(isIron).length;
 const humanTown = {id: 'h1', people: 'humans', built: ['armory'], tier: 2, realm: 'r2', alive: true}, forgeTown = {id: 'h2', people: 'humans', built: ['forge'], tier: 1, realm: 'r2', alive: true};
 const world2 = {realms: [{id: 'r2', people: 'humans'}], towns: [humanTown, forgeTown]};
 const withIron = offers(humanTown, world2).filter(isIron).length;
-const elfBow = offers({people: 'elves', built: ['bowyer', 'sacredgrove'], tier: 1, realm: null}).find(o => o.id.startsWith('bow'));
+const elfBow = offers({people: 'elves', built: ['handshop', 'sacredgrove'], tier: 1, realm: null}).find(o => o.id.startsWith('bow'));
 check('рынок: железо — только если кузня стоит где-то в державе; эльфы у священной рощи продают луки из святого дерева', noIron === 0 && withIron > 0 && /holywood!/.test(elfBow?.id || ''), `без кузни ${noIron}, с кузней в соседнем городе ${withIron}, лук ${elfBow?.id}`);
 
 if (fail.length) process.exit(1);

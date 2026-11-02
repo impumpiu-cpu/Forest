@@ -60,8 +60,8 @@ export function rationPrice(t, st, terms = 1) {
   const plenty = 1 - TOWN_MONEY.price.food * Math.max(0, Math.min(1, s - 1));
   return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * plenty * STANDING[st].buy * terms;
 }
-// the town good of a stock resource (all the ores are its ore) and of an offer
-const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ore' : null);
+// the town good of a stock resource (an ore by its kind: atlas ore goods) and of an offer
+const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ore_iron' : null);   // (an ore of no town good of its own — as iron ore)
 const offerGood = o => (o.kind === 'goods' ? goodOf(o.id) : o.kind === 'beast' ? 'beasts' : o.kind === 'item' ? (gearDef(o.id)?.tool ? 'tools' : gearDef(o.id)?.slot === 'body' || gearType(o.id) === 'shield' ? 'armor' : 'arms') : null);
 const sellPrice = (t, st, id) => {
   const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
@@ -83,7 +83,7 @@ export const townGolem = (a, t) => {
   return m && BEASTS[golemOf(m)] ? m : null;
 };
 const golemOffer = (o, t, a) => { if (!o.golem) return o; if (!has(t, o.at)) return null; const m = townGolem(a, t); return m ? {...o, id: golemOf(m), metal: m, price: PRICES.beasts[golemOf(m)]} : null; };
-export const offers = (t, a = null) => OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
+export const offers = (t, a = null) => OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!o.peoples || o.peoples.includes(t.people)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);

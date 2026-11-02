@@ -7,6 +7,8 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
+import {FUEL, POOLS, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
+import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
@@ -21,7 +23,7 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, INDICATORS} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
@@ -159,8 +161,11 @@ export const TABLES = [
       col('values', 'Ценности', 'map', {ref: VALUES, min: 0, note: 'вес ценности; каждое существо тянет 2–3'}),
       col('home', 'Биомы расселения', 'map', {ref: 'biomes', min: 0, max: 1, note: 'насколько биом подходит: 1 — родной, 0 — не живут'}),
       ...body,
-      col('body.adult', 'Взрослый, лет', 'int', {min: 0}), col('body.life', 'Жизнь, лет', 'int', {min: 0}),
-      col('body.fertility', 'Плодовитость', 'num', {min: 0, max: 1}), col('body.diet', 'Пища'),
+      col('body.adult', 'Взрослый, лет', 'int', {min: 0}),
+      col('body.lifeFrom', 'Жизнь от, лет', 'int', {min: 0, nullable: true, note: 'сколько живёт вид на карте мира при здоровье города 0; здоровье тянет к «Жизнь до» (atlas/demography.js)'}),
+      col('body.life', 'Жизнь до, лет', 'int', {min: 0, note: 'верх срока жизни: столько живут при хорошем здоровье города'}),
+      col('body.fertility', 'Плодовитость', 'num', {min: 0, max: 1, note: 'на карте мира — × рождения народа против расы, по которой он назван (гоблин зеленокожих рождается чаще орка)'}),
+      col('body.brawled', 'Гибнет в драках ×', 'num', {min: 0, nullable: true, note: 'во сколько раз чаще своих гибнет в драках народа (data/peoples.js brawl): слабого гоблина давят ради смеха'}), col('body.diet', 'Пища'),
       col('mods', 'Множители', 'map', {ref: 'creatureMods', note: 'голод, холод, сон… — ключи из «Модификаторов существа»'}),
       col('innate', 'Врождённое', 'list', {show: labels}),
       col('subraces', 'Подрасы', 'list', {show: labels}),
@@ -333,43 +338,68 @@ export const TABLES = [
     columns: [
       col('id', 'id'), col('label', 'Название'), col('race', 'Раса', 'ref', {ref: 'races'}), col('era', 'Эпоха', 'ref', {ref: ERAS}),
       col('arrive.groups', 'Групп на старте', 'int', {min: 1}), col('arrive.mode', 'Откуда приходят'),
-      col('spread', 'Расселение', 'num', {min: 0}), col('growth', 'Рост', 'num', {min: 0}), col('found', 'Плотность города', 'num', {min: 0}),
+      col('spread', 'Расселение', 'num', {min: 0}), col('growth', 'Рост', 'num', {min: 0}),
       col('spacing', 'Между городами', 'int', {min: 0}), col('ores', 'Вес руд', 'num', {min: 0}),
       col('moves', 'Проходимость', 'map', {ref: 'biomes', min: 0}), col('movesElse', 'Прочие биомы', 'num', {min: 0}),
       col('site', 'Место города', 'map', {ref: keysOf({water: 1, coast: 1, fert: 1, trees: 1, ores: 1, steep: 1})}),
       col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}),
+      col('settlers', 'Поселенцы', 'json', {note: 'полный город шлёт pop жителей основать город державы: от from жителей, оставляя не меньше keep; место — в reach × расстояний между городами; берут со склада, сколько есть, из goods («Демография»)'}),
+      col('wilds', 'Лесные союзники', 'json', {note: 'эльфы (atlas/wilds.js): guard — звери земли в силе города, доля жителей; beasts — звери с войском, доля бойцов; treants — древни с войском на лесной город; grove: {grow — древней в год, cap — предел по ступени}'}),
+      col('lineMax', 'Построек линии не больше', 'json', {note: 'в городе народа построек одной линии (её тиры вместе) не больше: {kitchen: 1} — у эльфов одна кухня на город, для приезжих'}),
+      col('migrate', 'Переезд', 'num', {min: 0, max: 1, note: 'доля жителей, готовых за сезон перебраться туда, где лучше: слава и сытость тянут'}),
+      col('welcome', 'Принимает', 'ids', {ref: 'peoples', note: 'чужие народы, которых города этого народа принимают переселенцами (свои из других держав — всегда)'}),
+      col('bureau', 'Бюрократия', 'num', {min: 0, note: 'коррупция державы растёт × это (эльфы 0,7, дварфы 1, люди 1,2, зеленокожие 1,5)'}),
+      col('rose', 'Роза векторов', 'map', {ref: keysOf(VECTORS), min: 0, note: 'куда народ держит курс державы годами: агрессия, рост, экономика (доли, data/mind.js); совет тянет державу к розе («Совет державы»)'}),
       col('flows', 'Потоки ×', 'map', {ref: 'townGoods', min: 0, note: 'множитель на то, что постройки народа дают этого блага (out); пусто — ×1'}),
       col('placeFlows', 'Потоки по месту', 'json', {note: 'ещё × там, где город стоит на таком месте: {needsAny: [\'steep\', \'caves\'], flows: {ore: 1.25}} — дварфы под горой'}),
+      col('tradeUp', 'Сразу меняет', 'json', {note: 'кочевники: {sells, buys, rate} — что продают, едва получив, и на что меняют по rate стоимости (зеленокожие: роскошь, самоцветы и серебро на оружие по 0,8)'}),
+      col('wants', 'Свои нужды', 'json', {note: '{basic, comfort}: свои нужды на голову в год сверх общих; 0 — не хочет вовсе (зеленокожие: оружие — нужда, роскоши не хотят)'}),
+      col('eatsRaw', 'Ест сырым', 'ids', {ref: 'townGoods', note: 'сырая еда, которую народ ест как есть: кормит, как готовая (эльфы — овощи и плоды)'}),
       col('swaps', 'Замены благ', 'json', {note: 'благо, которого постройки народа не берут, и чем заменяют: {metal: {to: \'wood\', k: 3}}'}),
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all(),
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', ')})),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
+      col('kind', 'Вид строки', 'enum', {values: {base: 'здание', variant: 'вариант', tier: 'тир', annex: 'пристройка', upgrade: 'улучшение'}, note: 'здание — основа; вариант — другая основа для народа; тир — строится на месте прежнего («Улучшает»); пристройка — своё здание при основе («Нужно в самом городе»); улучшение — меняет мощность основы («Усиливает»)'}),
+      col('line', 'Карточка', 'text', {note: 'линия построек: основа, её тиры, пристройки, улучшения'}),
       col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
       col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
       col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),
       col('here', 'Нужно в самом городе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в этом городе (гавани — своя пристань)'}),
-      col('upgrades', 'Улучшает', 'ids', {ref: 'townBuildings', note: 'жильё строится на месте одной из этих: место города растёт на разницу'}),
+      col('upgrades', 'Улучшает', 'ids', {ref: 'townBuildings', note: 'жильё и тир строятся на месте одной из этих: место города растёт на разницу; тир считается тем, из чего вырос'}),
       col('tier', 'Ступень', 'int', {min: 0, max: 2}), col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('house', 'Жильё', 'int', {min: 0, note: 'сколько жителей вмещает; место города = 120 + сумма'}),
       col('jobs', 'Рабочих', 'int', {min: 0, note: 'сколько рук берёт у города при полной работе (черновик)'}),
-      col('heat', 'Топливо', 'int', {min: 0, note: 'брёвен в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4 (черновик)'}),
+      col('heat', 'Тепло', 'num', {min: 0, note: 'зарядов топлива в год на тепло жилья, × климат: холодный 1,6, умеренный 1, тёплый 0,4; любое топливо («Кухни и топливо»: бревно — 1 заряд, уголь — 3)'}),
+      col('fire', 'Жар', 'num', {min: 0, note: 'зарядов топлива в год на жар работы: печь, горн, обжиг, кухонный огонь; любое топливо'}),
       col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
       col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('dig', 'Копает', 'json', {note: 'рудник: {n, ores, coal} — n руды в год тех видов, что в ores (iron, bronze, silver, gold, mithril), по богатству клетки угодья каждой рудой; coal — зарядов топлива × богатство углём («Металлы по рудам»)'}),
+      col('placeOut', 'Даёт по месту', 'json', {note: 'благо «Даёт» — только если у места есть это: карьер — камень у склонов, глина в пойме'}),
+      col('opens', 'Открывает индикаторы', 'ids', {ref: keysOf(INDICATORS), note: 'горят, пока стоит хотя бы одна такая постройка («Цепочки 6.1»)'}),
+      col('req', 'Работает при', 'json', {note: 'индикаторы, без которых постройка стоит: сталеварня — слитки железа на складе'}),
+      col('recipes', 'Рецепты', 'json', {note: '[{id, name, req, in, fire, out, opens}] — идут, пока горят их индикаторы; идущие делят мощность здания по наличию сырья на складе'}),
+      col('yields', 'Даёт из взятого', 'json', {computed: true, note: 'что постройка делает из взятого из набора: горн — из каждой руды её металл; мастерская роскоши — роскошь на ценность материала × наценку (LUX)'}),
+      col('any', 'Берёт любое из', 'map', {ref: keysOf(POOLS), min: 0, note: 'сколько в год берёт из набора благ (POOLS): bars — любые слитки (кузня големов), rite — слитки по ценности (обряды), coin — на чеканку, finery — материалы роскоши'}),
       col('soft', 'Обходится без', 'ids', {ref: 'townGoods', note: 'блага из «Тратит», без которых постройка работает вполсилы, а не стоит (как мягкие блага таблицы «Блага городов»)'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
-      col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
+      col('vec', 'Вектор', 'map', {ref: keysOf(VECTORS), min: 0, nullable: true, note: 'куда постройка тянет державу: агрессия, рост, экономика; пусто — из эффектов и того, что она даёт («Совет державы»)'}),
+      col('vecNow', 'Вектор итог', 'text', {computed: true, note: 'вектор, с которым постройка входит в курс и роли: свой «Вектор» или посчитанный из эффектов и того, что она даёт'}),
+      col('fxBy', 'Даёт ещё народу', 'json', {note: 'что постройка даёт своему народу сверх «Даёт»: {humans: {lore: 0.15}} — у людей храм держит церковную школу'}),
+      col('boost', 'Усиливает', 'map', {ref: 'townBuildings', min: 0, note: 'постройки города этого вида дают на эту долю больше, пока она работает: компостная куча — поля и пашни +25%'}),
+      col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ids', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
   {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
     target: (r, c) => [TOWN_GOODS.get(r.id), c.key],
-    note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда и зерно — в человеко-годах: прокорм одного жителя на год.',
+    note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда, сырая еда и заготовки — в человеко-годах: прокорм одного жителя на год.',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
+      col('raw', 'Сырое', 'bool', {note: 'сырую еду не едят (кроме народов с «Ест сырым»): её варят кухни, заготавливает двор, сбраживает пивоварня'}),
       col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
     ]},
 
@@ -439,8 +469,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
-    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); топливо и наборы благ (data/townBuildings.js FUEL — заряды на единицу; LUX — мастерская роскоши: сколько каждого материала берёт в год и наценка; MINT — монетный двор: сколько золота, серебра, самоцветов в год и наценка монеты; RITE_WORTH — сколько золотых ценности металла в год берёт храм павших); наборы благ (POOLS) — в коде: что берут кухни, коптильня, вешала, горн, кузня големов, мастерская роскоши, жар и тепло; как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
+    ...grp({fuel: FUEL, lux: LUX, mint: MINT, rites: RITE_WORTH, lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',
@@ -680,7 +710,7 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf({...TOWN_FX, money: 1, needs: 1}), note: 'money — казны городов: золото против запаса на жителя; needs — насколько закрыты нужды жителей (atlas/treasury.js)'}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
   {id: 'ruins', label: 'Держава: разруха', group: 'Народы', key: 'id', rows: () => RUINS.all(),
     note: 'Четыре вида разрухи: растёт каждый год от своих источников (towns — на город, pop — на 1000 жителей, upkeep — на очко содержания сверх экономики, wars — на войну, raided — на разорённый город), убывает от показателя, что её держит (× «правила» fall), и отнимает от показателя eats (× penalty на очко).',
-    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, rough: 1, folk: 1, pop: 1, upkeep: 1, unpaid: 1, broke: 1, wars: 1, raided: 1}), min: 0, note: 'rough — за город × долю места в шалашах и шатрах; unpaid — сумма долей неоплаченного содержания городов'}),
+    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, rough: 1, folk: 1, pop: 1, upkeep: 1, unpaid: 1, broke: 1, court: 1, wars: 1, raided: 1}), min: 0, note: 'rough — за город × долю места в шалашах и шатрах; unpaid — сумма долей неоплаченного содержания городов'}),
       col('fall', 'Убывает от', 'ref', {ref: 'realmStats'}), col('eats', 'Отнимает', 'ref', {ref: 'realmStats'}), col('note', 'Описание')]},
   {id: 'edicts', label: 'Держава: указы', group: 'Народы', key: 'id', rows: () => EDICTS.all(),
     note: 'Что держава объявляет в этот год: первый уровень, чьё условие выполнено (последний — по умолчанию). Условие: war — на войне; below/above — показатель или разруха ниже/выше. adds — к показателям, ruin — к разрухе.',
@@ -691,6 +721,8 @@ TABLES.push(
   {id: 'realmEvents', label: 'Держава: события', group: 'Народы', key: 'id', rows: () => REALM_EVENTS.all(),
     note: 'События года — таблица случайностей «одна по весу» (data/chance.js), тянется с шансом «правила» events.chance; условие — как у указов. adds — к показателям в этот год, ruin — к разрухе, text — строка летописи ({realm} — держава).',
     columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors, nullable: true}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},
+  {id: 'mindRules', label: 'Совет державы', group: 'Народы', note: 'Мозг державы (data/mind.js, atlas/mind.js; docs/WORLD.md «Совет державы»): три вектора — агрессия, рост, экономика. vecRules — как вектор постройки считается из её эффектов и того, что она делает, если в «Постройках городов» он не задан; deedVec — вектор дел двора; mind — курс, ветер, нужды сезона, доли казны на стройку по ветру, роли городов, послушание. Роза каждого народа — в «Народах мира».',
+    ...grp({vecRules: VEC_RULES, deedVec: DEED_VEC, mind: MIND})},
   {id: 'kingdomRules', label: 'Держава: правила', group: 'Народы', ...grp({ruin: RUIN_RULES, upkeep: UPKEEP, court: COURT, events: EVENTS_RULE, feedback: FEEDBACK}),
     note: 'Разруха: ruin.fall — как показатель её гасит, ruin.penalty — сколько очко разрухи отнимает, ruin.max — потолок. upkeep — содержание постройки по категории (очки экономики в год). court.fill — шанс занять пустую должность. events.chance — шанс события в год. feedback — что держава делает с миром: 0 — ничего; schismByStrife, schismByLoyalty — шанс раскола × (1 + значение × раздоры) и × (1 + значение × нехватка лояльности).'},
   {id: 'marketTiers', label: 'Рынок по ступени города', group: 'Караван', key: 'id', rows: () => MARKET_TIERS.all(),

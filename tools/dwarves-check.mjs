@@ -161,4 +161,36 @@ const game = (seed = 'dwarves') => { const w = newGame({...DEFAULT_CFG, seed, si
     !none && plan?.town === other.id && !!rel?.war && (other.slavesOf.dwarves === 0 ? mine.pop > pop0 : mine.pop < pop0), line);
 }
 
+// the dwarves on the world map (docs/WORLD.md «Народы и города», Дварфы): a bunk in every work, tools of stone, little crime,
+// the walls of metal and the reworking of what is over into what is lacking
+{
+  const {townFx: fxW, room: roomW} = await import('../src/atlas/towns.js');
+  const {townEconomy: econW} = await import('../src/atlas/economy.js');
+  const {recycle} = await import('../src/atlas/treasury.js');
+  const {TOWN_BUILDINGS: TB, goodPrice: gp} = await import('../src/data/townBuildings.js');
+  const {WORLD_PEOPLES: WP} = await import('../src/data/peoples.js');
+  const town = people => ({id: 1, people, pop: 300, tier: 1, built: ['hallhomes', 'forge', 'quarry', 'handshop'], stock: {}, trade: {}, work: {}});
+  const rD = roomW(fxW(town('dwarves'))), rH = roomW(fxW({...town('humans'), built: ['house', 'forge', 'quarry', 'handshop']}));
+  const rD0 = roomW(fxW({...town('dwarves'), built: ['hallhomes']}));
+  check('дварфы: койка в каждой мастерской, инструмент из камня, преступность вчетверо медленнее',
+    Math.abs(rD - rD0 - 3 * WP.get('dwarves').bunks[1]) < 1e-6 && WP.get('dwarves').ruinGrow.crime === 0.25 && (e => e.dem.stone > 0 && !e.dem.wood)(econW(null, {...town('dwarves'), built: ['handshop']})),
+    `место ${rD0} → ${rD} (у людей ${rH})`);
+  const {digOf} = await import('../src/atlas/economy.js');
+  const n = 49, ore = v => Float32Array.from({length: n}, (_, j) => (typeof v === 'function' ? v(j) : v));
+  const fa = {w: 7, h: 7, f: {ore_iron: ore(0.3), ore_bronze: ore(0.2), ore_silver: ore(0), ore_gold: ore(0), ore_mithril: ore(j => (j === 0 ? 0.1 : 0))}};
+  const dm = TB.get('deepmine'), dig = p => digOf(fa, {i: 24, people: p}, dm);
+  check('знание камня: мифрил в трёх клетках от шахты Дварфы находят и добывают кратно, Люди на той же клетке — нет',
+    (dig('dwarves').ore_mithril || 0) > 0 && !(dig('humans').ore_mithril > 0), `мифриловой руды в год: Дварфы ${(dig('dwarves').ore_mithril || 0).toFixed(0)}, Люди ${(dig('humans').ore_mithril || 0).toFixed(0)}`);
+  check('заставы Дварфов: подземные ходы, каменная стена и зал предков — с 0-й ступени, кузня големов — с 1-й; поселенцы обходят стойбища',
+    TB.get('tunnels').tier === 0 && TB.get('stonewall').tierBy?.dwarves === 0 && TB.get('stonewall').tier === 1 && TB.get('ancestorhall').tier === 0 && !TB.get('ancestorhall').here && TB.get('golemforge').tier === 1 && WP.get('dwarves').settlers.avoid?.orcs > 0,
+    `стойбищ не ближе ${WP.get('dwarves').settlers.avoid?.orcs} шагов`);
+  const walls = ['stonewall', 'bronzewall', 'ironwall', 'steelwall', 'mithrilwall'].map(id => TB.get(id));
+  check('дварфийские стены: каменная → бронзовая → железная → стальная → мифриловая, каждая крепче прежней',
+    walls.every((b, i) => !i || (b.upgrades[0] === walls[i - 1].id && b.fx.defence > walls[i - 1].fx.defence)), walls.map(b => b.fx.defence).join(' → '));
+  const t = {...town('dwarves'), built: ['recycler'], stock: {stone: 1000}}, got = {}, L = {tools: 5}, P = {stone: 1000};
+  const took = recycle(t, L, P, (g, n) => { got[g] = (got[g] || 0) + n; });
+  check('переработка: излишек камня — в недостающее постройкам и жителям по цене 4 к 1, не больше годового предела за сезон',
+    took > 0 && took <= TB.get('recycler').recycle.worth / 4 + 1e-6 && got.tools === 5 && Math.abs(Object.entries(got).reduce((s, [g, n]) => s + n * gp(g), 0) * 4 - took) < 1e-6 && Math.abs(t.stock.stone - (1000 - took / gp('stone'))) < 1e-6, `взято ${took.toFixed(1)} золотых камня → ${Object.entries(got).map(([g, n]) => `${g} ${n.toFixed(1)}`).join(', ')}`);
+}
+
 if (fail.length) process.exit(1);

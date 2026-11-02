@@ -30,17 +30,20 @@
 //               the linked towns; the realm's grant pays first, then who builds it (`build.payer`: homes — the people, works — the
 //               makers, the rest — the treasury). No materials or no gold — not built (planBuild)
 //   plunder   — a raid or a storm won carries off a share of the beaten town's goods and gold (`plunder`; the cult of war more)
-// Once a year the realm takes its tax and spends (atlas/kingdom.js): realm.gold — garrisons for its towns (their pay is the
-// people's) and grants to build.
+// Once a year the realm takes its tax, in gold and in kind (atlas/kingdom.js), and grants its towns gold to build; each season
+// it keeps its war host out of its treasury — realm.gold and its store realm.stock: garrisons, and its armies' pay, food and kit
+// (realmKeep).
+import {councilShares} from './mind.js';
 import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
-import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
+import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
+import {ARMY} from '../data/parties.js';
 import {townEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 
-const FOODS = new Set(['food', 'grain', 'stores']);
+const FOODS = new Set(['food', 'raw', 'brush']);   // (raw food too: it is cooked where it is made, not traded; brushwood is burnt where it is gathered; stores keep and are traded)
 const r2 = v => Math.round(v * 100) / 100;
 const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
 const stored = g => !FOODS.has(g) && g !== 'gold';
@@ -74,8 +77,10 @@ function open(t) {
 // (× its people's `needs`: a horde wants less; a good its people do without is swapped as its buildings do — data/peoples.js)
 function wants(t) {
   const N = M.needs, P = peopleOf(t.people), k = P?.needs ?? 1, rich = Math.min(1, Math.max(0, t.peopleGold) / Math.max(1, t.pop * N.rich)), o = {basic: {}, comfort: {}};
-  o.basic = goodsFor(t.people, N.basic, t.pop * k);
-  o.comfort = goodsFor(t.people, N.comfort, t.pop * rich * k);
+  // (its own wants — data/peoples.js `wants`: the greenskins want arms and no luxury)
+  o.basic = goodsFor(t.people, {...N.basic, ...(P?.wants?.basic || {})}, t.pop * k);
+  o.comfort = goodsFor(t.people, {...N.comfort, ...(P?.wants?.comfort || {})}, t.pop * rich * k);
+  for (const tier of ['basic', 'comfort']) for (const g of Object.keys(o[tier])) if (!(o[tier][g] > 0)) delete o[tier][g];
   return o;
 }
 // a basket as the town's people takes it (data/peoples.js swapGoods): the needs, the safety reserve and the materials of a building
@@ -85,11 +90,38 @@ const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.ali
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
 const dealOf = (a, b, s) => (b.realm == null || s.realm == null ? 0 : b.realm === s.realm ? 1 : trades(a, b.realm, s.realm) ? M.foreign : 0);
 
+// A season of a town's reworking (data/townBuildings.js `recycle`: the dwarves' «переработка», one in a town): what its works
+// still lack after buying (`L`) and what its people want of the basic goods and the store cannot give, made of what it has to
+// spare (`P`: over its keep and safety) at the worth in gold, `k` to one — up to `worth` gold a year of the spare at full hands.
+// `give(g, n)` puts what came of it into the store with the season's buying → the worth taken
+export function recycle(t, L, P, give) {
+  const b = t.built.map(id => TOWN_BUILDINGS.get(id)).find(x => x?.recycle);
+  if (!b || !L || !P) return 0;
+  const R = b.recycle, need = {...L};
+  for (const [g, n] of Object.entries(wants(t).basic)) if (stored(g)) need[g] = Math.max(need[g] || 0, n - forPeople(t, g));
+  let left = R.worth / S * Math.min(1, t.work?.[b.id] ?? 1), took = 0;
+  const from = Object.keys(P).filter(h => !(need[h] > 0) && P[h] > 0).sort((x, y) => P[y] * goodPrice(y) - P[x] * goodPrice(x));
+  for (const [g, n] of Object.entries(need).sort((x, y) => y[1] * goodPrice(y[0]) - x[1] * goodPrice(x[0]))) {
+    let want = n * goodPrice(g) * R.k;   // the worth of spare it takes to make it
+    for (const h of from) {
+      if (!(want > M.dust) || !(left > M.dust)) break;
+      const q = Math.min(P[h], t.stock[h] || 0, want / goodPrice(h), left / goodPrice(h));
+      if (!(q > M.dust)) continue;
+      const v = q * goodPrice(h);
+      P[h] -= q; t.stock[h] -= q; want -= v; left -= v; took += v;
+      give(g, v / R.k / goodPrice(g));
+      if (L[g] > 0) L[g] = Math.max(0, L[g] - v / R.k / goodPrice(g));
+    }
+  }
+  if (took > 0) add(t.trade, 'recycled', took);
+  return took;
+}
+
 export function seasonMoney(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }   // (at: the season's step — a town burnt later in the season still sold this season)
   const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
-  const deal = (b, s) => dealOf(a, b, s);
+  const deal = (b, s) => dealOf(a, b, s), realmBy = new Map((a.realms || []).map(r => [r.id, r]));
   const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
   // ── the works' buying: what each lacks this season, and what each has to sell after it
   const lack = new Map(), spare = new Map();
@@ -114,11 +146,17 @@ export function seasonMoney(a, towns) {
       if (n < M.dust) continue;
       const v = n * price;
       L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - v); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
+      if (b.realm !== s.realm) {   // customs: the buyer's realm takes `duty` of it, of the buyer's makers (from the branch Elves)
+        const R = realmBy.get(b.realm), d = Math.min(Math.max(0, b.makersGold), v * M.realm.duty);
+        if (R && d > 0) { b.makersGold = r2(b.makersGold - d); R.gold = r2((R.gold || 0) + d); fiscOf(R).duty = r2(fiscOf(R).duty + d); }
+      }
       put(sold, s.id, g, n); put(got, b.id, g, n); l.goods = (l.goods || 0) + v;
       add(b.trade, 'bought', v); add(s.trade, 'sold', v);
     }
   };
   for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }
+  // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
+  for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
   // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
@@ -257,6 +295,15 @@ export function doBuild(P) {
   t.builtCost = r2((t.builtCost || 0) + cost);   // what its building cost (for the cards)
 }
 
+// the cult of war (data/peoples.js warCult: the greenskins) drives off TOWN_MONEY.plunder.slaves of the people a beaten town
+// lost (a raid's, a storm's) as slaves to the raiders' town (atlas/economy.js: they work its buildings) → how many
+export function driveOff(raider, target, lost) {
+  if (!raider || !target || !(lost > 0) || !peopleOf(raider.people)?.warCult) return 0;
+  const n = lost * M.plunder.slaves;
+  raider.slaves = r2((raider.slaves || 0) + n);
+  (raider.slavesOf ||= {})[target.people] = r2((raider.slavesOf[target.people] || 0) + n);   // whose kin (atlas/deeds/liberate.js)
+  return n;
+}
 // ── plunder (atlas/deeds/captives.js, raidTown.js; atlas/diplomacy.js, the storm): the raiders carry off `share` of the beaten
 // town's goods and gold (× its people's cult of war: the greenskins), the gold to the raiders' people, the goods to their store
 // → [gold, the goods' worth], or null
@@ -295,28 +342,133 @@ export const outOfStore = (t, g, n) => { if (!g || !t.stock?.[g]) return; const 
 // what the town's makers can pay
 export const townPurse = t => (t.makersGold == null ? Infinity : Math.max(0, t.makersGold));
 
-// the realm's spending (atlas/kingdom.js, after the tax): a share of its treasury on its towns' garrisons (t.garrison: men, the
-// year's; their pay goes to the town's people) and on grants to build (t.grant: gold, kept till spent) — by their people
-export function realmSpend(realm, towns, war) {
-  const R = M.realm, budget = Math.max(0, realm.gold || 0) * R.spend, pop = towns.reduce((s, t) => s + t.pop, 0) || 1;
-  const army = budget * (war ? R.army.war : R.army.peace), men = army / R.man;
+// the realm's grants (atlas/kingdom.js, once a year after the tax): `spend` × (1 − `army`) of its treasury, to build (t.grant:
+// gold, kept till spent), by the council's wind (atlas/mind.js councilShares) — a realm without a council yet (the wild era, an
+// old save) by its towns' people. Its garrisons are paid each season (realmKeep)
+export function realmSpend(realm, towns, war, a = null) {
+  const R = M.realm, pop = towns.reduce((s, t) => s + t.pop, 0) || 1;
+  const budget = Math.max(0, realm.gold || 0) * R.spend * (1 - (war ? R.army.war : R.army.peace));
+  const grants = new Map(a ? councilShares(a, realm, towns, budget) : towns.map(t => [t, budget * t.pop / pop]));
   let build = 0;
+  for (const t of towns) {
+    const room = Math.max(0, R.build * R.hoard - (t.grant || 0)), g = Math.min(room, grants.get(t) || 0);
+    if (g > 0) { t.grant = r2((t.grant || 0) + g); build += g; }
+  }
+  realm.gold = r2(realm.gold - build);
+  fiscOf(realm).spent = r2(fiscOf(realm).spent + build);
+  return (realm.spent = {...(realm.spent || {}), build: r2(build)});
+}
+
+// what the realm's store lacks of each good it keeps (TOWN_MONEY.realm.kind: for each 100 of its people)
+export const realmLacks = (realm, pop) => Object.fromEntries(Object.entries(M.realm.kind).map(([g, k]) => [g, Math.max(0, k * pop / 100 - (realm.stock?.[g] || 0))]).filter(([, v]) => v > M.dust));
+const toRealm = (realm, g, n) => { if (!(n > 0)) return; realm.stock ||= {}; realm.stock[g] = r2((realm.stock[g] || 0) + n); };
+const outOfRealm = (realm, g, want) => { const n = Math.max(0, Math.min(want, realm.stock?.[g] || 0)); if (n > 0) { realm.stock[g] = r2(realm.stock[g] - n); if (realm.stock[g] < M.dust) delete realm.stock[g]; } return n; };
+
+// the year's tax (atlas/kingdom.js, at the year's end): the share of each town's treasury above its keep, by the realm's edict
+//   — `rate` of its gold over its keep; and, in kind, `rate` of what its store can spare of the goods the realm keeps
+//   (TOWN_MONEY.realm.kind), as far as the realm's store lacks them (what the town would sell off anyway) → the gold the realm got
+export function taxYear(realm, towns, level) {
+  const rate = M.tax.rate[level] ?? M.tax.rate.usual, c = corruptShare(realm), F = fiscOf(realm);
+  const lack = realmLacks(realm, towns.reduce((s, t) => s + (t.pop || 0), 0));
+  let sum = 0, kind = 0;
+  for (const t of towns) {
+    const over = Math.max(0, (t.gold || 0) - M.tax.keep * t.pop), spare = {};
+    for (const g of Object.keys(M.realm.kind)) { const n = t.stock ? forOthers(t, g) : 0; if (n > 0) spare[g] = n; }
+    const due = rate * over;
+    for (const [g, n] of Object.entries(spare)) {
+      const k = Math.min(rate * n, lack[g] || 0);
+      if (!(k > M.dust)) continue;
+      outOfStore(t, g, k); lack[g] -= k; kind += k * goodPrice(g);
+      toRealm(realm, g, k * (1 - c));   // corruption takes its share of the goods too
+    }
+    const v = Math.max(0, Math.min(over, due));
+    if (v > 0) { t.gold = r2(t.gold - v); sum += v; }
+  }
+  // corruption takes its share on the way (from the branch Elves): it leaves the world (the officials' purses)
+  const lost = sum * c;
+  realm.gold = r2((realm.gold || 0) + sum - lost);
+  F.tax = r2(F.tax + sum + kind); F.kind = r2(F.kind + kind); F.lost = r2(F.lost + lost + kind * c);
+  return sum - lost;
+}
+// what corruption takes of what the realm collects (data/kingdom.js RUINS corruption; TOWN_MONEY.realm corrupt, corruptMax)
+export const corruptShare = realm => Math.min(M.realm.corruptMax, M.realm.corrupt * (realm.kingdom?.ruin?.corruption || 0));
+// the realm's ledger of the year (realm.fisc.year), for its card and the edict of dues; last year's in realm.fisc.last
+export function fiscOf(realm) {
+  const F = realm.fisc ||= {year: null, last: null};
+  return (F.year ||= {tax: 0, kind: 0, lost: 0, court: 0, courtUnpaid: 0, wages: 0, wagesUnpaid: 0, food: 0, foodShort: 0, kit: 0, duty: 0, tribute: 0, loot: 0, spent: 0});
+}
+// the years of its spending the realm's treasury holds (the edict of dues reads it: data/kingdom.js `reserve`)
+export const reserveOf = realm => { const L = realm.fisc?.last, out = L ? L.court + L.wages + L.spent - L.tribute * (L.tribute < 0 ? 1 : 0) : 0; return out > 0 ? (realm.gold || 0) / out : 99; };
+
+// ── the realm's court, paid once a year before it grants (atlas/kingdom.js; from the branch Elves): what the court is not
+// paid grows the decay (data/kingdom.js `court`) → the share of the court unpaid. Its armies are paid each season (realmKeep)
+export function realmDuties(a, realm, towns) {
+  const R = M.realm, F = fiscOf(realm), pop = towns.reduce((s, t) => s + t.pop, 0);
+  const offices = Object.values(realm.kingdom?.court || {}).filter(Boolean).length, court = offices * R.court * pop / 1000;
+  const paidC = Math.min(court, Math.max(0, realm.gold || 0));
+  realm.gold = r2((realm.gold || 0) - paidC); F.court = r2(F.court + paidC);
+  const unpaid = court > 0 ? 1 - paidC / court : 0; F.courtUnpaid = r2(F.courtUnpaid + court - paidC);
+  return unpaid;
+}
+
+// ── a season of the realm's war host, out of its treasury (atlas/kingdom.js stepRealmKeep):
+//   garrisons — `spend` × `army` (more at war) of its gold a year, a man a year for `man` gold: t.garrison men by the towns'
+//     people, their pay to the town's people;
+//   its armies in the field — `wage` a man a year in gold (what it cannot pay, `desert` of the unpaid share of the men leave
+//     in a year); a store a man a year for food out of its store (fed, the days they ate come back to their supplies: unfed,
+//     they eat what they carry — data/parties.js ARMY.supplies); their arms and armour wear by ARMY.wear.season and are made
+//     up to ARMY.kit out of its store → {garrison, wages, food, short}
+export function realmKeep(a, realm, towns, war) {
+  const R = M.realm, F = fiscOf(realm), pop = towns.reduce((s, t) => s + t.pop, 0) || 1;
+  const garrison = Math.max(0, realm.gold || 0) * R.spend * (war ? R.army.war : R.army.peace) / S, men = garrison * S / R.man;
   for (const t of towns) {
     const share = t.pop / pop;
     open(t);
-    t.garrison = r2(men * share); t.peopleGold = r2(t.peopleGold + army * share); add(t.carry ||= {}, 'peopleIn', army * share);
-    const room = Math.max(0, R.build * R.hoard - (t.grant || 0)), g = Math.min(room, (budget - army) * share);
-    if (g > 0) { t.grant = r2((t.grant || 0) + g); build += g; }
+    t.garrison = r2(men * share); t.peopleGold = r2(t.peopleGold + garrison * share); add(t.carry ||= {}, 'peopleIn', garrison * share);
   }
-  realm.gold = r2(realm.gold - army - build);
-  return (realm.spent = {army: r2(army), build: r2(build), men: r2(men)});
+  realm.gold = r2((realm.gold || 0) - garrison); F.spent = r2(F.spent + garrison);
+  const armies = (a.parties || []).filter(p => p.kind === 'army' && p.owner === realm.id && p.state !== 'gone' && p.men > 0);
+  const owed = armies.reduce((s, p) => s + p.men * R.wage / S, 0), paid = Math.min(owed, Math.max(0, realm.gold || 0));
+  realm.gold = r2((realm.gold || 0) - paid); F.wages = r2(F.wages + paid);
+  if (owed > paid) {
+    const unpaid = 1 - paid / owed; F.wagesUnpaid = r2(F.wagesUnpaid + owed - paid);
+    for (const p of armies) p.men = Math.max(0, p.men * (1 - R.desert * unpaid / S));
+  }
+  const eat = armies.reduce((s, p) => s + p.men / S, 0), food = outOfRealm(realm, 'stores', eat), fed = eat > 0 ? food / eat : 1;
+  F.food = r2(F.food + food); F.foodShort = r2(F.foodShort + eat - food);
+  for (const p of armies) {
+    if (fed > 0) p.supplies = Math.min(Math.max(p.supplies, ARMY.supplies), p.supplies + fed * SEASON_DAYS);
+    p.kit ||= {};
+    for (const [g, k] of Object.entries(ARMY.kit)) {
+      if (g !== 'herbs' && p.kit[g]) p.kit[g] = r2(p.kit[g] * (1 - ARMY.wear.season));
+      const n = outOfRealm(realm, g, p.men * k - (p.kit[g] || 0));
+      if (n > 0) { p.kit[g] = r2((p.kit[g] || 0) + n); F.kit = r2(F.kit + n * goodPrice(g)); }
+    }
+  }
+  return (realm.keep = {garrison: r2(garrison), men: r2(men), wages: r2(paid), food: r2(food), short: r2(eat - food)});
 }
 
-// the year's tax (atlas/kingdom.js, at the year's end): the share of each town's treasury above its keep, by the realm's edict
-export function taxYear(realm, towns, level) {
-  const rate = M.tax.rate[level] ?? M.tax.rate.usual;
-  let sum = 0;
-  for (const t of towns) { const over = (t.gold || 0) - M.tax.keep * t.pop; if (over <= 0) continue; const v = over * rate; t.gold = r2(t.gold - v); sum += v; }
-  realm.gold = r2((realm.gold || 0) + sum);
-  return sum;
+// ── tribute (atlas/kingdom.js, once a year; from the branch Elves): a realm that hates a neighbour (attitude below
+// `tribute.below`) and is `tribute.ratio` times weaker than it pays it `tribute.share` of its gold → [payee, gold] or null
+export function payTribute(a, realm, towns, mightOf, attitude) {
+  const T = M.realm.tribute, mine = mightOf(realm.id);
+  let best = null, bm = 0;
+  for (const o of a.realms || []) {
+    if (o === realm || o.fallen != null || attitude(a, realm.id, o.id) >= T.below) continue;
+    const m = mightOf(o.id);
+    if (m >= T.ratio * Math.max(1e-9, mine) && m > bm) { bm = m; best = o; }
+  }
+  if (!best || !((realm.gold || 0) > M.dust)) return null;
+  const v = realm.gold * T.share;
+  realm.gold = r2(realm.gold - v); best.gold = r2((best.gold || 0) + v);
+  fiscOf(realm).tribute = r2(fiscOf(realm).tribute - v); fiscOf(best).tribute = r2(fiscOf(best).tribute + v);
+  return [best, v];
+}
+
+// ── a seat stormed (atlas/diplomacy.js): the stormers carry off `seat` of the beaten realm's treasury, to their realm's
+export function lootSeat(a, from, beaten) {
+  if (!from || !beaten || from === beaten || !((beaten.gold || 0) > M.dust)) return 0;
+  const v = beaten.gold * M.realm.seat;
+  beaten.gold = r2(beaten.gold - v); from.gold = r2((from.gold || 0) + v); fiscOf(from).loot = r2(fiscOf(from).loot + v);
+  return v;
 }

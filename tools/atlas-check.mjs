@@ -16,7 +16,7 @@ import {SPECIES} from '../src/data/species.js';
 import {lineLevel, worldChronicleText, calamityChronicleText, eraSpans} from '../src/atlas/chronicle.js';
 import {EPIC_YEARS} from '../src/data/history.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {WORLD_PEOPLES} from '../src/data/peoples.js';
+import {WORLD_PEOPLES, placeNeed} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES} from '../src/data/townBuildings.js';
 import {placeHas, townFx, room} from '../src/atlas/towns.js';
@@ -41,7 +41,7 @@ const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0,
 {
   const bad = [];
   for (const b of TOWN_BUILDINGS.all()) {
-    if (b.local && !BUILDINGS.has(b.local)) bad.push(`${b.id}: нет постройки локальной карты ${b.local}`);
+    for (const l of b.local || []) if (!BUILDINGS.has(l)) bad.push(`${b.id}: нет постройки локальной карты ${l}`);
     for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (!TOWN_BUILDINGS.has(id)) bad.push(`${b.id}: требует неизвестное ${id}`);
     for (const nd of [...(b.needs || []), ...(b.needsAny || [])]) if (!(nd in PLACE_NEEDS)) bad.push(`${b.id}: неизвестное условие места ${nd}`);
     for (const p of b.peoples || []) if (!WORLD_PEOPLES.has(p)) bad.push(`${b.id}: неизвестный народ ${p}`);
@@ -75,8 +75,8 @@ function townsCheck(a, tag) {
       if (at) seenSites.add(at.id);
       const where = b.site ? at?.i : t.i;   // an outlying work has its place in its own cell
       if (b.site && at == null && t.alive) misbuilt ||= `${t.name}: ${b.name} без своей клетки`;
-      if (where != null && b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
-      if (where != null && b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      if (where != null && b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, where, placeNeed(t.people, nd)))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      if (where != null && b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, where, placeNeed(t.people, nd)))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
       // what it needed had to stand in its realm (atlas/towns.js canBuild): realms break and towns burn, so it is
       // enough that a town of the same people has or had it (a burnt outlying work: that it ever stood)
       const had = r => a.towns.some(o => o.people === t.people && o.built.includes(r)) || (TOWN_BUILDINGS.get(r).site && (a.sites || []).some(s => s.kind === r && a.towns.find(o => o.id === s.town)?.people === t.people));

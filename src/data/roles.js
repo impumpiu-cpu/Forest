@@ -112,8 +112,8 @@ LINKS.registerAll([
   {id: 'cavalry', label: 'конница',      note: 'люди (ипподром): конные рыцари с флангов', roles: ['horseknight', 'horseknight', 'horseknight', 'knight', 'archer']},
   // the races' own links: the elves' grove (the caller of beasts behind the bows), the goblins' spider hundred, the gnolls'
   // hyena pack (the beast-driver and the berserker), the greenskins' slave-takers (nets in front)
-  {id: 'grove',   label: 'роща',         note: 'эльфы: копьё и луки, призыватель зовёт лесных зверей, застрельщик на фланге', roles: ['spearman', 'archer', 'summoner', 'archer', 'skirmisher']},
-  {id: 'wardens', label: 'стражи леса',  note: 'эльфы: щит и копьё держат, двое лучников, знахарь позади', roles: ['shield', 'spearman', 'archer', 'archer', 'healer']},
+  {id: 'grove',   label: 'роща',         note: 'эльфы: два призывателя зовут лесных зверей, луки за ними, застрельщик на фланге', roles: ['summoner', 'archer', 'summoner', 'archer', 'skirmisher']},
+  {id: 'wardens', label: 'стражи леса',  note: 'эльфы: копьё держит, двое лучников, призыватель и знахарь позади', roles: ['spearman', 'archer', 'archer', 'summoner', 'healer']},
   {id: 'spiders', label: 'паучья сотня', note: 'гоблины: наездники на пауках, застрельщик, головорез, лучник', roles: ['spiderrider', 'spiderrider', 'skirmisher', 'cutthroat', 'archer']},
   {id: 'hyenas',  label: 'гиенья стая',  note: 'гноллы: загонщик со зверями, берсерк, копья, застрельщик', roles: ['beastmaster', 'berserker', 'spearman', 'spearman', 'skirmisher']},
   {id: 'takers',  label: 'ловцы',        note: 'зеленокожие: сети впереди, рубака и громила следом, застрельщик', roles: ['catcher', 'catcher', 'cleaver', 'brute', 'skirmisher']},
@@ -140,7 +140,7 @@ export const ROLE_MIX = {
   orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, berserker: 0.8, wargrider: 0.8, beastmaster: 0.5, best: 2},
   goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, spiderrider: 0.8, wargrider: 0.4, beastmaster: 0.4, best: 1},
   dwarf:       {shield: 2, spearman: 1, smith: 2, berserker: 0.8, forgemaster: 0.5, cleaver: 1, archer: 0.8, healer: 0.3, best: 4},
-  elf:         {shield: 0.5, spearman: 1, skirmisher: 1, archer: 3, healer: 0.4, summoner: 0.4, best: 4},
+  elf:         {shield: 0.3, spearman: 0.7, skirmisher: 1.2, archer: 3, healer: 0.4, summoner: 1.5, best: 4},   // the bow and the caller: the beasts and the treants close in, the elves shoot
   darkelf:     {spearman: 1, cutthroat: 2, catcher: 1.5, skirmisher: 1, archer: 3, healer: 0.4, best: 3},
   gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, berserker: 0.5, beastmaster: 0.6, best: 1},
   skeleton:    {shield: 2, spearman: 2, cleaver: 1, archer: 1.5, best: 1},
