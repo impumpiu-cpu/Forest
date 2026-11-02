@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- город: каменная стена с воротами, дома, собор с крышей цвета державы, знамёна -->
+<ellipse cx="50" cy="92" rx="46" ry="8" fill="grass" opacity="0.55"/>
+<rect x="10" y="62" width="16" height="12" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="roof" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M7 63L18 53.2L29 63Z"/>
+<rect class="figure" x="15" y="66" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="12.5" y="65" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<rect x="74" y="62" width="16" height="12" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="roof" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M71 63L82 53.2L93 63Z"/>
+<rect class="figure" x="79" y="66" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="76.5" y="65" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<rect x="40" y="32" width="20" height="38" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M37.5 33L50 14L62.5 33Z"/>
+<rect class="detail" x="48.5" y="36" width="3" height="5" fill="ink"/>
+<rect x="30" y="56" width="40" height="18" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M27 57L50 42L73 57Z"/><path fill="none" stroke="ink" stroke-width="2.5" d="M50 19V5"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M50 5L59 8L50 12Z"/>
+<rect x="18" y="72" width="16" height="10" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="thatch" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M15 73L26 63.2L37 73Z"/>
+<rect class="figure" x="23" y="74" width="6" height="8" fill="darkwood"/>
+<rect x="66" y="72" width="16" height="10" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="thatch" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M63 73L74 63.2L85 73Z"/>
+<rect class="figure" x="71" y="74" width="6" height="8" fill="darkwood"/>
+<rect x="3" y="66" width="13" height="30" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M0.5 67L9.5 54.3L18.5 67Z"/>
+<rect class="detail" x="8" y="70" width="3" height="5" fill="ink"/>
+<rect x="84" y="66" width="13" height="30" fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M81.5 67L90.5 54.3L99.5 67Z"/>
+<rect class="detail" x="89" y="70" width="3" height="5" fill="ink"/>
+<g class=""><path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M14 96V78H17V75H20V78H23V75H26V78H29V75H32V78H35V75H38V78H41V75H44V78H47V75H50V78H53V75H56V78H59V75H62V78H65V75H68V78H71V75H74V78H77V75H80V78H83V75H86V78H86V96Z"/><path fill="darkwood" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M45 96V90Q50 85 55 90V96Z"/><path class="detail" fill="none" stroke="shade" stroke-width="1.5" d="M16 92H43M57 92H84"/></g>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M9 64V52"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M9 52L16 55L9 59Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M90 64V52"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M90 52L97 55L90 59Z"/>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

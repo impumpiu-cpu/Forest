@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: паучье логово: сеть меж камней -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M4 92L20 40L36 92Z"/><path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M64 92L80 34L96 92Z"/><g fill="none" stroke="light" stroke-width="2.5"><path d="M24 50L76 44M26 66L72 60M30 82L70 78M50 30V92M28 40L72 90M72 36L30 90"/></g><path fill="none" stroke="light" stroke-width="2.5" d="M38 47Q36 62 40 80M62 45Q64 62 60 78"/>
+</svg>

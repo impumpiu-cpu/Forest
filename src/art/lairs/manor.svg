@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: усадьба вампира: дом с острыми крышами, красные окна -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="#4a3a4a" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M16 92V50H84V92Z"/><path fill="#2d2a3a" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M10 52L30 26L50 52ZM50 52L70 22L90 52Z"/><path fill="#2d2a3a" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M42 50L50 30L58 50Z"/><g class="figure" fill="#d0303a"><path d="M26 62H34V74H26ZM46 62H54V74H46ZM66 62H74V74H66Z"/></g><path fill="#1e1a18" d="M44 92V80Q50 74 56 80V92Z"/>
+</svg>

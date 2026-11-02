@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- твердыня: частокол из заострённых брёвен, большой дом с рогами, знамёна -->
+<ellipse cx="50" cy="92" rx="46" ry="8" fill="soil" opacity="0.55"/>
+<path fill="leather" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M24 74V50L50 30L76 50V74Z"/><path fill="hide" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M18 52L50 24L82 52L76 54L50 32L24 54Z"/><path fill="none" stroke="bone" stroke-width="4" stroke-linecap="round" d="M44 28Q36 18 40 10M56 28Q64 18 60 10"/><path fill="none" stroke="ink" stroke-width="1.8" d="M44 28Q36 18 40 10M56 28Q64 18 60 10"/><path fill="ink" d="M44 74V62Q50 56 56 62V74Z"/>
+<rect x="11.5" y="44" width="5" height="30" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="bone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M8 38Q14 30 20 38V45H8Z"/>
+<g class="figure" fill="ink"><circle cx="11.5" cy="39" r="1.6"/><circle cx="16.5" cy="39" r="1.6"/></g>
+<path fill="none" stroke="bone" stroke-width="2.5" stroke-linecap="round" d="M8 36Q3 32 5 26M20 36Q25 32 23 26"/>
+<rect x="83.5" y="44" width="5" height="30" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="bone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M80 38Q86 30 92 38V45H80Z"/>
+<g class="figure" fill="ink"><circle cx="83.5" cy="39" r="1.6"/><circle cx="88.5" cy="39" r="1.6"/></g>
+<path fill="none" stroke="bone" stroke-width="2.5" stroke-linecap="round" d="M80 36Q75 32 77 26M92 36Q97 32 95 26"/>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M30 40V22"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M30 22L40 25L30 29Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M70 40V22"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M70 22L80 25L70 29Z"/>
+<g class="" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M2 96L3 74L5 70L7 74L8 96Z"/><path d="M8 96L9 74L11 70L13 74L14 96Z"/><path d="M14 96L15 74L17 70L19 74L20 96Z"/><path d="M20 96L21 74L23 70L25 74L26 96Z"/><path d="M26 96L27 74L29 70L31 74L32 96Z"/><path d="M32 96L33 74L35 70L37 74L38 96Z"/><path d="M38 96L39 74L41 70L43 74L44 96Z"/><path d="M44 96L45 74L47 70L49 74L50 96Z"/><path d="M50 96L51 74L53 70L55 74L56 96Z"/><path d="M56 96L57 74L59 70L61 74L62 96Z"/><path d="M62 96L63 74L65 70L67 74L68 96Z"/><path d="M68 96L69 74L71 70L73 74L74 96Z"/><path d="M74 96L75 74L77 70L79 74L80 96Z"/><path d="M80 96L81 74L83 70L85 74L86 96Z"/><path d="M86 96L87 74L89 70L91 74L92 96Z"/><path d="M92 96L93 74L95 70L97 74L98 96Z"/></g>
+<path fill="#3a2e24" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M42 96V80H58V96Z"/>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

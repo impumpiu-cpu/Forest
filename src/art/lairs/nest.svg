@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: гнездо на скале (грифоны, виверны) -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M10 92L28 46L50 40L72 48L90 92Z"/><path fill="straw" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M22 46Q50 64 78 46L74 36Q50 48 26 36Z"/><g class="figure" fill="light" stroke="ink" stroke-width="3"><ellipse cx="42" cy="40" rx="6" ry="7"/><ellipse cx="56" cy="40" rx="6" ry="7"/></g>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- угодье: рощи, сбор, лесные угодья: деревья -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<g fill="leaf" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><circle cx="34" cy="44" r="20"/><circle cx="66" cy="38" r="22"/></g><g fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M31 62H37V86H31Z"/><path d="M63 58H69V86H63Z"/></g><g class="detail" fill="#d04a3a"><circle cx="30" cy="40" r="3"/><circle cx="62" cy="34" r="3"/><circle cx="72" cy="44" r="3"/></g>
+</svg>

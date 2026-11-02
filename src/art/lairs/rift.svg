@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: разлом: трещина в земле, багровый огонь -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="darkstone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M4 92Q20 70 50 68Q80 70 96 92Z"/><path fill="ember" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M30 90L42 74L38 66L54 70L50 60L64 76L60 84L72 90Z"/><path class="figure" fill="flame" d="M44 82L50 72L56 82Z"/><g class="detail" fill="ember" opacity="0.7"><circle cx="40" cy="40" r="5"/><circle cx="58" cy="28" r="4"/><circle cx="50" cy="50" r="3"/></g>
+</svg>

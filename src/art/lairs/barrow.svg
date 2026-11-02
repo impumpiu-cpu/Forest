@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: курган мертвецов: холм, камни, вход -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="#6a7a5a" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M4 92Q14 40 50 36Q86 40 96 92Z"/><path fill="#1e1a18" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M38 92V70L44 64H56L62 70V92Z"/><g fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M34 92V64L40 58V92Z"/><path d="M60 92V58L66 64V92Z"/><path d="M36 60L64 56V62L36 66Z"/></g><g class="figure" fill="#9ff0b0"><circle cx="46" cy="78" r="2.5"/><circle cx="54" cy="78" r="2.5"/></g>
+</svg>

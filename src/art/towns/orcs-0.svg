@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- стойбище: шатёр из шкур, костёр, кол с черепом -->
+<ellipse cx="50" cy="90" rx="46" ry="8" fill="soil" opacity="0.55"/>
+<path fill="hide" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M22 90L42 54L62 90Z"/>
+<path class="figure" fill="ink" d="M37.2 90L42 73.8L46.8 90Z"/>
+<path class="detail" fill="none" stroke="ink" stroke-width="2" d="M39 50L42 54L45 50"/>
+<rect x="73.5" y="68" width="5" height="22" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="bone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M70 62Q76 54 82 62V69H70Z"/>
+<g class="figure" fill="ink"><circle cx="73.5" cy="63" r="1.6"/><circle cx="78.5" cy="63" r="1.6"/></g>
+<path fill="none" stroke="bone" stroke-width="2.5" stroke-linecap="round" d="M70 60Q65 56 67 50M82 60Q87 56 85 50"/>
+<path fill="darkwood" stroke="ink" stroke-width="2" d="M12 92L24 89M24 92L12 89"/><path fill="fire" stroke="ink" stroke-width="2" stroke-linejoin="round" d="M18 78C23 84 24 88 21 91H15C12 88 13 84 18 78Z"/>
+<g class="walls" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M4 97L5 91L7 87L9 91L10 97Z"/><path d="M10 97L11 91L13 87L15 91L16 97Z"/><path d="M16 97L17 91L19 87L21 91L22 97Z"/><path d="M22 97L23 91L25 87L27 91L28 97Z"/><path d="M28 97L29 91L31 87L33 91L34 97Z"/><path d="M34 97L35 91L37 87L39 91L40 97Z"/><path d="M40 97L41 91L43 87L45 91L46 97Z"/><path d="M46 97L47 91L49 87L51 91L52 97Z"/><path d="M52 97L53 91L55 87L57 91L58 97Z"/><path d="M58 97L59 91L61 87L63 91L64 97Z"/><path d="M64 97L65 91L67 87L69 91L70 97Z"/><path d="M70 97L71 91L73 87L75 91L76 97Z"/><path d="M76 97L77 91L79 87L81 91L82 97Z"/><path d="M82 97L83 91L85 87L87 91L88 97Z"/><path d="M88 97L89 91L91 87L93 91L94 97Z"/><path d="M94 97L95 91L97 87L99 91L100 97Z"/></g>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

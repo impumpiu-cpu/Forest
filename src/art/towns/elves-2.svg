@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- город: великое древо с кроной, острые шпили, арка ворот -->
+<ellipse cx="50" cy="92" rx="46" ry="8" fill="darkleaf" opacity="0.55"/>
+<path fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M38.8 74Q45.2 59 42.8 44H57.2Q54.8 59 61.2 74Z"/>
+<g fill="leaf" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><ellipse cx="50" cy="30" rx="40" ry="24.8"/><circle cx="28" cy="42" r="18"/><circle cx="72" cy="42" r="18"/></g>
+<g class="detail" fill="darkleaf"><circle cx="38" cy="24" r="7.2"/><circle cx="64" cy="36" r="6.4"/><circle cx="52" cy="14" r="5.6"/></g>
+<path fill="#f0e6c8" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M11 88V62.7Q18 59.5 25 62.7V88Z"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M9 63.6Q15.2 55.8 18 42Q20.8 55.8 27 63.6Z"/>
+<path class="figure" fill="#f4d67a" stroke="ink" stroke-width="1.6" d="M16 88V82Q18 79 20 82V88Z"/>
+<path fill="#f0e6c8" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M75 88V62.7Q82 59.5 89 62.7V88Z"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M73 63.6Q79.2 55.8 82 42Q84.8 55.8 91 63.6Z"/>
+<path class="figure" fill="#f4d67a" stroke="ink" stroke-width="1.6" d="M80 88V82Q82 79 84 82V88Z"/>
+<path fill="#f0e6c8" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M41 92V63.4Q50 59.8 59 63.4V92Z"/>
+<path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M39 64.4Q46.4 55.6 50 40Q53.6 55.6 61 64.4Z"/>
+<path class="figure" fill="#f4d67a" stroke="ink" stroke-width="1.6" d="M48 92V86Q50 83 52 86V92Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M18 42V30"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M18 30L26 33L18 37Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" d="M82 42V30"/><path fill="faction" stroke="ink" stroke-width="2.2" stroke-linejoin="round" d="M82 30L90 33L82 37Z"/>
+<g class="walls" fill="none" stroke-linecap="round"><path stroke="ink" stroke-width="9" d="M4 97Q28 86 50 97Q72 86 96 97"/><path stroke="leaf" stroke-width="5" d="M4 97Q28 86 50 97Q72 86 96 97"/></g>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>

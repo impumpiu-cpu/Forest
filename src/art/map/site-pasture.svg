@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- угодье: загоны, выпас: ограда и овца -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="9" d="M8 80H92M8 60H92"/><path fill="none" stroke="wood" stroke-width="5" d="M8 80H92M8 60H92"/><path fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M12 50H20V90H12ZM80 50H88V90H80Z"/><path fill="light" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M32 64Q32 44 52 46Q66 44 68 56L74 54L76 62L68 66Q62 74 46 72Z"/>
+</svg>

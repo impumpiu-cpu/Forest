@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- герб Людей: башня -->
+<path fill="faction" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M12 10H88V48C88 72 70 88 50 96C30 88 12 72 12 48Z"/>
+<path fill="light" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M34 74V40H40V32H46V40H54V32H60V40H66V74Z"/><path fill="ink" d="M45 74V60Q50 54 55 60V74Z"/>
+</svg>

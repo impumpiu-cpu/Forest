@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- деревня: три избы, часовня под цветом державы -->
+<ellipse cx="50" cy="90" rx="46" ry="8" fill="grass" opacity="0.55"/>
+<rect x="8" y="72" width="22" height="14" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="thatch" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M5 73L19 59.9L33 73Z"/>
+<rect class="figure" x="16" y="78" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="10.5" y="75" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<rect x="70" y="72" width="22" height="14" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="thatch" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M67 73L81 59.9L95 73Z"/>
+<rect class="figure" x="78" y="78" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="72.5" y="75" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<rect x="40" y="58" width="20" height="28" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M37 59L50 40L63 59Z"/><rect x="47" y="30" width="6" height="12" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/><path fill="faction" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M45 31L50 22L55 31Z"/><rect class="figure" x="46" y="74" width="8" height="12" fill="darkwood"/>
+<rect x="22" y="81" width="18" height="11" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="roof" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M19 82L31 71.1L43 82Z"/>
+<rect class="figure" x="28" y="84" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="24.5" y="84" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<rect x="60" y="81" width="18" height="11" fill="#e6d6b0" stroke="ink" stroke-width="3.5" stroke-linejoin="round"/>
+<path fill="roof" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M57 82L69 71.1L81 82Z"/>
+<rect class="figure" x="66" y="84" width="6" height="8" fill="darkwood"/>
+<rect class="detail" x="62.5" y="84" width="4" height="4" fill="#f4d67a" stroke="ink" stroke-width="1.5"/>
+<g class="detail" fill="smoke"><circle cx="16" cy="60" r="3"/><circle cx="19" cy="55" r="3.6"/><circle cx="17" cy="49" r="4"/></g>
+<g class="walls no-stone" fill="wood" stroke="ink" stroke-width="3.5" stroke-linejoin="round"><path d="M4 97V91L6.5 88L9 91V97Z"/><path d="M9 97V91L11.5 88L14 91V97Z"/><path d="M14 97V91L16.5 88L19 91V97Z"/><path d="M19 97V91L21.5 88L24 91V97Z"/><path d="M24 97V91L26.5 88L29 91V97Z"/><path d="M29 97V91L31.5 88L34 91V97Z"/><path d="M34 97V91L36.5 88L39 91V97Z"/><path d="M39 97V91L41.5 88L44 91V97Z"/><path d="M44 97V91L46.5 88L49 91V97Z"/><path d="M49 97V91L51.5 88L54 91V97Z"/><path d="M54 97V91L56.5 88L59 91V97Z"/><path d="M59 97V91L61.5 88L64 91V97Z"/><path d="M64 97V91L66.5 88L69 91V97Z"/><path d="M69 97V91L71.5 88L74 91V97Z"/><path d="M74 97V91L76.5 88L79 91V97Z"/><path d="M79 97V91L81.5 88L84 91V97Z"/><path d="M84 97V91L86.5 88L89 91V97Z"/><path d="M89 97V91L91.5 88L94 91V97Z"/><path d="M94 97V91L96.5 88L99 91V97Z"/></g>
+<g class="walls stone"><path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M4 98V88H7V85H10V88H13V85H16V88H19V85H22V88H25V85H28V88H31V85H34V88H37V85H40V88H43V85H46V88H49V85H52V88H55V85H58V88H61V85H64V88H67V85H70V88H73V85H76V88H79V85H82V88H85V85H88V88H91V85H94V88H96V98Z"/><path fill="darkwood" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M45 98V92Q50 87 55 92V98Z"/><path class="detail" fill="none" stroke="shade" stroke-width="1.5" d="M6 94H43M57 94H94"/></g>
+<g class="port">
+  <path fill="plank" stroke="ink" stroke-width="3" d="M80 90H98V94H80Z"/>
+  <path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M82 84H98L95 89H85Z"/>
+  <path fill="canvas" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M90 83V70L97 82Z"/>
+</g>
+</svg>
