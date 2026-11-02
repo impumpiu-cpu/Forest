@@ -9,6 +9,7 @@
 // (campaign/land.js, data/raids.js `cultists`). Born in the wild it is hidden, as any lair; with a leader in it, it is a
 // seat that is hard to keep secret: a season's chance it is found.
 import {LAIRS, NECRO} from '../data/lairs.js';
+import {takeHeads} from './population.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {faunaCell} from './fauna.js';
@@ -132,7 +133,7 @@ export function stepTower(a, lair, L, rnd, lines, revealLair) {
     for (const pe of a.peoples || []) pe.u[j] *= 1 - NECRO.recruit.land * w;
     for (const s of F.list) if (s.role === 'folk') s.N[j] *= 1 - NECRO.recruit.land * w;
   }
-  for (const t of a.towns || []) { if (!t.alive) continue; const d = dist(t, lair); if (d < zone) t.pop *= 1 - NECRO.recruit.town * (1 - d / zone); }
+  for (const t of a.towns || []) { if (!t.alive) continue; const d = dist(t, lair); if (d < zone) takeHeads(a, t, t.pop * NECRO.recruit.town * (1 - d / zone), {how: 'cult'}); }   // (they go to the cult, not to the grave)
   // a seat with a leader is hard to keep secret
   if (lair.hidden && lair.leader && rnd() < NECRO.reveal) {
     revealLair(a, lair, 'молва');

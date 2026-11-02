@@ -26,7 +26,7 @@ const lifeFromOf = species => { const B = SPECIES.has(species) ? SPECIES.get(spe
 export function newPerson(a, {name, g = 'm', species, race = null, title = null, born = null, dies = null, at = null, special = null, add = null, abilities = [], r = null}) {
   const H = a.hist, year = H?.year ?? 0;
   const id = (H.nextPerson = (H.nextPerson || 0) + 1);
-  if (born == null) { const [lo, hi] = SUCCESSION.ageFrom; born = year - Math.round(lifeFromOf(species) * (lo + (r ? r() : 0.5) * (hi - lo))); }
+  if (born == null) { const [lo, hi] = SUCCESSION.ageFrom; born = year - Math.round(lifeFromOf(species) * (lo + (r ? r() : 1 / 2) * (hi - lo))); }
   if (dies == null) dies = born + Math.round(lifeOf(species) * SUCCESSION.dies);
   const p = {id, name, g, species, title, born, dies, at, alive: true, deeds: 0, abilities: [...abilities]};
   if (race) p.race = race;

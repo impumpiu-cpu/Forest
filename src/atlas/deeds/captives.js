@@ -10,6 +10,7 @@
 //     a win takes `realm.loss` of its people — `grow` of them become the raiding town's slaves (t.slaves: they work in its
 //     buildings, atlas/economy.js), the realm counts them (realm.captives).
 import {plunder, plunderWords, lootOf} from '../treasury.js';
+import {takeHeads, killShare} from '../population.js';
 import {TOWN_MONEY} from '../../data/townBuildings.js';
 import {WORLD_PEOPLES as WP_CULT} from '../../data/peoples.js';
 const cultOf = realm => WP_CULT.get(realm.people)?.warCult || null;   // (data/peoples.js warCult: the greenskins raid anyone, kin too)
@@ -38,7 +39,7 @@ const heads = n => `${n} ${plural(n, 'жителя', 'жителей', 'жите
 export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
   return hitTown(a, lair, L, target, tribe, rnd, atOnce, fx => {
     const n = Math.min(target.pop, Math.max(1, Math.round(target.pop * CR.loss * raidShare(fx))));   // no more than there are
-    target.pop -= n;
+    takeHeads(a, target, n, {how: 'taken'});
     (lair.captives ||= {})[target.people] = (lair.captives[target.people] || 0) + n;
     if (atOnce) lair.strength = Math.min(1, lair.strength + CR.feed);
     barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);   // a few fall on the way to the ropes
@@ -101,7 +102,7 @@ export const captives = {
         l.strength = Math.max(0, l.strength - CT.hit); t.slaves = (t.slaves || 0) + n; (t.slavesOf ||= {})[L2.species] = (t.slavesOf[L2.species] || 0) + n;
         return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} разорили ${L2.labelAcc || L2.label} «${l.name}» и увели ${sp.plural} в рабство.`;
       }
-      t.pop *= 1 - TW.raidLoss * raidShare(townFx(t));
+      killShare(a, t, TW.raidLoss * raidShare(townFx(t)), 'raid');
       return `${cap1(sp.plural)} ${L2.from} «${l.name}» отбили набег ${realmLabelGen(a, actor.id)} за рабами.`;
     }
     const t = a.towns.find(x => x.id === plan.from), target = a.towns.find(x => x.id === plan.target);
@@ -112,14 +113,14 @@ export const captives = {
     rel.att = Math.max(-5, rel.att - D.raid * (cultOf(actor)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {
       const n = Math.min(target.pop, Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target)))));   // no more than there are
-      target.pop -= n; t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
+      takeHeads(a, target, n, {how: 'taken'}); t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
       (t.slavesOf ||= {})[target.people] = (t.slavesOf[target.people] || 0) + n * CR.realm.grow;   // whose kin they are (the dwarves free theirs: atlas/deeds/liberate.js)
       (actor.captives ||= {})[target.people] = (actor.captives[target.people] || 0) + n;
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
       const got = plunder(t, target, TOWN_MONEY.plunder.raid);   // and what they could carry: goods and gold (atlas/treasury.js)
       return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}${plunderWords(got)}.`;
     }
-    t.pop *= 1 - D.repelled;   // a beaten raid costs the raiders
+    killShare(a, t, D.repelled, 'raid');   // a beaten raid costs the raiders
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, actor.id)} на ${townLabel(target, 1)} ${target.name}: в полон никого не дали.`;
   },
   // the lair's party at the town

@@ -5,6 +5,7 @@
 // History draws from its own random stream, so the land made before it does not change when history
 // is reworked.
 import {mulberry, seedNumber} from '../core/rng.js';
+import {killShare} from './population.js';
 import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
@@ -118,7 +119,7 @@ export function stepHistory(a, onDay = null) {
       for (const t of a.towns || []) {
         if (!t.alive || Math.abs(((t.x / F.c) | 0) - bx) > r || Math.abs(((t.y / F.c) | 0) - by) > r) continue;
         const fx = townFx(t), loss = FAUNA.townHarsh * Math.max(0.25, 1 - 0.6 * fx.food - 0.4 * fx.health);
-        t.pop *= 1 - loss; hit.push(t);
+        killShare(a, t, loss, cold ? 'cold' : 'drought'); hit.push(t);
       }
       const dead = hit.length ? `; в ${hit.length === 1 ? `${townLabel(hit[0], 3)} ${hit[0].name}` : `${hit.length} ${plural(hit.length, 'городе', 'городах', 'городах')}`} ${cold ? 'голод и мор' : 'голод'}` : '';
       say(a, cold ? `Лютая зима ${wherePhrase(a, cell)}: звери гибли от мороза и бескормицы${dead}.` : `Засуха ${wherePhrase(a, cell)}: травы выгорели, звери гибли от бескормицы${dead}.`);

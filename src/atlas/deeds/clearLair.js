@@ -3,6 +3,7 @@
 // (atlas/alliance.js). The town's might × TOWN_WAR.might against the lair's strength × its owner's body, with luck on
 // both sides: the lair is burnt out, or the town pays `raidLoss` of its people and a work.
 import {LAIRS, NECRO} from '../../data/lairs.js';
+import {killShare} from '../population.js';
 import {deadAt} from '../necro.js';
 import {TOWN_WAR} from '../../data/peoples.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
@@ -43,7 +44,7 @@ export const clearLair = {
       return `${cap1(realmLabel(a, realm.id))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`;
     }
     const loss = W.raidLoss * raidShare(fx);
-    t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
+    killShare(a, t, loss, 'raid'); t.raided = a.hist.year; raidGraves(a, t);
     const burnt = raidSite(a, t, r);
     return `${cap1(L.domain ? 'мертвецы' : owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
   },

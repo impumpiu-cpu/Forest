@@ -13,6 +13,7 @@
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
 import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX, NECRO} from '../data/lairs.js';
+import {killShare, strangersOf} from './population.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -351,7 +352,7 @@ export function stepLairs(a, rnd, seasonId) {
       const w = closeness(j % F.W, (j / F.W) | 0, lair.x / c, lair.y / c, r / c); if (w <= 0) continue;
       if (own.N[j] < LF.cap * K) own.N[j] = Math.min(LF.cap * K, own.N[j] + LF.source * lair.strength * K * w);
     }
-    if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
+    if (host && host.alive && seasonId === 'autumn') { killShare(a, host, L.drinks * lair.strength, 'vampire'); raidGraves(a, host); }
     // the captives at the lair waste away (CAPTIVE_RAID.keep a year): eaten, worked to death, raised
     if (seasonId === 'spring' && lair.captives) for (const k of Object.keys(lair.captives)) { lair.captives[k] = Math.floor(lair.captives[k] * CAPTIVE_RAID.keep); if (!lair.captives[k]) delete lair.captives[k]; }
     if (lair.strength < LL.dies) {
@@ -451,7 +452,7 @@ export function strikeTown(a, lair, L, target, tribe, rnd, atOnce, who = raidWho
   const T = TRIBE_RAID;
   return hitTown(a, lair, L, target, tribe, rnd, atOnce, fx => {
     const loss = T.loss * raidShare(fx);
-    target.pop *= 1 - loss;
+    killShare(a, target, loss, 'raid');
     if (atOnce) lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
     const burnt = raidSite(a, target, rnd);
@@ -527,7 +528,7 @@ function spawnLairs(a, rnd) {
     let best = -1, bv = 0, town = null;
     if (L.at === 'town') {
       // a town with folk of another people and some rot about, and no vampire yet
-      const hosts = (a.towns || []).filter(t => t.alive && t.tier >= 1 && Object.values(t.folk || {}).some(v => v >= 0.1) && a.rot[faunaCell(a, t.i)] >= L.rotAt && !a.lairs.some(o => o.alive && o.kind === L.id && o.town === t.id));
+      const hosts = (a.towns || []).filter(t => t.alive && t.tier >= 1 && strangersOf(a, t).strangers >= 0.1 && a.rot[faunaCell(a, t.i)] >= L.rotAt && !a.lairs.some(o => o.alive && o.kind === L.id && o.town === t.id));
       if (!hosts.length) continue;
       town = hosts[(rnd() * hosts.length) | 0]; best = town.i;
     } else {

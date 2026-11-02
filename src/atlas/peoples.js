@@ -12,6 +12,7 @@
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
+import {takeHeads, sync} from './population.js';
 import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
 import {seasonMoney} from './treasury.js';
@@ -161,8 +162,8 @@ export function foundFrom(a, from, rnd, say) {
   if (!S || from.pop - S.pop < S.keep) return null;
   const i = settleSpot(a, from);
   if (i < 0) return null;
-  const t = foundTown(a, pe, i, rnd, S.pop);
-  from.pop -= S.pop;
+  const t = foundTown(a, pe, i, rnd, 0);
+  t.heads = takeHeads(a, from, S.pop, {how: 'settlers'}); sync(t);   // the settlers go as they are: their races and ages (atlas/population.js)
   t.realm = from.realm;
   if (t.realm == null) joinRealm(a, t);
   t.from = from.id;

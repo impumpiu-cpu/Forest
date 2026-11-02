@@ -50,7 +50,7 @@ export function rulerFell(a, p, how, say, ctx = {}) {
     else say?.(`${cap1(title)} ${name} ${p.name} ${died}.`);
   }
 }
-import {OFFICES} from '../data/kingdom.js';
+import {OFFICES, COURT} from '../data/kingdom.js';
 const officeLabel = (o, f = false) => (f ? OFFICES.get(o).labelF : OFFICES.get(o).label);
 
 // a new ruler of a realm as a person at its seat (atlas/kingdom.js fills the court with these; the horde's contest below):
@@ -58,7 +58,7 @@ const officeLabel = (o, f = false) => (f ? OFFICES.get(o).labelF : OFFICES.get(o
 export function crownRuler(a, r, rnd, {g = null, name = null} = {}) {
   const K = r.kingdom, race = WORLD_PEOPLES.get(r.people).race, cap = capitalOf(a, r.id);
   const used = new Set(Object.values(K.court).filter(Boolean).map(h => h.name));
-  const f = g ? g === 'f' : rnd() < 0.5, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
+  const f = g ? g === 'f' : rnd() < COURT.female, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
   if (!nm) return null;
   const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd});
   if (cap) moveTo(p, 'town', cap.id);

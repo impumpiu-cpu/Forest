@@ -15,6 +15,8 @@
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
 import {SITES, NET} from '../data/sites.js';
+import {killHeads} from './population.js';
+import {DIPLOMACY} from '../data/diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
 import {placeNeed} from '../data/peoples.js';
@@ -105,9 +107,12 @@ export function razeSite(a, s, year) {
 export function raidSite(a, t, rnd) {
   const mine = (t.sites || []).map(id => a.sites[id - 1]).filter(s => s.alive);
   if (!mine.length || rnd() > SITES.burn) return null;
-  const s = mine[(rnd() * mine.length) | 0];
+  const s = mine[(rnd() * mine.length) | 0], b = TOWN_BUILDINGS.get(s.kind);
   razeSite(a, s, a.hist.year);
-  return TOWN_BUILDINGS.get(s.kind);
+  // the hands that worked it die with it (data/diplomacy.js warLoss.work): the field is burnt with the reapers in it
+  const [lo, hi] = DIPLOMACY.warLoss.work, hands = Math.min(t.pop, (b.jobs || 0) * (lo + (hi - lo) * rnd()));
+  if (hands > 0) killHeads(a, t, hands, 'field', {band: 1});
+  return b;
 }
 // a town is razed: all its works with it
 export function razeSites(a, t, year) {

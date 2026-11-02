@@ -10,6 +10,7 @@
 // Q (as campaign/quest.js) + {epic: true, calamity, hunt (0 … 2), nextHunt, started}; a clue: + {epitaph, grave,
 //   mini: {name, add}, nextServ}; the crown (the lair): kind 'seat', guard.boss: {name, add}
 import {scaleOf} from '../atlas/tectonics.js';
+import {killShare} from '../atlas/population.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {EPIC} from '../data/calamities.js';
@@ -187,7 +188,7 @@ function darken(a, K, Q, c4, step, say) {
   } else if (step === 3) {
     // the active hunt, and the first town burns
     const t = (a.towns || []).filter(x => x.alive).sort((p, q) => dist(a, p.i, c4.i) - dist(a, q.i, c4.i))[0];
-    if (t) { t.pop *= 1 - EPIC.hunt.burn; raidGraves(a, t); }
+    if (t) { killShare(a, t, EPIC.hunt.burn, 'calamity'); raidGraves(a, t); }
     const line = `Слуги ${c4.boss.title[1].toLowerCase()} ${c4.boss.name} рыщут по всему краю${t ? ` и сожгли окраины ${townLabel(t, 2)} ${t.name}` : ''}: все ближние логова вышли на след каравана.`;
     say(line, 'quest', false); tellWorld(a, line, c4);
   }

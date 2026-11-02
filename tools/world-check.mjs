@@ -473,9 +473,9 @@ scene_('W23b', 'сколько пришло — по плотности: гус�
   return true;
 });
 scene_('W23c', 'что пришло в пузыре, то и в бою: второй вид, пул культа, логово (его пленные), главарь — не теряются по дороге', () => {
-  const t = {kind: 'tribe', strength: 1, label: 'гоблины и волки', band: 'goblins', with: {beast: 'wolves', label: 'волки', share: 0.3}, pool: [['goblin', 1]], lair: 7, leaderLair: 7, boss: {name: 'Вожак'}, species: 'goblin'};
+  const t = {kind: 'tribe', strength: 1, label: 'гоблины и волки', band: 'goblins', with: {beast: 'wolves', label: 'волки', share: 0.3}, pool: [['goblin', 1]], lair: 7, person: 7, boss: {name: 'Вожак'}, species: 'goblin'};
   const f = foeOf(t);
-  return (f.with?.beast === 'wolves' && f.pool?.length === 1 && f.lair === 7 && f.leaderLair === 7 && f.boss?.name === 'Вожак' && f.species === 'goblin') || `потеряно: ${JSON.stringify(f)}`;
+  return (f.with?.beast === 'wolves' && f.pool?.length === 1 && f.lair === 7 && f.person === 7 && f.boss?.name === 'Вожак' && f.species === 'goblin') || `потеряно: ${JSON.stringify(f)}`;
 });
 scene_('W24', 'набег логова: звери стана — только если живут рядом; второй вид его земли пристаёт и прибавляет силы', () => {
   const a = world(), {lair} = townAndLair(a, 'goblins', 20);
@@ -558,18 +558,22 @@ scene_('W28', 'раса некроманта — жребий по плотно�
   set(0.1, 0.1); const even = odds();
   return (many > 0.8 && even < 0.5) || `эльфов много — ${many}, поровну — ${even}`;
 });
-scene_('W29', 'башня — насос: забирает гниль вокруг, поле мертвецов растёт; вербует — округа и город слабо хиреют', () => {
+scene_('W29', 'башня — насос: с хозяином забирает гниль вокруг, поле мертвецов растёт (без хозяина — нет: мертвецы его, atlas/control.js); вербует — округа и город слабо хиреют', () => {
   const S = towerWorld(); if (S.error) return S.error;
   const {a, tw, L, town} = S, j = faunaCell(a, tw.i), dead = a.fauna.list[a.fauna.idx.dead];
   a.rot[j] = 0.8; const r0 = a.rot[j], d0 = dead.N[j], pop0 = town.pop, lines = [];
+  stepTower(a, tw, L, () => 0.99, lines, revealLair);
+  if (a.rot[j] < r0 || dead.N[j] > d0) return `без хозяина подняла: гниль ${r0} → ${a.rot[j]}, мертвецы ${d0} → ${dead.N[j]}`;
+  lead(a, tw);
   stepTower(a, tw, L, () => 0.99, lines, revealLair);
   if (!(a.rot[j] < r0) || !(dead.N[j] > d0)) return `гниль ${r0} → ${a.rot[j]}, мертвецы ${d0} → ${dead.N[j]}`;
   if (dist(town, tw) < zoneOf(a, tw) && !(town.pop < pop0 && town.pop > pop0 * 0.98)) return `город ${pop0} → ${town.pop}`;
   return true;
 });
-scene_('W30', 'зона башни: логово мёртвых в ней — данник некроманта, вне её — нет; дань идёт башне и без главаря', () => {
+scene_('W30', 'зона башни: логово мёртвых в ней — данник некроманта (башни с хозяином), вне её — нет; дань идёт башне', () => {
   const S = towerWorld(); if (S.error) return S.error;
   const {a, tw} = S, z = zoneOf(a, tw);
+  lead(a, tw);
   const near = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > 3 && dist(p, tw) < z - 1 && !a.towns.some(t => dist(t, p) < 4); }));
   const far = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > z + 3 && !a.towns.some(t => dist(t, p) < 4); }));
   if (!near?.id || !far?.id) return `курганы не встали: ${near?.error || ''} ${far?.error || ''}`;

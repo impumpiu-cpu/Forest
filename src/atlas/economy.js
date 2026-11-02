@@ -1,7 +1,7 @@
 // A town's economy by its buildings' flows (docs/WORLD.md «Потоки построек»; the numbers: data/townBuildings.js — each
 // building's `jobs`, `heat`, `in`, `out`, the goods TOWN_GOODS, the rules TOWN_FLOW; the people's `hands`, `eat`,
 // `flows`, `swaps` in data/peoples.js). Once a season, before the town grows (atlas/peoples.js):
-//   hands     — the town's people × its people's `hands`, and its slaves (t.slaves) at TOWN_FLOW.slaves.work each;
+//   hands     — the town's grown ones (atlas/population.js) × its people's `hands`, and its slaves (t.slaves) at TOWN_FLOW.slaves.work each;
 //               each building rents its `jobs` in TOWN_FLOW.order (food first): slaves first, up to `share` of its places,
 //               free hands for the rest; what is short works at a share. A building gone gives its hands back
 //   goods     — what the buildings give at their staffing (× the people's `flows`) is shared out over `rounds` between the
@@ -28,6 +28,7 @@
 //               share to the others
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf, reqLit} from '../data/townBuildings.js';
+import {handsOf} from './population.js';
 import {WORLD_PEOPLES, swapOf, KIN, placeNeed} from '../data/peoples.js';
 import {placeHas, townKin} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
@@ -112,7 +113,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   const P = WORLD_PEOPLES.get(t.people), flows = P.flows || {}, swaps = P.swaps || {}, wf = P.workFlows || {};
   // its place: more where it stands so (the dwarves under the mountain) — the world's place of the town (atlas/towns.js placeHas)
   const PF = P.placeFlows, here = PF && a?.f && PF.needsAny.map(n => placeNeed(t.people, n)).some(n => (t.place ||= {})[n] ??= placeHas(a, t.i, n)) ? PF.flows : {};
-  const free0 = t.pop * (P.hands ?? F.hands), slaves0 = (t.slaves || 0);
+  const free0 = handsOf(a, t), slaves0 = (t.slaves || 0);   // (the young and the old do not work: atlas/population.js)
   let free = free0, slaves = slaves0;
   // the buildings, a row each with its count, in the order the hands go
   const count = {};

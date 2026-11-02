@@ -3,6 +3,7 @@
 // luck — and burns `burns` of its works and `loss` of its people, unless the town drives it off; then it flies home
 // and sleeps again. The lair's role only: a dragon raises no leader.
 import {DRAGON} from '../../data/parties.js';
+import {killShare} from '../population.js';
 import {LAIRS} from '../../data/lairs.js';
 import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {townFx, might, raidShare, townLabel} from '../towns.js';
@@ -39,7 +40,7 @@ export const strike = {
     const n = D.burns[0] + Math.floor(rnd() * (D.burns[1] - D.burns[0] + 1));
     for (let q = 0; q < n; q++) if (raidSite(a, target, () => 0)) burnt++;
     const loss = D.loss * raidShare(fx);
-    target.pop *= 1 - loss; target.raided = a.hist.year; raidGraves(a, target);
+    killShare(a, target, loss, 'dragon'); target.raided = a.hist.year; raidGraves(a, target);
     say(`Дракон ${LAIRS.get(l.kind).from} «${l.name}» выжег ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, сгорело угодий: ${burnt}` : ''}.`);
   },
   home(a, p, l, rnd) { l.sleep = nap(rnd); },

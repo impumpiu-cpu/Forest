@@ -20,6 +20,8 @@ import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
 import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
 import {leaderName} from '../atlas/leaders.js';
 import {personOf} from '../atlas/persons.js';
+import {headsOf, bandSum} from '../atlas/population.js';
+import {townKin} from '../atlas/towns.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
@@ -110,6 +112,12 @@ function roleLine(t) {
   return `${what}${against ? ` (а строит больше ${VECTORS[lead(lean)]})` : ''}`;
 }
 
+// the races of a town, the larger first («орки 61%, гоблины 24%, гноллы 9%»), the bands of age, the year's losses by cause
+const LOSS_WORDS = {dead: 'от старости', brawl: 'в драках', want: 'от голода и тесноты', war: 'на войне', storm: 'при штурме', siege: 'в осаде', raid: 'в набегах', taken: 'уведено', levy: 'в войско', moved: 'уехало', mingled: 'ушло к соседям', settlers: 'поселенцами', cult: 'ушло в культ', cold: 'в лютую зиму', drought: 'в засуху', dragon: 'от дракона', vampire: 'выпито', expelled: 'выжито', calamity: 'от бедствия', field: 'на сожжённых угодьях', left: 'ушло', scattered: 'разбрелось', drawn: 'в столицу'};
+export const kinLine = (a, t) => Object.entries(townKin(a, t)).filter(([, v]) => v >= 0.005).sort((p, q) => q[1] - p[1]).map(([id, v]) => `${SPECIES.has(id) ? SPECIES.get(id).plural : id} ${Math.round(v * 100)}%`).join(', ');
+export const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
+export const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && v >= 0.5).map(([k, v]) => `${LOSS_WORDS[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
+
 function realmHtml(a, R) {
   if (!R) return '';
   const towns = realmTowns(a, R.id), pop = Math.round(towns.reduce((s, t) => s + t.pop, 0)), P = WORLD_PEOPLES.get(R.people), sp = SPECIES.get(P.race);
@@ -151,11 +159,12 @@ function townHtml(a, t) {
   for (const [id, n] of Object.entries(cnt)) { const b = TOWN_BUILDINGS.get(id); (byCat[b.cat] ||= []).push(b.name + (n > 1 ? ` ×${n}` : '')); }
   const built = Object.entries(byCat).map(([c, l]) => `<li><small>${esc(CATEGORIES[c] || c)}:</small> ${esc(l.join(', '))}</li>`).join('');
   const gives = Object.entries(EFFECTS).filter(([k]) => k !== 'housing' && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(', ');
-  const folk = Object.entries(t.folk || {}).filter(([, v]) => v >= 0.03).map(([id, v]) => `${WORLD_PEOPLES.get(id).label} ${Math.round(v * 100)}%`).join(', ');
+  const folk = kinLine(a, t), ages = agesLine(a, t), lost = lossLine(t);
   const sup = t.supply, feed = sup ? (sup.got > 0.05 * t.pop ? `привозят еды на ${Math.round(sup.got)}` : sup.gave > 0.05 * t.pop ? `отправляют еды на ${Math.round(sup.gave)}` : 'кормятся своим') : null;
   const sieged = (a.parties || []).find(p => p.kind === 'army' && p.state === 'stay' && p.target === t.id);
   const head = sec(`${townLabel(t).replace(/^./, c => c.toUpperCase())} ${t.name}`,
-    row('народ', `${esc(P.label)}${folk ? `, среди них ${esc(folk)}` : ''}`) +
+    row('народ', `${esc(P.label)}: ${esc(folk)}${ages ? `; ${esc(ages)}` : ''}`) +
+    (lost ? row('за год', esc(lost)) : '') +
     // the town's economy by its buildings' flows (atlas/economy.js: worked out each season, not saved)
     (t.econ ? row('хозяйство', `руки ${Math.round(Math.min(t.econ.jobs, t.econ.hands))} из ${Math.round(t.econ.hands)}${t.slaves ? ` (рабов ${Math.round(t.slaves)})` : ''}; постройки кормят ${Math.round(t.econ.feeds)} жителей${t.econ.pools ? `; топлива ${Math.round((t.econ.pools.fuel ?? 1) * 100)}%` : ''}`
       + (Object.keys(t.econ.short).length ? `; не хватает: ${esc(Object.entries(t.econ.short).sort((p, q) => q[1] - p[1]).slice(0, 4).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v * 100)}%`).join(', '))}` : '')) : '') +

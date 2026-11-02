@@ -39,8 +39,10 @@
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   flows:    × on what its buildings give of a good (data/townBuildings.js TOWN_GOODS, `out`): the elves' gardens
 //             yield more, their humane quarries less; none — ×1
-//   hands:    the share of its people who work (the rest are children, the old, those who keep house): the hands its
-//             town's buildings share out (atlas/economy.js); elves have few children and many elders, orcs put everyone to work
+//   hands:    the share of its grown people who work (atlas/population.js: the young and the old do not; of the grown, the
+//             rest keep house): the hands its town's buildings share out (atlas/economy.js); the orcs put everyone to work.
+//             (Before the bands of age it was a share of all the people: 0,4 / 0,55 / 0,5 / 0,6 — the same hands at a town
+//             of TOWN_LIFE.age.grownRef grown ones)
 //   brawl:    a people that kills its own for a place at the fire: a share a year by its realm's crime and its crowding
 //   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   placeFlows: more × where its town stands on such a place (data/townBuildings.js PLACE_NEEDS, any of `needsAny`)
@@ -79,7 +81,7 @@ const raceHome = id => RACES.find(r => r.id === id).home;
 export const WORLD_PEOPLES = new Registry('worldPeople');
 WORLD_PEOPLES.registerAll([
   {id: 'elves', race: 'elf', label: 'эльфы', labelGen: 'эльфов', adj: 'эльфийский', era: 'elder', color: [120, 200, 120],
-    hands: 0.4, eat: 0.85, kin: {elf: {base: 1}},
+    hands: 0.67, eat: 0.85, kin: {elf: {base: 1}},
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
@@ -106,7 +108,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'дварфы', labelGen: 'дварфов', adj: 'дварфийский', era: 'elder', color: [220, 150, 70],
-    hands: 0.55, eat: 1.15, kin: {dwarf: {base: 1}},
+    hands: 0.92, eat: 1.15, kin: {dwarf: {base: 1}},
     // strangers (atlas/diplomacy.js): the dwarves love only dwarves — a town of theirs takes in folk of other peoples at
     // × `take` of the usual pace, and pushes them out by `expel` of its people a year; on shared land they press the others
     // × `push` harder (atlas/peoples.js)
@@ -137,7 +139,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
   {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
-    hands: 0.5, eat: 1,
+    hands: 0.83, eat: 1,
     // the middling people and those who live among them: the halflings of the meadows and the giants of the hills (the
     // weights of the caravan's core they always were: data/campaign.js RETINUE)
     kin: {human: {base: 6}, halfling: {base: 1}, giant: {base: 0.5}},
@@ -159,7 +161,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
   {id: 'orcs', race: 'orc', label: 'зеленокожие', labelGen: 'зеленокожих', adj: 'зеленокожий', era: 'young', color: [210, 80, 60],
-    hands: 0.6, eat: 1.25,
+    hands: 1, eat: 1.25,
     // the horde of many races: every town holds them all, each × base × its race's home of the land (data/races.js `home`);
     // the greatest share is the town's leading race. A building of a race's own (data/townBuildings.js `kin`) wants its
     // share at KIN.least or more
@@ -343,12 +345,16 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
   foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.22, prestige: 0.6, minTarget: 60,
-  // age and death (atlas/demography.js lifeYear; each kind's lifeFrom, life, fertility, brawled — the races table, data/races.js
-  // body): a band or settlers come at `found` × lifeFrom years of age; a kind lives L = from + (to − from) × (1 − e^(−health /
-  // health)) years — the town's health its soft lift; it dies at (1 / L) × (base + (age / (L / 2))^hazard) a year (at most
-  // `most`), where base — the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land
-  // buries its children); the dead are `dead` × the mean age old (the old die first)
-  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, dead: 1.4, most: 0.5}};
+  // age and death (atlas/demography.js lifeYear, atlas/population.js; each race's adult, lifeFrom, life, fertility, brawled — the
+  // races table, data/races.js body): a town holds its people in three bands of age — the young under `adult`, the grown, the
+  // old past `oldAt` of its life. A race lives L = from + (to − from) × (1 − e^(−health / health)) years — the town's health
+  // its soft lift; a band dies at (1 / L) × (base + (its middle age / (L / 2))^hazard) a year (at most `most`), where base —
+  // the children, the sick and the unlucky — falls with health from base[0] to base[1] (a poor land buries its children);
+  // a year ages a band's share into the next. The growth of a town (atlas/peoples.js bornOf) is its births and the folk of
+  // its people's land that come to it: it is shared out by each race's share of the town × its fertility against the
+  // people's race, and comes in the bands `bands` [young, grown, old] — children born, and grown folk and elders off the land;
+  // a founding band comes grown
+  age: {found: 1 / 3, health: 0.3, base: [1, 0.3], hazard: 2, most: 0.5, oldAt: 0.7, bands: [0.35, 0.6, 0.05]}};
 
 // The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's

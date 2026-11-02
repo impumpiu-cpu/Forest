@@ -4,8 +4,9 @@
 // reach: against a realm it is war (the standing falls; a war already on goes on). The town's might against the other's,
 // with luck: the freed come to the town as free people; a loss costs the town some of its people.
 import {SLAVE, freesCaptives} from '../../data/slavery.js';
+import {addHeads, killShare} from '../population.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
-import {TOWN_WAR} from '../../data/peoples.js';
+import {TOWN_WAR, WORLD_PEOPLES} from '../../data/peoples.js';
 import {LAIRS} from '../../data/lairs.js';
 import {SPECIES} from '../../data/species.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
@@ -43,10 +44,10 @@ export const liberate = {
       if (rel) { rel.att = Math.max(-5, rel.att - L.att); if (!rel.war) { rel.war = {since: y, battles: 0, razed: 0, turn: realm.id, mustered: null}; rel.wars = (rel.wars || 0) + 1; begun = ` За братьев началась война с ${realmLabel(a, o.realm)}.`; } }
       if (fight(t, r) > fight(o, r)) {
         o.slaves = Math.max(0, (o.slaves || 0) - n); o.slavesOf[P] = 0;
-        const home = Math.round(n * L.home); t.pop += home;
+        const home = Math.round(n * L.home); addHeads(a, t, WORLD_PEOPLES.get(P).race, home, 1);
         return `${us} из ${townLabel(t, 2)} ${t.name} пошли освобождать братьев из ${townLabel(o, 2)} ${o.name}${o.realm ? ` (${realmLabel(a, o.realm)})` : ''}: ${home} вернулись свободными.${begun}`;
       }
-      t.pop *= 1 - L.loss;
+      killShare(a, t, L.loss, 'war');
       return `${us} из ${townLabel(t, 2)} ${t.name} не смогли отбить своих рабов у ${townLabel(o, 2)} ${o.name}: отступили с потерями.${begun}`;
     }
     const l = (a.lairs || []).find(x => x.id === plan.lair); if (!l?.alive) return null;
@@ -55,10 +56,10 @@ export const liberate = {
     const town = might(t, townFx(t)) * W.might * (W.luck[0] + W.luck[1] * r()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (W.luck[0] + W.luck[1] * r());
     if (town > beast) {
       delete l.captives[P];
-      const home = Math.round(n * L.home); t.pop += home;
+      const home = Math.round(n * L.home); addHeads(a, t, WORLD_PEOPLES.get(P).race, home, 1);
       return `${us} из ${townLabel(t, 2)} ${t.name} вызволили сородичей из полона в «${l.name}»: ${home} вернулись домой.`;
     }
-    t.pop *= 1 - L.loss;
+    killShare(a, t, L.loss, 'war');
     return `${us} из ${townLabel(t, 2)} ${t.name} ходили за пленными братьями в «${l.name}», но ${owner.plural} отбились.`;
   },
 };

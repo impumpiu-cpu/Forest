@@ -22,6 +22,7 @@ import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {newPerson, personOf, moveTo} from './persons.js';
 import {rulerTitle} from './polities.js';
+import {strangersOf} from './population.js';
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
@@ -138,7 +139,7 @@ export function stepKingdom(a, say) {
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
-    const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + Object.values(t.folk || {}).reduce((x, v) => x + v, 0), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + strangersOf(a, t).strangers, 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     src.court = courtUnpaid;   // the court unpaid: decay
     const RP = WORLD_PEOPLES.get(realm.people), bureau = RP?.bureau ?? 1;   // (corruption × the people's bureaucracy; any ruin × its `ruinGrow`)
     for (const R of RUINS.all()) {

@@ -12,6 +12,7 @@ import {recomputeMods} from '../src/settlement/mods.js';
 import {penSpace} from '../src/settlement/herd.js';
 import {raise, breakToWar} from '../src/settlement/warbeasts.js';
 import {spawnGroup} from '../src/settlement/migration.js';
+import {groupSize} from '../src/atlas/population.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {townKin, leadKin, canBuild, townFx, roughShare, might} from '../src/atlas/towns.js';
 import {stepWarBeasts} from '../src/atlas/beasts.js';
@@ -142,7 +143,7 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   muster(a, t, tg, null, () => 0.5, s => said.push(s));
   const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id && !before.has(p.id));
   check('орда: в поход идёт треть города и боевые звери, скот остаётся дома; растёт почти вдвое быстрее, благ хочет вдвое меньше',
-    !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > (H.breed ?? 1) && P.needs < 1 && !H.levy, said.join(' '));
+    !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && Math.abs(groupSize(army.group) - army.men) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > (H.breed ?? 1) && P.needs < 1 && !H.levy, said.join(' '));
 }
 
 

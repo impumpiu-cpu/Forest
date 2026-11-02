@@ -7,6 +7,8 @@
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
+import {killShare, killHeads, takeHeads, addGroup, moveHeads, shareOfPeople, strangersOf} from './population.js';
+import {TOWN_LIFE as TL} from '../data/peoples.js';
 import {townStormed, partyBeaten, townGone} from './persons.js';
 import {TOWN_MONEY} from '../data/townBuildings.js';
 import {sendArmy, refreshArmy, armyLosses, returnArmy} from './army.js';
@@ -18,7 +20,7 @@ import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
 import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {scaleOf} from './tectonics.js';
-import {townFx, might, raidShare, townLabel} from './towns.js';
+import {townFx, might, raidShare, townLabel, townKin} from './towns.js';
 import {raidSite, razeSites} from './sites.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
 import {laneBetween} from './sea.js';
@@ -160,6 +162,24 @@ export function muster(a, t, target, war, rnd, say) {
   const wild = Object.entries(p.wild || {}).map(([sp, n]) => `${SPECIES.get(sp).plural} (${n})`).join(' и ');
   say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''}${wild ? `; с ними ${wild}` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
 }
+// the mingling of the peoples by trade (DIPLOMACY.mingle; atlas/population.js): a town on routes with towns of other peoples
+// takes in `mingle` × its people's `folk.take` of its people a year, as many as the other towns can spare (TOWN_LIFE.minTarget
+// stays home), shared out over its routes, from the peoples it welcomes (data/peoples.js `welcome`), up to `mingleMax` of its
+// people of strangers — they come as they are, their races and ages
+function mingle(a, routes, say) {
+  for (const [x, froms] of routes) {
+    const P = WORLD_PEOPLES.get(x.people), welcome = P.welcome || [], take = P.folk?.take ?? 1;
+    const from = froms.filter(o => o.alive && welcome.includes(o.people)); if (!from.length) continue;
+    const was = Object.fromEntries(from.map(o => [o.people, shareOfPeople(a, x, o.people)]));
+    const all = Math.max(0, Math.min(D.mingle * take, D.mingleMax - strangersShare(a, x))) * x.pop, each = all / from.length;
+    for (const o of from) {
+      const n = Math.min(each, Math.max(0, o.pop - TL.minTarget));
+      if (n > 0) moveHeads(a, o, x, n, 'mingled');
+    }
+    for (const [y, w] of Object.entries(was)) if (w < D.folkSeen && shareOfPeople(a, x, y) >= D.folkSeen && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
+  }
+}
+const strangersShare = (a, t) => strangersOf(a, t).strangers;
 // the foragers: the land around the army is scourged this season
 function scourge(a, p) {
   const f = a.f.scourge ||= new Float32Array(a.n), r = ARMY.scourge * scaleOf(a), x0 = p.x | 0, y0 = p.y | 0, rr = Math.ceil(r);
@@ -199,7 +219,7 @@ BEHAVIOURS.army = {
     const t = a.towns.find(t => t.id === p.target), A = ARMY, S = p.siege;
     if (!t || !t.alive) { goHome(a, p); return; }
     if (rnd() < A.burn && raidSite(a, t, rnd)) { p.burnt++; p.supplies += A.forage; }   // the besiegers eat what they take
-    if (S.stock > 0) S.stock--; else { const d = t.pop * A.starve; t.pop -= d; S.starved += d; }
+    if (S.stock > 0) S.stock--; else S.starved += killShare(a, t, A.starve, 'siege');   // the hunger of the siege takes any age
     refreshArmy(p);
     const fx = townFx(t), town = might(t, fx);
     const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
@@ -210,8 +230,9 @@ BEHAVIOURS.army = {
     barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
     if (we > they) {
       const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(fx);
-      const home = a.towns.find(o => o.id === p.from && o.alive), slaves = driveOff(home, t, t.pop * loss);   // the cult drives the taken off as slaves
-      t.pop *= 1 - loss; armyLosses(p, A.winLoss, rnd, 'won'); t.raided = a.hist.year;
+      const home = a.towns.find(o => o.id === p.from && o.alive), lost = t.pop * loss, slaves = driveOff(home, t, lost);   // the cult drives the taken off as slaves
+      takeHeads(a, t, slaves, {how: 'taken'}); killHeads(a, t, lost - slaves, 'storm');   // the taken are gone, the rest of the loss lies dead
+      armyLosses(p, A.winLoss, rnd, 'won'); t.raided = a.hist.year;
       const loot = plunderWords(plunder(home, t, TOWN_MONEY.plunder.storm)) + (slaves >= 1 ? `, угнали в рабство ${Math.round(slaves)}` : '');   // the storm's loot goes home with the army
       if (t.capital) lootSeat(a, realmOf(a, p.owner), realmOf(a, t.realm));   // a seat stormed: its realm's treasury too (atlas/treasury.js)
       const razed = t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0;   // beaten down, bled, or broken by the siege
@@ -238,13 +259,17 @@ export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) 
 export function stepDiplomacy(a, rnd, say, overlap) {
   driftRealms(a);
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
-  // a people that will not have strangers (data/peoples.js folk.expel: the dwarves) pushes them out of its towns
+  // a people that will not have strangers (data/peoples.js folk.expel: the dwarves) pushes them out of its towns: `expel` of
+  // its people a year of the races not its own, to the nearest town that takes them as its own (atlas/population.js)
   for (const t of towns) {
-    const ex = WORLD_PEOPLES.get(t.people)?.folk?.expel; if (!ex || !t.folk) continue;
-    for (const [y, v] of Object.entries(t.folk)) {
-      const now = Math.max(0, v - ex);
-      if (v >= D.folkSeen && now < D.folkSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${WORLD_PEOPLES.get(y).label} уходят.`);
-      if (now > 0) t.folk[y] = now; else delete t.folk[y];
+    const ex = WORLD_PEOPLES.get(t.people)?.folk?.expel; if (!ex) continue;
+    const own = new Set(Object.keys(WORLD_PEOPLES.get(t.people).kin || {}));
+    for (const [race, sh] of Object.entries(townKin(a, t))) {
+      if (own.has(race) || !(sh > 0)) continue;
+      const n = Math.min(sh, ex) * t.pop, G = takeHeads(a, t, n, {race, how: 'expelled'});
+      const home = towns.filter(o => o !== t && WORLD_PEOPLES.get(o.people).kin?.[race]).sort((p, q) => Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y))[0];
+      if (home) addGroup(a, home, G);
+      if (sh >= D.folkSeen && sh - n / Math.max(1, t.pop) < D.folkSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${SPECIES.get(race).plural} уходят.`);
     }
   }
   // the nearest towns of two peoples, and how far apart they are
@@ -255,6 +280,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     }
     return [best, bd];
   };
+  const mingling = new Map();   // town → the towns of other peoples it trades with: folk come over from them (below)
   for (const [kk, r] of Object.entries(a.rel || {})) {
     const [p, q] = kk.split(':'), P = realmPeople(a, p), Q = realmPeople(a, q), kin = P === Q;
     const old = memory(a, p, q);
@@ -264,13 +290,9 @@ export function stepDiplomacy(a, rnd, say, overlap) {
       for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && ((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) || laneBetween(a, t, o))) {
         routes += t.built.includes('mint') || o.built.includes('mint') || t.built.includes('tradepost') || o.built.includes('tradepost') ? 2 : 1;   // coin and a trading post carry further than barter
-        // folk of each settle in the other's town (of another race; kin need no settling)
-        if (!kin) for (const [x, y] of [[t, o.people], [o, t.people]]) {
-          x.folk ||= {};
-          const was = x.folk[y] || 0, take = WORLD_PEOPLES.get(x.people)?.folk?.take ?? 1;   // (the dwarves take few, the humans many: data/peoples.js folk)
-          x.folk[y] = Math.min(D.mingleMax, was + D.mingle * take);
-          if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
-        }
+        // folk of each settle in the other's town (of another people; kin need no settling): the route is remembered, the
+        // moving is done once for the town over all its routes (below)
+        if (!kin) for (const [x, from] of [[t, o], [o, t]]) (mingling.get(x) || mingling.set(x, []).get(x)).push(from);
       }
       if (routes && !r.routes) say(`Между землями ${realmLabelGen(a, p)} и ${realmLabelGen(a, q)} пошли первые караваны.`);
       r.routes = routes;
@@ -285,6 +307,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (r.war) r.att += D.weariness;   // a war wears both out; who ends it, and who marches, is the realms' choice (atlas/deeds/)
     r.att = Math.max(-5, Math.min(5, r.att));
   }
+  mingle(a, mingling, say);   // the folk of the routes come over, once for each town over all its routes
   stepRealms(a, rnd, say);
 }
 

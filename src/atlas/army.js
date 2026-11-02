@@ -11,6 +11,7 @@ import {wildOfArmy} from './wilds.js';
 import {sendParty} from './parties.js';
 import {YEAR_DAYS} from '../data/atlas.js';
 import {rideWith, stepOff} from './persons.js';
+import {takeHeads, addGroup, book} from './population.js';
 
 const r2 = n => Math.round(n * 100) / 100;
 const beastMen = list => Object.entries(list || {}).reduce((s, [sp, n]) => s + n * beastWorth(SPECIES.get(sp)), 0);
@@ -40,7 +41,7 @@ export function sendArmy(a, t, goal, men, props) {
   const p = sendParty(a, 'army', t.i, goal, army);
   if (!p) return null;
   rideWith(a, t, p);   // a chief that leads rides with it (atlas/persons.js)
-  t.pop -= men;
+  p.group = takeHeads(a, t, men, {band: 1, how: 'levy'});   // the levy: grown ones of the town's races, as they are (atlas/population.js)
   if (t.warBeasts) { for (const [sp, n] of Object.entries(warBeasts)) { t.warBeasts.list[sp] -= n; if (!t.warBeasts.list[sp]) delete t.warBeasts.list[sp]; } t.warBeasts.men = beastMen(t.warBeasts.list); }
   if (t.golems) t.golems.guard = guards.slice(golems.length);
   for (const [g, n] of Object.entries(kit)) if (n > 0) { t.stock[g] = r2(t.stock[g] - n); if (t.stock[g] <= 0) delete t.stock[g]; }
@@ -75,7 +76,11 @@ export function returnArmy(a, p) {
   const t = home?.alive ? home : (a.towns || []).filter(o => o.alive && (p.owner != null ? o.realm === p.owner : o.people === p.people)).sort((x, y) => near(x) - near(y) || x.id - y.id)[0];
   if (!t) return;
   stepOff(a, p, t);
-  t.pop += Math.max(0, p.men);
+  // the survivors come home as they went — the races of the levy, less the fallen in proportion; the fallen are the town's loss of war
+  const alive = Math.max(0, p.men), k = p.men0 > 0 ? alive / p.men0 : 0;
+  if (p.group) addGroup(a, t, Object.fromEntries(Object.entries(p.group).map(([r, b]) => [r, b.map(x => x * k)])));
+  else addGroup(a, t, {[WORLD_PEOPLES.get(p.people || t.people).race]: [0, alive, 0]});   // (an old save's army: grown ones of its people's race)
+  book(t, 'war', Math.max(0, (p.men0 || 0) - alive));
   if (p.warBeasts && Object.keys(p.warBeasts).length) { const b = t.warBeasts ||= {list: {}, men: 0}; for (const [sp, n] of Object.entries(p.warBeasts)) b.list[sp] = (b.list[sp] || 0) + n; b.men = beastMen(b.list); }
   if (p.golems?.length) { t.golems ||= {auto: {}, guard: [], since: null}; t.golems.guard.push(...p.golems); }
   const survival = Math.min(1, Math.max(0, p.men / (p.men0 || p.men || 1))), wear = A.wear[p.result || 'retreat'];

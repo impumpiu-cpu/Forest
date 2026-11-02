@@ -3,6 +3,7 @@
 // year's chance spread over the seasons. The loot grows the raiders' town, the beaten town loses `raidLoss`; either way
 // the standing between the two sinks by `raid`.
 import {plunder, plunderWords, lootOf, driveOff} from '../treasury.js';
+import {killHeads, takeHeads, addGroup, killShare} from '../population.js';
 import {TOWN_MONEY} from '../../data/townBuildings.js';
 import {WORLD_PEOPLES as WP_CULT} from '../../data/peoples.js';
 const cultOf = realm => WP_CULT.get(realm.people)?.warCult || null;   // (data/peoples.js warCult: the greenskins raid anyone, kin too)
@@ -50,11 +51,14 @@ export const raidTown = {
       const loss = D.raidLoss * raidShare(townFx(target));
       const lost = target.pop * loss;   // the raiders carry off D.raidTake of those lost as captives
       const slaves = driveOff(t, target, lost);   // the cult of war drives its captives off as slaves (atlas/treasury.js)
-      target.pop -= lost; if (!slaves) t.pop += lost * D.raidTake; raidGraves(a, target);
+      const taken = slaves ? slaves : lost * D.raidTake;
+      killHeads(a, target, lost - taken, 'raid'); const G = takeHeads(a, target, taken, {how: 'taken'});   // the dead lie, the taken go
+      if (!slaves) addGroup(a, t, G);   // (the raiders' captives settle among them as they are)
+      raidGraves(a, target);
       const burnt = raidSite(a, target, r), got = plunder(t, target, TOWN_MONEY.plunder.raid);   // goods and gold carried off (atlas/treasury.js)
       return `${cap1(realmLabel(a, realm.id))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ''}${plunderWords(got)}${slaves >= 1 ? `, угнали в рабство ${Math.round(slaves)}` : ''}.`;
     }
-    t.pop *= 1 - D.repelled;   // a beaten raid costs the raiders
+    killShare(a, t, D.repelled, 'raid');   // a beaten raid costs the raiders
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, realm.id)} на ${townLabel(target, 1)} ${target.name}.`;
   },
 };
