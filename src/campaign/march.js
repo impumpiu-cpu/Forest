@@ -386,7 +386,7 @@ function evening(a, K) {
     const cmds = pointCommands('caravan.camp');
     const x = {need, rich, core, badly, quiet, calm, C, ask: {}};   // (one for the evening: the asks share it)
     const {r, done} = draw(K, 'council');
-    const got = pickLanes(cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a.cfg, c.id)});
+    const got = pickLanes(cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a?.cfg, c.id)});
     done();
     readout(K, got);
     if (tracing()) noteCaravan(a, K, 'caravan.camp', cmds, got);

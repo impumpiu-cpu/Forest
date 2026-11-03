@@ -226,7 +226,7 @@ function questLook() {
 }
 function target(a, K, rnd) {
   const Q = K.quest, C = Q.crown, x = questLook(), cmds = pointCommands('caravan.quest');
-  const {option, asked} = pickFirst(cmds, c => { const g = QUEST_ASK[c.id.slice(QUEST_CMD.length)](a, K, rnd, Q, C, x); return g === undefined ? null : {id: c.id, g}; }, c => allowed(a.cfg, c.id));
+  const {option, asked} = pickFirst(cmds, c => { const g = QUEST_ASK[c.id.slice(QUEST_CMD.length)](a, K, rnd, Q, C, x); return g === undefined ? null : {id: c.id, g}; }, c => allowed(a?.cfg, c.id));
   if (tracing()) noteDecision({point: 'caravan.quest', who: `caravan:${K.capital}`, at: K.day, band: 'routine', policy: 'first',
     opts: asked.map(c => ({cmd: c.id, key: c.id, score: c.id === option?.id ? 1 : 0})), pick: option?.id ?? null, unasked: cmds.filter(c => !asked.includes(c)).map(c => c.id)});
   return option ? option.g : null;   // nothing known: the council looks for rumours in a town (campaign/march.js evening, campaign/visit.js findTown)

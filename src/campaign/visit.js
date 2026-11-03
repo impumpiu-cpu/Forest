@@ -43,7 +43,7 @@ export function wantVisit(a, K, seasonId) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
   const Sn = SEASONS.get(seasonId), cmds = pointCommands('caravan.visit');
   const {r, done} = draw(K, 'council');
-  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a.cfg, c.id)});
+  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a?.cfg, c.id)});
   done();
   if (got.option && isGoOn(got.option.id)) { readout(K, got); if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, got); return ''; }
   readout(K, got);
