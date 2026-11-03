@@ -104,7 +104,7 @@ const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.for
 
 // the gold kept for food: `days` of rations for everyone, at this town's price
 // (the reserve is counted at the town's terms for this caravan — its tongue and fame, campaign/road.js: 1 by default)
-const reserveFor = (K, t, st, days, a = null) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
+export const reserveFor = (K, t, st, days, a) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
 
 const golems = K => K.beasts.filter(b => BEASTS[b.kind]?.golem && b.hp > 0).length;
 const herdOf = K => K.beasts.filter(b => BEASTS[b.kind]?.use === 'food' && b.hp > 0).length;
@@ -176,7 +176,7 @@ function alchemy(a, K, t, st) {
   for (const p of POTIONS.all()) for (const g of p.grades.filter(x => x.at === 'alchemist')) {   // the strong grades, and what only an alchemist brews
     while (roomFor(K, p, g.res) > 0 && Object.entries(g.cost).every(([r, n]) => (K.cargo[r] || 0) >= n)) {
       const price = gold(RESOURCES.get(g.res).value * ALCHEMY.fee * STANDING[st].buy);
-      if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve)) break;
+      if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve, a)) break;
       for (const [r, n] of Object.entries(g.cost)) { K.cargo[r] -= n; if (K.cargo[r] <= 0) delete K.cargo[r]; }
       K.cargo[g.res] = (K.cargo[g.res] || 0) + 1; K.gold = gold(K.gold - toTown(t, price)); K.stats.alchemy = (K.stats.alchemy || 0) + 1;
       done.push(`алхимик сварил из запасов каравана ${RESOURCES.get(g.res).label} — за работу ${price} зол.`);
@@ -203,7 +203,7 @@ function smithy(a, K, t, st) {
     const made = townMade({kind: 'item', id: type}, t, forgeQ(t)).id;
     // the price is that of the town's plain piece: the better work of its forge is what draws the caravan to it
     const p = gold(offerPrice(o, st, t) * SMITH.discount);
-    if (K.gold - p < reserveFor(K, t, st, SMITH.reserve)) continue;
+    if (K.gold - p < reserveFor(K, t, st, SMITH.reserve, a)) continue;
     // still wanted after what the smith made before it
     if (!wants(a, K, anvil, st).some(x => x.kind === 'item' && x.id === o.id)) continue;
     K.cargo[B.ore] -= need; if (K.cargo[B.ore] <= 0) delete K.cargo[B.ore];
@@ -312,7 +312,7 @@ export function hire(a, K, t, st, r) {
     if (typeof H !== 'object' || !H.wage) continue;
     if (!room(K, `hire:${id}`) || !hireAt(t, H)) continue;
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
-    if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
+    if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve, a)) continue;
     K.gold = gold(K.gold - toTown(t, cost));
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
     K.members.push(m);
@@ -326,7 +326,7 @@ export function companion(a, K, t, st, r) {
   const C = COMPANIONS;
   if (!room(K, 'joined') || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
   const charm = Math.max(...free(K).map(m => m.special?.C ?? NORM)), gratis = charm >= C.freeAt;
-  if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
+  if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve, a)) return null;
   // of the town's people, or of a minor people living near (as their homes favour the land)
   const minor = r() < C.minor ? C.minorRaces[(r() * C.minorRaces.length) | 0] : null;
   const race = minor || WORLD_PEOPLES.get(t.people).race;
