@@ -51,8 +51,6 @@ SEASONS.registerAll([
 const LIST = SEASONS.all();
 const DAY_TICKS = 1200;   // core/time.js DAY; kept here so this table does not import the clock
 export const YEAR_DAYS = LIST.length * SEASON_DAYS;
-// the four seasons as start choices for the menu (data/presets.js START)
-export const SEASON_IDS = LIST.map(s => s.id);
 
 // calendar day of a tick: the game's age plus the day the game began on (fractional: days + hours)
 export const calendarDay = (w, tick = w.tick) => tick / DAY_TICKS + (w.calendar?.startDay || 0);
@@ -74,8 +72,6 @@ export function season(w) {
   });
 }
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
-export const seasonDay = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS + 1;
-export const yearOf = (w, tick) => Math.floor(calendarDay(w, tick) / YEAR_DAYS) + 1;
 export const daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) % SEASON_DAYS;
 // the first day of a season (for «a new season begins» once a day)
 export const seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;

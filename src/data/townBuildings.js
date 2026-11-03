@@ -61,8 +61,6 @@
 //   off (atlas/lairs.js).
 //   site          stands outside the town, in a cell of its own within the town's reach (data/sites.js,
 //                 atlas/sites.js): fields, pastures, mines, quarries; its place needs hold at that cell
-//   kin           the kind of a people of many kinds it is the own building of (data/peoples.js `kin`: the warg den — the
-//                 orcs'): the town must hold that kind at KIN.least of its people (atlas/towns.js canBuild)
 //   local         the building of the local map it stands for (data/buildings.js id), if there is one;
 //                 the rest exist only on the world map for now
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)

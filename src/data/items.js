@@ -111,5 +111,4 @@ export function rebuildItems() {
   }
 }
 
-export const isHandItem = def => def.slot === 'hand';
 export const isWeapon = def => !!(def.melee || def.ranged);

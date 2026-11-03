@@ -79,4 +79,3 @@ export function grazeCodes(list) {
   if (!s) { s = new Set([...list.map(id => TERRAIN.get(id).code), ...BY_CODE.filter(d => d.graze >= 0.5).map(d => d.code)]); GRAZE_SETS.set(key, s); }
   return s;
 }
-export const isGround = code => BY_CODE[code].kind === 'ground';

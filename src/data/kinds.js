@@ -47,8 +47,6 @@ export const FAMILIES = {
   stone: {label: 'камень', resource: 'stone', members: () => STONES.ids()},
   metal: {label: 'металл', resource: null, members: () => ['bronze', 'iron', 'steel', 'silverBar', 'mithrilOre']},
 };
-// the member of a family by id, from any family
-export const familyOf = member => Object.keys(FAMILIES).find(f => FAMILIES[f].members().includes(member)) || null;
 
 // What a race may do with a material (data/races.js ids × members of the families):
 //   yes     — anything (the default)

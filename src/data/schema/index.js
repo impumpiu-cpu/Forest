@@ -351,7 +351,6 @@ export const TABLES = [
       col('wants', 'Свои нужды', 'json', {note: '{basic, comfort}: свои нужды на голову в год сверх общих; 0 — не хочет вовсе (зеленокожие: оружие — нужда, роскоши не хотят)'}),
       col('eatsRaw', 'Ест сырым', 'ids', {ref: 'townGoods', note: 'сырая еда, которую народ ест как есть: кормит, как готовая (эльфы — овощи и плоды)'}),
       col('swaps', 'Замены благ', 'json', {note: 'благо, которого постройки народа не берут, и чем заменяют: {metal: {to: \'wood\', k: 3}}'}),
-      col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
   {id: 'polities', label: 'Уклады', group: 'Народы', key: 'id', rows: () => POLITIES.all().map(p => ({...p, lairs: p.lairs ? 'логова' : 'держава народа'})), target: (r, c) => [POLITIES.get(r.id), c.key],   // (the rows are copies with `lairs` in words: an edit goes to the uklad itself)
@@ -434,7 +433,7 @@ export const TABLES = [
     columns: [
       col('id', 'id'), col('what', 'Что', 'text', {edit: false}), col('label', 'Название'), col('use', 'Для чего'), col('cells', 'Мест', 'int', {min: 0}), col('boxes', 'Ящиков', 'int', {min: 0}),
       col('pulls', 'Тянет', 'num', {min: 0}), col('tool', 'Нужен металл', 'int', {min: 0}), col('logs', 'Брёвен', 'int', {min: 0}), col('days', 'Дней на сборку', 'int', {min: 0}),
-      col('pull', 'Кто тянет'), col('haul', 'Темп ×', 'num', {min: 0}), col('building', 'Везёт построек', 'int', {min: 0}),
+      col('pull', 'Кто тянет'), col('haul', 'Темп ×', 'num', {min: 0}),
     ]},
 
   // ── Мир
@@ -557,7 +556,7 @@ TABLES.push(
     note: 'Пешка → офицер → босс (data/ranks.js). Банда из least и больше разумных бойцов с вещами делится на звенья по size голов; сильнейший в звене — офицер: метка «офицер» в «Состояниях» (здоровье, стоит до смерти), вещи на quality ступеней качества лучше. Пока офицер стоит, его звено не бежит, пока здоровье выше hurt, и держит дух банды (rally × доля звеньев с офицером); павший офицер сразу отнимает loss × долю своего звена. camp — в бою на стоянке похода, settlement — в набегах на поселение. Названия рангов — у банды («Отряды налётчиков», ranks).'},
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
-    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
+    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'home', 'align', 'values', 'mods', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
   // Цены и бой
   {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены вещей (items: труд мастера, надбавка за защиту, редкость материала, округление), похода, услуг, торговли и качества (data/balance/prices.js ITEMS, CAMPAIGN, SERVICES, TRADE, QUALITY); правка пересобирает «Предметы (итог)». Цены ресурсов — в «Ценах ресурсов».',
     ...grp({items: PRICES.ITEMS, campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY}), after: rebuildItems},

@@ -15,7 +15,6 @@ import {bodyFor} from './balance/creatures.js';
 export const GOLEM_METALS = ['bronze', 'iron', 'steel', 'mithril'];
 // the species of a golem of a metal
 export const golemOf = metal => `${metal}golem`;
-export const isGolem = sp => !!sp?.mechanism;
 
 const LOOK = {bronze: '#b8823e', iron: '#7c8288', steel: '#aab4bc', mithril: '#cfe3ee'};
 const WORDS = {

@@ -11,7 +11,7 @@
 //          indicator), scope — where it is read: 'town' (the town itself), 'realm' (any town of the realm), or either
 //   OPS:   = · != · > · >= · < · <= · in (the value a list) · not-in
 //
-// The old fields of the buildings' rows (data/townBuildings.js `peoples`, `kin`, `requires`, `requiresAny`, `here`, `tier`,
+// The old fields of the buildings' rows (data/townBuildings.js `peoples`, `requires`, `requiresAny`, `here`, `tier`,
 // `pop`, `capital`, `needs`, `needsAny`, a recipe's `req`) are read as requirements by needsOf (below): the rows keep their
 // short form, the checker sees one shape. A row may also carry `need` — a requirement written out for its building — and
 // `workNeed` — for its running; a recipe's `need` is for its running.
@@ -72,11 +72,10 @@ const keptOf = (x, slot, of, make) => {
   const v = make(x); e[slot] = {v, of};
   return v;
 };
-export const needsOf = b => keptOf(b, 'needs', [b.peoples, b.kin, b.requires, b.requiresAny, b.here, b.capital, b.pop, b.needs, b.needsAny, b.need, b.id], makeNeeds);
+export const needsOf = b => keptOf(b, 'needs', [b.peoples, b.requires, b.requiresAny, b.here, b.capital, b.pop, b.needs, b.needsAny, b.need, b.id], makeNeeds);
 function makeNeeds(b) {
   const out = [];
   if (b.peoples) out.push(C('people', 'in', b.peoples));
-  if (b.kin) out.push(C('kinShare', b.kin, '>=', KIN.least));   // (the old threshold, kept by the old requirement until it is tuned by hand)
   if (b.requires) out.push(...b.requires.map(id => C('built', id, '=', true, 'realm')));
   if (b.requiresAny) out.push(ANY(b.requiresAny.map(id => C('built', id, '=', true, 'realm'))));
   // in the town itself: a harbour — its own pier; an annex — its host; a tier — what it is built in place of, or a unit of itself
