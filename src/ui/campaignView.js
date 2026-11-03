@@ -28,8 +28,6 @@ import {$, seg, press} from './dom.js';
 import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
-import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
-import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../campaign/stats.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
@@ -41,18 +39,16 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
-import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../atlas/calamity.js';
 import {RESOURCES} from '../data/resources.js';
-import {CAMP_KINDS, WALK_PHASES} from '../data/labels.js';
+import {WALK_PHASES} from '../data/labels.js';
+import {campLocal, WATCH} from './campLocal.js';
+import {campStats} from './campStats.js';
 const phaseWord = p => WALK_PHASES[p]?.label || p;
 const itemShort = id => gearDef(id)?.short ?? id;
 
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame
-// the camps watched on the local map by the pace (core/clock.js PACE): at the observer's pace the day stops too, at
-// `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
-const WATCH = {watch: {stops: true}, x4: {}, x16: {}};
 // the layers of the campaign's map: these of the «Мир» map's (ui/atlasView.js ATLAS_OPTS)
 const CAMP_LAYERS = ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rot'];
 const LAYERS = () => CAMP_LAYERS.map(id => ATLAS_OPTS.layer.find(([k]) => k === id)).filter(Boolean);
@@ -68,7 +64,7 @@ function epicProgress(a, sec) {
 function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.campTopics') || '[]')); } catch (e) { return new Set(); } }
 function saveHidden(set) { try { localStorage.setItem('forest.campTopics', JSON.stringify([...set])); } catch (e) { /* storage unavailable */ } }
 
-export class CampaignView extends MapView {
+export class CampaignView extends campStats(campLocal(MapView)) {
   setup({onBack} = {}) { this.onBack = onBack; }   // («← Главное меню»: app/main.js)
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
@@ -328,66 +324,6 @@ export class CampaignView extends MapView {
     this.raf = requestAnimationFrame(loop);
   }
 
-  // ── a camp on the local map: played again from its setup over the world map, then the season goes on
-  startLocal(c) {
-    let w;
-    try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
-    this.clock.hold(c.at);   // the season waits while the camp is watched, at the camp's own day
-    this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.localPace(this.clock.pace, c);
-    this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
-    $('campLocal').hidden = false; $('campLocalBar').hidden = false;
-    this.localR.setup(w);
-    this.localText();
-  }
-  // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
-  localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
-  localText() {
-    const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
-    $('campLocalText').innerHTML = `<b>${CAMP_KINDS[c.kind] || CAMP_KINDS.stop}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
-  }
-  stepLocal() {
-    const L = this.local, w = L.w, per = this.ticks.ticks(performance.now());
-    if (!this.ticks.paused) {
-      if (!campDone(w)) { for (let k = 0; k < per && !campDone(w); k++) stepCamp(w); }
-      else if (!L.done) L.done = performance.now();
-      else if (performance.now() - L.done > 1500) { this.endLocal(); return; }
-    }
-    this.localR.draw(w, L.view);
-    if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
-    if (L.view.selected && (L.frames = (L.frames || 0) + 1) % 15 === 0) this.localCard();   // the creature's card follows it
-  }
-  // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
-  pickLocal(e) {
-    const L = this.local; if (!L) return;
-    const r = $('campLocal').getBoundingClientRect(), [fx, fy] = this.localR.toCell(e.clientX - r.left, e.clientY - r.top), w = L.w;
-    let best = null, bd = 0.9;
-    for (const a of w.agents) { if (a.dead) continue; const d = Math.hypot(a.x - fx, a.y - fy); if (d < bd) { bd = d; best = a; } }
-    const i = (fy | 0) * w.w + (fx | 0);
-    L.view.selected = best; L.view.selBld = null; L.view.selCell = null;
-    if (!best) { const b = w.buildings.find(b => b.cells?.includes(i)); if (b) L.view.selBld = b.id; else if (i >= 0 && i < w.w * w.h) L.view.selCell = i; }
-    this.localCard(true);
-    if (this.ids?.dock) openTab($(this.ids.dock), 'object');
-  }
-  localCard(force = false) {
-    const L = this.local, w = L?.w, box = $('campInspect');
-    if (!L) return;
-    const a = L.view.selected;
-    if (a && (a.dead || !w.agents.includes(a))) { L.view.selected = null; box.innerHTML = '<p class="muted">Его больше нет на карте.</p>'; return; }
-    if (!force && !a) return;   // a building or a cell does not change by the tick
-    if (a) box.innerHTML = `<div class="pc">${a.diary && a.likes ? personHtml(w, a) : creatureHtml(w, a)}</div>`;
-    else if (L.view.selBld != null) { const b = w.buildings.find(b => b.id === L.view.selBld); box.innerHTML = b ? `<div class="pc">${buildingHtml(w, b)}</div>` : ''; }
-    else if (L.view.selCell != null) box.innerHTML = `<div class="pc">${cellHtml(w, L.view.selCell)}</div>`;
-  }
-  endLocal() {
-    const L = this.local; if (!L) return;
-    this.local = null;
-    if (L.view.selected || L.view.selBld != null || L.view.selCell != null) this.renderInspect();   // the world's card again
-    $('campLocal').hidden = true; $('campLocalBar').hidden = true;
-    // the season's playback goes on from where it stopped
-    this.clock.release(); this.syncRun();
-    this.animate();
-  }
-
   // where the caravan is at this moment of the playback
   caravanAt() {
     const K = this.atlas.campaign, T = K.track;
@@ -476,31 +412,6 @@ export class CampaignView extends MapView {
     }
   }
 
-  // the fights of the walk (campaign/stats.js) in the dock: the totals, the years as bars, the named fights, the people
-  renderFights() {
-    const K = this.atlas?.campaign, box = $('campFights'); if (!box) return;
-    if (!K?.fights?.length) { box.innerHTML = '<p class="muted">Боёв ещё не было.</p>'; return; }
-    const S = fightStats(K), T = S.total, n = x => (x == null ? '—' : x), sp = id => (SPECIES.has(id) ? SPECIES.get(id).label : id);
-    const maxF = Math.max(1, ...S.byYear.map(y => y.fights));
-    const bars = S.byYear.map(y => `<div class="yb" title="год ${y.year}: боёв ${y.fights}, выиграно ${y.won}, врагов ${y.foes}, убито ${y.killed}, бежали ${y.fled}, наша/их сила ${y.ratio || '—'}, пали наши ${y.fell}, именных ${y.named}"><i style="height:${Math.round(y.fights / maxF * 56)}px"></i><i class="k" style="height:${Math.round(y.killed / Math.max(1, Math.max(...S.byYear.map(z => z.foes))) * 56)}px"></i><small>${y.year}</small></div>`).join('');
-    const named = S.named.length ? `<table><tr><th>День</th><th class="t">Кто</th><th>Свита</th><th class="t">Босс</th><th>Убито</th><th>Бежали</th><th>Сила</th><th class="t">Исход</th></tr>${S.named.map(f =>
-      `<tr><td>${f.day}</td><td class="t boss">${esc(f.boss.name)} (${esc(sp(f.boss.species))}${f.boss.mustDie ? ', четвёртый' : ''}) — ${HOWS[f.how] || f.how}</td><td>${n(f.guards)}<br><small>${esc(groupText(f.species))}</small></td><td class="t">${FATES[f.boss.fate]}${f.boss.hp != null && f.boss.fate !== 'dead' ? `, ${Math.round(f.boss.hp * 100)}%` : ''}</td><td>${n(f.killed)}</td><td>${n(f.fled)}</td><td>${f.ratio ? f.ratio.toFixed(1) : '—'}</td><td class="t ${f.won ? 'won' : 'lost'}">${f.won ? 'победа' : 'отбиты'}${f.fell.length ? `; пали ${esc(f.fell.join(', '))}` : ''}${f.hurt.length ? `; ранены ${esc(f.hurt.join(', '))}` : ''}</td></tr>`).join('')}</table>` : '<p class="muted">Именных боёв ещё не было: стражи могил, главари логов и четвёртый — впереди.</p>';
-    box.innerHTML = `<div><h4>Поход</h4><p>Боёв ${T.fights}, выиграно ${T.won}, засад ${T.ambushes}, штурмов ${T.storms}, именных ${T.named}. Врагов пришло ${T.foes} — в среднем ${T.foesAvg} на бой против ${T.fighters} наших; убито ${T.killed}, бежали ${T.fled}, в плен ${T.taken}. Наша сила к их силе — в среднем ${T.ratio}. Пали наши ${T.fell}, ранены ${T.hurt} раз.</p>
-      <h4>По родам врага</h4><table><tr><th class="t">Враг</th><th>Боёв</th><th>Выиграно</th><th>Их в бою</th><th>Убито</th><th>Бежали</th><th>Сила</th></tr>${S.byKind.map(k => `<tr><td class="t">${esc(k.label)}</td><td>${k.fights}</td><td>${k.won}</td><td>${k.foes}</td><td>${k.killed}</td><td>${k.fled}</td><td>${k.ratio || '—'}</td></tr>`).join('')}</table></div>
-      <div><h4>По годам похода</h4><div class="ybars">${bars}</div><small class="muted">оранжевое — боёв в год, зелёное — убито врагов; наведите на год</small>
-      <h4>По людям</h4><table><tr><th class="t">Кто</th><th>Боёв</th><th>Убил</th><th>Ранен</th></tr>${S.byMember.slice(0, 16).map(m => `<tr><td class="t">${esc(m.name)}${m.alive === false ? ' †' : ''}</td><td>${m.fights}</td><td>${m.kills}</td><td>${m.hurt}</td></tr>`).join('')}</table></div>
-      <div class="wide"><h4>Именные бои</h4>${named}<div class="row actions"><button type="button" class="quiet mini" id="campFightsFile">Бои в файл</button></div></div>`;
-    $('campFightsFile').addEventListener('click', () => offerText(latinTitle(`boi-${K.capitalName}-${K.started?.year ?? ''}`), fightReportText(this.atlas, K)));
-  }
-
-  // the walk summed up (campaign/stats.js walkStats) in the dock's «Итоги»: live while it goes, the whole of it at the end
-  renderSummary() {
-    const K = this.atlas?.campaign, box = $('campSummary'); if (!box) return;
-    if (!K) { box.innerHTML = '<p class="muted">Итоги начнут собираться, когда караван выступит.</p>'; return; }
-    box.innerHTML = walkStats(this.atlas, K).map(S => `<div><h4>${esc(S.title)}</h4><dl class="sum">${S.rows.map(([l, x]) => `<dt>${esc(l)}</dt><dd>${esc(String(x))}</dd>`).join('')}</dl></div>`).join('') +
-      `<div class="wide"><div class="row actions"><button type="button" class="quiet mini" id="campSummaryFile">Итоги в файл</button></div></div>`;
-    $('campSummaryFile').addEventListener('click', () => offerText(latinTitle(`itogi-${K.capitalName}-${K.started?.year ?? ''}`), walkReportText(this.atlas, K)));
-  }
 
   renderSide() {
     this.renderFights(); this.renderSummary();

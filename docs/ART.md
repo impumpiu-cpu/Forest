@@ -92,5 +92,5 @@
 - `src/art/**/*.svg` — источники; `src/art/sprites.js` — из них (не править).
 - `tools/art-build.mjs` — сборка; `tools/art-check.mjs` — проверка (в `npm test`).
 - `src/render/skin.js` — переключатель; `src/render/art/` — художники: `sprite.js` (рисунок и кеш), `pawn.js`, `beasts.js`, `buildings.js`, `world.js`; `index.js` — что рисует каждая карта; `coverage.js` — сколько игры уже с картинкой (art-check, витрина); `showcase.js` — что показывает витрина.
-- Прежние значки остались на месте в `render/renderer.js`, `ui/atlasView.js`, `ui/campaignView.js`; перед каждым стоит вызов художника картинок.
+- Прежние значки остались на месте в `render/renderer.js`, `ui/atlasOverlays.js`, `ui/campaignView.js`; перед каждым стоит вызов художника картинок.
 - `gallery.html`, `src/app/gallery.js` — витрина: живая локальная карта и все картинки по размерам.
