@@ -14,6 +14,15 @@ export const LEVELS = [
   {id: 'minor', label: 'мелкое'},
 ];
 
+import {TIERS, CAPITAL} from './peoples.js';
+import {onEdit} from './schema/layer.js';
+
+// a band set out on a town: «… на <the town's word in the accusative>» — every people's word of every step and of the
+// crowned seat (data/peoples.js TIERS, CAPITAL `label`), made again after an edit of the tables
+let marchKept = null;
+onEdit(() => { marchKept = null; });
+const marchRe = () => marchKept || (marchKept = new RegExp(`двинулись на|^[^:]* на (${[...new Set([...TIERS, CAPITAL].flatMap(T => Object.values(T.label).map(l => l[1])))].join('|')}) `));
+
 export const LEVEL_RULES = [
   // major
   {level: 'major', re: /^Началась /},
@@ -33,7 +42,7 @@ export const LEVEL_RULES = [
   {level: 'minor', re: /схватились .* и отогнали/},
   {level: 'minor', re: /^Протоптали дорог|проложили морской путь/},
   {level: 'minor', re: /осели .*: каждый десятый/},
-  {level: 'minor', re: /двинулись на|^[^:]* на (деревню|село|селение|посёлок|хутор|город|крепость|заставу|чертог|ставку|становище|стойбище|твердыню|столицу) /},
+  {level: 'minor', get re() { return marchRe(); }},   // (a band set out on a town: its words from data/peoples.js)
   {level: 'minor', re: /появил(ся|ась|ось|ись) [^:]*\.$/},
   {level: 'minor', re: /живёт привозным хлебом/},
   {level: 'minor', re: /^(Год изобилия|Тяжёлые годы)/},
