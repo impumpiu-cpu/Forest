@@ -56,8 +56,8 @@
 
 - Тела: `coat` (шуба), `jerkin` (куртка), `plate` (любая латная), `lamellar`, `scale`, `mail`, `wicker` (узор лат), `heavy` (наплечники от железа и выше).
 - Звери: `up` (стоит), `rest` (лежит, спит), `tame` (ручной).
-- Постройки: `done` (готова), `build` (строится), `lit` (работает: дым, огонь), `ruin`.
-- Города: `walls`, `stone` (каменные стены), `port`, `capital`.
+- Постройки: `done` (готова), `build` (строится). `lit` (работает: дым, огонь) и `ruin` — заготовлены, игра их пока не даёт.
+- Города: `walls`, `stone` (каменные стены), `port`. Столица — не флаг: над городом ставится отдельный значок `map/crown`.
 
 ### Точки — `data-anchor`
 
@@ -78,7 +78,7 @@
 | `marks/` | `alarm`, `anger`, `sleep`, `token` | штрихи состояния у головы; подложка жетона |
 | `beasts/` | `<look.shape>.svg` | звери и чудовища (`look.shape` вида) |
 | `buildings/` | `<id постройки>.svg` | постройки локальной карты |
-| `towns/` | `<народ>-<ступень>.svg` (`humans-2`) | города мира |
+| `towns/` | `<народ>-<ступень>.svg` (`humans-2`; id народов — `elves`, `dwarves`, `humans`, `orcs` — Зеленокожие) | города мира |
 | `parties/`, `lairs/`, `map/` | см. витрину | отряды, логова, прочие знаки карты мира |
 
 ## Пешки
@@ -91,6 +91,6 @@
 
 - `src/art/**/*.svg` — источники; `src/art/sprites.js` — из них (не править).
 - `tools/art-build.mjs` — сборка; `tools/art-check.mjs` — проверка (в `npm test`).
-- `src/render/skin.js` — переключатель; `src/render/art/` — художники: `sprite.js` (рисунок и кеш), `pawn.js`, `beasts.js`, `buildings.js`, `world.js`; `index.js` — что рисует каждая карта.
+- `src/render/skin.js` — переключатель; `src/render/art/` — художники: `sprite.js` (рисунок и кеш), `pawn.js`, `beasts.js`, `buildings.js`, `world.js`; `index.js` — что рисует каждая карта; `coverage.js` — сколько игры уже с картинкой (art-check, витрина); `showcase.js` — что показывает витрина.
 - Прежние значки остались на месте в `render/renderer.js`, `ui/atlasView.js`, `ui/campaignView.js`; перед каждым стоит вызов художника картинок.
 - `gallery.html`, `src/app/gallery.js` — витрина: живая локальная карта и все картинки по размерам.
