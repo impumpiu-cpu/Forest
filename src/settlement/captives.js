@@ -33,7 +33,6 @@ import {setStanding} from '../agents/standing.js';
 import {raceFrees} from '../data/slavery.js';
 import {colonyRace} from '../data/buildings.js';
 
-export const isCaptive = a => !!a?.captive;
 export const captives = w => colonists(w).filter(a => a.captive && !a.dead);
 
 // can the colony take one more: bonds in the stock and room for a captive

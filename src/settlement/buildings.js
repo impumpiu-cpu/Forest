@@ -1,6 +1,5 @@
 // Construction: picking a lot, laying a site, finishing it, losing it to fire.
 import {BUILDINGS, colonyPeople} from '../data/buildings.js';
-import {RESOURCES} from '../data/resources.js';
 import {T, OPEN} from '../data/terrain.js';
 import {log} from '../core/log.js';
 import {walkable, isCampArea} from '../world/grid.js';
@@ -174,4 +173,3 @@ export function burnBuilding(w, id) {
   log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`, 'build', 'alert');
 }
 
-export const resLabel = id => RESOURCES.get(id).label;

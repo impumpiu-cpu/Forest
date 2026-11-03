@@ -12,7 +12,6 @@ import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
-import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
 import {room, setPlace} from './company.js';
 import {DAY} from '../core/time.js';
@@ -78,8 +77,6 @@ export function unbind(K, m) {
   const B = BONDS.has(m.captive?.bonds) ? BONDS.get(m.captive.bonds) : null;
   if (B?.back) K.cargo[B.resource] = (K.cargo[B.resource] || 0) + B.n;
 }
-
-export const captivesLine = K => { const n = held(K).length; return n ? `${n} ${plural(n, 'пленный', 'пленных', 'пленных')}` : ''; };
 
 // ── stage 2 (docs/CAPTIVES.md; numbers: data/captives.js ESCAPE): the ration, the will, the evening rolls, the
 // night escape, the red alarm of a fight. On the local map the camp plays the alarm itself (settlement/escape.js)

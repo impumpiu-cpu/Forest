@@ -30,7 +30,7 @@ import {sceneLosses} from '../atlas/army.js';
 import {goHome} from '../atlas/parties.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
-import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
+import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf} from './baggage.js';
 import {draw} from './start.js';
 import {fight, playStop} from './fight.js';
 import {brewDay, mendDay, brewTheDay, wearOff} from './potions.js';
@@ -54,7 +54,6 @@ import {livingLeaders} from '../atlas/leaders.js';
 import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
 import {LEADER, TRIBE_RAID, LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
-const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);

@@ -23,7 +23,7 @@ import {refreshBody} from '../agents/special.js';
 import {attackerOf, sneakSeen, darkness} from '../agents/combat.js';
 import {wake} from '../agents/attention.js';
 import {sideStrength, expectedStrength} from '../agents/strength.js';
-import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
+import {dress, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {makeGolem} from '../agents/golem.js';
 import {putUp} from '../settlement/buildings.js';

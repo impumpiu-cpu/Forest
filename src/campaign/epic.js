@@ -74,7 +74,6 @@ export function makeEpicQuest(a, K, rnd) {
   if (!cells.length || !hint) return null;
   // a fourth (or a calamity of the hand) still alive from a caravan before (lost, or out of its years): the new caravan goes after the same
   let old = a.calamities.find(c => (c.era === 'after' || c.quest) && c.phase !== 'fallen');
-  const diag = Math.hypot(a.w, a.h);
   // the seat: the farthest the caravan can walk to, at least EPIC.far of the diagonal if any is
   const S = seats(a).map(i => ({i, at: foot(a, mask, i, 4)})).filter(s => s.at >= 0).sort((p, q) => dist(a, K.home, q.at) - dist(a, K.home, p.at));
   const seat = S[0] || {i: cells.reduce((b, c) => (dist(a, K.home, c) > dist(a, K.home, b) ? c : b), K.home)};
@@ -192,7 +191,6 @@ function darken(a, K, Q, c4, step, say) {
     const line = `Слуги ${c4.boss.title[1].toLowerCase()} ${c4.boss.name} рыщут по всему краю${t ? ` и сожгли окраины ${townLabel(t, 2)} ${t.name}` : ''}: все ближние логова вышли на след каравана.`;
     say(line, 'quest', false); tellWorld(a, line, c4);
   }
-  void K;
 }
 
 // ── the storm of the lair won: the boss is dead, the artifact is the caravan's (campaign/quest.js takeCrown)

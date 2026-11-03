@@ -24,7 +24,6 @@ import {LAIRS} from '../data/lairs.js';
 import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {BUBBLE} from '../data/bubble.js';
-import {REALM_BANDS} from '../data/seam.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';

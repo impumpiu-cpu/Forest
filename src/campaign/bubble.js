@@ -22,7 +22,6 @@ import {GAME, FOES} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
 import {cultPool} from '../atlas/necro.js';
 import {personsAt, personLabel} from '../atlas/persons.js';
-import {REALM_BANDS} from '../data/seam.js';
 import {dist} from '../core/util.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});

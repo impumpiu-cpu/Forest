@@ -21,10 +21,9 @@ import {colonists, foodTotal, openSites, jobUnlocked, favourites, has, count} fr
 import {waiting} from './healing.js';
 import {stationHasWork} from './crafting.js';
 import {goalNeed} from './council.js';
-import {campFuel} from './stock.js';
 import {RESOURCES} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
-import {skillOf, jobAccess, canDoAction} from '../agents/skills.js';
+import {skillOf, jobAccess} from '../agents/skills.js';
 import {dayOf} from '../core/time.js';
 import {season, snowy} from '../data/seasons.js';
 import {log} from '../core/log.js';
