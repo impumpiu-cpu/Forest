@@ -60,7 +60,8 @@ import {ITEMS} from '../src/data/items.js';
 import {TRADE} from '../src/data/trade.js';
 import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../src/settlement/trade.js';
 import {JOBS, huntable} from '../src/data/jobs.js';
-import {canTame} from '../src/settlement/herd.js';
+import {canTame, makeTame, stepHerd, herd} from '../src/settlement/herd.js';
+import {season as seasonOf, daysLeftInSeason, SEASON_DAYS} from '../src/data/seasons.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
 import {stepAttention} from '../src/agents/attention.js';
@@ -2099,6 +2100,18 @@ check('T143', 'клеймо входит в цену и в коэффициен�
   a.equip.right = newItem('sword', {mark: 'dwarf'}); recalcGear(a); const s1 = strengthOf(a);
   if (!(s1 > s0)) return `КС: простой меч ${s0.toFixed(1)}, дварфийский ${s1.toFixed(1)}`;
   return itemPrice('sword', 0, false, 'dwarf') > itemPrice('sword') || 'клеймо не дороже простого';
+});
+
+check('T144', 'стадо — не только козы: зимний забой без сена оставляет пару овец и пару коз, мула забивают последним', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  human(w); w.stock.hay = 0; w.stock.meat = 50;
+  const herdOf = sp => herd(w).filter(a => a.species === sp).length;
+  for (const [sp, n] of [['sheep', 4], ['goat', 3], ['mule', 1]]) for (let k = 0; k < n; k++) { const b = put(w, sp, 'wild', 20.5 + k, 20.5); makeTame(w, b, null, true); b.age = 100 + k; }
+  // the first morning of winter: the cull is planned for the whole season
+  let d = 0;
+  for (; d < 400; d++) { w.tick = d * DAY + 6 * HOUR; w.scratch = {}; if (seasonOf(w).lean && daysLeftInSeason(w) > SEASON_DAYS - 1) break; }
+  stepHerd(w);
+  return (herdOf('sheep') === 2 && herdOf('goat') === 2 && herdOf('mule') === 0) || `осталось: овец ${herdOf('sheep')}, коз ${herdOf('goat')}, мулов ${herdOf('mule')}`;
 });
 
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }

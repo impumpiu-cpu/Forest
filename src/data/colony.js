@@ -46,10 +46,9 @@ export const HERD = {
   hungryDays: 3,            // days in a row with less than starveBelow of its food before it breaks out
   starveBelow: 0.55,
   reach: 75,                // how far from the camp the herder goes for a wild one
-  slaughterBelow: 1.5,      // food per colonist below which a goat is slaughtered…
-  keepGoats: 2,             // …as long as this many are left
+  slaughterBelow: 1.5,      // food per colonist below which the youngest of a breeding kind is slaughtered
   meatBelow: 4,            // regular slaughter of grown surplus livestock below this food per colonist
-  breeders: 2,             // keep this many grown, breeding animals of each kind
+  breeders: 2,             // breeders kept of a kind whose tame block names no `keep` (data/species.js)
 };
 
 export const THREAT = {

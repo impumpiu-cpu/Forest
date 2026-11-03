@@ -173,10 +173,12 @@ SPECIES.registerAll([
     //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
     //   milk:   portions a day while fed (little in winter);  wool: fleece sheared once it has grown back
     //   breed:  chance a day for a kid while there are two of them, room in the pen and it is not winter
+    //   keep:   breeders the pen keeps whatever happens (the winter cull, the famine, the slaughter of the surplus);
+    //   young, youngAcc: the young one, as the pen's line and the log call it
     //   kicks:  a failed try ends with a kick;  max: no more of them are tamed (the colony has no use for more)
 //   effects: work it does for the colony (settlement/mods.js),
     //   counted for up to `stack` animals;  names: what the herders call them
-    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
+    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20, keep: 2, young: 'козлёнок', youngAcc: 'козлёнка',
       names: petNames('goat'),
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ].map(sp => bodyFor({mind: 'beast', relativeStats: true, ...sp})));

@@ -18,7 +18,7 @@ import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
 import {season} from '../data/seasons.js';
 import {moodOf} from '../agents/mind.js';
-import {penRoom, herd} from './herd.js';
+import {penRoom, herd, isTameable} from './herd.js';
 import {councilRoster} from './plan.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {COUNCIL} from '../data/colony.js';
@@ -85,7 +85,7 @@ function councilCtx(w, cands) {
     // wounded by each one's own measure: a giant's 1.0 is not a human's 1.0
     wounded: colonists(w).filter(a => hpShare(a) < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
-    wildHerd: w.agents.filter(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null).length,
+    wildHerd: w.agents.filter(isTameable).length,
     herdFull: herd(w).length > 0 && penRoom(w) < 1,
     gloomy: colonists(w).filter(a => moodOf(w, a) < -0.2).length / Math.max(1, colonists(w).length),
     graves: (w.graves || []).length + (w.corpses || []).length,
