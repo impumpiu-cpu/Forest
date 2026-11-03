@@ -27,6 +27,7 @@ import {BUBBLE} from '../data/bubble.js';
 import {YEAR_DAYS} from '../data/seasons.js';
 import {lairFoe} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
+import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
 import {cellDist, weighted} from '../core/util.js';
 
@@ -257,9 +258,10 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
   const C = Q.crown, here = [...Q.clues.filter(c => !c.found && c.seen), ...(C.state !== 'carried' && (C.seen || C.exact) ? [C] : [])].find(p => p.i === K.i && !(p.rest > K.day));   // (a place left for a while is not stormed meanwhile)
   if (!here) return false;
   if (here.guard) {
-    const ms = K.members.filter(m => m.alive), hp = ms.reduce((s, m) => s + m.hp, 0) / Math.max(1, ms.length);
+    // (the company's health: the free only — a captive's wounds hold no storm back, as nowhere else: campaign/captives.js)
+    const fs = free(K), hp = fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
-    if (ms.filter(m => !m.captive).length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
+    if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
     // beaten back once, the council does not send the same company against the same guards: it comes back stronger
     // than the one that lost (QUEST.stronger) — or, not grown so in time, leaves the place for a while
     if (here.lost && might < here.lost.might * QUEST.stronger) {
