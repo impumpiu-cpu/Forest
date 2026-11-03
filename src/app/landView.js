@@ -23,11 +23,11 @@ import {Camera} from '../render/camera.js';
 import {seedNumber} from '../core/rng.js';
 import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
+import {STAGE_ERAS} from '../data/labels.js';
 
 const STORE = 'forest.land';
 const LAYERS = ATLAS_OPTS.layer.filter(([id]) => !['fauna', 'wild', 'rot', 'peoples', 'realms'].includes(id));
 const TOOLS = [['look', 'Смотреть'], ['plate', 'Плиты'], ['raise', 'Поднять'], ['lower', 'Опустить']];
-const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 // the compass of the plate card: screen directions (y grows down the map)
 const DIRS = [['↖', -1, -1], ['↑', 0, -1], ['↗', 1, -1], ['←', -1, 0], ['·', 0, 0], ['→', 1, 0], ['↙', -1, 1], ['↓', 0, 1], ['↘', 1, 1]];
 const WORDS = ['на восток', 'на юго-восток', 'на юг', 'на юго-запад', 'на запад', 'на северо-запад', 'на север', 'на северо-восток'];
@@ -275,7 +275,7 @@ export class LandView extends MapView {
       (a.f.land ? `<dt>Суша</dt><dd>${Math.round(land / a.n * 100)}%</dd>` : '') +
       (a.lakes ? `<dt>Озёра</dt><dd>${a.lakes.length}</dd>` : '') +
       `<dt>Правки</dt><dd>${n ? `${n} ${plural(n, 'правка', 'правки', 'правок')}` : 'нет'}</dd>`;
-    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${esc(ERA[c.era] || c.era)}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${esc(STAGE_ERAS[c.era] || c.era)}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
   }
 
   // ── the library: only lands here (the worlds are the polygon's and the campaign's)

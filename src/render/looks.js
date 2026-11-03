@@ -1,5 +1,6 @@
 import {ITEMS} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
+import {TRADE} from '../data/trade.js';
 
 // How creatures are drawn. A species names its look in data/species.js (look.shape);
 // a new shape is one more painter here.
@@ -138,7 +139,7 @@ export const LOOKS = {
   // filled to how much of its load is left
   mule(ctx, a, px, py, r, color) {
     if (a.owner != null) {
-      const cap = 20, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
+      const cap = TRADE.crates * TRADE.crate, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
       for (const side of [-1, 1]) {
         const x = px + side * (r + s * 0.55) - s / 2, y = py - s / 2;
         ctx.fillStyle = '#3b2a17'; ctx.fillRect(x, y, s, s);

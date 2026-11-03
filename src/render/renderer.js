@@ -20,7 +20,8 @@ import {season, seasonTint, snowy} from '../data/seasons.js';
 import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
-const PLANTS_TINT = PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
+// the plants' tints of the ground (data/plants.js), read at each paint: the tables' edits are seen at once
+const plantsTint = () => PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
 
 // fertility 0…1: pale clay → loam → dark humus with a green cast
 const FSTOPS = [[0, 186, 150, 120], [0.3, 176, 130, 80], [0.5, 196, 176, 70], [0.7, 120, 168, 60], [0.85, 50, 130, 50], [1, 20, 90, 40]];
@@ -96,7 +97,7 @@ export class Renderer {
     const shoreOf = (g, i, W, H) => { const x = i % W, y = (i / W) | 0; return (x > 0 && !isWater(g.terr[i - 1])) || (x < W - 1 && !isWater(g.terr[i + 1])) || (y > 0 && !isWater(g.terr[i - W])) || (y < H - 1 && !isWater(g.terr[i + W])); };
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
-    const [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
+    const PLANTS_TINT = plantsTint(), [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       // the shore: water beside land is shallow and pale (an edge for the eye, not a kind of ground)

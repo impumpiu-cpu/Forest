@@ -17,7 +17,8 @@
 // tier: the whole job is open only to someone whose letter for its skill reaches this tier (agents/skills.js
 //   jobAccess): ore in the mine shaft (S 4), gold in the shallows and wild honey (P 4). T1 when not given.
 //   Some jobs tier a part only: tending the wounded in the hut (`tendTier`, medicine), big dangerous game
-//   (`riskyTier`, hunting); the herder's wild beasts carry their own tier (species `tame.tier`)
+//   (`riskyTier`, hunting); the herder's wild beasts carry their own tier (species `tame.tier`). `tendLabel`,
+//   `riskyLabel` — how that part reads on a colonist's card («пока не по силам»)
 // sticky: extra hold of the job on someone already doing it (a long walk after a wild goat)
 import {Registry} from '../core/registry.js';
 import {useJobs} from './navmaps.js';
@@ -129,7 +130,7 @@ JOBS.registerAll([
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
-  {id: 'hunt', skill: 'hunting', riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
+  {id: 'hunt', skill: 'hunting', riskyTier: 2, riskyLabel: 'охотиться на крупного зверя', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
     runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox', 'salamander'], risky: ['boar', 'elk'], lastResort: ['mule', 'goat'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
@@ -179,7 +180,7 @@ JOBS.registerAll([
 
   // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
   // while the stock is low (settlement/healing.js). Tending trains medicine, picking herbs trains gathering.
-  {id: 'heal', skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
+  {id: 'heal', skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, tendLabel: 'лечить в хижине', label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
     runner: 'heal', requires: 'healerhut',
     // one healer at a time: whoever took it first keeps it
     canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,   // scan: TODO: every colonist asks it in decide — the job board (docs/TESTING.md, stress test)

@@ -11,6 +11,7 @@ import {FOODS} from '../data/foods.js';
 import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
 import {lotFertility} from '../settlement/buildings.js';
+import {soilYield} from '../settlement/farming.js';
 import {OUTCOMES} from '../agents/lifecycle.js';
 import {goodsUnits} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
@@ -20,7 +21,7 @@ import {fuelReserve} from '../settlement/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, MINDS} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, dayOf} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -55,7 +56,10 @@ import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd
 import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 import {WOODS, STONES} from '../data/kinds.js';
 import {STANDINGS} from '../agents/standing.js';
+import {TRADE} from '../data/trade.js';
 
+// the fuels a furnace of this heat takes for `units` of work (data/resources.js furnace: tier, per), as words: «уголь 2 или древесина 6»
+const fuelWords = (units, heat) => RESOURCES.filter(x => x.furnace && x.furnace.tier >= heat).sort((x, y) => y.furnace.tier - x.furnace.tier).map(x => `${x.short} ${+(units * x.furnace.per).toFixed(1)}`).join(' или ');
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
 
@@ -112,8 +116,8 @@ function lockedHtml(a) {
   const all = [
     ...RECIPES.all().map(r => [(r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short) + (r.makes.silver ? ' посеребр.' : ''), recipeAccess(a, r)]),
     ...JOBS.all().filter(j => j.tier > 1).map(j => [j.label, jobAccess(a, j)]),
-    ...JOBS.all().filter(j => j.tendTier).map(j => ['лечить в хижине', actionAccess(a, j.skill, j.tendTier)]),
-    ...JOBS.all().filter(j => j.riskyTier).map(j => ['охотиться на крупного зверя', actionAccess(a, j.skill, j.riskyTier)]),
+    ...JOBS.all().filter(j => j.tendTier).map(j => [j.tendLabel || j.label, actionAccess(a, j.skill, j.tendTier)]),
+    ...JOBS.all().filter(j => j.riskyTier).map(j => [j.riskyLabel || j.label, actionAccess(a, j.skill, j.riskyTier)]),
     ...SPECIES.filter(sp => sp.tame?.tier > 1).map(sp => ['приручать: ' + sp.label, actionAccess(a, 'husbandry', sp.tame.tier)]),
   ].filter(([, r]) => !r.ok).map(([what, r]) => [what, r.reasons[0]]);
   if (!all.length) return '<p class="muted pc-small">Доступно всё, что есть в поселении.</p>';
@@ -152,7 +156,7 @@ export function whyHtml(w, a) {
 export function creatureHtml(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
   const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%${a.potions ? ` · зелий лечения ${a.potions}` : ''}${a.belt?.length ? ` · в поясе: ${a.belt.map(r => RESOURCES.get(r).label).join(', ')}` : ''}</dd>`];
-  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{mindless: 'безмозглый', beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${MINDS[sp.mind] || sp.mind}</dd>`);
   const herd = herdOf(w, a);
   if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
   const h = huntOf(w, a);
@@ -169,7 +173,7 @@ export function creatureHtml(w, a) {
   }
   if (a.tame) rows.push(`<dt>Хозяйство</dt><dd>${beastText(w, a)}</dd>`);
   else if (isTameable(a)) rows.push(`<dt>Можно приручить</dt><dd>скотнику с приманкой: ${Object.entries(sp.tame.bait).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(', ')}${has(w, 'pen') ? '' : '; сначала нужен загон'}</dd>`);
-  if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из 20 (два ящика по 10)</dd>`);
+  if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из ${TRADE.crates * TRADE.crate} (ящиков ${TRADE.crates} по ${TRADE.crate})</dd>`);
   if (sp.mule && a.owner == null) rows.push(`<dt>Нрав</dt><dd>${a.task?.mule ? 'в ярости' : 'спокоен'}; охотиться опасно</dd>`);
   if (sp.predator) {
     const b = boldness(a, sp.predator);
@@ -253,7 +257,7 @@ export function buildingHtml(w, b) {
   let extra = '';
   if (d.soil) {
     const f = lotFertility(w, b.x, b.y, b.w || 2, b.h || 2);
-    rows.push(`<dt>Почва</dt><dd>${Math.round(f * 100)}% · ${soilWord(f)} (урожай ×${(0.4 + 1.2 * f).toFixed(2)})</dd>`);
+    rows.push(`<dt>Почва</dt><dd>${Math.round(f * 100)}% · ${soilWord(f)} (урожай ×${soilYield({grid: {fert: [f]}}, 0).toFixed(2)})</dd>`);
   }
   if (b.plots && b.key === 'field') {
     const by = {}; let empty = 0, ripe = 0;
@@ -285,7 +289,7 @@ export function buildingHtml(w, b) {
     const recs = RECIPES.filter(r => r.at === d.id).map(r => {
       const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} ×${r.makes.n}`;
       const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
-        (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} угля` : `${r.fuel} угля или ${r.fuel * 3} дров`}</span>`; })() : '') +
+        (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : fuelWords(r.fuel, r.heat ?? 2)}</span>`; })() : '') +
         (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? '' : ' short'}">${RESOURCES.get(r.tool).short}</span>` : '');
       const want = r.want(ctx), need = recipeNeed(r);
       // the tier: who in the colony may take it (agents/skills.js); nobody — the order waits for a master

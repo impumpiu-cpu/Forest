@@ -109,6 +109,7 @@ import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS} from '../roles.js';
 import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
+import {RULES as RULE_WORDS} from '../labels.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -357,7 +358,7 @@ export const TABLES = [
   {id: 'polities', label: 'Уклады', group: 'Народы', key: 'id', rows: () => POLITIES.all().map(p => ({...p, lairs: p.lairs ? 'логова' : 'держава народа'})), target: (r, c) => [POLITIES.get(r.id), c.key],   // (the rows are copies with `lairs` in words: an edit goes to the uklad itself)
     note: 'Уклады держав и логов (data/polities.js): как правят, какие своды правил действуют, где живёт правитель и что бывает, когда он гибнет (atlas/polities.js, atlas/persons.js, atlas/succession.js).',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('rule', 'Правление', 'enum', {values: {council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}}),
+      col('id', 'id'), col('label', 'Название'), col('rule', 'Правление', 'enum', {values: RULE_WORDS}),
       col('lairs', 'Для кого', 'text', {computed: true}), col('seat', 'Где правитель', 'enum', {values: {capital: 'столица', lair: 'логово'}}),
       col('systems', 'Своды правил', 'json', {note: 'court — двор и должности, edicts — указы, treasury — казна, towns — города, mind — совет державы; пусто — логово живёт как логово'}),
       col('ruler.leads', 'Ведёт войско', 'bool'), col('ruler.battle', 'Гибнет в разбитом войске', 'num', {min: 0, max: 1}), col('ruler.storm', 'Гибнет при штурме', 'num', {min: 0, max: 1, note: 'шанс погибнуть, когда столицу взяли штурмом (он там)'}),
