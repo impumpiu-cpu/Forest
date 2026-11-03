@@ -248,7 +248,6 @@ export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 // one melee blow; nothing happens (false) unless the target is alive, seen, within reach and not behind rock
 // The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + COMBAT.meleeSkill × skill),
 // so a creature without it hits as before.
-const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 // Where an armed blow comes from (COMBAT.flank, back): 'back' — the target does not know of the striker (asleep, or out
 // of any fight and not hurt lately), 'flank' — it is fighting someone else, otherwise 'front'. A beast's bite is
 // always 'front' (a pack's tactics are its own: agents/carcass.js)
@@ -263,6 +262,7 @@ export function stanceOf(w, a, t) {
 export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance === 'back' ? COMBAT.back.dmg : COMBAT.flank.dmg) - 1) * (1 + traitOf(q, 'backstab')));
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
+  const BLOW = COMBAT.blow;   // (read at the blow: an edit of the table reaches it)
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
   if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
@@ -316,6 +316,7 @@ function coverFor(w, a, t) {
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
   const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
+  const SHOT = COMBAT.shot, HIT = COMBAT.hit;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;

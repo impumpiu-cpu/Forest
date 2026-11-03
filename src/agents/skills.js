@@ -6,8 +6,6 @@ import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills, recipeSkill} fro
 import {NORM, STATS} from '../data/special.js';
 import {curve} from '../data/curves.js';
 
-const STAT_IDS = STATS.ids();
-
 
 // the creature's letter for a skill (no SPECIAL: the human norm)
 const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
@@ -50,7 +48,7 @@ export const canMake = (a, r) => recipeAccess(a, r).ok;
 export const jobAccess = (a, job) => actionAccess(a, job.skill, job.tier);
 
 // a key that is the same for any two workers whom the tiers treat alike: one letter's tier per character
-export const accessKey = a => STAT_IDS.map(id => tierFor(a.special?.[id] ?? NORM)).join('');
+export const accessKey = a => STATS.ids().map(id => tierFor(a.special?.[id] ?? NORM)).join('');
 
 // the reason as a phrase for the card and the log: «сила от 6, у него 4»
 export const reasonText = x => (x.code === 'tier' ? `${STATS.get(x.stat).label.toLowerCase()} от ${x.need}${x.have != null ? `, сейчас ${x.have}` : ''}` : x.code);

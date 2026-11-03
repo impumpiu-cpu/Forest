@@ -23,11 +23,10 @@ import {meanPlaceDamage} from '../data/anatomy.js';
 import {refreshBody} from './special.js';
 import {onEdit} from '../data/schema/layer.js';
 
-const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
-
 // a piercing weapon (quality `piercing`) against the armour of the average foe (COMBAT.armourSeen): × what more of it goes through
 const pierceGain = q => { const p = traitOf(q, 'piercing'), A = COMBAT.armourSeen; return p ? (1 - A * (1 - p)) / (1 - A) : 1; };
 export function strengthParts(a, {now = false} = {}) {
+  const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;   // (read now: an edit of the table reaches it)
   const sp = SPECIES.get(a.species), g = a.gear || recalcGear(a), m = a.mods || {};
   // a critical blow × CRIT.mul, more for a vicious weapon (data/balance/combat.js WEAPON_QUALITIES)
   const pc = critChance(a), crit = 1 + pc * (CRIT.mul + traitOf(g.melee.q, 'vicious') - 1), critShot = 1 + pc * (CRIT.mul + traitOf(g.ranged?.q, 'vicious') - 1);

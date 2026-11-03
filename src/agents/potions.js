@@ -21,6 +21,7 @@ import {darkness} from './combat.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 import {FRENZY} from '../data/roles.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const able = a => !a.dead && !a.downed && !a.captive && a.hp > 0;
 // a blade in hand to rub a poison on: a weapon of blows, not a bow struck with
@@ -196,6 +197,7 @@ export function rebelt(a, species, have, take, give, fitsIt, threat) {
 
 // the use of the potion whose drink gave this effect (for the effects at work)
 let effectUse = null;
+onEdit(() => { effectUse = null; });   // an edit of the potions (data/schema/layer.js) makes the map again
 export const useOfEffect = id => (effectUse ||= new Map(POTION_RES.map(res => [potionOf(res).grade.effect, potionOf(res).potion.use]))).get(id) || null;
 
 // the potions at work run out (agents/body.js stepEffects, once a tick): the body is rebuilt when one with mods ends
