@@ -39,6 +39,16 @@ import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 import {onEdit} from '../data/schema/layer.js';
 
 const soft = (r, g) => !!TOWN_GOODS.get(g).soft || r.soft.has(g);
+// the way of reckoning (claude/world-lean, a probe): cfg.econ — 'full' (default), 'soft' (one hard good a row), 'lean' (soft and
+// two rounds), 'yearly' (lean, worked out in spring and when the town builds), 'r7' (the full with seven rounds: the control of chaos)
+export const econMode = a => a?.cfg?.econ || 'full';
+// 'pool' (lean, and no indicators in the world: a recipe asks only its people and races, the store is the pool it shares by),
+// 'profile' (pool, worked out in spring and when the town builds)
+const oneHard = a => ['soft', 'lean', 'yearly', 'pool', 'profile'].includes(econMode(a));
+const roundsOf = a => ({lean: 2, yearly: 2, pool: 2, profile: 2, r7: 7})[econMode(a)] || F.rounds;
+const noLights = a => ['pool', 'profile'].includes(econMode(a));
+// (pool: a requirement as people and races alone — every other indicator taken as lit)
+const whoOk = (req, lit0) => (req || []).every(x => String(x).split('|').some(o => !/^(people|kin):/.test(o) || lit0.has(o)));
 // the goods of each pool, the cheapest a unit of its weight first (a log's charge before coal's)
 const POOL_IDS = Object.keys(POOLS);
 let poolSorted = new Map();
@@ -177,9 +187,17 @@ export function prepEconomy(a, t, heatK = heatFactor(a, t)) {
   // the boats of a shipyard (TOWN_FLOW.boats): its fishers catch more, as the yard works
   const yard = rows.find(r => r.b.id === F.boats.by), boat = r => (yard && (r.fish ?? F.boats.fish.includes(r.b.id)) ? 1 + (F.boats.k - 1) * yard.eff : 1);
   // (what each row takes, gives and draws, as lists made once: the rounds below walk them many times; the same order as the rows' own)
+  const M1 = oneHard(a);
   for (const r of rows) {
     r.outE = Object.entries(r.out); r.inE = Object.entries(r.in); r.poolE = Object.entries(r.pool);
     r.inSoft = r.inE.map(([g]) => soft(r.of || r, g)); r.poolSoft = r.poolE.map(([id]) => POOL_SOFT.has(id)); r.fish = F.boats.fish.includes(r.b.id);
+    // (the probe of claude/world-lean: one hard good a row — its main material, the dearest of what it takes; the rest soft,
+    // the fuel too)
+    if (M1) {
+      const main = r.inE.filter(([g], k) => !r.inSoft[k]).sort((p, q) => q[1] * goodPrice(q[0]) - p[1] * goodPrice(p[0]))[0]?.[0];
+      r.inSoft = r.inE.map(([g], k) => r.inSoft[k] || g !== main);
+      r.poolSoft = r.poolE.map(([id]) => id === 'fuel' || POOL_SOFT.has(id));
+    }
   }
   // the goods shared out, a few rounds: each building's strength by what it got of what it takes; what the realm's other
   // towns sent (imports: atlas/economy.js tradeGoods) adds to what the town has
@@ -223,14 +241,15 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
-      const on = meets(workNeeds(x.q, true), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
+      const on = NL ? whoOk(x.q.req, lit0) : meets(workNeeds(x.q, true), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
       x.w = on ? Math.max(F.recipeFloor, ins.length ? Math.min(...ins.map(avail)) : 1) : 0;
       by.set(x.of, (by.get(x.of) || 0) + x.w);
     }
     for (const x of recRows) x.share = x.w > 0 ? x.w / by.get(x.of) : 0;
   };
-  for (let k = 0; k < F.rounds; k++) {
-    if (k > 0) { lit = litOf(); facts = townFacts(a, t, {lit, stock: sup}); shareOut(); } else shareOut();
+  const rounds = roundsOf(a), NL = noLights(a);
+  for (let k = 0; k < rounds; k++) {
+    if (k > 0) { if (!NL) { lit = litOf(); facts = townFacts(a, t, {lit, stock: sup}); } shareOut(); } else shareOut();
     sup = {...(imports || {})}; dem = {};
     for (const r of yielders) for (const [g, v] of Object.entries(r.yout)) sup[g] = (sup[g] || 0) + v;
     for (const [g, v] of Object.entries(F.gather || {})) sup[g] = (sup[g] || 0) + v * t.pop;   // gathered by hand (brushwood)
@@ -248,7 +267,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
       let m = 1;
       for (let k = 0; k < r.inE.length; k++) { const g = r.inE[k][0]; m = Math.min(m, r.inSoft[k] ? F.soft + (1 - F.soft) * got(g) : got(g)); }
       for (let k = 0; k < r.poolE.length; k++) { const id = r.poolE[k][0]; m = Math.min(m, r.poolSoft[k] ? F.soft + (1 - F.soft) * pgot[id] : pgot[id]); }
-      if ((r.b.req || r.b.workNeed) && !meets(workNeeds(r.b, false), facts)) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
+      if ((r.b.req || r.b.workNeed) && !(NL ? whoOk(r.b.req, lit0) : meets(workNeeds(r.b, false), facts))) m = 0;   // a work of `req` (the steelworks: iron ingots in the store)
       // a recipe: its share of what its building works at (the building's own goods — its tools — weigh on it too)
       r.eff = r.of ? r.share * Math.min(r.of.eff, r.staff * r.own * m) : r.staff * r.own * m;
     }

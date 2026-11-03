@@ -107,8 +107,12 @@ export function stepBuilds(a, rnd, say) {
       // slot are asked only when it is begun)
       if (P && !(P.done > 0 ? hardOk(a, t, P.b) : canBuild(a, t, P.b))) { t.project = null; P = null; }
       if (!P) {
+        // (the probe cfg.choose 'lazy', claude/world-lean: a town that found nothing to build looks again next year, or sooner
+        // when it builds, grows a step or its people change by a tenth)
+        const key = a.cfg?.choose === 'lazy' ? `${a.hist?.year}:${t.built.length}:${t.tier}:${Math.round(Math.log(Math.max(1, t.pop)) * 10)}` : null;
+        if (key && t.noBuild === key) { razeWorst(t, a); break; }
         const b = pickProject(a, t, rnd);
-        if (!b) { razeWorst(t, a); break; }   // nothing to build: a full town makes room
+        if (!b) { if (key) t.noBuild = key; razeWorst(t, a); break; }   // nothing to build: a full town makes room
         t.project = b.id; P = projectOf(t);
       }
       const W = t.works[P.b.id], put = Math.min(days, P.days - W.done);

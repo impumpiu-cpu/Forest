@@ -39,7 +39,7 @@ import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
 import {ARMY} from '../data/parties.js';
-import {townEconomy, prepEconomy, heatFactor} from './economy.js';
+import {townEconomy, prepEconomy, heatFactor, econMode} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
@@ -139,13 +139,21 @@ export function seasonMoney(a, towns) {
   peopleNeeds(C);
   for (const t of towns) closeSeason(a, t);
 }
+// (the probe 'yearly', claude/world-lean: a town's works are reckoned in spring and when what it has built changes; the other
+// seasons go by the spring's flows — they are a year's rates — with the store, the buying and the needs as ever)
+const econKeyOf = t => `${t.built.length}:${t.built.at(-1)}:${t.tier}`;
+const keepYear = (a, t) => ['yearly', 'profile'].includes(econMode(a)) && t.econ && a.hist?.season !== 0 && t.econKey === econKeyOf(t);
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
 // the season's start: each town's ledger opened and its works' first reckoning, of its own store → Map town → [heat, prep]
 function openSeason(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   const prep = new Map();   // (the season's first half of each town's works, given again after the buying: atlas/economy.js prepEconomy)
-  for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }   // (at: the season's step — a town burnt later in the season still sold this season)
+  for (const t of towns) {
+    open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry;
+    if (keepYear(a, t)) { prep.set(t, null); continue; }   // (the probe 'yearly': the spring's works stand the year)
+    const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); t.econKey = econKeyOf(t);
+  }   // (at: the season's step — a town burnt later in the season still sold this season)
   return prep;
 }
 
@@ -187,7 +195,7 @@ function worksBuying(C, prep) {
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
-  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
+  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const hp = prep.get(t); if (!hp) continue; const [h, p] = hp; setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
   return sold;
 }
 
