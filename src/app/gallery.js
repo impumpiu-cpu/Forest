@@ -14,6 +14,7 @@ import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 import {drawSprite, spriteKeys, spriteBox, MARK, FIGURE, FULL} from '../render/art/sprite.js';
 import {drawPawn} from '../render/art/pawn.js';
 import {SHOWCASE} from '../render/art/showcase.js';
+import {minds, wireMindsButton, mindAt, mindCard} from '../render/minds.js';
 
 import {$, seg, press} from '../ui/dom.js';
 const BG = [
@@ -68,6 +69,18 @@ $('gCrowd').addEventListener('click', () => {
     a.equip = kitOf(kit);
   });
 });
+// the overmind's marks (render/minds.js): a pack of wolves at the edge of the camp (yellow flags), a band on the march (red)
+wireMindsButton($('gMinds'));
+const edge = (k, n, rad) => [w.camp.x + 0.5 + Math.cos(k / n * 6.283 + 0.6) * rad, w.camp.y + 0.5 + Math.sin(k / n * 6.283 + 0.6) * rad];
+$('gWolves').addEventListener('click', () => { const pack = 9000 + w.tick; for (let k = 0; k < 3; k++) { const [x, y] = edge(k, 18, 14); const a = createAgent(w, 'wolf', 'predators', x, y); a.pack = pack; } });
+$('gRaid').addEventListener('click', () => { for (let k = 0; k < 4; k++) { const [x, y] = edge(k + 9, 18, 16); const a = createAgent(w, k % 2 ? 'orc' : 'goblin', 'raiders', x, y); a.equip = kitOf(SHOWCASE.kits[1 + k % 3]); } });
+globalThis.gallery = {w, R, view};   // for a look from the browser's console
+let card = null;
+$('gMap').addEventListener('click', e => {
+  const r = $('gMap').getBoundingClientRect(), hit = mindAt(R.mindHits || [], e.clientX - r.left - R.ox, e.clientY - r.top - R.oy);
+  card = hit; $('gCard').hidden = !hit; if (hit) $('gCard').innerHTML = mindCard(w, hit);
+});
+setInterval(() => { if (card) $('gCard').innerHTML = mindCard(w, card); }, 500);
 $('gBuild').addEventListener('click', () => {
   for (const d of BUILDINGS.all()) { try { putUp(w, d.id, 0); } catch (e) { console.warn(d.id, e.message); } }
   try { putUp(w, 'house', 0.6); putUp(w, "forge", 0.3); } catch (e) { /* no room */ }
@@ -135,5 +148,5 @@ function render() {
 seg($('gSkin'), SKINS, skin.mode, v => skin.set(v));
 seg($('gBg'), BG, bg.id, v => { bg = BG.find(b => b.id === v); render(); });
 document.addEventListener(SKIN_EVENT, () => press('gSkin', skin.mode));
-addEventListener('keydown', e => { if (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey) skin.toggle(); });
+addEventListener('keydown', e => { if (e.ctrlKey || e.metaKey) return; if (e.code === 'KeyG') skin.toggle(); if (e.code === 'KeyF') minds.toggle(); });
 render();

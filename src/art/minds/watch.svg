@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ночной дозор: фонарь дозорного -->
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M40 14Q50 2 60 14"/><path fill="iron" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M30 20H70L66 30H34Z"/><path fill="flame" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M34 30H66L70 78H30Z"/><path fill="fire" d="M50 40C58 50 60 58 56 66H44C40 58 42 50 50 40Z"/><path class="figure" fill="none" stroke="ink" stroke-linecap="round" stroke-width="4" d="M42 30V78M58 30V78"/><path fill="iron" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M26 78H74V90H26Z"/>
+</svg>

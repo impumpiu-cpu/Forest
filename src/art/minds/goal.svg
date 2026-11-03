@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- совет копит на постройку: кошель; рядом — картинка постройки -->
+<path fill="leather" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M28 34Q8 54 16 76Q22 92 50 92Q78 92 84 76Q92 54 72 34Z"/><path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M30 34H70"/><path fill="none" stroke="rope" stroke-width="4" stroke-linecap="round" d="M30 34H70"/><path fill="leather" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M36 34L30 14L44 24L50 10L56 24L70 14L64 34Z"/><g fill="gold" stroke="ink" stroke-width="4"><circle cx="40" cy="64" r="9"/><circle cx="60" cy="68" r="9"/></g>
+</svg>
