@@ -109,6 +109,21 @@ import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS} from '../roles.js';
 import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
+// ── the tunables of the rules tables below (one line each: «Экономика городов», «Логова: поля и набеги», …)
+import {TOWN_MONEY, TOWN_FLOW, TOWN_SLOTS, GOLEMS} from '../townBuildings.js';
+import {KIN, REALM_LAND, TIER_FALL, WAR_BEASTS} from '../peoples.js';
+import {LAIR_FIELD, CAPTIVE_RAID, RAID_MIX, NECRO, WILD as LAIR_WILD} from '../lairs.js';
+import {ZONE, THORNS, ROCK_NEAR, WAR_DENS, PEN_K} from '../buildings.js';
+import {GOLEM_GUARD, GOLEM_REPAIR, GOLEM_LOCAL} from '../constructs.js';
+import {BAND_BEASTS} from '../raids.js';
+import {WANTS, ALCHEMY} from '../market.js';
+import {CAMP_KIT, PEOPLE_KIT, CARAVAN_GOLEMS, FIELD_BUILD} from '../transport.js';
+import {WILD_FOES, FOES, RETINUE} from '../campaign.js';
+import {ROCK_FERT, ALLUVIAL_FROM} from '../soils.js';
+import {KOPPEN, FAUNA_FLOOR} from '../biomes.js';
+import {EPILOGUE} from '../epilogue.js';
+import {FOLK_RAIDS} from '../seam.js';
+import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -777,6 +792,27 @@ TABLES.push(
     note: 'Показатели поселения, как в Fallout 4 (data/colonyStats.js, settlement/stats.js): еда в днях, кровати и тёплые места на жителя, сила против следующего набега, настроение, занятость мест — против нормы. Сами ничего не меняют: их читают названные системы; карточка поселения показывает их, красное — ниже нормы.',
     columns: [col('id', 'id'), col('label', 'Показатель'), col('norm', 'Норма', 'num'), col('above', 'Норма — не ниже', 'bool', {edit: false}), col('reads', 'Кто читает'), col('low', 'Если не хватает')]},
 );
+
+// ── rules tables of the tunables that had none (docs/TABLES.md): one entry each
+TABLES.push(
+  {id: 'townEconomy', label: 'Экономика городов', group: 'Народы', note: 'Деньги городов и казна державы (data/townBuildings.js TOWN_MONEY), потоки построек (TOWN_FLOW), слоты (TOWN_SLOTS), големы кузни (GOLEMS) — docs/WORLD.md «Деньги городов», «Потоки построек», «Слоты».', ...grp({money: TOWN_MONEY, flow: TOWN_FLOW, slots: TOWN_SLOTS, golems: GOLEMS})},
+  {id: 'peopleRules', label: 'Народы: правила', group: 'Народы', note: 'Расы в городе (data/peoples.js KIN: least — доля расы для её построек и рецептов, pull — тяга земли, any — вес вне родных биомов), земля державы (REALM_LAND), падение ступени (TIER_FALL — постоянное число кода), боевые звери (WAR_BEASTS).', ...grp({kin: KIN, realmLand: REALM_LAND, tierFall: TIER_FALL, warBeasts: WAR_BEASTS})},
+  {id: 'lairFieldRules', label: 'Логова: поля и набеги', group: 'Мир', note: 'Логова как поля (data/lairs.js LAIR_FIELD), набеги за пленными (CAPTIVE_RAID), всадники набегов (RAID_MIX), башня некроманта (NECRO), дикие логова (WILD); шов: набеги племён на поселение (data/seam.js FOLK_RAIDS).', ...grp({field: LAIR_FIELD, captiveRaid: CAPTIVE_RAID, raidMix: RAID_MIX, necro: NECRO, wild: LAIR_WILD, folkRaids: FOLK_RAIDS})},
+  {id: 'landKinds', label: 'Земля: почвы и климат', group: 'Мир', note: 'Плодородие по породе (data/soils.js ROCK_FERT), с какой доли наносов почва аллювий (ALLUVIAL_FROM — постоянное), пороги климата Кёппена (data/biomes.js KOPPEN), нижний предел зверей (FAUNA_FLOOR — постоянное).', ...grp({rockFert: ROCK_FERT, alluvialFrom: ALLUVIAL_FROM, koppen: KOPPEN, faunaFloor: FAUNA_FLOOR})},
+  {id: 'outpostRules', label: 'Постройки поселения: правила', group: 'Поселение', note: 'Зона поселения (data/buildings.js ZONE), терновая изгородь (THORNS), скала у лагеря (ROCK_NEAR), логова варгов и пауков, бойцовские ямы (WAR_DENS), загоны зеленокожих (PEN_K), големы поселения (data/constructs.js GOLEM_GUARD, GOLEM_REPAIR, GOLEM_LOCAL), звери банд на клетке мира (data/raids.js BAND_BEASTS).', ...grp({zone: ZONE, thorns: THORNS, rockNear: ROCK_NEAR, warDens: WAR_DENS, penK: PEN_K, golemGuard: GOLEM_GUARD, golemRepair: GOLEM_REPAIR, golemLocal: GOLEM_LOCAL, bandBeasts: BAND_BEASTS})},
+  {id: 'traitRanges', label: 'Черты: пределы', group: 'Поселение', note: 'Насколько поселенец любит любимое дело, не любит нелюбимое и относится к прочим (data/traits.js LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE: [от, до]).', ...grp({like: LIKE_RANGE, dislike: DISLIKE_RANGE, neutral: NEUTRAL_RANGE})},
+  {id: 'caravanKit', label: 'Обоз и свита', group: 'Караван', note: 'Лагерь каравана (data/transport.js CAMP_KIT), снаряжение народов (PEOPLE_KIT), големы обоза (CARAVAN_GOLEMS), сборка в поле (FIELD_BUILD); враги дикой земли (data/campaign.js WILD_FOES, FOES), свита (RETINUE); нужды каравана в городе (data/market.js WANTS), лаборатория (ALCHEMY); эпилог (data/epilogue.js EPILOGUE).', ...grp({campKit: CAMP_KIT, peopleKit: PEOPLE_KIT, caravanGolems: CARAVAN_GOLEMS, fieldBuild: FIELD_BUILD, wildFoes: WILD_FOES, foes: FOES, retinue: RETINUE, wants: WANTS, alchemy: ALCHEMY, epilogue: EPILOGUE})},
+);
+
+// ── columns for fields the game reads that their tables did not show (one line each; docs/TABLES.md)
+const G4 = {values: {m: 'м', f: 'ж', n: 'ср', pl: 'мн'}};
+const addColumns = (id, ...cols) => TABLES.find(t => t.id === id).columns.push(...cols);
+addColumns('peoples', col('labelGen', 'Кого (род.)'), col('adj', 'Чей (прил.)'), col('hands', 'Руки', 'num', {min: 0, max: 1, note: 'доля взрослых, что работают (atlas/population.js handsOf)'}), col('eat', 'Ест', 'num', {min: 0, note: 'еды в год на жителя, чел.-лет'}), col('breed', 'Плодится ×', 'num', {min: 0, nullable: true}));
+addColumns('peoples', col('levy', 'Ополчение ×', 'num', {min: 0, nullable: true, note: '× доли города, что идёт в войско (ARMY.levy)'}), col('needs', 'Нужды ×', 'num', {min: 0, nullable: true}), col('house', 'В доме ×', 'num', {min: 0, nullable: true}), col('roughHome', 'Шалаши — свой дом', 'bool', {nullable: true}), col('beastLevy', 'Звери в войско', 'num', {min: 0, nullable: true}), col('rosePull', 'Тяга к розе ×', 'num', {min: 0, nullable: true}), col('trade', 'Торговля ×', 'num', {min: 0, nullable: true}));
+addColumns('peoples', col('brawl', 'Драки у костра', 'json', {nullable: true, note: '{crime, crowd, from}'}), col('slaveLife', 'Жизнь раба, лет', 'json', {nullable: true}), col('warCult', 'Культ войны', 'json', {nullable: true}), col('folk', 'Чужаки', 'json', {nullable: true, note: 'take, expel, push / mix, near (atlas/diplomacy.js, atlas/peoples.js)'}), col('places', 'Места по-своему', 'json', {nullable: true}), col('workFlows', 'Потоки работ', 'json', {nullable: true}), col('workSwaps', 'Замены работ', 'json', {nullable: true}), col('bunks', 'Койки в мастерских', 'json', {nullable: true}), col('ruinGrow', 'Разруха ×', 'json', {nullable: true}), col('stoneLore', 'Знание камня', 'json', {nullable: true}));
+addColumns('townBuildings', col('g', 'Род', 'enum', G4), col('per', 'Ещё одна на жителей', 'int', {min: 0, nullable: true, note: 'сверх «Сколько» — по одной на столько жителей (atlas/towns.js unitsMax)'}), col('tierBy', 'Ступень у народа', 'json', {nullable: true, note: '{народ: ступень} — своя ступень для народа (дварфы: каменные стены с 0)'}), col('recycle', 'Переработка', 'json', {nullable: true, note: 'дварфы: {k, worth} (atlas/treasury.js recycle)'}));
+addColumns('lairs', col('home', 'Свои биомы', 'map', {ref: 'biomes', min: 0, max: 1, nullable: true, note: 'где стан этого вида логова, если не по «Биомам расселения» расы (тролли леса, топей, льдов)'}), col('needsAny', 'Ещё место', 'json', {nullable: true}), col('plural', 'Кто (мн.)', 'text', {nullable: true}), col('gen', 'Кого (род.)', 'text', {nullable: true}), col('g', 'Род', 'enum', G4), col('from', 'Откуда'), col('on', 'Верхом', 'text', {nullable: true}), col('raidVerb', 'Что сделали с городом', 'text', {nullable: true}));
+addColumns('polities', col('labelGen', 'Чего (род.)'), col('title', 'Титул [м, ж]', 'json', {nullable: true}));
 
 export const tableById = id => TABLES.find(t => t.id === id);
 export const checkAll = () => checkTables(TABLES);
