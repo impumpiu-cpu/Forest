@@ -17,7 +17,7 @@
 import {ESCAPE, BONDS} from '../data/captives.js';
 import {opinion} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
-import {COUNCIL_FROM, COUNCIL_TO} from './council.js';
+import {COUNCIL} from '../data/colony.js';
 import {colonists, foodTotal, raidAlarm} from './query.js';
 import {raidOnBoard, marching, watchOnPost} from './board.js';
 import {captives} from './captives.js';
@@ -46,7 +46,7 @@ const label = a => SPECIES.get(a.species).label;
 const name = a => `<b>${esc(a.name)}</b>`;
 
 // the tools are away for the night: from the end of the council till dawn
-export const toolsAway = w => { const h = hourOf(w.tick); return h >= COUNCIL_TO || h < ESCAPE.tools.dawn; };
+export const toolsAway = w => { const h = hourOf(w.tick); return h >= COUNCIL.to || h < ESCAPE.tools.dawn; };
 
 // the council's ration for the captives: × hunger and × work through the body's own extras
 function applyRation(a, cut) {
@@ -161,7 +161,7 @@ export function stepEscape(w) {
   const day = dayOf(w.tick), h = hourOf(w.tick), rng = w.rngs.colony;
   if (h >= ESCAPE.tools.dawn && S.dawn !== day) { S.dawn = day; dawn(w, S); }
   // the council: once it is over (or nobody came) — not in a caravan's camp (campaign/camp.js: the campaign rolls)
-  if (!w.light && S.rolled !== day && h >= COUNCIL_FROM && w.council?.lastDay === day) { S.rolled = day; council(w, S, rng); }
+  if (!w.light && S.rolled !== day && h >= COUNCIL.from && w.council?.lastDay === day) { S.rolled = day; council(w, S, rng); }
   // the plot's hour (the night after the council)
   if (S.plot && S.plot.day === day - 1 && h >= ESCAPE.hour) {
     const P = S.plot; S.plot = null;

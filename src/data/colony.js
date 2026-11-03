@@ -149,3 +149,9 @@ export const PRECIOUS = {
   fameVein: 6,          // added to the raid threat by the rumour of gold…
   fameMithril: 4,       // …and of mithril
 };
+
+// the evening council at the campfire (settlement/council.js): the hours it sits (from, to), the share of the colony that
+// must come before it starts (`quorum`), unless it is this many hours (`late`) before the end; the pull a goal gives to work
+// that brings what it lacks (`goalPull`), a colonist's fondness for building (`buildPref`) and the random sway of a vote
+// (`noise`) in the arguments; the share of the day's memories kept after it (`memory`)
+export const COUNCIL = {from: 19, to: 21.5, quorum: 0.7, late: 0.3, goalPull: 0.3, buildPref: 0.2, noise: 0.25, memory: 0.4};
