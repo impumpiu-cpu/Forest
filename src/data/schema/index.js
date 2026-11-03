@@ -78,7 +78,7 @@ import {CAMPAIGN as PRICE_CAMPAIGN, SERVICES, TRADE as PRICE_TRADE, QUALITY as P
 import {COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW} from '../balance/combat.js';
 import {RULES} from '../balance/rules.js';
 import {STRENGTH} from '../balance/creatures.js';
-import {JOBS} from '../jobs.js';
+import {JOBS, CREW as JOB_CREW} from '../jobs.js';
 import {RECIPES} from '../recipes.js';
 import {DIFFICULTY, DEGREES, DEGREE_NAMES, DEGREE_CHECKS, DEGREE_EFFECTS} from '../checks.js';
 import {CHANCE_MODES} from '../chance.js';
@@ -502,6 +502,7 @@ TABLES.push(
   // Поселение
   {id: 'colonyRules', label: 'Жизнь поселения', group: 'Поселение', note: 'Отношения, жизнь, лечение, стада, угроза, план дня, горн, доска работ и дозор, общие дела, золотые жилы (data/colony.js); караваны торговцев (data/trade.js TRADE).',
     ...grp({...kindsOf(COLONY), trade: COLONY_TRADE})},
+  {id: 'crewRules', label: 'Рук на работе', group: 'Поселение', note: 'Сколько рук берёт работа разом (data/jobs.js CREW): охотники по дичи, рыбаки по озёрам, пахари по полям.', ...grp({crew: JOB_CREW})},
   {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца, сон и тепло у огня (REST), поджог и тушение (KINDLE), выбор снаряжения (GEAR), вред от жара (HEAT) (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
     ...grp({...kindsOf(BEHAVIOUR), arrivals: ARRIVALS})},
   {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка, рост ягод, огородов, кустов и леса (GROWTH) локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES).',

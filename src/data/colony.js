@@ -80,6 +80,7 @@ export const PLAN = {
   skill: 0.15,        // × skill / 10
   best: 0.15,         // the colony's best at the job's skill
   habit: 0.12,        // the same job as yesterday
+  buildCrew: {most: 4, perSite: 2},   // builders at once: two to an open site, at most `most` (settlement/plan.js crewCap)
 };
 
 // ── furnace fuel. A recipe asks for `fuel` units of heat at a `heat` level (data/recipes.js); each fuel

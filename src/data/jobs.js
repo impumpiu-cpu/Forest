@@ -30,13 +30,17 @@ import {fields, needsWork} from '../settlement/farming.js';
 const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
-import {wantedOre, raidAlarm} from '../settlement/query.js';
+import {wantedOre, raidAlarm, count} from '../settlement/query.js';
 import {chores, tameTargets, herd, canTame} from '../settlement/herd.js';
 import {canDoAction} from '../agents/skills.js';
 import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
 import {reachableCorpses, freeCorpse} from '../settlement/life.js';
 import {hpShare} from '../agents/agent.js';
 import {ofSpeciesList} from '../agents/lookup.js';
+
+// how many hands a job can use at once (settlement/plan.js, a job's `crew`): a hunter per `perGame` head of game, a fisher a
+// lake with fish, a farmer a field — at most `most`; the healer, the herder and the gravedigger work alone
+export const CREW = {hunt: {most: 3, perGame: 3}, fish: {most: 3}, farm: {most: 3}};
 
 export const JOBS = new Registry('job');
 useJobs(JOBS, (w, job) => huntable(w, job));   // navmaps.js needs each job's flow field, and what hunters are after
@@ -122,14 +126,14 @@ JOBS.registerAll([
 
   // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
   // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
-  {id: 'fish', skill: 'fishing', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
+  {id: 'fish', crew: w => Math.max(1, Math.min(CREW.fish.most, w.lakes.filter(l => l.cap > 0 && l.fish >= 1).length)), skill: 'fishing', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
     runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, memory: 'walkFish',
     canDo: (w, a) => !w.campaign && !!a.gear?.tool.fish,   // (a caravan does not fish: data/transport.js CAMP_KIT)
     desire: (w, ctx, job) => (w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1),
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
-  {id: 'hunt', skill: 'hunting', riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
+  {id: 'hunt', crew: (w, job) => Math.max(1, Math.min(CREW.hunt.most, Math.ceil(huntable(w, job).length / CREW.hunt.perGame))), skill: 'hunting', riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
     runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox', 'salamander'], risky: ['boar', 'elk'], lastResort: ['mule', 'goat'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
@@ -152,7 +156,7 @@ JOBS.registerAll([
     runner: 'craft', stations: ['jeweler'], desire: atStations(0.35)},
 
   // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
-  {id: 'farm', skill: 'farming', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
+  {id: 'farm', crew: w => Math.min(CREW.farm.most, count(w, 'field')), skill: 'farming', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
     runner: 'farm', nav: 'fieldwork', requires: 'field', carry: 4, time: 16,
     desire: (w) => (fields(w).some(b => b.plots.some(p => needsWork(w, p))) ? 0.55 : -1)},
 
@@ -179,7 +183,7 @@ JOBS.registerAll([
 
   // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
   // while the stock is low (settlement/healing.js). Tending trains medicine, picking herbs trains gathering.
-  {id: 'heal', skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
+  {id: 'heal', crew: () => 1, skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
     runner: 'heal', requires: 'healerhut',
     // one healer at a time: whoever took it first keeps it
     canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,   // scan: TODO: every colonist asks it in decide — the job board (docs/TESTING.md, stress test)
@@ -190,13 +194,13 @@ JOBS.registerAll([
 
   // the herder: milks the goats and shears them; with nothing to take, goes after a wild goat or mule
   // with bait from the stock and tries to tame it (settlement/herd.js). Trains and reads husbandry (C).
-  {id: 'herd', skill: 'husbandry', label: 'ходить за скотом', short: 'скотник', verb: 'ходит за скотом', preferable: true,
+  {id: 'herd', crew: () => 1, skill: 'husbandry', label: 'ходить за скотом', short: 'скотник', verb: 'ходит за скотом', preferable: true,
     runner: 'herd', requires: 'pen', carry: 4, time: 30, tameTime: 70, sticky: 0.3,
     // wild beasts only this herder may go after (species tame.tier, husbandry)
     desire: (w, ctx) => (chores(w).length ? 0.5 : tameTargets(w).some(b => canTame(ctx.agent, b)) ? (herd(w).length ? 0.45 : 0.62) : -1)},
 
   // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
-  {id: 'bury', skill: 'athletics', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
+  {id: 'bury', crew: () => 1, skill: 'athletics', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
     runner: 'bury', time: 120,
     // only one bearer per body: the others would take the job, find nothing free and drop it at once
     canDo: (w, a) => hpShare(a) > 0.5 && !!freeCorpse(w, a),

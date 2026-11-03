@@ -75,13 +75,9 @@ export function needs(w) {
 
 // how many hands a job can use at once (Infinity: as many as come)
 function crewCap(w, job) {
-  if (job.crew) return job.crew(w);
+  if (job.crew) return job.crew(w, job);   // (data/jobs.js `crew`)
   if (job.runner === 'craft') return job.stations.reduce((s, st) => s + w.buildings.filter(b => b.key === st && b.done).reduce((n, b) => n + (BUILDINGS.get(st).benches || 1), 0), 0);
-  if (job.runner === 'build') return Math.min(4, openSites(w).length * 2);
-  if (job.id === 'hunt') return Math.max(1, Math.min(3, Math.ceil(huntable(w, job).length / 3)));
-  if (job.id === 'fish') return Math.max(1, Math.min(3, w.lakes.filter(l => l.cap > 0 && l.fish >= 1).length));
-  if (['heal', 'herd', 'bury'].includes(job.id)) return 1;
-  if (job.id === 'farm') return Math.min(3, count(w, 'field'));
+  if (job.runner === 'build') return Math.min(PLAN.buildCrew.most, openSites(w).length * PLAN.buildCrew.perSite);
   return Infinity;
 }
 
