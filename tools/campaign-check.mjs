@@ -409,4 +409,17 @@ check('караваны обзаводятся обозом и выбирают 
   check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && brewed > 0 && drunk > 0, `сварено ${brewed}, выпито ${drunk}, походов ${walks}`);
 }
 
+// golems mend at a town's forge of any kind (GOLEM_REPAIR.at), by the field forge, or by a dwarf's hand on the way
+{
+  const {golemMend} = await import('../src/campaign/march.js');
+  const {GOLEM_REPAIR: G} = await import('../src/data/constructs.js');
+  const mk = (people, races) => ({people, members: races.map((race, id) => ({id, race, alive: true, hp: 1}))});
+  const men = mk('humans', ['human', 'human']), dw = mk('humans', ['human', 'dwarf']), hurt = mk('humans', ['dwarf']); hurt.members[0].hp = G.fieldHp / 2;
+  const bound = mk('humans', ['dwarf']); bound.members[0].captive = {since: 0};
+  const r = [golemMend(men, {built: ['golemforge']}, false) === G.day, golemMend(men, {built: ['magmaforge']}, false) === G.day, golemMend(men, {built: ['inn']}, false) === 0,
+    golemMend(men, null, false) === 0, golemMend(dw, null, false) === G.field, golemMend(dw, {built: ['inn']}, false) === G.field, golemMend(hurt, null, true) === 0,
+    golemMend(bound, null, true) === 0, golemMend(mk('dwarves', ['dwarf']), null, true) === G.day];
+  check('големы: чинятся в кузне города (любой из GOLEM_REPAIR.at), у походного горна и руками свободного дварфа в пути', r.every(Boolean), r.map(x => (x ? '+' : '−')).join(''));
+}
+
 if (!ok) process.exit(1);

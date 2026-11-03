@@ -499,6 +499,14 @@ function roadTrade(a, K, t) {
   if (parts.length) say(a, K, `На дороге встретили торговый обоз: ${parts.join('; ')}.`, 'town');
 }
 
+// what a day mends of a golem (data/constructs.js GOLEM_REPAIR): a town's forge, the camp's own (the dwarves' field forge),
+// else a dwarf of the company able to work (in a town without a forge, too)
+export function golemMend(K, town, camping) {
+  const G = GOLEM_REPAIR;
+  if (town ? G.at.some(id => town.built.includes(id)) : camping && kitOf(K).forge) return G.day;
+  return free(K).some(m => G.fieldRaces.includes(m.race) && m.hp >= G.fieldHp) ? G.field : 0;
+}
+
 // one day of the campaign (the world's day `day` of the current season)
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
@@ -557,10 +565,10 @@ export function caravanDay(a, K, day) {
   people(a, K, r);
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
-  const grass = pasture(a, K.i, seasonId);
+  const grass = pasture(a, K.i, seasonId), mend = golemMend(K, town, camping);
   for (const b of [...K.beasts]) {
-    // a golem eats nothing and mends only at a forge: a town's, or the camp's own (data/constructs.js GOLEM_REPAIR)
-    if (BEASTS[b.kind]?.golem) { if ((town && town.built.includes('forge')) || (camping && kitOf(K).forge)) b.hp = Math.min(1, b.hp + GOLEM_REPAIR.day); continue; }   // (the dwarves' field forge)
+    // a golem eats nothing and mends only at a forge or by a dwarf's hand (data/constructs.js GOLEM_REPAIR)
+    if (BEASTS[b.kind]?.golem) { if (mend) b.hp = Math.min(1, b.hp + mend); continue; }
     b.hp = grass ? Math.min(1, b.hp + FODDER.regain * (BEASTS[b.kind].use === 'ride' ? kitOf(K).regain ?? 1 : 1)) : b.hp - FODDER.starve * (0.5 + r());
     if (grass && BEASTS[b.kind].use === 'food' && b.hp > 0) K.food += CAMP_KIT.herd.milk;   // the herd's milk
     if (b.hp <= 0) loseBeast(a, K, b, 'Бескормица: пал');

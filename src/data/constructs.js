@@ -38,8 +38,10 @@ export const CONSTRUCTS = GOLEM_METALS.map(m => bodyFor({
 // its own this far (`help`); back at its post when further than `off`; the weights of its two wishes
 export const GOLEM_GUARD = {sight: 12, help: 8, off: 1.5, want: {fight: 3, post: 1}};
 // mended only at a forge (agents/golem.js): within `reach` cells of one of `at` (data/buildings.js), `rate` × full health a
-// tick; the caravan's golems — a share `day` of full health a day in a town with a forge or by the camp's own forge
-export const GOLEM_REPAIR = {at: ['forge', 'magmaforge', 'golemforge'], reach: 4, rate: 0.0006, day: 0.25};
+// tick; the caravan's golems (campaign/march.js) — a share `day` of full health a day in a town with one of `at` (data/townBuildings.js)
+// or by the camp's own forge (data/transport.js PEOPLE_KIT forge); on the road or in camp without it — `field` a day while one of
+// `fieldRaces` walks with the caravan, free and whole enough to work (health `fieldHp` and more): the dwarves mend them by hand
+export const GOLEM_REPAIR = {at: ['forge', 'magmaforge', 'golemforge'], reach: 4, rate: 0.0006, day: 0.25, field: 0.1, fieldRaces: ['dwarf'], fieldHp: 0.5};
 // The golem forge of a dwarven colony (data/buildings.js golemforge, settlement/golems.js): at the start of each season it
 // makes one golem, of the best metal in the stock (`metals` in order, best first: `cost` of it), while there are fewer
 // golems than 1 + one per `per` of the colony's people
