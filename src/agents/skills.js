@@ -10,7 +10,7 @@ const STAT_IDS = STATS.ids();
 
 
 // the creature's letter for a skill (no SPECIAL: the human norm)
-export const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
+const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
 
 // learning speed from the skill's own letter: 1 at 5, 1.4 at 10, 0.68 at 1, open upwards (the curve 'skillPace')
 export const letterFactor = v => curve('skillPace', v);
@@ -30,7 +30,7 @@ export const skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
 // A refusal says why, in data the card can word:
 //   {ok: false, reasons: [{code: 'tier', stat: 'S', need: 6, have: 4, tier: 3, skill: 'smithing'}]}
 // Only abilities are checked here; materials, fuel, benches and targets are the system's own business.
-export function actionNeed(skill, tier = 1) {
+function actionNeed(skill, tier = 1) {
   if (!skill || (tier || 1) <= 1) return null;
   return {code: 'tier', stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill};
 }

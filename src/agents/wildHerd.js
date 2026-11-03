@@ -127,7 +127,7 @@ export function stepHerds(w) {
 }
 
 // a herd beast's own patch of the pasture: its offset from the herd's spot, kept while the spot holds
-export function patchOf(w, a, H) {
+function patchOf(w, a, H) {
   if (!H?.spot) return null;
   if (a.patch?.v === H.spotV && a.patch.fails >= 3) return null;   // cannot get there: grazes where it is
   if (!a.patch || a.patch.v !== H.spotV || a.patch.lost) {

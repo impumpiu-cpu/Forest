@@ -18,7 +18,7 @@ function buffers(w) {
 // Every cell a straight segment crosses, in order (a grid walk, not point samples: a line through the
 // exact corner of two cells reports both side cells, so it cannot slip between two touching rocks).
 // visit(i) returning false stops the walk; the result is whether the walk got to the end.
-export function walkLine(w, x0, y0, x1, y1, visit) {
+function walkLine(w, x0, y0, x1, y1, visit) {
   let cx = Math.floor(x0), cy = Math.floor(y0);
   const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
   const inside = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;

@@ -76,7 +76,7 @@ export function referenceRaw() {
   return (refRaw = strengthParts(a).raw);
 }
 
-export const ratingOf = (raw, species, alpha = STRENGTH.alpha) => STRENGTH.base * (raw / referenceRaw()) ** alpha * (SPECIES.get(species).ks ?? 1);
+const ratingOf = (raw, species, alpha = STRENGTH.alpha) => STRENGTH.base * (raw / referenceRaw()) ** alpha * (SPECIES.get(species).ks ?? 1);
 // a rider is worth its mount too (agents/mount.js): a trained beast of its kind, at the share of health it has left
 const mountWorth = m => (m?.hp > 0 ? expectedStrength(m.species, {key: 'mount', prepare: b => { b.marks = ['trained']; refreshBody(b); }}) * Math.min(1, m.hp / (m.max || m.hp)) : 0);
 export const strengthOf = (a, opt) => ratingOf(strengthParts(a, opt).raw, a.species) + mountWorth(a.mount);

@@ -20,7 +20,7 @@ import {RAID_BANDS} from '../data/raids.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {colonists} from '../settlement/query.js';
 import {log} from '../core/log.js';
-import {esc, clamp, weighted, dist} from '../core/util.js';
+import {esc, clamp, weighted, dist, cap} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
@@ -49,9 +49,8 @@ export function joinSquad(w, of, b) {
   const sq = of.squad != null ? table(w)[of.squad] : null; if (!sq) return;
   b.squad = sq.id; b.sqRole = 'beast'; if (!sq.members.includes(b.id)) sq.members.push(b.id);
 }
-const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpperCase() + l.slice(1); };
+const Label = sq => cap(RAID_BANDS.get(sq.band).label);
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
-const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
 const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone && !o.downed && o.squad === sq.id);   // the fallen and the taken are out of it
 
 // a fighter's weight in the odds: health × the hardest blow it can strike
@@ -89,7 +88,7 @@ export function createSquad(w, group) {
   const leader = group.find(a => a.species === 'necromancer' || a.species === 'vampire') || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
   // an unnamed leader gets a title
   if (leader.name === 'Налётчик') leader.name = 'Атаман';
-  else if (kind === 'living' && group.length > 1 && leader.species !== 'necromancer' && !leader.warBeast && leader.name === SPECIES.get(leader.species).label.replace(/^./, c => c.toUpperCase())) leader.name += '-вожак';
+  else if (kind === 'living' && group.length > 1 && leader.species !== 'necromancer' && !leader.warBeast && leader.name === cap(SPECIES.get(leader.species).label)) leader.name += '-вожак';
   const sq = sqs[id] = {id, band: band.id, kind, goal, target, why, members: group.map(a => a.id), leader: leader.id, size: group.length,
     fallen: 0, home: 0, morale: 1, state: 'march', reason: null, started: w.tick, lit: null, watched: null, rearUntil: null,
     power0: group.reduce((s, a) => s + strength(a), 0)};

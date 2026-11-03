@@ -13,10 +13,10 @@ import {refreshBody} from './special.js';
 import {maxHp} from './agent.js';
 import {recalcGear, allItems} from './equipment.js';
 import {strengthOf, sideStrength} from './strength.js';
+import {cap} from '../core/util.js';
 
-const cap = s => s[0].toUpperCase() + s.slice(1);
 // the officer's rank name in its band
-export const officerName = band => (band && RAID_BANDS.has(band) ? RAID_BANDS.get(band).ranks?.officer : null) || OFFICER_DEFAULT;
+const officerName = band => (band && RAID_BANDS.has(band) ? RAID_BANDS.get(band).ranks?.officer : null) || OFFICER_DEFAULT;
 
 // who may take a rank: a thinking fighter that carries things, not a beast, not the boss, not a necromancer or a vampire
 // (they lead their own)

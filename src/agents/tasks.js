@@ -7,7 +7,6 @@ import {maxHp} from './agent.js';
 import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
 import {cellOf, distToCell} from '../world/grid.js';
 import {nightness} from '../core/time.js';
@@ -21,7 +20,7 @@ import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {tradeOpen, attendTrade} from '../settlement/trade.js';
-import {HEAL, freeBed} from '../settlement/healing.js';
+import {HEAL, freeBed, hasHut} from '../settlement/healing.js';
 import {reserve} from '../settlement/reserve.js';
 import {has, colonists, raidAlarm} from '../settlement/query.js';
 import {homeComfort, prayed} from '../settlement/life.js';
@@ -55,6 +54,10 @@ function mill(w, a, task, radius = 1.2) {
     task.spot = [w.camp.x + 0.5 + Math.cos(ang) * r, w.camp.y + 0.5 + Math.sin(ang) * r];
   }
   moveToward(w, a, task.spot[0], task.spot[1], 0.5);
+}
+// to the camp, and once there (or within `near` of it) wander about it within `radius`
+function campMill(w, a, task, near, radius, pace = 1) {
+  if (follow(w, a, 'camp', pace) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < near) mill(w, a, task, radius);
 }
 
 TASKS.registerAll([
@@ -231,13 +234,13 @@ TASKS.registerAll([
     if (w.tick >= task.until) { a.task = task.next; wake(a, 'обдумал, за что взяться', 'обдумал'); }
   }},
   {id: 'idle', quiet: true, label: () => 'отдыхает', step(w, a, task) {
-    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
+    campMill(w, a, task, 4, 2.5);
   }},
 
   // a gloomy spell: drifts about the camp instead of working (settlement/life.js)
   {id: 'sulk', quiet: true, label: () => 'хандрит', step(w, a, task) {
     if (w.tick >= task.until) { done(w, a); return; }
-    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 5) mill(w, a, task, 4);
+    campMill(w, a, task, 5, 4);
   }},
 
   // a prayer at the shrine, once a day for someone in low spirits
@@ -335,14 +338,14 @@ TASKS.registerAll([
   // the mindless dead: shamble to the camp and wander there until something living comes close
   {id: 'haunt', label: () => 'бредёт к лагерю', step(w, a, task) {
     if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }   // scan: leavers only: the colony has fallen
-    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 3);
+    campMill(w, a, task, 4, 3);
   }},
 
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', quiet: true, label: () => 'собирается по тревоге', step(w, a, task) {
     if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     think(w, a, 'raidAlarm');
-    if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+    campMill(w, a, task, 3, 2.2, 1.2);
   }},
 
   // a red alarm in sight that one does not go to fight (settlement/board.js): stand at the fire with the
@@ -350,13 +353,13 @@ TASKS.registerAll([
   // at every think it is weighed afresh against going to the fight
   {id: 'reserve', quiet: true, label: () => 'держится у огня', step(w, a, task) {
     if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
-    if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+    campMill(w, a, task, 3, 2.2, 1.2);
   }},
 
   // the night watch (settlement/board.js): by the fire all night, looking round for everyone; done at dawn
   {id: 'watch', quiet: true, label: () => 'дежурит у огня', step(w, a, task) {
     if (task.over) { done(w, a); return; }
-    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+    campMill(w, a, task, 3, 2.2);
   }},
 
   // run for the settlement zone when something is hunting you
@@ -366,7 +369,7 @@ TASKS.registerAll([
 
   // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
   {id: 'treat', label: t => (t.lying ? (t.healer != null ? 'лечится у лекаря' : 'лежит в хижине лекаря') : 'идёт к лекарю'), step(w, a, task) {
-    if (!has(w, 'healerhut')) { fail(w, a, 'хижины лекаря нет'); return; }
+    if (!hasHut(w)) { fail(w, a, 'хижины лекаря нет'); return; }
     const max = maxHp(a);
     if (a.hp >= max * HEAL.until) {
       const healer = liveById(w, task.healer);
@@ -427,4 +430,3 @@ TASKS.registerAll([
 ]);
 
 export const taskLabel = a => (a.task ? TASKS.get(a.task.id).label(a.task) : 'думает');
-export const needTask = id => NEEDS.get(id).task;

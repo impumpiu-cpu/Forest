@@ -165,5 +165,3 @@ export function huntAim(w, a, h, prey) {
 }
 
 export const ROLE_LABEL = {lead: 'ведёт погоню', flankL: 'заходит сбоку', flankR: 'заходит сбоку', wait: 'отстал, переводит дух'};
-export const HUNT_END = {kill: 'добыча взята', escaped: 'добыча ушла', zone: 'добыча укрылась в поселении', unreachable: 'не добраться',
-  tired: 'стая выдохлась', help: 'к жертве пришла помощь', gave: 'стая отступила', taken: 'добычу перехватили'};

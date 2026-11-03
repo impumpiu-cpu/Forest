@@ -533,7 +533,7 @@ export class CampaignView extends MapView {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : '', m.belt?.length ? `в поясе: ${m.belt.map(r => RESOURCES.get(r).short).join(', ')}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
-        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
+        `<small>${esc(raceLabel(sp))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
   }

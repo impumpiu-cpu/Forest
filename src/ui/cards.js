@@ -123,7 +123,7 @@ function lockedHtml(a) {
   return `<ul class="pc-list">${rows.join('')}</ul>${all.length > rows.length ? `<p class="muted pc-small">и ещё ${all.length - rows.length}</p>` : ''}`;
 }
 
-const raceOf = a => raceLabel(SPECIES.get(a.species), a);
+const raceOf = a => raceLabel(SPECIES.get(a.species));
 
 
 
@@ -161,7 +161,7 @@ export function creatureHtml(w, a) {
   const sq = squadText(w, a);
   if (sq) rows.push(`<dt>Отряд</dt><dd>${esc(sq)}</dd>`);
   if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
-  const inn = innateOf(sp, a);
+  const inn = innateOf(sp);
   if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
   if (a.brain === 'trader' && w.caravan?.traderId === a.id) {
     const c = w.caravan;
@@ -194,7 +194,7 @@ export function personHtml(w, a) {
     `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>` +
     (a.potions ? `<div class="pc-bar"><span>зелья лечения</span>${bar(a.potions / POTION.slot, '#d8506a')}<b>${a.potions}</b></div>` : '') +
     (a.belt?.length ? `<div class="pc-bar"><span>в поясе</span><b>${a.belt.map(r => esc(RESOURCES.get(r).label)).join(', ')}</b></div>` : '');
-  const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
+  const inn = innateOf(sp).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
   const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
   const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
   const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}"${Math.abs(history(a, b)) >= 0.3 ? ` title="личный опыт: ${history(a, b) > 0 ? '+' : ''}${history(a, b).toFixed(1)}"` : ''}>${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}${history(a, b) >= 0.8 ? ' · многое вместе' : history(a, b) <= -0.8 ? ' · старые обиды' : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';

@@ -8,7 +8,7 @@ import {walkable, inBounds} from '../world/grid.js';
 import {agentInZone} from '../settlement/zone.js';
 import {liveById} from './lookup.js';
 import {NECHIST} from '../data/behaviour.js';
-import {dist} from '../core/util.js';
+import {dist, cap} from '../core/util.js';
 
 export {dist} from '../core/util.js';   // (one for all: core/util.js)
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -49,4 +49,4 @@ export const awake = (S, night) => !S.night || night > NECHIST.nightFrom;
 
 export const lonely = (w, v, r) => !w.agents.some(o => o !== v && !o.dead && o.faction === 'colony' && dist(o, v) < r);   // scan: spirits only, one or two per map
 export const spellbound = a => ['fight', 'flee', 'treat', 'astray', 'lured', 'runHome', 'muster'].includes(a.task?.id) || a.sleeping;
-export const Label = sp => sp.label[0].toUpperCase() + sp.label.slice(1);
+export const Label = sp => cap(sp.label);

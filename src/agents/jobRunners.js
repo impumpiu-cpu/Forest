@@ -27,7 +27,7 @@ import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
 import {plotAt, needsWork, workPlot} from '../settlement/farming.js';
-import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
+import {tend, patients, waiting, healerHutCell, hutOf} from '../settlement/healing.js';
 import {chores, tameTargets, tryTame, claimed, canTame} from '../settlement/herd.js';
 import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
@@ -61,7 +61,7 @@ export function load(a, res, n) {
   a.carry.res[res] = (a.carry.res[res] || 0) + n; a.carry.n += n;
 }
 // take n units of one resource out of the load
-export function unload(a, res, n) {
+function unload(a, res, n) {
   if (!a.carry?.res[res]) return 0;
   const k = Math.min(n, a.carry.res[res]);
   a.carry.res[res] -= k; a.carry.n -= k;
@@ -189,7 +189,7 @@ export const RUNNERS = {
       if (a.carry?.n) dropLoad(w, a);
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
-        const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
+        const given = tend(w, a, workRate(w, a, 'heal') * workBonus(hutOf(w)));
         if (given) { a.stats.healed = (a.stats.healed || 0) + given; practice(a, 'medicine'); }   // only a wound really tended teaches
         else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);   // the patients are still on their way
       } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = 20; }

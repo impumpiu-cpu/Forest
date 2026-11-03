@@ -7,8 +7,8 @@ import {nightness} from '../../core/time.js';
 import {SPECIES} from '../../data/species.js';
 import {councilDue} from '../../settlement/council.js';
 import {tradeOpen} from '../../settlement/trade.js';
-import {hurt, HEAL, freeBed} from '../../settlement/healing.js';
-import {has, raidAlarm} from '../../settlement/query.js';
+import {hurt, HEAL, freeBed, hasHut} from '../../settlement/healing.js';
+import {raidAlarm} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {maxHp, hpShare} from '../agent.js';
 import {attackerOf, darkness} from '../combat.js';
@@ -30,7 +30,7 @@ export const trade = {want(w) { return tradeOpen(w) ? [[{id: 'trade'}, COLONIST.
 
 // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
 export const treat = {want(w, a) {
-  if ((hurt(a) || (on(a, 'treat') && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut') && freeBed(w, a)) return [[{id: 'treat'}, (1 - a.hp / maxHp(a)) * COLONIST.want.treat[0] + COLONIST.want.treat[1], () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]];
+  if ((hurt(a) || (on(a, 'treat') && a.hp < maxHp(a) * HEAL.until)) && hasHut(w) && freeBed(w, a)) return [[{id: 'treat'}, (1 - a.hp / maxHp(a)) * COLONIST.want.treat[0] + COLONIST.want.treat[1], () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]];
   return null;
 }};
 

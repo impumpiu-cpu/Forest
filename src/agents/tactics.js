@@ -18,7 +18,7 @@ import {isHostile} from '../data/factions.js';
 import {nearAgents} from './spatial.js';
 import {canSee, aggressor, darkness} from './combat.js';
 import {hpShare} from './agent.js';
-import {firstAttacker} from './lookup.js';
+import {firstAttacker, isAttack} from './lookup.js';
 import {liveMembers} from './group.js';
 import {handItems, def} from './equipment.js';
 import {traitOf} from '../data/balance/combat.js';
@@ -45,7 +45,7 @@ export const caravanSide = w => {
 };
 
 // the foes this one can see within r, nearest first (the fallen and the bound are out of it)
-export function foesNear(w, a, r) {
+function foesNear(w, a, r) {
   r *= darkness(w, a);   // (the night hides what is further off, as for the plain search: agents/combat.js nearestHostile)
   const out = [];
   for (const o of nearAgents(w, a.x, a.y, r)) {
@@ -55,7 +55,7 @@ export function foesNear(w, a, r) {
   }
   return out.sort((p, q) => dist(a, p) - dist(a, q));
 }
-const fighting = o => (o.task?.id === 'fight' || o.task?.id === 'maul') && o.task.target;   // (as agents/combat.js stanceOf reads it)
+const fighting = o => isAttack(o.task);   // (as agents/combat.js stanceOf reads it)
 const shoots = o => !!o.fightRole && COMBAT_ROLES.has(o.fightRole) && COMBAT_ROLES.get(o.fightRole).squad === 'shooter';
 // a soft target for a cutthroat: one who shoots, one who tends the wounded, one already bleeding, one busy with another
 const soft = o => !!o.gear?.ranged || o.task?.id === 'aid' || o.task?.id === 'treat' || o.task?.id === 'bind' || o.task?.id === 'mend' || hpShare(o) < TACTICS.wounded;

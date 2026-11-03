@@ -13,7 +13,7 @@ import {liveById} from '../lookup.js';
 import {herdOf, nerveOf} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
 import {log} from '../../core/log.js';
-import {esc, dist} from '../../core/util.js';
+import {esc, dist, cap} from '../../core/util.js';
 import {endTask} from '../lifecycle.js';
 import {STAND} from '../../data/behaviour.js';
 
@@ -69,7 +69,7 @@ export function kickStep(w, a, t) {
     if (t.stay) { endTask(w, a); return; }   // a tame mule kicks where it stands and goes after nobody (fendOff)
     if (a.hurtBy?.far && d > M.chargeFrom && !t.charging) {
       t.charging = true;
-      if (foe.faction === 'colony') log(w, `${sp.label[0].toUpperCase() + sp.label.slice(1)} несётся на <b>${esc(foe.name)}</b>: стрелять в него было ошибкой.`, 'danger', 'notice');
+      if (foe.faction === 'colony') log(w, `${cap(sp.label)} несётся на <b>${esc(foe.name)}</b>: стрелять в него было ошибкой.`, 'danger', 'notice');
     }
     if (approach(w, a, foe.x, foe.y, t.charging ? sprintMul(a, M.charge, STAND.chargeDrain) : STAND.closePace) === null) a.hurtBy = null;   // cannot get there: forget it
   } else { kick(w, a, foe, M, t.charging); t.charging = false; }

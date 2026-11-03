@@ -4,10 +4,9 @@
 import {SUMMON} from '../../data/roles.js';
 import {isHostile} from '../../data/factions.js';
 import {nearAgents} from '../spatial.js';
+import {isAttack, ours} from '../lookup.js';   // (the caller's side: a colony's called beasts stand with the colony)
 
 const WANT = {fight: 3, leave: 1};
-// the caller's side: a colony's called beasts stand with the colony
-const ours = (a, o) => o.faction === a.faction || (a.faction === 'allies' && o.faction === 'colony');
 
 export const summoned = {
   want(w, a) {
@@ -15,7 +14,7 @@ export const summoned = {
     let foe = null, best = Infinity;
     for (const o of nearAgents(w, a.x, a.y, SUMMON.sight)) {
       if (o === a || o.dead || o.downed || o.captive) continue;
-      if (!(isHostile(a, o) || (o.task?.target && ours(a, o.task.target) && (o.task.id === 'fight' || o.task.id === 'maul')))) continue;
+      if (!(isHostile(a, o) || (isAttack(o.task) && ours(a, o.task.target)))) continue;
       const d = Math.hypot(o.x - a.x, o.y - a.y);
       if (d < best) { best = d; foe = o; }
     }

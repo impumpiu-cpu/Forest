@@ -9,6 +9,7 @@ import {SNOW} from '../world/weather.js';
 import {CONDITIONS} from '../data/conditions.js';
 import {THORNS} from '../data/buildings.js';
 import {agentInZone} from '../settlement/zone.js';
+import {mountSpeed} from './mount.js';
 
 // one not of the colony inside the zone of a colony with a thorn hedge (data/buildings.js thornhedge, THORNS)
 export const thornedBy = (w, a) => !!w.mods?.add?.thorns && a.faction !== 'colony' && !a.tame && !a.captive && !!w.zone && agentInZone(w, a);
@@ -20,7 +21,7 @@ export function speedOf(w, a) {
   // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
   const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
   const thorns = thornedBy(w, a) ? THORNS.slow : 1;   // in the elves' thorn hedge
-  return (a.mount?.hp > 0 ? SPECIES.get(a.mount.species).speed : SPECIES.get(a.species).speed) * a.mods.speed   // (a rider at its mount's pace: agents/mount.js)
+  return (mountSpeed(a) ?? SPECIES.get(a.species).speed) * a.mods.speed   // (a rider at its mount's pace: agents/mount.js)
      * (a.gear?.speed || 1) * web * daze * d.speed * snow * thorns;
 }
 

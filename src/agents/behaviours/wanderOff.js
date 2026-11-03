@@ -2,14 +2,14 @@
 // it, and the whole pack goes (the shared `leave` task). Reads: predator {prey, sight, wanderOff}.
 import {SPECIES} from '../../data/species.js';
 import {log} from '../../core/log.js';
-import {packOf, boldness, nearest, perTick} from '../hunting.js';
+import {packOf, boldness, nearest, chancePerTick} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
 
 export const wanderOff = {
   want(w, a, {sp}) {
     const P = sp.predator;
     if (packOf(w, a)[0] !== a || a.task?.id === 'leave') return null;
-    if (boldness(a, P) > PROWL.wanderBold && !nearest(w, a, P.prey, P.sight) && w.rngs.wild() < perTick(w, a, 'wander', P.wanderOff)) return [[{id: 'leave', pace: PROWL.leavePace}, PROWL.want.wander, () => 'ни следа добычи']];
+    if (boldness(a, P) > PROWL.wanderBold && !nearest(w, a, P.prey, P.sight) && w.rngs.wild() < chancePerTick(w, a, 'wander', P.wanderOff)) return [[{id: 'leave', pace: PROWL.leavePace}, PROWL.want.wander, () => 'ни следа добычи']];
     return null;
   },
   // taken: the pack follows its leader off the map

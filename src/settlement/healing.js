@@ -16,8 +16,11 @@ export const hurt = a => a.hp < maxHp(a) * HEAL.seekBelow;
 
 // The hut's beds are reservations 'bed:<hut id>:<k>' (settlement/reserve.js): a wounded colonist takes
 // one before setting out, so nobody walks there to find every bed taken.
-export const hutOf = w => w.buildings.find(b => b.key === 'healerhut' && b.done);
-export const bedsOf = () => BUILDINGS.get('healerhut').beds || 2;
+// the healer's hut: the one building the wounded lie in (data/buildings.js); systems ask these, not its id
+export const HUT = 'healerhut';
+export const hutOf = w => w.buildings.find(b => b.key === HUT && b.done);
+export const hasHut = w => has(w, HUT);
+export const bedsOf = () => BUILDINGS.get(HUT).beds || 2;
 export const freeBed = (w, a) => { const b = hutOf(w); return b ? freeSlot(w, 'bed:' + b.id, bedsOf(), a) : null; };
 
 // who lies in the hut now: those lying in a bed of their own
@@ -45,4 +48,4 @@ export function tend(w, healer, rate) {
   return given;
 }
 
-export const healerHutCell = (w, a) => w.grid.bld[cellOf(w, a)] >= 0 && w.buildings.some(b => b.key === 'healerhut' && b.done && b.id === w.grid.bld[cellOf(w, a)]);
+export const healerHutCell = (w, a) => w.grid.bld[cellOf(w, a)] >= 0 && w.buildings.some(b => b.key === HUT && b.done && b.id === w.grid.bld[cellOf(w, a)]);

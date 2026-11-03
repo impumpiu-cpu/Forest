@@ -22,7 +22,7 @@ import {taintBy} from './afflictions.js';
 import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
 import {NORM} from '../data/special.js';
 
-import {firstAttacker} from './lookup.js';
+import {firstAttacker, isAttack} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
@@ -187,7 +187,6 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
 // (a shot too, when the bow itself bites as silver: the sacred tree in its master's hands, data/kinds.js);
 // a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
-export const SILVER = COMBAT.silver;
 const silverFactor = (t, item, by = null) => {
   const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver) || (!!item && silverCoat(by));   // (a silver oil on the blade: agents/potions.js)
   const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
@@ -253,10 +252,9 @@ const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 // Where an armed blow comes from (COMBAT.flank, back): 'back' — the target does not know of the striker (asleep, or out
 // of any fight and not hurt lately), 'flank' — it is fighting someone else, otherwise 'front'. A beast's bite is
 // always 'front' (a pack's tactics are its own: agents/carcass.js)
-const busy = t => (t.task?.id === 'fight' || t.task?.id === 'maul') && t.task.target;
 export function stanceOf(w, a, t) {
   if (!a.gear?.melee?.item) return 'front';
-  const fighting = busy(t);
+  const fighting = isAttack(t.task);
   if (fighting) return t.task.target === a ? 'front' : 'flank';
   if (t.sleeping || !(t.hurtBy && w.tick - t.hurtBy.tick < COMBAT.back.aware)) return 'back';
   return 'front';

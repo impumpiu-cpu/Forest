@@ -8,7 +8,7 @@ import {nearAgents} from './spatial.js';
 import {packMembers, noteAttacker} from './lookup.js';
 import {agentInZone} from '../settlement/zone.js';
 import {maxHp} from './agent.js';
-import {clamp, esc, dist} from '../core/util.js';
+import {clamp, esc, dist, cap} from '../core/util.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {dropCarcass, startHunt} from './carcass.js';
@@ -95,14 +95,14 @@ export function startMaul(w, a, v, b) {
   think(w, v, 'wolfAttack', {who: sp.plural});
   const n = company(w, v, P.loneRadius);
   log(w, b > PROWL.desperate && n ? `Изголодавшиеся ${sp.plural} бросаются на людей! <b>${esc(v.name)}</b> и спутник(и) вдали от лагеря.`
-    : `${who[0].toUpperCase() + who.slice(1)} ${many ? 'нападают' : 'нападает'}! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
+    : `${cap(who)} ${many ? 'нападают' : 'нападает'}! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
   return h;
 }
 
 // a chance given «a tick», rolled when the behaviour is asked (a full thought every few ticks): the chance over all the
 // ticks since this one was last rolled — 1 − (1 − p)^Δ — so a beast thinking every 8 ticks leaves as often as one thinking
 // every tick (a.rolled keeps the tick of each roll by key)
-export function perTick(w, a, key, p) {
+export function chancePerTick(w, a, key, p) {
   const R = (a.rolled ||= {}), dt = Math.max(0, w.tick - (R[key] ?? w.tick - 1));
   R[key] = w.tick;
   return dt <= 1 ? (dt ? p : 0) : 1 - Math.pow(1 - p, dt);

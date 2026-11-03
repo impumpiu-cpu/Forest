@@ -41,7 +41,7 @@ export function traumasAt(t) {
 }
 
 // still healing the wound of an earlier fall: luck is spent until it closes
-export const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
+const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
 
 // A blow took the last health. Returns true if the creature fell instead of dying.
 export function lethal(w, t, cause, by) {
@@ -124,5 +124,3 @@ export function healWounds(w, a) {
   think(w, a, 'woundHealed');
 }
 
-// the wounds a creature carries, for the card
-export const woundsText = a => (a.wounds || []).map(x => WOUNDS.get(x.id).label);

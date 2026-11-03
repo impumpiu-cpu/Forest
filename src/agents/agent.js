@@ -5,7 +5,7 @@ import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS, BASE_MODS, LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../data/traits.js';
-import {shuffle, weighted, esc, g} from '../core/util.js';
+import {shuffle, weighted, esc, g, cap, between} from '../core/util.js';
 import {log} from '../core/log.js';
 import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 import {think} from './mind.js';
@@ -34,8 +34,6 @@ export function trophyText(t) {
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
-
-const between = (rng, [a, b]) => a + rng() * (b - a);
 
 // liked and disliked work are drawn from preferable jobs; up to two traits from different groups.
 // Skills start from SPECIAL (agents/skills.js): a little of everything, more where the letter is strong.
@@ -141,7 +139,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    const who = a.band === 'bandits' ? a.name || 'Налётчик' : a.name !== sp.label.replace(/^./, c => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+    const who = a.band === 'bandits' ? a.name || 'Налётчик' : a.name !== cap(sp.label) ? `${a.name}, ${sp.label},` : a.name;
     const verb = sp.undead ? g(a, 'упокоен', 'упокоена') : g(a, 'убит', 'убита');
     log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
@@ -156,5 +154,4 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
-  else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }
 }
