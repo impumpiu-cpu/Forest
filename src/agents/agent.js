@@ -12,6 +12,7 @@ import {think} from './mind.js';
 import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
+import {deposit} from '../settlement/stock.js';
 import {addCorpse} from '../settlement/life.js';
 import {rollCreature, refreshBody, BODY_VER} from './special.js';
 import {startSkills} from './skills.js';
@@ -129,8 +130,9 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.faction === 'colony' && !quiet) log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
     // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
-    for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
-    for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
+    // into the stores as a hunter's game goes (settlement/stock.js deposit: the buildings' yield bonus; the stores hold any amount)
+    for (const [r, n] of Object.entries(sp.yields)) deposit(w, r, n);
+    for (const [r, n] of Object.entries(trophy?.got || {})) deposit(w, r, n);
     const got = Object.keys(sp.yields).map(r => RESOURCES.get(r).label).join(', ');
     log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? 'упокоил' : 'убил', sp.undead ? 'упокоила' : 'убила')} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} — в лагерь.${trophyText(trophy)}`, 'danger', 'notice');
   } else if (sp.resident && by?.faction === 'colony') {

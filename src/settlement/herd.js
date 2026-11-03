@@ -22,6 +22,7 @@ import {esc, perTick} from '../core/util.js';
 import {colonists, foodTotal, buildingById} from './query.js';
 import {createAgent} from '../agents/agent.js';
 import {recomputeMods} from './mods.js';
+import {deposit} from './stock.js';
 import {think} from '../agents/mind.js';
 import {HERD} from '../data/colony.js';
 import {useWinterHay} from '../data/plants.js';
@@ -111,7 +112,7 @@ function breakOut(w, a, why) {
 
 function slaughter(w, a, why = 'Голод') {
   const sp = SPECIES.get(a.species);
-  for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
+  for (const [r, n] of Object.entries(sp.yields)) deposit(w, r, n);   // (settlement/stock.js: the buildings' yield bonus, as for the hunter's game)
   a.dead = true; a.slaughtered = true;
   forget(w);
   recomputeMods(w);
