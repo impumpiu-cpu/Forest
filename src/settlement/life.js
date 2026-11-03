@@ -66,7 +66,7 @@ function furnish(w) {
       const b = room.sort((x, y) => rank(x) - rank(y))[0];
       (b.furniture ||= []).push(f.id); w.stock[f.id] -= 1;
       const d = BUILDINGS.get(b.key);
-      log(w, `${f.label[0].toUpperCase() + f.label.slice(1)} — ${d.name === 'Изба' ? 'в избу' : 'в ' + d.name.toLowerCase()}. Убранство: ${b.furniture.map(id => FURNITURE.get(id).label).join(', ')}.`, 'build');
+      log(w, `${f.label[0].toUpperCase() + f.label.slice(1)} — в ${d.nameAcc || d.name.toLowerCase()}. Убранство: ${b.furniture.map(id => FURNITURE.get(id).label).join(', ')}.`, 'build');
     }
   }
 }
