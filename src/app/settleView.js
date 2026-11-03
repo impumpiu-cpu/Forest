@@ -17,7 +17,7 @@ import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, i
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {esc, plural} from '../core/util.js';
-import {$} from '../ui/dom.js';
+import {$, seg as segRow, press} from '../ui/dom.js';
 import {dateText} from '../core/clock.js';
 import {mountPace} from '../ui/pace.js';
 import {march, questText} from './campView.js';
@@ -43,10 +43,7 @@ export class SettleView extends MapView {
       box.innerHTML = ATLAS_OPTS[key].map(([v, l]) => `<button type="button" data-val="${esc(String(v))}" aria-pressed="false">${esc(l)}</button>`).join('');
       box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this[key] = b.dataset.val; this.sync(); this.draw(); });
     });
-    const seg = (id, items, on) => {
-      $(id).innerHTML = items.map(([v, l]) => `<button type="button" data-val="${esc(String(v))}">${esc(l)}</button>`).join('');
-      $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { on(b.dataset.val); this.sync(); } });
-    };
+    const seg = (id, items, on) => segRow(id, items.map(([v, l]) => [v, esc(l)]), null, v => { on(v); this.sync(); }, {toggle: true});
     seg('setTool', TOOLS, v => { this.tool = v; this.note(NOTES[v]); });
     const peoples = PLACEABLE.peoples();
     seg('setPeople', peoples.map(P => [P.id, P.label]), v => { this.people = v; });
@@ -85,7 +82,6 @@ export class SettleView extends MapView {
     const val = {layer: this.layer, ore: this.ore, fauna: this.fauna};
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.skey])))));
     $('setOre').hidden = this.layer !== 'ores'; $('setFauna').hidden = this.layer !== 'fauna';
-    const press = (id, v) => $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(v))));
     press('setTool', this.tool); press('setPeople', this.people); press('setCalIn', this.calIn);
     $('setPeopleRow').hidden = this.tool !== 'people'; $('setLairRow').hidden = this.tool !== 'lair'; $('setCalRow').hidden = this.tool !== 'calamity';
     $('setMap').classList.toggle('hand', this.tool !== 'look');

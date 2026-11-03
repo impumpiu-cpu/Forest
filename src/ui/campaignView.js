@@ -24,7 +24,7 @@ import {atlasDone, newAtlas, runNextStage, landDone} from '../atlas/generate.js'
 import {eraPlan, historyLength, seasonLabel} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
-import {$} from './dom.js';
+import {$, seg, press} from './dom.js';
 import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
@@ -54,8 +54,8 @@ const itemShort = id => gearDef(id)?.short ?? id;
 // `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
 const WATCH = {watch: {stops: true}, x4: {}, x16: {}};
 // the layers of the campaign's map: these of the «Мир» map's (ui/atlasView.js ATLAS_OPTS)
-const CAMP_LAYERS = new Set(['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rot']);
-const LAYERS = () => ATLAS_OPTS.layer.filter(([id]) => CAMP_LAYERS.has(id));
+const CAMP_LAYERS = ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rot'];
+const LAYERS = () => CAMP_LAYERS.map(id => ATLAS_OPTS.layer.find(([k]) => k === id)).filter(Boolean);
 // where the making of an epic world is: the land, or the year of history and its era
 function epicProgress(a, sec) {
   if (!landDone(a) || !a.hist) return `Складывается земля… ${Math.round(sec)} с`;
@@ -75,9 +75,7 @@ export class CampaignView extends MapView {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
     this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', skin: 'campSkin', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
-    const lay = $('campLayer');
-    lay.innerHTML = LAYERS().map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join('');
-    lay.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.layer = b.dataset.val; lay.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); this.draw(); });
+    seg('campLayer', LAYERS(), this.layer, v => { this.layer = v; this.draw(); });
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
       onPace: id => {
@@ -105,9 +103,7 @@ export class CampaignView extends MapView {
     $('campWorldFile2').addEventListener('click', () => file(this.detail));
     // a new epic world (cfg.epic: three eras of 75–150 years), made here and put into the library
     this.epicSize = 'medium';
-    const es = $('campEpicSize');
-    es.innerHTML = EPIC_SIZES.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.epicSize}">${l}</button>`).join('');
-    es.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.epicSize = b.dataset.val; es.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+    seg('campEpicSize', EPIC_SIZES, this.epicSize, v => { this.epicSize = v; });
     $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6));
     $('campEpicDice').addEventListener('click', () => { if (!this.making) $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6)); });
     $('campEpicGo').addEventListener('click', () => (this.making ? this.stopEpic() : this.makeEpic()));
@@ -200,7 +196,7 @@ export class CampaignView extends MapView {
     if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
     if (size && EPIC_SIZES.some(([id]) => id === size)) {
       this.epicSize = size;
-      $('campEpicSize').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === size)));
+      press('campEpicSize', size);
     }
     this.makeEpic();
   }

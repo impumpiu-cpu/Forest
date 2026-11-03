@@ -19,7 +19,7 @@ import {LOOKS} from '../render/looks.js';
 import {esc} from '../core/util.js';
 import {VERSION} from '../version.js';
 
-const $ = id => document.getElementById(id);
+import {$} from '../ui/dom.js';
 const STORE = 'forest.app.beast';
 // the kinds of the list in the order of data/species.js KINDS; the races are not made here
 const kindOrder = () => Object.keys(KINDS).filter(k => k !== 'race');

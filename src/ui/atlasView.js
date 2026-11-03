@@ -48,7 +48,7 @@ import {townFx, room, realmMetalWords} from '../atlas/towns.js';
 import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
 import {worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
-import {$} from './dom.js';
+import {$, seg} from './dom.js';
 import {SeasonClock} from '../core/clock.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
@@ -121,11 +121,8 @@ const windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4
 // the chronicle's detail, remembered in this browser (shared by the «Мир» and «Кампания» screens)
 export function loadDetail() { try { return localStorage.getItem('forest.chronDetail') || 'normal'; } catch (e) { return 'normal'; } }
 export function saveDetail(v) { try { localStorage.setItem('forest.chronDetail', v); } catch (e) { /* storage unavailable */ } }
-// a row of buttons for a choice; `on(value)` when one is pressed
-export function segOf(box, items, cur, on) {
-  box.innerHTML = items.map(d => `<button type="button" data-val="${d.id}" aria-pressed="${d.id === cur}">${d.label}</button>`).join('');
-  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); on(b.dataset.val); });
-}
+// a row of buttons for a choice; `on(value)` when one is pressed (ui/dom.js seg)
+export const segOf = (box, items, cur, on) => { seg(box, items, cur, on); };
 // the world's chronicle into a text file: by its eras at `what` detail ('major' | 'normal' | 'all'), or 'calamity'
 export function exportChronicle(a, name, what) {
   const title = name || `Мир ${a.cfg.seed}`;

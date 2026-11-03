@@ -10,7 +10,7 @@ import {esc} from '../core/util.js';
 import {editText, parseText} from '../ui/cellEdit.js';
 import {offerPlain} from '../ui/store.js';
 
-const $ = id => document.getElementById(id);
+import {$} from '../ui/dom.js';
 const STORE = 'forest.app.table';
 const GROUPS_STORE = 'forest.app.tableGroups';   // the groups of the list left open
 
