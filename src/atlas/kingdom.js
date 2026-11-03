@@ -105,7 +105,7 @@ export function stepKingdom(a, say) {
         const used = new Set(Object.values(K.court).filter(Boolean).map(x => personOf(a, x.person)?.name).filter(Boolean));
         const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
         if (nm) {
-          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r, abilities: O.id === 'ruler' ? abilitiesFor(realm) : []});   // (the throne's channels: one who has their art is chosen — atlas/control.js)
+          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r, abilities: O.id === 'ruler' ? abilitiesFor(realm) : [], health: townFx(seat).health});   // (the throne's channels: one who has their art is chosen — atlas/control.js)
           if (seat) { moveTo(p, 'town', seat.id); nameOut(a, p, seat); }   // (one of the seat's own: out of its count — atlas/persons.js)
           K.court[O.id] = {person: p.id, since: year, until: year + years};
           tell(`${f ? 'Новая' : 'Новый'} ${O.id === 'ruler' ? rulerTitle(realm, p) : f ? O.labelF : O.label} ${name} — ${nm}.`);

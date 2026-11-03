@@ -63,7 +63,7 @@ export function crownRuler(a, r, rnd, {g = null, name = null} = {}) {
   const used = new Set(Object.values(K.court).filter(Boolean).map(h => personOf(a, h.person)?.name).filter(Boolean));
   const f = g ? g === 'f' : rnd() < COURT.female, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
   if (!nm) return null;
-  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r)});
+  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r), health: townFx(cap).health});
   if (cap) { moveTo(p, 'town', cap.id); nameOut(a, p, cap); }
   return p;
 }
