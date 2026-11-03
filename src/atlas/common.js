@@ -15,3 +15,9 @@ export const relKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 export const linkKey = (p, q) => Math.min(p.id, q.id) * 100000 + Math.max(p.id, q.id);
 // how many wars a realm is in now (a.rel; atlas/diplomacy.js)
 export const warsOf = (a, id) => { let n = 0; for (const [k, x] of Object.entries(a.rel || {})) if (x.war && k.split(':').includes(String(id))) n++; return n; };
+// the living towns of each realm, in the order of a.towns: Map realm id → [town] (a pair of realms looks at its two lists only)
+export function townsByRealm(towns) {
+  const m = new Map();
+  for (const t of towns) if (t.alive) { const l = m.get(t.realm); if (l) l.push(t); else m.set(t.realm, [t]); }
+  return m;
+}

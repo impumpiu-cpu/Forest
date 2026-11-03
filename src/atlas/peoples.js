@@ -11,6 +11,7 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
+import {townsByRealm} from './common.js';
 import {ORE_KINDS, LAND_BIOMES, TOWN_ROLES} from '../data/worldLand.js';
 import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
@@ -423,11 +424,12 @@ export function stepPeoples(a, rnd, say) {
   abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
+  const byRealm = townsByRealm(a.towns);
   for (const r of a.realms) for (const q of a.realms) {
     if (r.id >= q.id) continue;
     const key = `${r.id}:${q.id}`; if (a.contacts[key]) continue;
     let where = -1;
-    for (const t of a.towns) if (t.alive && t.realm === r.id) for (const o of a.towns) if (o.alive && o.realm === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { where = Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2); break; }
+    for (const t of byRealm.get(r.id) || []) for (const o of byRealm.get(q.id) || []) if (Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { where = Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2); break; }
     if (where < 0) continue;
     const fe = meet(a, r.id, q.id, a.hist.year).att;
     a.contacts[key] = {year: a.hist.year, feeling: fe};

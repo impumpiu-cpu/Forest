@@ -5,6 +5,7 @@
 //   townFacts(a, t, {inRealm, lit, stock}) → {get(fact, arg, scope)}; `inRealm` — what stands in the realm's towns (realmBuilt),
 //   `lit` — the town's lit indicators (atlas/economy.js townLights), `stock` — the store to read (the economy: the season's
 //   supply, imports too); all worked out once by a caller asking many times
+import {personOf} from './persons.js';
 import {WORLD_PEOPLES, placeNeed} from '../data/peoples.js';
 import {POLITIES} from '../data/polities.js';
 import {lineHas} from '../data/townBuildings.js';
@@ -35,7 +36,7 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
         case 'pop': return t.pop;
         case 'tier': return t.tier || 0;
         case 'capital': return !!t.capital;
-        case 'ruler': { const r = (a?.realms || []).find(x => x.id === t.realm); const h = r?.kingdom?.court?.ruler; return !!h && !!(a.persons || []).find(p => p.id === h.person && p.alive); }
+        case 'ruler': { const r = (a?.realms || []).find(x => x.id === t.realm); const h = r?.kingdom?.court?.ruler; return !!h && !!personOf(a, h.person)?.alive; }
       }
       if (!FACTS.has(fact)) throw new Error(`requirements: unknown fact «${fact}»`);
       return undefined;

@@ -149,7 +149,8 @@ export const pourBrood = (a, at, L) => pour(a, {x: at % a.w, y: (at / a.w) | 0},
 export const felt = (a, lair) => { const F = a.fauna, s = F && F.list[F.idx[LAIRS.get(lair.kind).species]]; return s ? s.N[faunaCell(a, lair.i)] : 0; };
 // how thick the owners of a lair kind live about a cell, against what the land holds (0 — none)
 const thick = (a, L, i) => { const F = a.fauna, s = F && F.list[F.idx[L.species]], j = F ? faunaCell(a, i) : 0; return s && s.K[j] > 0 ? s.N[j] / s.K[j] : 0; };
-const wildKinds = a => LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
+const liveByKind = a => { const n = new Map(); for (const o of a.lairs) if (o.alive) n.set(o.kind, (n.get(o.kind) || 0) + 1); return n; };
+const wildKinds = a => { const n = liveByKind(a); return LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && (n.get(L.id) || 0) < L.max * LL.crowdMax); };
 // the kind of a lair that rises by itself (born of the density, or come into the wild — not a brood: a brood founds its
 // own kind): drawn among the kinds whose ground fits, each with the chance of how thick its owners live there (so a
 // thinner kind may settle too, and the wild keeps its variety) — the newcomers' kind (`own`) weighing LAIR_FIELD.own
