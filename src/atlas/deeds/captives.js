@@ -22,7 +22,7 @@ import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {PARTIES} from '../../data/parties.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {ROT} from '../../data/lairs.js';
-import {raidWho, raidBand, campMight, hitTown} from '../lairs.js';
+import {raidWho, raidBand, campMight, hitTown, townBeatsLair} from '../lairs.js';
 import {townFx, might, raidShare, townLabel} from '../towns.js';
 import {relation, attitude, meet, fight, barrows} from '../diplomacy.js';
 import {realmLabel, realmLabelGen} from '../realms.js';
@@ -94,9 +94,8 @@ export const captives = {
     // the realm's: on a tribe's camp
     if (plan.lair != null) {
       const t = a.towns.find(x => x.id === plan.from), l = (a.lairs || []).find(x => x.id === plan.lair); if (!t?.alive || !l?.alive) return null;
-      const L2 = LAIRS.get(l.kind), sp = SPECIES.get(L2.species), s = sp.special, TW = TOWN_WAR, CT = CR.realm.tribe;
-      const town = might(t, townFx(t)) * TW.might * (TW.luck[0] + TW.luck[1] * r()), camp = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (TW.luck[0] + TW.luck[1] * r());
-      if (town > camp) {
+      const L2 = LAIRS.get(l.kind), sp = SPECIES.get(L2.species), TW = TOWN_WAR, CT = CR.realm.tribe;
+      if (townBeatsLair(t, l, r)) {
         const n = Math.max(1, Math.round(CT.heads * l.strength)) * CR.realm.grow;
         l.strength = Math.max(0, l.strength - CT.hit); t.slaves = (t.slaves || 0) + n; (t.slavesOf ||= {})[L2.species] = (t.slavesOf[L2.species] || 0) + n;
         return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} разорили ${L2.labelAcc || L2.label} «${l.name}» и увели ${sp.plural} в рабство.`;

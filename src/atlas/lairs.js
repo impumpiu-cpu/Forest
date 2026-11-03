@@ -16,7 +16,7 @@ import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TR
 import {killShare, strangersOf} from './population.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_WAR} from '../data/peoples.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {BIOMES} from '../data/biomes.js';
 import {SPECIES} from '../data/species.js';
@@ -309,6 +309,12 @@ export function wildLairs(a, rnd) {
 }
 
 export const power = sp => { const s = SPECIES.get(sp).special; return (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2; };
+// a town of a realm against a lair (the deeds clearLair, liberate, captives): the town's might × TOWN_WAR.might against the
+// lair's strength × its owner's power × `guard`, luck on both sides (the town's drawn first) → true when the town wins
+export function townBeatsLair(t, l, r, guard = 1, fx = townFx(t)) {
+  const W = TOWN_WAR, town = might(t, fx) * W.might * (W.luck[0] + W.luck[1] * r());
+  return town > l.strength * power(LAIRS.get(l.kind).species) * guard * (W.luck[0] + W.luck[1] * r());
+}
 
 // one season of every lair; returns lines for the chronicle
 export function stepLairs(a, rnd, seasonId) {

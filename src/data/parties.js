@@ -46,4 +46,4 @@ export const ARMY = {levy: 0.1, beasts: 0.25, might: 2.85, prod: 0.3, defence: 0
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in
 // an ancient lair at a volcano. It sleeps for years, then flies out: to the richest town within
 // `reach` cells, burns `burns` of its works and `loss` of its people, and flies home to sleep again.
-export const DRAGON = {sleep: [6, 14], reach: 45, burns: [2, 4], loss: 0.1, might: 60};
+export const DRAGON = {sleep: [6, 14], reach: 45, burns: [2, 4], loss: 0.1, might: 60, luck: [0.6, 0.8]};   // luck: the town's and the dragon's, × luck[0] + luck[1] × a roll

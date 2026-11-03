@@ -34,6 +34,7 @@ export const DIPLOMACY = {
   front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,
   raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, raidTake: 0.3, repelled: 0.1, barrows: 3,
   warLoss: {work: [0.25, 0.4]},
+  luck: [0.6, 0.8],   // a battle's and a siege's luck on both sides: × luck[0] + luck[1] × a roll (atlas/diplomacy.js fight, the storm)
   states: [
     {id: 'friends', from: 2, label: 'дружба'},
     {id: 'peace', from: -0.5, label: 'мир'},
