@@ -66,6 +66,9 @@
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
 import {Registry} from '../core/registry.js';
 import {reqNeeds, litFacts} from './requirements.js';
+// (read only when a card asks: requirements.js has already brought them in)
+import {SPECIES} from './species.js';
+import {WORLD_PEOPLES} from './peoples.js';
 import {meets} from '../core/requirements.js';
 import {RESOURCES as PRICE, CAMPAIGN} from './balance/prices.js';
 
@@ -139,9 +142,12 @@ TOWN_GOODS.registerAll([
 // gold for one unit of a good
 export const goodPrice = id => { const G = TOWN_GOODS.get(id); return G.res ? PRICE[G.res].price * (G.per ?? 1) : G.price; };
 // the metal streams (docs/WORLD.md «Металлы по рудам»): a metal of the realm's smiths (data/balance/materials.js id) → its ore and
-// its ingots; steel has no ore of its own (it is made of iron ingots)
+// its ingots; steel has no ore of its own (it is made of iron ingots); `coin` — a metal of the mint (gold, silver): the funeral
+// rites and the golem forge take the other ingots (RITE, POOLS.bars)
 export const METALS = {bronze: {ore: 'ore_bronze', bar: 'bar_bronze'}, iron: {ore: 'ore_iron', bar: 'bar_iron'}, steel: {ore: null, bar: 'bar_steel'},
-  silver: {ore: 'ore_silver', bar: 'bar_silver'}, gold: {ore: 'ore_gold', bar: 'bar_gold'}, mithril: {ore: 'ore_mithril', bar: 'bar_mithril'}};
+  silver: {ore: 'ore_silver', bar: 'bar_silver', coin: true}, gold: {ore: 'ore_gold', bar: 'bar_gold', coin: true}, mithril: {ore: 'ore_mithril', bar: 'bar_mithril'}};
+// the ingots that are not coin metal, in the order of METALS
+const WORK_BARS = Object.values(METALS).filter(m => !m.coin).map(m => m.bar);
 export const barOf = m => METALS[m]?.bar || null;
 
 // Luxury (docs/WORLD.md «Роскошь»; from the branch Elves): the luxury workshop works any two of these materials, `take` of each
@@ -169,7 +175,7 @@ for (const g of Object.keys(MINT.take)) {
 // dearer the metal, the less of it; the cheapest first
 export const RITE_WORTH = {fallentemple: 20};
 export const RITE = {};
-for (const g of ['bar_bronze', 'bar_iron', 'bar_steel', 'bar_mithril']) Object.defineProperty(RITE, g, {enumerable: true, get: () => goodPrice(g)});
+for (const g of WORK_BARS) Object.defineProperty(RITE, g, {enumerable: true, get: () => goodPrice(g)});
 
 export const EFFECTS = {housing: 'жильё', food: 'запасы', prod: 'ремесло', trade: 'торговля', defence: 'оборона', faith: 'вера', lore: 'знание', prestige: 'слава', health: 'здоровье'};
 
@@ -200,14 +206,15 @@ export const INDICATORS = {
   inn: 'постоялый двор', harbor: 'гавань', sealanes: 'морские пути', lighthouse: 'маяк', shipyard: 'верфь', golems: 'големы', coinage: 'чеканка',
   magic: 'чары', market: 'рынок', capital: 'столица', crossing: 'переправа', river: 'речные перевозки', toll: 'застава', caravans: 'караван-сарай',
 };
-export const PEOPLE_WORDS = {elves: 'Эльфы', dwarves: 'Дварфы', humans: 'Люди', orcs: 'Зеленокожие'};
-export const KIN_WORDS = {orc: 'орки', goblin: 'гоблины', gnoll: 'гноллы', troll: 'тролли', ogre: 'огры'};
+// a people's word for the cards: its own label, capitalised («Эльфы», «Зеленокожие»; data/peoples.js)
+const cap1 = x => x[0].toUpperCase() + x.slice(1);
+export const PEOPLE_WORDS = new Proxy({}, {get: (o, v) => (typeof v === 'string' && WORLD_PEOPLES.has(v) ? cap1(WORLD_PEOPLES.get(v).label) : undefined)});
 // the word of an indicator for the cards: «зерно», «Эльфы», «орки», «на складе: слитки железа»
 export function indicatorLabel(id) {
   if (INDICATORS[id]) return INDICATORS[id];
   const [k, v] = id.split(':');
   if (k === 'people') return PEOPLE_WORDS[v] || v;
-  if (k === 'kin') return KIN_WORDS[v] || v;
+  if (k === 'kin') return SPECIES.has(v) ? SPECIES.get(v).plural : v;   // the race's plural (data/races.js)
   if (k === 'stock') return `на складе: ${TOWN_GOODS.has(v) ? TOWN_GOODS.get(v).label : v}`;
   return id;
 }
@@ -503,7 +510,7 @@ export const FUEL = {fuel: 1, wood: 1, brush: 0.5};
 // fuel; the funeral rites any ingots by worth; the golem forge any ingots; the mint gold, silver or gems; the luxury workshop,
 // last, its materials. They take in this order, each from what the buildings' own `in` left over, the rest shared by what
 // there is of each good.
-export const POOLS = {bars: {bar_bronze: 1, bar_iron: 1, bar_steel: 1, bar_mithril: 1}, fuel: FUEL, rite: RITE, coin: COIN, finery: FINERY};
+export const POOLS = {bars: Object.fromEntries(WORK_BARS.map(g => [g, 1])), fuel: FUEL, rite: RITE, coin: COIN, finery: FINERY};
 // (the pools that take of each good by how much there is, not the cheapest first: the mint strikes of all it gets)
 export const POOL_SHARE = new Set(['coin']);
 // the pools a building does without at TOWN_FLOW.soft, as a soft good (the funeral rites with no ingots)
@@ -515,7 +522,7 @@ export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
 // Ores (docs/WORLD.md «Металлы по рудам»): a mine digs `dig.n` ore a year of the kinds it reaches (`dig.ores`), shared by how
 // rich its cell is in each (atlas/geology.js ore fields: iron, bronze — copper and tin —, silver, gold, mithril; a cell rich in
 // none — iron), and `dig.coal` charges of fuel × how rich it is in coal. Each ore is a good of its own, each smelted by its recipe.
-export const ORE_GOODS = {iron: 'ore_iron', bronze: 'ore_bronze', silver: 'ore_silver', gold: 'ore_gold', mithril: 'ore_mithril'};
+export const ORE_GOODS = Object.fromEntries(Object.entries(METALS).filter(([, m]) => m.ore).map(([k, m]) => [k, m.ore]));   // (from METALS)
 // what a building can make at all: its `out`, its recipes', the ores it digs, the metals of its yields
 export const makesOf = b => [...new Set([...Object.keys(b.out || {}), ...recipesOf(b).flatMap(q => Object.keys(q.out || {})), ...(b.dig?.ores || []).map(k => ORE_GOODS[k]), ...(b.dig?.coal ? ['fuel'] : []),
   ...Object.values(b.yields || {}).flatMap(o => Object.keys(o))])];
