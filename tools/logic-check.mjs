@@ -2127,5 +2127,15 @@ check('T145', 'места в загоне и зимнее сено считае�
   return pen.available(w) === (penRoom(w) < 2) || 'второй загон решает не по penRoom';
 });
 
+check('T146', '«Тяжело ранен» — доля полного здоровья (MIND.woundedBelow), а не само число здоровья', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  const foe = raider(w), dwarf = put(w, 'dwarf', 'colony', 31.5, 30.5), elf = put(w, 'elf', 'colony', 29.5, 30.5);
+  const hurt = (a, share) => { a.hp = share * maxHp(a); damage(w, foe, a, 0.001); return !!a.diary?.some(e => e.id === 'wounded'); };
+  if (!dwarf.diary || !elf.diary) return 'у поселенца нет дневника';
+  // a dwarf at 43% (more than 0.45 of health in points) is badly hurt; an elf at 47% (less than 0.45 in points) is not yet
+  const d = hurt(dwarf, 0.43), e = hurt(elf, 0.47);
+  return (d && !e) || `дварф на 43%: ${d ? '' : 'не '}ранен, эльф на 47%: ${e ? '' : 'не '}ранен`;
+});
+
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }
 if (bad) process.exit(1);

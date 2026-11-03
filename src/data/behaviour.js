@@ -368,8 +368,9 @@ export const BODY = {
   fireDeath: 60,     // one dying in heat above this died of the fire («пожара»), else of its wounds
 };
 
-// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish
-export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4};
+// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish;
+// a blow that leaves a colonist below `woundedBelow` of its full health is the thought «Тяжело ранен» (agents/combat.js)
+export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4, woundedBelow: 0.45};
 
 // Moving (agents/movement.js): what makes a cell dangerous to stand in, how a beast runs, how one walks round an obstacle
 export const MOVE = {

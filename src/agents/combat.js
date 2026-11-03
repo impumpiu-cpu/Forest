@@ -3,7 +3,7 @@
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
-import {maxHp} from './agent.js';
+import {maxHp, hpShare} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
@@ -23,7 +23,7 @@ import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} fr
 import {NORM} from '../data/special.js';
 
 import {firstAttacker, isAttack} from './lookup.js';
-import {KINDLE} from '../data/behaviour.js';
+import {KINDLE, MIND} from '../data/behaviour.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
 import {quaff, drinkFor, bladeHit, silverCoat, rage} from './potions.js';
@@ -174,7 +174,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
-  if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
+  if (t.diary && t.hp > 0 && hpShare(t) < MIND.woundedBelow) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
   const rb = bsp.remembers, rt = tsp.remembers;
   const memKey = rb === 'wolf' || rt === 'wolf' ? 'wolf' : rb === 'mule' || rt === 'mule' ? 'mule' : rb || rt || 'raid';
