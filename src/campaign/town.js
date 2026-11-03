@@ -160,7 +160,12 @@ function equip(K, id) {
   if (d.tool) { const m = ms.find(x => toolOf(x, gearDef)) || ms[0], k = m.gear.hand.indexOf(toolOf(m, gearDef)); if (k >= 0) m.gear.hand[k] = id; else m.gear.hand.push(id); return m; }
   const m = ms.filter(x => isFighter(x) && !gearDef(x.gear.hand[0])?.ranged).sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
   const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
-  if (k >= 0) m.gear.hand[k] = id; else m.gear.hand[0] = id;
+  if (k >= 0) m.gear.hand[k] = id;
+  else {   // no blade in hand: the new one takes the first hand, what was there (a tool, a shield) goes with the spoils
+    const old = m.gear.hand[0];
+    if (old && gearDef(old)) K.spoils = [...(K.spoils || []), old];
+    m.gear.hand[0] = id;
+  }
   return m;
 }
 
