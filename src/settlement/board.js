@@ -320,7 +320,7 @@ export function redInSight(w, a, r) {
   return null;
 }
 
-// a raid on the board: the gathering at the fire (agents/tasks.js muster) holds while it is
+// a raid on the board: the gathering at the fire (agents/tasks/camp.js muster) holds while it is
 export const raidOnBoard = w => Object.values(w.board?.flags || {}).some(f => f.kind === 'raid' && f.red);
 
 // the closest live member of a known flag within r, or null

@@ -11,7 +11,7 @@
 // makes a fine piece a matter of course; +4 stays below a thousandth of a percent even for a master
 // (0.0008% at skill 100). Bellows at the forge add their own small chance of +1.
 //
-// What a level does (applied in agents/equipment.js):
+// What a level does (applied in agents/itemDefs.js):
 //   hit:    melee and ranged damage ×(1 + hit)          guard: armour and shield block + guard
 //   tool:   tool speed ×(1 + tool)                     dur:   durability ×(1 + dur)
 //   warmth: clothing warmth + warmth

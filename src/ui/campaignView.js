@@ -42,6 +42,7 @@ import {baggageText, rank, isCore} from '../campaign/march.js';
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../atlas/calamity.js';
 import {RESOURCES} from '../data/resources.js';
+import {stockHtml} from './cards.js';
 import {WALK_PHASES} from '../data/labels.js';
 import {campLocal, WATCH} from './campLocal.js';
 import {campStats} from './campStats.js';
@@ -72,6 +73,9 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', skin: 'campSkin', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     seg('campLayer', LAYERS(), this.layer, v => { this.layer = v; this.draw(); });
+    // the dock's «Склад»: the camp's stock by groups while a camp is on the map, the caravan's cargo between camps
+    this.stockAll = false;
+    seg('campStockSeg', [['have', 'что есть'], ['all', 'всё']], 'have', v => { this.stockAll = v === 'all'; this.renderStock(); });
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
       onPace: id => {
@@ -413,8 +417,18 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
 
 
+  // the dock's «Склад» (ui/cards.js stockHtml): the camp's w.stock, or the caravan's cargo
+  renderStock() {
+    const box = $('campStock'); if (!box) return;
+    const L = this.local, K = this.atlas?.campaign;
+    $('campStockWhat').textContent = L ? 'Склад стоянки' : 'Груз каравана';
+    if (L) box.innerHTML = stockHtml(L.w.stock, L.w, this.stockAll);
+    else if (K) box.innerHTML = stockHtml(Object.fromEntries(Object.entries(K.cargo || {}).filter(([id]) => RESOURCES.has(id))), null, this.stockAll);
+    else box.innerHTML = '<p class="muted">Караван ещё не выступил.</p>';
+  }
+
   renderSide() {
-    this.renderFights(); this.renderSummary();
+    this.renderFights(); this.renderSummary(); if (!this.local) this.renderStock();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};

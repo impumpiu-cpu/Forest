@@ -39,7 +39,7 @@ const E = w => (w.escape ??= {rolled: -1, dawn: -1, plot: null, alarm: null, cut
 const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
 const willOf = a => (a.captive.will ??= ESCAPE.will.start);
 const holdOf = a => (BONDS.has(a.captive.bonds) ? BONDS.get(a.captive.bonds).hold : 1);
-const holdsTool = a => handItems(a).length > 0;   // a captive holds nothing in its hands but a tool (agents/equipment.js captiveItem)
+const holdsTool = a => handItems(a).length > 0;   // a captive holds nothing in its hands but a tool (agents/outfit.js captiveItem)
 const days = (w, a) => Math.max(0, (w.tick - a.captive.since) / DAY);
 const free = w => colonists(w).filter(a => !a.captive && !a.dead);
 const label = a => SPECIES.get(a.species).label;
@@ -184,6 +184,6 @@ export function stepEscape(w) {
       if (rng() < R.base * willOf(a) * holdOf(a) * (kin ? R.kin : 1) * (holdsTool(a) ? R.tool : 1)) startEscape(w, a, 'alarm');
     }
   }
-  // the tools for the night: handed in at the camp, given back by outfit after dawn (agents/equipment.js)
+  // the tools for the night: handed in at the camp, given back by outfit after dawn (agents/outfit.js)
   if (toolsAway(w)) for (const a of caps) if (w.nav.get('camp')[cellOf(w, a)] < 3 && handItems(a).length) handIn(w, a);
 }

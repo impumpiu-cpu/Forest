@@ -1,6 +1,6 @@
 // Leave: now and then a wild beast wanders off the map for good (`leaveChance` a tick), and once it has
 // set off it goes on to the edge whatever the hour; one that hibernates leaves for the winter. The walk itself is
-// the shared `leave` task (agents/tasks.js: raiders, caravans and beasts all go the same way). Reads: leaveChance.
+// the shared `leave` task (agents/tasks/raid.js: raiders, caravans and beasts all go the same way). Reads: leaveChance.
 import {WANT} from '../../data/behaviour.js';
 import {season} from '../../data/seasons.js';
 import {chancePerTick} from '../hunting.js';

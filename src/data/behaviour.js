@@ -318,7 +318,7 @@ export const KINDLE = {torch: {fire: 0.6, heat: 300, fuel: 0.9}, breath: {fuel: 
 // building within the torch's reach — while no foe is within `clear`
 export const TORCH = {casual: 0.06, clear: 3};
 
-// How a colonist weighs gear (agents/equipment.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
+// How a colonist weighs gear (agents/outfit.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
 // every `blowTicks`, × `melee` × courage + `meleeBase`; silver while a creature that fears it is here (`silverHere`) or
 // once met (`silverMet`); a shot × `ranged` × liking for the hunt + `rangedBase`, × `noAmmo` without arrows; block ×
 // `block` × courage; a tool's gain × `tool` × liking for the job (× `backTool` on the back); speed in the hand ×
@@ -368,8 +368,9 @@ export const BODY = {
   fireDeath: 60,     // one dying in heat above this died of the fire («пожара»), else of its wounds
 };
 
-// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish
-export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4};
+// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish;
+// a blow that leaves a colonist below `woundedBelow` of its full health is the thought «Тяжело ранен» (agents/combat.js)
+export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4, woundedBelow: 0.45};
 
 // Moving (agents/movement.js): what makes a cell dangerous to stand in, how a beast runs, how one walks round an obstacle
 export const MOVE = {

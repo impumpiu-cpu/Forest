@@ -22,7 +22,7 @@ export const campLocal = Base => class extends Base {
     this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
-    this.localText();
+    this.localText(); this.renderStock();
   }
   // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
   localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
@@ -39,7 +39,9 @@ export const campLocal = Base => class extends Base {
     }
     this.localR.draw(w, L.view);
     if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
-    if (L.view.selected && (L.frames = (L.frames || 0) + 1) % 15 === 0) this.localCard();   // the creature's card follows it
+    L.frames = (L.frames || 0) + 1;
+    if (L.view.selected && L.frames % 15 === 0) this.localCard();   // the creature's card follows it
+    if (L.frames % 15 === 0 && !$('campStock').closest('[data-pane]').hidden) this.renderStock();   // the dock's «Склад», while it is open
   }
   // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
   pickLocal(e) {
@@ -68,6 +70,7 @@ export const campLocal = Base => class extends Base {
     this.local = null;
     if (L.view.selected || L.view.selBld != null || L.view.selCell != null) this.renderInspect();   // the world's card again
     $('campLocal').hidden = true; $('campLocalBar').hidden = true;
+    this.renderStock();
     // the season's playback goes on from where it stopped
     this.clock.release(); this.syncRun();
     this.animate();

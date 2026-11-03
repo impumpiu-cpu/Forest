@@ -2,7 +2,7 @@
 // (agents/squad.js) follows it: its goal, each member's role, retreat when morale breaks. Without a plan (or when it
 // has nothing to say): the nearest foe, else the stores — the mindless dead and the war beasts never loot, they go
 // for the nearest living soul and wander the camp (`haunt`) waiting for one. The tasks are the shared ones of
-// agents/tasks.js: fight, assault, haunt, torch, scout, leave. Reads: nothing of its own.
+// agents/tasks.js fight and agents/tasks/raid.js: assault, haunt, torch, scout, leave. Reads: nothing of its own.
 import {nearestHostile} from '../combat.js';
 import {squadOf, planFor} from '../squad.js';
 import {RAID, TORCH} from '../../data/behaviour.js';

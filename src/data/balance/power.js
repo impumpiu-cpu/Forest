@@ -4,7 +4,7 @@ import {RULES} from './rules.js';
 
 export const toPL = x => Math.log(x) / Math.log(RULES.step);
 
-// d: an item definition (data/items.js, or a finer one from agents/equipment.js itemDef);
+// d: an item definition (data/items.js, or a finer one from agents/itemDefs.js itemDef);
 // ref: the reference weapon's definition (PL 0)
 export const attackPL = (d, ref) => (d.melee ? toPL((d.melee.dmg / d.melee.cd) / (ref.melee.dmg / ref.melee.cd)) : null);
 // a shot against a blow: the same base, the hit chance of a middling shooter at half range

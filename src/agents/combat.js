@@ -3,7 +3,7 @@
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
-import {maxHp} from './agent.js';
+import {maxHp, hpShare} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
@@ -23,7 +23,7 @@ import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} fr
 import {NORM} from '../data/special.js';
 
 import {firstAttacker, isAttack} from './lookup.js';
-import {KINDLE} from '../data/behaviour.js';
+import {KINDLE, MIND} from '../data/behaviour.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
 import {quaff, drinkFor, bladeHit, silverCoat, rage} from './potions.js';
@@ -174,7 +174,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
-  if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
+  if (t.diary && t.hp > 0 && hpShare(t) < MIND.woundedBelow) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
   const rb = bsp.remembers, rt = tsp.remembers;
   const memKey = rb === 'wolf' || rt === 'wolf' ? 'wolf' : rb === 'mule' || rt === 'mule' ? 'mule' : rb || rt || 'raid';
@@ -322,7 +322,7 @@ export function shoot(w, a, t) {
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
-  if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks.js torch)
+  if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks/raid.js torch)
   // the first shot of a fight, as the first blow: a brew for it (a light step; a cat's eye at night; a fire-ward against
   // a fire-breather) — the shot waits; no oil goes on a bow (agents/potions.js fits)
   if (a.belt?.length && (isHostile(a, t) || aggressor(a, t)) && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return 'drink'; }   // (not at game: a hunter keeps its brews)

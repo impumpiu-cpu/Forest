@@ -32,9 +32,10 @@ import {WORLD_PEOPLES} from './peoples.js';
 import {T as TERR} from './terrain.js';
 const ROCK = TERR.ROCK;
 
-// free places in the pens (settlement/herd.js has the same; this table cannot import it)
-const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 * penK(w) : 0), 0)
-  - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
+// the herd's own reckonings (settlement/herd.js: isTameable, penRoom — the free places in the pens), handed over by it
+// at load — it imports this table, so this table cannot import it
+let HERD_REF = null;
+export const useHerd = ref => { HERD_REF = ref; };
 
 export const BUILDINGS = new Registry('building');
 // a race line that keeps big herds (data/relations.js `rel`): its colony's pen holds × this (the greenskins' pens)
@@ -298,16 +299,15 @@ BUILDINGS.registerAll([
     wish: 'хочет беречь снаряжение',
     motive: (a, c) => [[a.mem.broken * 1.3, 'снаряжение ломается'], [Math.max(0, c.broken - 1) * 0.2, 'снаряжение ломается слишком часто']]},
 
-  // ── herding: a fenced pen for tamed goats and mules (settlement/herd.js)
+  // ── herding: a fenced pen for tamed animals (settlement/herd.js)
   {id: 'pen', name: 'Загон', gender: 'm', cost: {wood: 14, rope: 2}, work: 160, max: 2, wooden: true, color: '#9a8a5a', mark: 'Зг',
     lot: [4, 4], pen: 6,
-    effect: 'Изгородь на 6 мест: козе нужно одно, мулу два. Скотник приручает диких коз и мулов охапкой сена, доит коз, стрижёт шерсть. При нехватке припасов взрослый излишек идёт на мясо, пара остаётся для разведения; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
+    effect: 'Изгородь на 6 мест: козе и овце нужно одно, мулу, лошади и верблюду два, туру три. Скотник приручает дикий скот охапкой сена, доит, стрижёт шерсть. При нехватке припасов взрослый излишек идёт на мясо, пара каждого разводимого вида остаётся для разведения; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
     effects: {},
-    // the first when there are wild goats or mules about; a second only when the first is full
-    available: w => (w.buildings.some(b => b.key === 'pen') ? penRoom(w) < 2
-      : w.agents.some(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null)),
+    // the first when there are wild animals about that a herder could tame; a second only when the first is full
+    available: w => (w.buildings.some(b => b.key === 'pen') ? HERD_REF.penRoom(w) < 2 : w.agents.some(HERD_REF.isTameable)),
     wish: 'хочет держать скот',
-    motive: (a, c) => [[c.wildHerd && !c.count('pen') ? 0.45 : 0, 'по округе бродят дикие козы'], [c.herdFull ? 0.6 : 0, 'в загоне тесно'],
+    motive: (a, c) => [[c.wildHerd && !c.count('pen') ? 0.45 : 0, 'по округе бродит дикий скот'], [c.herdFull ? 0.6 : 0, 'в загоне тесно'],
       ...(c.count('pen') ? [] : [[a.mem.hunger * 0.5, 'скот кормит и в голодный год'], [a.mem.cold * 0.3, 'из шерсти выйдет тёплая одежда'], [(a.prefs.herd - 1) * 1.5, 'любит возиться со скотиной']])]},
 
   // ── the shrine: a carved idol under a little roof, the graves beside it (settlement/life.js)

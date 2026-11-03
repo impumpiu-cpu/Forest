@@ -6,7 +6,7 @@ import {POTION} from '../data/potions.js';
 import {captiveText} from '../settlement/captives.js';
 import {masterTitle} from '../settlement/masters.js';
 import {formerText} from '../settlement/freedom.js';
-import {RESOURCES} from '../data/resources.js';
+import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
@@ -16,7 +16,8 @@ import {OUTCOMES} from '../agents/lifecycle.js';
 import {goodsUnits} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
 import {oreOf} from '../world/ores.js';
-import {furnacePick} from '../settlement/stock.js';
+import {furnacePick, campFuel} from '../settlement/stock.js';
+import {peekKinds} from '../settlement/kinds.js';
 import {fuelReserve} from '../settlement/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -25,7 +26,7 @@ import {SPECIES, MINDS} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, dayOf} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
-import {colonists, has} from '../settlement/query.js';
+import {colonists, has, foodTotal} from '../settlement/query.js';
 import {taskLabel} from '../agents/tasks.js';
 import {cellOf} from '../world/grid.js';
 import {BY_CODE} from '../data/terrain.js';
@@ -317,4 +318,24 @@ export function cellHtml(w, i) {
   for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>Могила</dt><dd>${esc(gr.name)} · умер${gr.f ? 'ла' : ''} в день ${dayOf(gr.died) + 1}${gr.rite ? ', похоронен' + (gr.f ? 'а' : '') + ' с обрядом' : ''}</dd>`);
   for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>Тело</dt><dd>${esc(c.name)}, ещё не похоронен${c.f ? 'а' : ''}</dd>`);
   return `<div class="pc-head"><h3>Клетка ${x}, ${y}</h3></div><dl class="kv">${rows.join('')}</dl>`;
+}
+
+// The stock by its groups (data/resources.js `group`, in RESOURCE_GROUPS order): the dock's «Склад» of a camp. `stock` is
+// {resource: amount} — the camp's w.stock, or the caravan's cargo between camps (no `w` then: no kinds of wood and stone,
+// no food total, no fire). `all`: the empty ones too, dimmed; else only what there is.
+export function stockHtml(stock, w = null, all = false) {
+  const amount = r => stock[r.id] || 0;
+  const groups = resourceGroups().map(name => {
+    const rs = RESOURCES.filter(r => (r.group || 'Прочее') === name && (all || amount(r) >= 0.05));
+    if (!rs.length) return '';
+    const rows = rs.map(r => {
+      const v = amount(r);
+      const of = w && (r.id === 'wood' || r.id === 'stone') && v >= 0.5 ? Object.entries(peekKinds(w, r.id)).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([id, n]) => `${(WOODS.has(id) ? WOODS : STONES).get(id).label} ${Math.floor(n)}`).join(', ') : '';
+      return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label + (of ? ': ' + of : ''))}"><span><i class="dot" style="background:${r.color || 'var(--muted)'}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`;
+    }).join('');
+    const extra = !w ? '' : name === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>`
+      : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
+    return `<div class="sgroup"><h3>${esc(name)}</h3>${rows}${extra}</div>`;
+  }).join('');
+  return groups || '<p class="muted">Склад пуст.</p>';
 }

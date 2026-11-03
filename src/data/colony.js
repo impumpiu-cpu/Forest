@@ -46,10 +46,9 @@ export const HERD = {
   hungryDays: 3,            // days in a row with less than starveBelow of its food before it breaks out
   starveBelow: 0.55,
   reach: 75,                // how far from the camp the herder goes for a wild one
-  slaughterBelow: 1.5,      // food per colonist below which a goat is slaughtered…
-  keepGoats: 2,             // …as long as this many are left
+  slaughterBelow: 1.5,      // food per colonist below which the youngest of a breeding kind is slaughtered
   meatBelow: 4,            // regular slaughter of grown surplus livestock below this food per colonist
-  breeders: 2,             // keep this many grown, breeding animals of each kind
+  breeders: 2,             // breeders kept of a kind whose tame block names no `keep` (data/species.js)
 };
 
 export const THREAT = {
@@ -152,12 +151,6 @@ export const PRECIOUS = {
   veinCells: [2, 4],    // rock cells that turn into gold quartz
   fameVein: 6,          // added to the raid threat by the rumour of gold…
   fameMithril: 4,       // …and of mithril
-};
-
-// What a player may do to the world (src/commands.js): a fire set to a 3×3 patch, a short downpour
-export const COMMAND = {
-  ignite: {fuel: 0.05, fire: 0.6, heat: 300},   // cells with more fuel than this catch, at this fire and heat
-  rain: {r: 7, cool: 2, smoke: 0.3},             // within this radius: fire out, cooled to the air less this, smoke × this
 };
 
 // the evening council at the campfire (settlement/council.js): the hours it sits (from, to), the share of the colony that
