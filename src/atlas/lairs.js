@@ -155,9 +155,12 @@ const wildKinds = a => { const n = liveByKind(a); return LAIRS.filter(L => !L.sp
 // own kind): drawn among the kinds whose ground fits, each with the chance of how thick its owners live there (so a
 // thinner kind may settle too, and the wild keeps its variety) — the newcomers' kind (`own`) weighing LAIR_FIELD.own
 // more; a kind with a lair of its own within two territories is left out → the kind, or null
-export function kindAt(a, i, rnd, own = null) {
-  const p = {x: i % a.w, y: (i / a.w) | 0}, room = L => !a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L));   // (one kind's lairs keep apart)
-  const C = wildKinds(a).filter(L => groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
+// (`at`: what kindAt asks of the lairs — the kinds of the wild and the living lairs by kind — made once for a run of calls
+// in which no lair is added nor dies: kindsHere(a); without it they are made for the call)
+export const kindsHere = a => { const byKind = new Map(); for (const o of a.lairs) if (o.alive) (byKind.get(o.kind) || byKind.set(o.kind, []).get(o.kind)).push(o); return {kinds: wildKinds(a), byKind}; };
+export function kindAt(a, i, rnd, own = null, at = kindsHere(a)) {
+  const p = {x: i % a.w, y: (i / a.w) | 0}, room = L => !(at.byKind.get(L.id) || []).some(o => dist(o, p) < 2 * R(a, L));   // (one kind's lairs keep apart)
+  const C = at.kinds.filter(L => groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
   if (!C.length) return null;
   let t = rnd() * C.reduce((v, [, w]) => v + w, 0);
   for (const [L, w] of C) if ((t -= w) <= 0) return L;
@@ -172,19 +175,19 @@ function bornOfDensity(a, rnd) {
   if (!cand.length) return lines;
   cand.sort((p, q) => q[0] - p[0]);
   const k = scaleOf(a), want = LF.births * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
-  let made = 0;
+  let made = 0, at = kindsHere(a);   // (made again after each lair born: the kinds and their lairs change only then)
   for (const [, j] of cand) {
     if (made >= n) break;
     const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
     for (let t = 0; t < 12; t++) {
       const i = Math.min(a.n - 1, Math.min(a.h - 1, y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0)));
-      const L = kindAt(a, i, rnd); if (!L) continue;   // whose lair: a draw by how thick each kind's owners live here
+      const L = kindAt(a, i, rnd, null, at); if (!L) continue;   // whose lair: a draw by how thick each kind's owners live here
       const p = {x: i % a.w, y: (i / a.w) | 0};
       if (a.lairs.some(o => o.alive && dist(o, p) < Math.max(R(a, L), R(a, LAIRS.get(o.kind))))) continue;
       const lair = hideIfWild(a, newLair(a, L, i, rnd, LL.broodStart)), who = SPECIES.get(L.species).plural;
       lines.push(lair.hidden ? `В глуши ${wherePhrase(a, i)} осели бродячие ${who}: где их ${L.nouns[0][0]}, не знает ни одна держава.`
         : `Бродячие ${who} осели ${wherePhrase(a, i)}: ${G[L.g].fresh} ${acc(L)} — «${lair.name}».`);
-      made++; break;
+      made++; at = kindsHere(a); break;
     }
   }
   return lines;

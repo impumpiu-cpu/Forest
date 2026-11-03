@@ -39,7 +39,7 @@ import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
 import {ARMY} from '../data/parties.js';
-import {townEconomy, heatFactor} from './economy.js';
+import {townEconomy, prepEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
@@ -129,7 +129,8 @@ export function recycle(t, L, P, give) {
 
 export function seasonMoney(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
-  for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }   // (at: the season's step — a town burnt later in the season still sold this season)
+  const prep = new Map();   // (the season's first half of each town's works, given again after the buying: atlas/economy.js prepEconomy)
+  for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }   // (at: the season's step — a town burnt later in the season still sold this season)
   const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
   const deal = (b, s) => dealOf(a, b, s), realmBy = new Map((a.realms || []).map(r => [r.id, r]));
   const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
@@ -168,7 +169,7 @@ export function seasonMoney(a, towns) {
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
-  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
+  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
   // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
   for (const t of towns) {
     const e = t.econ, out = sold.get(t.id) || {};
