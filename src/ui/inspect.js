@@ -114,8 +114,8 @@ function roleLine(t) {
 
 // the races of a town, the larger first («орки 61%, гоблины 24%, гноллы 9%»), the bands of age, the year's losses by cause
 export const kinLine = (a, t) => Object.entries(townKin(a, t)).filter(([, v]) => v >= 0.005).sort((p, q) => q[1] - p[1]).map(([id, v]) => `${SPECIES.has(id) ? SPECIES.get(id).plural : id} ${Math.round(v * 100)}%`).join(', ');
-export const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
-export const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : '', V.came >= 0.5 ? `пришло с земли ${Math.round(V.came)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && k !== 'came' && v >= 0.5).map(([k, v]) => `${LOSS_CAUSES[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
+const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
+const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : '', V.came >= 0.5 ? `пришло с земли ${Math.round(V.came)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && k !== 'came' && v >= 0.5).map(([k, v]) => `${LOSS_CAUSES[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
 
 function realmHtml(a, R) {
   if (!R) return '';

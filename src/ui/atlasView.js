@@ -86,11 +86,10 @@ const OVER = {
 };
 const ON = {}; for (const [what, layers] of Object.entries(OVER)) for (const l of layers) (ON[l] ||= new Set()).add(what);
 const NONE = new Set();
-// the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
-// fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
+// a press that moves less than this is a click (a hover); further, it drags the map
 const DRAG_PX = 5;
 // the marks of the towns' works, by the building's category (data/townBuildings.js CATEGORIES)
-const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};   // a press that moves less than this is a click (a hover); further, it drags the map
+const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};
 
 const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
 const hexRgb = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
@@ -142,7 +141,6 @@ export class MapView {
     // the observer's clock (core/clock.js): a season a step at the pace chosen; the screens give it their step
     this.clock = new SeasonClock({step: () => this.stepSeason(), after: () => this.afterSeason(), done: () => this.afterRun()});
     this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
-    this.pick = -1;   // the cell picked (the polygon: for a settlement, seam/cell.js), -1 — none
     this.sel = null; this.selCell = '';   // the object selected for the inspector (ui/inspect.js)
     this.setup(opts);
     this.build();
@@ -823,6 +821,5 @@ export class MapView {
   }
 }
 
-// The world screen of old (its own controls are gone with the polygon; the campaign screen builds on it: the library,
-// a saved world shown, the clock's steps over history).
+// the choices of the map's settings and layers (the screens of src/app/ build their rows from them)
 export {OPTS as ATLAS_OPTS};

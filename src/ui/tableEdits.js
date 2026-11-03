@@ -5,13 +5,13 @@ import {applyEdits, LAYER, editCount, stampWarning} from '../data/schema/edits.j
 import {VERSION} from '../version.js';
 
 const STORE = 'forest.tables';
-export const EDITS_KIND = 'forest-tables';
+const EDITS_KIND = 'forest-tables';
 
 // Infinity does not survive JSON: written as a word, read back as the number
 const out = (k, v) => (v === Infinity ? 'Infinity' : v === -Infinity ? '-Infinity' : v);
 const back = (k, v) => (v === 'Infinity' ? Infinity : v === '-Infinity' ? -Infinity : v);
 
-export const editsFile = () => ({kind: EDITS_KIND, version: VERSION, savedAt: Date.now(), n: editCount(), edits: LAYER});
+const editsFile = () => ({kind: EDITS_KIND, version: VERSION, savedAt: Date.now(), n: editCount(), edits: LAYER});
 export const editsJSON = () => JSON.stringify(editsFile(), out, 2);
 
 // keep the layer as it is now (none: the store is cleared)
@@ -34,9 +34,6 @@ try {
   const raw = localStorage.getItem(STORE);
   if (raw) { const f = JSON.parse(raw, back); if (f?.kind === EDITS_KIND) BOOT_PROBLEMS = applyEdits(f.edits); }
 } catch (e) { BOOT_PROBLEMS = [`правки таблиц не прочитаны: ${e.message}`]; }
-
-// the line a loaded world or game adds to its status: '' when it was made under the edits there are now
-export const editsNote = (stamp, what) => { const w = stampWarning(stamp, what); return w ? ` ⚠ ${w}` : ''; };
 
 // a world or a game made under other edits: a note at the top of the screen for a while (and on the status line)
 let bannerTimer = 0;

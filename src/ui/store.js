@@ -1,5 +1,5 @@
 // What this browser keeps: one IndexedDB database for saved games and saved worlds, gzip packing,
-// and handing a file to the viewer. Saved games live in `saves` (ui/saves.js). A saved world is
+// and handing a file to the viewer. The store `saves` is of the saved games of old (kept, not read). A saved world is
 // large (megabytes), so it is split: `worlds` holds the packed world, `worldIndex` what the list
 // shows, and listing never reads the worlds themselves (ui/worlds.js).
 const DB = 'forest', VERSION = 2;

@@ -139,7 +139,7 @@ export function where(w, a) {
   return `в ${d} ${plural(d, 'клетке', 'клетках', 'клетках')} от лагеря`;
 }
 
-export function whyHtml(w, a) {
+function whyHtml(w, a) {
   if (a.downed) return '';   // senseless: no choice to explain (agents/wounds.js)
   const y = a.why, rows = [];
   const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };

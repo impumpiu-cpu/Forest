@@ -154,9 +154,11 @@ export class CampaignView extends MapView {
     };
     this.genRaf = requestAnimationFrame(loop);
   }
-  stopEpic() {
+  stopEpic() { this.dropEpic(); this.setupMode(); this.draw(); }
+  // the world being made is let go, unsaved
+  dropEpic() {
     this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
-    this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; this.setupMode(); this.draw();
+    this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.';
   }
   async doneEpic(sec, a = this.atlas) {
     this.making = false; $('campEpicGo').textContent = 'Сотворить';
@@ -202,7 +204,7 @@ export class CampaignView extends MapView {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
+  halt() { if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
