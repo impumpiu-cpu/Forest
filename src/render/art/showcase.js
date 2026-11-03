@@ -1,8 +1,11 @@
-import {HAIR} from '../../art/palette.js';
+import {SPECIES} from '../../data/species.js';
+import {HAIRS} from '../../data/looks.js';
 
 // What the gallery (gallery.html, src/app/gallery.js) shows: the races of the pawns, the kits they wear, the sheets of
 // pictures by folder of src/art/ and the colours they are shown in. Not used by the game.
-const SKIN = {human: '#e2b48c', elf: '#f1dcc0', dwarf: '#d59a78', orc: '#6f9a4a', goblin: '#8fb04c', ogre: '#9b8a6a', troll: '#4f8f86', gnoll: '#a8925e'};
+// a head's colours: its race's skin (look.skin) and first hair (data/looks.js HAIRS)
+const race = k => k.split('/')[1];
+const skinOf = id => (SPECIES.has(id) && SPECIES.get(id).look?.skin) || '#e2b48c';
 
 export const SHOWCASE = {
   races: ['human', 'halfling', 'giant', 'elf', 'darkelf', 'dwarf', 'orc', 'goblin', 'ogre', 'troll', 'gnoll', 'zombie', 'skeleton', 'upyr', 'vampire', 'necromancer'],
@@ -17,7 +20,7 @@ export const SHOWCASE = {
     {body: 'mithrilscale', right: 'mithrilsword', left: 'steelshield'},
   ],
   sheets: [
-    {prefix: 'heads/', title: 'Головы', colors: k => ({skin: SKIN[k.split('/')[1]] || '#e2b48c', hair: HAIR[k.split('/')[1]], beard: HAIR[k.split('/')[1]], cloth: '#3f6fb5'})},
+    {prefix: 'heads/', title: 'Головы', colors: k => ({skin: skinOf(race(k)), hair: HAIRS[race(k)]?.[0], beard: HAIRS[race(k)]?.[0], cloth: '#3f6fb5'})},
     {prefix: 'bodies/', title: 'Тела (без брони и с латами)', flags: k => (k.endsWith('stout') || k.endsWith('broad') ? new Set(['plate', 'mail', 'heavy']) : null), colors: () => ({cloth: '#3f6fb5', armor: '#b4bcc2'})},
     {prefix: 'held/', title: 'В руках', colors: () => ({faction: '#b5443a', metal: '#c4ccd4'})},
     {prefix: 'back/', title: 'За спиной'},

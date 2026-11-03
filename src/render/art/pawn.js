@@ -3,23 +3,19 @@
 // only left or right (a.faceX), the way it last stepped. Drawn small, it is the head on a token in its side's colour.
 // The look is made into one bitmap per look and size (sprite.js `cached`); the scene copies it.
 import {ITEMS} from '../../data/items.js';
-import {HAIR, METAL} from '../../art/palette.js';
+import {METAL} from '../../art/palette.js';
+import {BODIES, HAIRS, ARMOR} from '../../data/looks.js';
 import {drawSprite, hasSprite, anchorOf, cached, MARK, FIGURE, FULL} from './sprite.js';
 
-// the body of a race (bodies/*.svg); a species may name its own in the table: look.body
-const BODY = {human: 'common', darkelf: 'common', zombie: 'common', upyr: 'common', halfling: 'small', goblin: 'small', elf: 'slim',
-  dwarf: 'stout', orc: 'broad', gnoll: 'broad', giant: 'huge', ogre: 'huge', troll: 'huge', necromancer: 'robe', vampire: 'robe', skeleton: 'bones'};
-export const bodyOf = sp => sp.look?.body || BODY[sp.id] || 'common';
+// the body of a race (bodies/*.svg): look.body of its row, else data/looks.js BODIES
+export const bodyOf = sp => sp.look?.body || BODIES[sp.id] || 'common';
 export const headOf = sp => (hasSprite(`heads/${sp.look?.head || sp.id}`) ? `heads/${sp.look?.head || sp.id}` : null);
 
-// the hair of one creature: the race's own, or one of a few by its id, so a crowd of people is not one head of hair
-const HAIRS = {human: ['#6b4528', '#2a2220', '#c8a050', '#9a4a26', '#8a8a86', '#4a3020'], halfling: ['#8a5a2b', '#c8a050', '#6b4528', '#9a4a26'],
-  dwarf: ['#b5652a', '#6b4528', '#2a2220', '#d0b080', '#8a8a86', '#9a4a26'], giant: ['#4a3a2a', '#2a2220', '#8a5a2b']};
-const hairOf = (a, sp) => { const h = HAIRS[sp.id]; return h ? h[Math.abs(a.id | 0) % h.length] : HAIR[sp.id] || '#4a3a2a'; };
+// the hair of one creature: one of its race's (data/looks.js HAIRS) by its id, so a crowd of people is not one head of hair
+const hairOf = (a, sp) => { const h = HAIRS[sp.id]; return h?.length ? h[Math.abs(a.id | 0) % h.length] : '#4a3a2a'; };
 
-const PLATE = new Set(['lamellar', 'scale', 'mail', 'wicker']);
-export const FLEEING = new Set(['flee', 'bolt', 'escape', 'retreat', 'hide']);
-export const FIGHTING = new Set(['fight', 'assault', 'chase', 'maul', 'kill', 'torch']);
+const FLEEING = new Set(['flee', 'bolt', 'escape', 'retreat', 'hide']);
+const FIGHTING = new Set(['fight', 'assault', 'chase', 'maul', 'kill', 'torch']);
 
 // what is in a hand → a picture of held/ and the colours of its metal
 function heldOf(slot) {
@@ -36,7 +32,7 @@ function backOf(slot) {
 }
 
 // the look of one creature: what goes into its picture (and the key its bitmap is kept under)
-export function lookOf(a, sp, cloth) {
+function lookOf(a, sp, cloth) {
   const head = headOf(sp);
   if (!head) return null;
   const body = bodyOf(sp), flags = new Set();
@@ -46,10 +42,9 @@ export function lookOf(a, sp, cloth) {
     const it = ITEMS.get(e.body.type);
     if (it && it.form !== 'garment') {
       armor = it.color;
-      if (it.form === 'coat') flags.add('coat');
-      else if (it.form === 'jerkin') flags.add('jerkin');
-      else if (PLATE.has(it.form)) { flags.add('plate'); flags.add(it.form); if (it.tier >= 2) flags.add('heavy'); }
-      else flags.add('jerkin');
+      // the flags of the body picture by the piece's form (data/looks.js ARMOR); a plate of tier 2 and up is heavy
+      for (const f of ARMOR[it.form] || ['jerkin']) flags.add(f);
+      if (flags.has('plate') && it.tier >= 2) flags.add('heavy');
     }
   }
   const two = e.left && e.left === e.right;
@@ -92,7 +87,7 @@ function paintToken(g, L, D) {
 }
 
 // the sizes: a pawn this tall in CSS px for a creature of radius r (render/renderer.js), the token across
-export const PAWN_K = 2.9, TOKEN_K = 2.3, PAWN_MIN = 18;
+const PAWN_K = 2.9, TOKEN_K = 2.3, PAWN_MIN = 18;
 const PAD_X = 0.2, PAD_Y = 0.12;
 
 // draw the creature at (px, py); returns its box [x, y, w, h] on the screen (CSS px)
