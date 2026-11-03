@@ -1,0 +1,136 @@
+// The catalogue of commands (docs/BEHAVIOUR.md «Договор решения»): every thing a mind of the game may choose, under one
+// full id, with the decision point it is asked at. The old registries stay the source of their rows — the behaviours of
+// the local map (data/behaviours.js) and the deeds of the world (data/deeds.js) come in through adapters, under
+// `local.behaviour.<id>` and `world.deed.<id>` (the two `raid`s are two commands); the towns' and the caravan's commands,
+// which had no catalogue, are rows here. Tables «Команды», «Точки решения», «Метки команд», «Профили команд».
+//
+//   POINTS    a decision point: who decides (`level`), how often (`clock`), how it picks (`policy`: max — the highest
+//             score, draw — by weight, first — the first in the old order that offers anything, vote — the council's
+//             vote, rule — a rule that may only be allowed or not), where the code is (`code`)
+//   COMMANDS  a command: its point, its lane (`band`), its marks, the source row (`src`)
+//   MARKS     what a command leads to, for the profiles: hostile — it starts a hostility (a raid, a war, a lair burnt,
+//             a fallen foe bound), trade — it is a trade, side — a side pursuit of the caravan (wheels, beasts, ore),
+//             must — the body's own or an obligation (lying downed, fleeing fire, the body's needs, being led bound):
+//             never off, whatever the profile
+//   PROFILES  which commands a run allows: by marks (`offMarks`) and by ids (`off`); a run names its profile in its
+//             settings (`cfg.profile`: the settlement's, the world's — the campaign goes by its world's)
+//
+// What «off» means (docs/BEHAVIOUR.md «Что значит выключить»): a command off is not asked for a new choice. A task it
+// began goes on while the command would keep it (the local map: the command is asked, and only the task under way is
+// taken from what it offers); a party it sent out comes home by its own rules. What a behaviour does every tick whatever
+// the task (`always`: an aura, the gear swap, the delivery of a load) is no choice and is not off. When nothing is left
+// to choose, the mind does what it does when nothing is on offer: the task under way goes on, or it waits.
+import {Registry} from '../core/registry.js';
+import {BEHAVIOURS} from './behaviours.js';
+import {DEEDS} from './deeds.js';
+
+export const POLICIES = {max: 'наибольшая оценка', draw: 'жребий по весу', first: 'первое по прежнему порядку', vote: 'голосование', rule: 'правило'};
+export const LEVELS = {local: 'пешка и существо', world: 'держава и логово', settlement: 'поселение', town: 'город', caravan: 'караван'};
+
+export const POINTS = new Registry('decision point');
+POINTS.registerAll([
+  {id: 'local.task', level: 'local', label: 'задача существа', clock: 'тик; полный выбор по сердцебиению или событию', policy: 'max', code: 'agents/brains/tabled.js'},
+  {id: 'world.deed', level: 'world', label: 'дело субъекта мира', clock: 'сезон (главарь — весна)', policy: 'draw', code: 'atlas/actor.js'},
+  {id: 'settlement.council', level: 'settlement', label: 'постройка совета', clock: 'вечер', policy: 'vote', code: 'settlement/council.js'},
+  {id: 'town.project', level: 'town', label: 'новый проект', clock: 'сезон', policy: 'max', code: 'atlas/towns.js chooseBuilding'},
+  {id: 'town.raze', level: 'town', label: 'освободить место', clock: 'сезон', policy: 'rule', code: 'atlas/build.js'},
+  {id: 'town.buy', level: 'town', label: 'закупки мастерских', clock: 'сезон', policy: 'rule', code: 'atlas/treasury.js worksBuying'},
+  {id: 'town.settle', level: 'town', label: 'поселенцы', clock: 'год', policy: 'rule', code: 'atlas/peoples.js sendSettlers'},
+  {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'first', code: 'campaign/visit.js wantVisit'},
+  {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'first', code: 'campaign/march.js evening'},
+]);
+
+// the commands of the minds that had no catalogue; the order within a point is the order the old code asked them in
+const OWN = [
+  {id: 'settlement.council.build', point: 'settlement.council', label: 'заложить постройку', note: 'каждый голосует за постройку с наибольшим мотивом; большинство, иначе второй тур'},
+  {id: 'town.project.build', point: 'town.project', label: 'построить', note: 'по варианту на постройку: нужды × вкус народа + потоки, × тяга роли, × шум; ниже порога — ничего'},
+  {id: 'town.raze.idle', point: 'town.raze', label: 'снести простаивающее', note: 'работа, что два года шла хуже четверти, при полных местах'},
+  {id: 'town.raze.worst', point: 'town.raze', label: 'снести худшее', note: 'строить нечего, места полны: худшая работа ниже половины'},
+  {id: 'town.buy.works', point: 'town.buy', label: 'купить для мастерских', note: 'нехватку мастерских — у городов по связям'},
+  {id: 'town.settle.send', point: 'town.settle', label: 'послать поселенцев', note: 'людный город шлёт поселенцев на новое место'},
+  {id: 'caravan.visit.winter', point: 'caravan.visit', label: 'перезимовать', note: 'тощее время года и мороз: в город на зимовку'},
+  {id: 'caravan.visit.food', point: 'caravan.visit', label: 'купить еды', note: 'еды меньше, чем на дни пути'},
+  {id: 'caravan.visit.heal', point: 'caravan.visit', label: 'подлечить раненых', note: 'кто-то из свободных тяжело ранен'},
+  {id: 'caravan.visit.smith', point: 'caravan.visit', label: 'отдать руду кузнецу', note: 'руды на вещь лучше своего металла и золото на работу'},
+  {id: 'caravan.visit.shop', point: 'caravan.visit', label: 'потратить казну', note: 'казна полна и давно не были в городе'},
+  {id: 'caravan.camp.food', point: 'caravan.camp', label: 'стоянка: охота и сбор', note: 'еда на исходе, земля кормит; в опасном месте не встают, если не голодны'},
+  {id: 'caravan.camp.heal', point: 'caravan.camp', label: 'стоянка: отлежаться', note: 'раненые еле идут; в опасном месте не встают, если не голодны'},
+  {id: 'caravan.camp.build', point: 'caravan.camp', label: 'стоянка: тележка, повозка, постройка', note: 'сыты, целы, тихо: колёса, если пригодятся в пути, иначе постройка лагеря'},
+  {id: 'caravan.camp.tame', point: 'caravan.camp', label: 'стоянка: приручить', note: 'сыты, целы, тихо: здесь пасутся звери, которых не хватает'},
+  {id: 'caravan.camp.mine', point: 'caravan.camp', label: 'стоянка: добыча', note: 'сыты, целы, тихо: здесь выходит руда, за которой стоит встать'},
+];
+
+// the marks (see above), by full id
+export const MARKS = {
+  hostile: ['local.behaviour.maul', 'local.behaviour.raid', 'local.behaviour.capture', 'local.behaviour.bind',
+    'world.deed.raid', 'world.deed.captives', 'world.deed.subdue', 'world.deed.rival', 'world.deed.strike',
+    'world.deed.warOn', 'world.deed.march', 'world.deed.raidTown', 'world.deed.clearLair', 'world.deed.liberate'],
+  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'caravan.visit.smith', 'caravan.visit.shop'],
+  side: ['caravan.camp.build', 'caravan.camp.tame', 'caravan.camp.mine'],
+  must: ['local.behaviour.downed', 'local.behaviour.fleeFire', 'local.behaviour.needs', 'local.behaviour.led', 'local.behaviour.keepIn', 'local.behaviour.penned'],
+};
+export const MARK_LABELS = {hostile: 'вражда', trade: 'торг', side: 'побочный промысел', must: 'обязательна'};
+
+export const PROFILES = new Registry('command profile');
+PROFILES.registerAll([
+  {id: 'full', label: 'всё как было', offMarks: [], off: [], note: 'все команды; эталон для сравнения'},
+  {id: 'noHostile', label: 'без исходящей агрессии', offMarks: ['hostile'], off: [],
+    note: 'никто не начинает враждебного: набегов, войн, походов, выжигания логов, захвата пленных; мир, оборона и отпор остаются. Вне каталога и не выключаются: драка логов, чьи владения соприкасаются (atlas/lairs.js), и война после раскола державы (atlas/realms.js)'},
+  {id: 'noSide', label: 'без побочных промыслов', offMarks: ['side'], off: [], note: 'караван ходит по городам и живёт стоянками, но не строит колёс, не приручает и не добывает'},
+  {id: 'isolation', label: 'без торговли', offMarks: ['trade'], off: [], note: 'ни купцов, ни закупок мастерских, ни лавок и кузнецов каравана; голодный караван город всё ещё кормит'},
+]);
+
+// ── the catalogue: the old registries through their adapters, then the rows above; built once, again after an edit
+let built = null, era = 0;
+const markOf = id => Object.keys(MARKS).filter(m => MARKS[m].includes(id));
+function build() {
+  const rows = [];
+  for (const d of BEHAVIOURS.all()) rows.push({id: `local.behaviour.${d.id}`, point: 'local.task', src: d.id, label: typeof d.label === 'function' ? d.label({}) : d.id, band: d.band, note: d.note || ''});
+  for (const d of DEEDS.all()) rows.push({id: `world.deed.${d.id}`, point: 'world.deed', src: d.id, label: d.label, band: d.band, note: d.note || ''});
+  for (const c of OWN) rows.push({band: 'routine', src: c.id, ...c});
+  // (a plain catalogue, not a Registry: a Registry is kept for the saves' references, and this one is rebuilt)
+  const list = Object.freeze(rows.map(r => Object.freeze({...r, marks: markOf(r.id), must: MARKS.must.includes(r.id)}))), by = new Map(list.map(c => [c.id, c]));
+  if (by.size !== list.length) throw new Error('команды: повтор полного id');
+  return {all: () => list, has: id => by.has(id), get: id => by.get(id), filter: fn => list.filter(fn)};
+}
+export const commands = () => (built ||= build());
+export const commandOf = id => commands().has(id) ? commands().get(id) : null;
+export const localId = id => `local.behaviour.${id}`;
+export const deedId = id => `world.deed.${id}`;
+export const pointCommands = point => commands().filter(c => c.point === point);
+
+// ── the profile of a run: the set of the full ids it switches off (never a `must` one), or null for none. Cached by the
+// profile's id; an edit of a table here starts the cache anew (resetCommands)
+const masks = new Map();
+export function maskOf(cfg) {
+  const id = cfg?.profile;
+  if (!id || id === 'full') return null;
+  let m = masks.get(id);
+  if (m === undefined) {
+    if (!PROFILES.has(id)) throw new Error(`профиль команд «${id}» не найден (таблица «Профили команд»)`);
+    const P = PROFILES.get(id), off = new Set();
+    for (const c of commands().all()) if (!c.must && (P.off.includes(c.id) || c.marks.some(k => P.offMarks.includes(k)))) off.add(c.id);
+    m = off.size ? off : null;
+    masks.set(id, m);
+  }
+  return m;
+}
+// is a command allowed in a run (by its full id)
+export const allowed = (cfg, id) => { const m = maskOf(cfg); return !m || !m.has(id); };
+// after an edit of the marks, the profiles or the registries the catalogue reads
+export function resetCommands() { built = null; masks.clear(); era++; }
+export const commandsEra = () => era;
+// what is wrong with the catalogue: a mark or a profile naming a command that is not there, a must command a profile
+// names by id (it stays on), a point with no commands
+export function commandErrors() {
+  const C = commands(), bad = [];
+  for (const [m, ids] of Object.entries(MARKS)) for (const id of ids) if (!C.has(id)) bad.push(`метка ${m}: нет команды ${id}`);
+  for (const P of PROFILES.all()) {
+    for (const id of P.off) if (!C.has(id)) bad.push(`профиль ${P.id}: нет команды ${id}`); else if (C.get(id).must) bad.push(`профиль ${P.id}: ${id} обязательна, не выключается`);
+    for (const k of P.offMarks) if (!MARKS[k]) bad.push(`профиль ${P.id}: нет метки ${k}`);
+    if (P.offMarks.includes('must')) bad.push(`профиль ${P.id}: обязательные команды не выключаются`);
+  }
+  for (const p of POINTS.all()) if (!C.all().some(c => c.point === p.id)) bad.push(`точка ${p.id}: нет команд`);
+  for (const c of C.all()) if (!POINTS.has(c.point)) bad.push(`команда ${c.id}: нет точки ${c.point}`);
+  return bad;
+}

@@ -42,6 +42,8 @@ import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA, TOWN_MONEY} from '../data/townBuildings.js';
+import {allowed} from '../data/commands.js';
+import {pickMax, tracing, noteDecision, r3} from '../core/decide.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -228,10 +230,13 @@ export function townNeeds(a, t, fx, ctx) {
   };
 }
 
-// the building the town wants most, or null
+// the building the town wants most, or null — the decision point `town.project` of the contract (core/decide.js,
+// data/commands.js): each building it can build is an option of the command `town.project.build`, scored by the town's
+// needs × its people's taste and the flows, × the lean of its role, × a noise; the highest above TOWN_FX.floor is taken
 export function chooseBuilding(a, t, P, fx, ctx, rnd) {
+  if (!allowed(a.cfg, 'town.project.build')) return null;   // (the run's profile: no town builds)
   const need = townNeeds(a, t, fx, ctx);
-  let best = null, bv = 0.02;
+  const opts = [];
   const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
   for (const b of TOWN_BUILDINGS.all()) {
     if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts)) continue;   // (skip: what it could not pay for this time)
@@ -243,10 +248,14 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     if (ctx.econ) { v = flowScore(t, b, P, need, ctx.econ, inRealm, facts, v); if (v == null) continue; }
     // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)
     if (ctx.lean) v *= 1 + ctx.lean.k * along(vectorOf(b), ctx.lean.vec);
-    v *= 0.85 + 0.3 * rnd();
-    if (v > bv) { bv = v; best = b; }
+    v *= TF.noise[0] + TF.noise[1] * rnd();
+    opts.push({b, score: v});
   }
-  return best;
+  const best = pickMax(opts, TF.floor);
+  if (tracing()) noteDecision({point: 'town.project', who: `town:${t.id}`, at: a.hist ? a.hist.year * 4 + a.hist.season : 0, band: 'routine', policy: 'max',
+    opts: opts.map(o => ({cmd: 'town.project.build', key: `town.project.build(${o.b.id})`, score: r3(o.score)})), pick: best ? `town.project.build(${best.b.id})` : null,
+    skip: ctx.skip?.size ? [...ctx.skip] : undefined});
+  return best ? best.b : null;
 }
 
 // the flows of a building (atlas/economy.js) on its score v: what the town's buildings lack of a good, a building that gives it

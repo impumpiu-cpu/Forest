@@ -1,0 +1,77 @@
+{
+ "settlement:20261010": {
+  "hash": "447ebd3d4de0e383",
+  "save": "85877160",
+  "tick": 5150
+ },
+ "settlement:x7": {
+  "hash": "091c7f02e81cdfe4",
+  "save": "3092762a",
+  "tick": 5150
+ },
+ "settlement:fpl": {
+  "hash": "6524249a05b974a8",
+  "save": "b71c6f69",
+  "tick": 5150
+ },
+ "world:minds1": {
+  "hash": "d59da054",
+  "save": "f53ea15d",
+  "year": 121,
+  "chronicle": 2812
+ },
+ "world:minds2": {
+  "hash": "5e919e61",
+  "save": "7e1cd7d0",
+  "year": 121,
+  "chronicle": 2594
+ },
+ "campaign:777:humans": {
+  "hash": "6d14057d · 8/9",
+  "world": "919988f2",
+  "day": 128,
+  "why": "ca366b72"
+ },
+ "campaign:777:elves": {
+  "hash": "98c44ea2 · 6/15",
+  "world": "39f5b33f",
+  "day": 3001,
+  "why": "efa496b0"
+ },
+ "campaign:777:dwarves": {
+  "hash": "ef70abf4 · 2/9",
+  "world": "4e3142da",
+  "day": 2109,
+  "why": "29be33d"
+ },
+ "campaign:777:orcs": {
+  "hash": "913bebed · 0/14",
+  "world": "2a450b70",
+  "day": 1680,
+  "why": "8574334e"
+ },
+ "campaign:790:humans": {
+  "hash": "99453c2e · 5/21",
+  "world": "27b9d91e",
+  "day": 1271,
+  "why": "bba8dbb3"
+ },
+ "campaign:790:elves": {
+  "hash": "a4e0a45a · 5/12",
+  "world": "6dc671f4",
+  "day": 1986,
+  "why": "9792bcb4"
+ },
+ "campaign:790:dwarves": {
+  "hash": "62f38f97 · 3/21",
+  "world": "72b93c56",
+  "day": 3001,
+  "why": "42999a31"
+ },
+ "campaign:790:orcs": {
+  "hash": "259eb1e · 4/12",
+  "world": "8ab7b460",
+  "day": 688,
+  "why": "86fa5b88"
+ }
+}

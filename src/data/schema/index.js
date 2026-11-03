@@ -44,6 +44,7 @@ import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
 import {BEHAVIOURS, BAND_LABELS} from '../behaviours.js';
+import {POINTS, PROFILES, MARKS as COMMAND_MARKS, MARK_LABELS, LEVELS, POLICIES, commands, resetCommands} from '../commands.js';
 import {DEEDS, DEED_BAND_LABELS} from '../deeds.js';
 import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
@@ -218,6 +219,21 @@ export const TABLES = [
   {id: 'deeds', label: 'Дела мира', group: 'Существа', key: 'id', computed: true, rows: () => DEEDS.all(),
     note: 'Что может делать логово, его главарь или держава на карте мира (data/deeds.js, код в atlas/deeds/, docs/WORLD.md «Нравы»). Полоса — как у поведений; «Отряд» — какой отряд несёт дело по карте.',
     columns: [col('id', 'id'), col('label', 'В летописи'), col('band', 'Полоса', 'enum', {values: DEED_BAND_LABELS}), col('party', 'Отряд', 'text', {nullable: true}), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
+  // the contract of a decision (data/commands.js, core/decide.js, docs/BEHAVIOUR.md «Договор решения»): every command of every mind
+  // under its full id, the points they are asked at, their marks and the profiles of the runs
+  {id: 'decisionPoints', label: 'Точки решения', group: 'Существа', key: 'id', computed: true, rows: () => POINTS.all(),
+    note: 'Где и как часто решает каждый ум игры (data/commands.js POINTS): пешка и зверь, держава и логово, совет поселения, город, караван. «Как выбирает»: наибольшая оценка, жребий по весу, первое по прежнему порядку, голосование, правило.',
+    columns: [col('id', 'id'), col('level', 'Кто', 'enum', {values: LEVELS}), col('label', 'Решение'), col('clock', 'Когда'), col('policy', 'Как выбирает', 'enum', {values: POLICIES}), col('code', 'Код')]},
+  {id: 'commands', label: 'Команды', group: 'Существа', key: 'id', computed: true, rows: () => commands().all().map(c => ({...c})),
+    note: 'Всё, что может выбрать любой ум игры, под полным id (data/commands.js): поведения локальной карты — local.behaviour.*, дела мира — world.deed.*, команды города и каравана. Поведения и дела берутся из их таблиц; метки — из «Метки команд»; что выключено в прогоне — «Профили команд».',
+    columns: [col('id', 'id'), col('point', 'Точка', 'ref', {ref: 'decisionPoints'}), col('label', 'Название'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('marks', 'Метки', 'ids', {ref: 'commandMarks'}), col('must', 'Обязательна', 'bool'), col('note', 'Описание')]},
+  {id: 'commandMarks', label: 'Метки команд', group: 'Существа', key: 'id', rows: () => Object.keys(COMMAND_MARKS).map(id => ({id, label: MARK_LABELS[id] || id, ids: COMMAND_MARKS[id]})),
+    target: (r, c) => [COMMAND_MARKS, r.id], after: resetCommands,
+    note: 'К чему ведёт команда (data/commands.js MARKS): вражда — начинает враждебное, торг — торговля, побочный промысел — колёса, звери и руда каравана, обязательна — тело и обязанность (лежит без сознания, бежит из огня, нужды тела, уведённый связанным): не выключается ни одним профилем. Профили выключают по меткам.',
+    columns: [col('id', 'id'), col('label', 'Метка', 'text', {edit: false}), col('ids', 'Команды', 'ids', {ref: 'commands'})]},
+  {id: 'commandProfiles', label: 'Профили команд', group: 'Существа', key: 'id', rows: () => PROFILES.all(), after: resetCommands,
+    note: 'Какие команды разрешены в прогоне (data/commands.js PROFILES): по меткам и по id. Прогон называет профиль в настройках (cfg.profile); без профиля — всё как было. Выключенная команда не берёт нового дела; начатое идёт, пока команда его держала бы; обязательные не выключаются.',
+    columns: [col('id', 'id'), col('label', 'Название'), col('offMarks', 'Выключить метки', 'ids', {ref: 'commandMarks'}), col('off', 'Выключить команды', 'ids', {ref: 'commands'}), col('note', 'Описание')]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
   {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
     target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,

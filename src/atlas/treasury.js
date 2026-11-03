@@ -43,6 +43,7 @@ import {townEconomy, prepEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
+import {allowed} from '../data/commands.js';
 
 const r2 = v => Math.round(v * 100) / 100;
 const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
@@ -182,7 +183,7 @@ function worksBuying(C, prep) {
       add(b.trade, 'bought', v); add(s.trade, 'sold', v);
     }
   };
-  for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }
+  if (allowed(a.cfg, 'town.buy.works')) for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }   // (the command `town.buy.works`: data/commands.js)
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came

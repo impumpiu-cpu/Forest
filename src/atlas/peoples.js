@@ -41,6 +41,8 @@ import {DIRS8} from './heap.js';
 import {abandonEmpty, lifeYear} from './demography.js';
 import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
+import {allowed} from '../data/commands.js';
+import {tracing, noteDecision, r3} from '../core/decide.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -186,7 +188,9 @@ export function foundFrom(a, from, rnd, say) {
 // the way at full + span — or simply big: all the way at (1 + TL.settle.big) × its `from`) send settlers, each with
 // TL.settle.chance × that, a town no oftener than every
 // TL.settle.every years; at most TL.settle.max new towns a year a people
+// The decision point `town.settle` (data/commands.js): the command `town.settle.send`, a rule
 function sendSettlers(a, rnd, say) {
+  if (!allowed(a.cfg, 'town.settle.send')) return;
   const Z = TL.settle;
   for (const pe of a.peoples) {
     const S = pe.P.settlers;
@@ -198,7 +202,10 @@ function sendSettlers(a, rnd, say) {
     for (const t of towns) {
       if (made >= Z.max) break;
       if (rnd() > Z.chance * fill(t)) continue;
-      if (foundFrom(a, t, rnd, say)) { made++; t.settled = a.hist.year; }
+      const sent = foundFrom(a, t, rnd, say);
+      if (sent) { made++; t.settled = a.hist.year; }
+      if (tracing()) noteDecision({point: 'town.settle', who: `town:${t.id}`, at: a.hist.year * 4 + a.hist.season, band: 'routine', policy: 'rule',
+        opts: [{cmd: 'town.settle.send', key: 'town.settle.send', score: r3(Z.chance * fill(t))}], pick: 'town.settle.send', found: !!sent});
     }
   }
 }

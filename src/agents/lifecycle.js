@@ -18,6 +18,7 @@ import {TASKS} from './tasks.js';
 import {wake} from './attention.js';
 import {RUNNER_EXIT} from './runnerExit.js';
 import {LIFECYCLE} from '../data/behaviour.js';
+import {noteOutcome} from '../core/decide.js';
 
 // (how long a refused task waits: data/behaviour.js LIFECYCLE.skip)
 export const OUTCOMES = {
@@ -43,6 +44,7 @@ export {RUNNER_EXIT};
 function close(w, a, t, outcome, why) {
   if (!t || t.closed) return;
   t.closed = outcome;
+  if (t.dec) noteOutcome(t.dec, outcome, why ? {why} : null);   // (the decision that took the task up, while the trace is on: core/decide.js)
   releaseAll(w, a);
   a.stalking = false; a.path = null; a.approachGuard = null;
   const def = TASKS.get(t.id);

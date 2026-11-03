@@ -649,7 +649,9 @@ export const GOLEMS = {
 //   `idle` of itself; one whose goods all fill the store already (their price at the market's floor) is worth `glut` of itself;
 //   a building that wants `hands` × its jobs and finds
 //   fewer free is not built
-export const TOWN_FX = {room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, spareSkip: ['food', 'stores', 'gold'], cap: 1.2, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3, tierUp: 1, tierAt: 0.8},
+// floor, noise: the choice (the decision point `town.project`, data/commands.js) — each score × (noise[0] + noise[1] × a draw),
+//   the highest above `floor` built
+export const TOWN_FX = {floor: 0.02, noise: [0.85, 0.3], room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, spareSkip: ['food', 'stores', 'gold'], cap: 1.2, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3, tierUp: 1, tierAt: 0.8},
   needs: {full: [0.55, 0.4], housing: [2], food: [1.3, 0.1], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 
