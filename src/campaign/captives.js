@@ -96,7 +96,7 @@ export function escaped(a, K, m, text, say) {
   say(text + '.', 'leave', [m.id]); assign(K);
 }
 
-// the evening (campaign/march.js people): the ration, the will, the rolls; a plot is played out the same night
+// the evening (campaign/people.js people): the ration, the will, the rolls; a plot is played out the same night
 export function captivesEvening(a, K, r, say) {
   const hs = held(K); if (!hs.length) { K.captiveCut = false; return; }
   const R = ESCAPE.ration, cut = K.food < alive(K).length * CAMPAIGN.ration * R.cutDays;   // every mouth at a full ration: no flip-flop
@@ -157,7 +157,7 @@ export function captivesInFight(a, K, d, r, say) {
 
 // ── stage 4 (docs/CAPTIVES.md; data/captives.js FREEDOM): a resigned captive with enough service — days beside a
 // master on the local map, a plot told — is freed at the evening, when the caravan has a master to vouch for it:
-// a former slave, role 'former', with the loyalty of one who joined (campaign/march.js people). One who stood in
+// a former slave, role 'former', with the loyalty of one who joined (campaign/people.js people). One who stood in
 // a fight the caravan won is taken in as one of its own at the next evening.
 export function freedomEvening(a, K, say) {
   const vouch = free(K).find(m => m.master && !m.former);

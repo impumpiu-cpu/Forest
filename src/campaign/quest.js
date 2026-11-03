@@ -210,7 +210,7 @@ function target(a, K, rnd) {
     const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms').sort((p, q) => p.rest - q.rest)[0];
     if (back) { back.rest = 0; return target(a, K, rnd); }
   }
-  return null;   // nothing known: the council looks for rumours in a town (campaign/march.js)
+  return null;   // nothing known: the council looks for rumours in a town (campaign/march.js evening, campaign/visit.js findTown)
 }
 const distTo = (a, K, c) => Math.hypot(c.area ? c.area.x - K.x : xy(a, c.i)[0] - K.x, c.area ? c.area.y - K.y : xy(a, c.i)[1] - K.y);
 // a cell of an area to search: its centre first, then a new cell each time one is reached

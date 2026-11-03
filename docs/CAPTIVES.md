@@ -28,7 +28,7 @@
 | Мастера и ученики | `settlement/masters.js` | `campaign/masters.js` | `data/masters.js` `MASTERS`, `MASTER` |
 | Освобождение | `settlement/freedom.js` | `campaign/captives.js` | `FREEDOM` |
 | Торговля пленными | `settlement/slavery.js` | `campaign/slavery.js` | `data/slavery.js` `SLAVE` |
-| Спутники, наёмники, кто может пристать | — | `campaign/company.js`, `campaign/march.js` | `data/market.js` `COMPANIONS`, `FREED`, `LOYALTY`, `HIRES`, `CONTRACT` |
+| Спутники, наёмники, кто может пристать | — | `campaign/company.js`, `campaign/people.js` | `data/market.js` `COMPANIONS`, `FREED`, `LOYALTY`, `HIRES`, `CONTRACT` |
 
 В поселении пленный — член колонии (`faction: 'colony'`) с полем `a.captive = {since, bonds, by, band, people, was, will, resigned, service, teacher, …}`; бывший раб — `a.former = {since, bond, fought, …}`; мастер — `a.master = {skill, since, workedAt}`. Всё это простые данные, сохраняются с миром.
 

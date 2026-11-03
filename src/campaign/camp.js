@@ -76,7 +76,7 @@ export function campSetup(a, K, ev) {
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     food: K.food, cargo: {...K.cargo},
     met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
-    // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
+    // a stop to dig: the ore the council stopped for (campaign/mine.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
   };

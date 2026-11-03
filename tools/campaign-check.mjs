@@ -54,7 +54,7 @@ import {seats} from '../src/campaign/epic.js';
 import {EPIC} from '../src/data/calamities.js';
 import {QUEST} from '../src/data/quest.js';
 import {questTarget, askable} from '../src/campaign/quest.js';
-import {wantMine} from '../src/campaign/march.js';
+import {wantMine} from '../src/campaign/mine.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLocal = process.argv[4] === 'local';
 let ok = true;
