@@ -166,6 +166,9 @@
   .obs-tabs{align-self:flex-start}
   .obs-pane{flex:1;min-height:0;overflow:auto}
   .obs-pane .inspect{max-height:none;margin-top:0}
+  /* the dock's «Склад»: the groups of the stock side by side, as many as the dock is wide */
+  .obs-pane .stockgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:6px}
+  .obs-pane .seg.mini button{padding:0 8px;font-size:12px}
   .obs-chron{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;gap:6px;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
   .obs-chron .log{flex:1;min-height:0;max-height:none;overflow-y:auto}
   .obs-chron .lbl{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
@@ -517,10 +520,11 @@
     </div>
 
     <div class="obs-dock" id="campDock">
-      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button></div>
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button><button type="button" data-tab="stock">Склад</button></div>
       <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
       <div class="obs-pane" data-pane="fights" hidden><div class="fights" id="campFights"><p class="muted">Боёв ещё не было.</p></div></div>
       <div class="obs-pane" data-pane="summary" hidden><div class="fights summary" id="campSummary"><p class="muted">Итоги начнут собираться, когда караван выступит.</p></div></div>
+      <div class="obs-pane" data-pane="stock" hidden><div class="row"><small id="campStockWhat" class="muted">Груз каравана</small><div class="seg mini" id="campStockSeg"></div></div><div class="stockgrid" id="campStock"><p class="muted">Караван ещё не выступил.</p></div></div>
     </div>
 
     <aside class="obs-chron">

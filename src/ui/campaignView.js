@@ -28,7 +28,7 @@ import {$, seg, press} from './dom.js';
 import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
-import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
+import {personHtml, creatureHtml, buildingHtml, cellHtml, stockHtml} from './cards.js';
 import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../campaign/stats.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
@@ -76,6 +76,9 @@ export class CampaignView extends MapView {
     this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', skin: 'campSkin', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     seg('campLayer', LAYERS(), this.layer, v => { this.layer = v; this.draw(); });
+    // the dock's «Склад»: the camp's stock by groups while a camp is on the map, the caravan's cargo between camps
+    this.stockAll = false;
+    seg('campStockSeg', [['have', 'что есть'], ['all', 'всё']], 'have', v => { this.stockAll = v === 'all'; this.renderStock(); });
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
       onPace: id => {
@@ -337,7 +340,7 @@ export class CampaignView extends MapView {
     this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
-    this.localText();
+    this.localText(); this.renderStock();
   }
   // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
   localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
@@ -354,7 +357,9 @@ export class CampaignView extends MapView {
     }
     this.localR.draw(w, L.view);
     if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
-    if (L.view.selected && (L.frames = (L.frames || 0) + 1) % 15 === 0) this.localCard();   // the creature's card follows it
+    L.frames = (L.frames || 0) + 1;
+    if (L.view.selected && L.frames % 15 === 0) this.localCard();   // the creature's card follows it
+    if (L.frames % 15 === 0 && !$('campStock').closest('[data-pane]').hidden) this.renderStock();
   }
   // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
   pickLocal(e) {
@@ -383,6 +388,7 @@ export class CampaignView extends MapView {
     this.local = null;
     if (L.view.selected || L.view.selBld != null || L.view.selCell != null) this.renderInspect();   // the world's card again
     $('campLocal').hidden = true; $('campLocalBar').hidden = true;
+    this.renderStock();
     // the season's playback goes on from where it stopped
     this.clock.release(); this.syncRun();
     this.animate();
@@ -502,8 +508,18 @@ export class CampaignView extends MapView {
     $('campSummaryFile').addEventListener('click', () => offerText(latinTitle(`itogi-${K.capitalName}-${K.started?.year ?? ''}`), walkReportText(this.atlas, K)));
   }
 
+  // the dock's «Склад» (ui/cards.js stockHtml): the camp's w.stock, or the caravan's cargo
+  renderStock() {
+    const box = $('campStock'); if (!box) return;
+    const L = this.local, K = this.atlas?.campaign;
+    $('campStockWhat').textContent = L ? 'Склад стоянки' : 'Груз каравана';
+    if (L) box.innerHTML = stockHtml(L.w.stock, L.w, this.stockAll);
+    else if (K) box.innerHTML = stockHtml(Object.fromEntries(Object.entries(K.cargo || {}).filter(([id]) => RESOURCES.has(id))), null, this.stockAll);
+    else box.innerHTML = '<p class="muted">Караван ещё не выступил.</p>';
+  }
+
   renderSide() {
-    this.renderFights(); this.renderSummary();
+    this.renderFights(); this.renderSummary(); if (!this.local) this.renderStock();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};

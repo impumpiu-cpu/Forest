@@ -8,7 +8,7 @@
  "agents/body.js": 2,
  "agents/brains/colonist.js": 1,
  "agents/carcass.js": 1,
- "agents/combat.js": 5,
+ "agents/combat.js": 4,
  "agents/equipment.js": 1,
  "agents/hunting.js": 1,
  "agents/itemDefs.js": 2,
