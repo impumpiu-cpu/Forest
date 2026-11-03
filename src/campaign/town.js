@@ -155,12 +155,13 @@ function equip(K, id) {
   const d = gearDef(id), ms = free(K).filter(m => !m.former && mayTake(m.race, id));   // no arms for a former slave, nor for one whose race will not touch it
   if (d.slot === 'body') {
     const m = ms.filter(x => inLine(x) || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
+    if (m.gear.body && gearDef(m.gear.body)) K.spoils = [...(K.spoils || []), m.gear.body];   // the old armour goes with the spoils
     m.gear.body = id; return m;
   }
   if (d.tool) { const m = ms.find(x => toolOf(x, gearDef)) || ms[0], k = m.gear.hand.indexOf(toolOf(m, gearDef)); if (k >= 0) m.gear.hand[k] = id; else m.gear.hand.push(id); return m; }
   const m = ms.filter(x => isFighter(x) && !gearDef(x.gear.hand[0])?.ranged).sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
   const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
-  if (k >= 0) m.gear.hand[k] = id;
+  if (k >= 0) { K.spoils = [...(K.spoils || []), m.gear.hand[k]]; m.gear.hand[k] = id; }   // the old blade goes with the spoils
   else {   // no blade in hand: the new one takes the first hand, what was there (a tool, a shield) goes with the spoils
     const old = m.gear.hand[0];
     if (old && gearDef(old)) K.spoils = [...(K.spoils || []), old];
