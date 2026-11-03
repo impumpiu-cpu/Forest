@@ -48,6 +48,7 @@ import {DEEDS, DEED_BAND_LABELS} from '../deeds.js';
 import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
 import * as BEHAVIOUR from '../behaviour.js';
+import {NAV as NAV_RULES} from '../navmaps.js';
 import * as NATURE from '../nature.js';
 import {LAIR_LIFE} from '../lairs.js';
 import {TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL} from '../peoples.js';
@@ -504,8 +505,8 @@ TABLES.push(
     ...grp({...kindsOf(COLONY), trade: COLONY_TRADE})},
   {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца, сон и тепло у огня (REST), поджог и тушение (KINDLE), выбор снаряжения (GEAR), вред от жара (HEAT) (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
     ...grp({...kindsOf(BEHAVIOUR), arrivals: ARRIVALS})},
-  {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка, рост ягод, огородов, кустов и леса (GROWTH) локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES).',
-    ...grp({...kindsOf(NATURE), kindLand: KIND_LAND, kindGroves: KIND_GROVES})},
+  {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка, рост ягод, огородов, кустов и леса (GROWTH) локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES); цена пути через огонь, дым и жар и частота перестройки карт путей (data/navmaps.js NAV).',
+    ...grp({...kindsOf(NATURE), kindLand: KIND_LAND, kindGroves: KIND_GROVES, nav: NAV_RULES})},
   {id: 'growthRules', label: 'Навыки, мастера, раны', group: 'Поселение', note: 'Как учатся навыки (data/skills.js LEARN), мастера (data/masters.js MASTER), крит и смертельный удар (data/wounds.js).',
     ...grp({learn: LEARN, master: MASTER, crit: CRIT, deathblow: DEATHBLOW})},
   autoTable({id: 'jobs', label: 'Работы', group: 'Поселение', note: 'Работы поселенцев (data/jobs.js): сколько несут, сколько длится, что дают.', rows: () => JOBS.all()}),

@@ -1,6 +1,6 @@
 // Creature behaviour tuning moved out of the logic (docs/SETTLEMENT.md): squads, carcasses and packs, wild herds,
 // trophies, vermin. The logic files import these; the tables (data/schema/index.js) show and edit them.
-import {DAY} from '../core/time.js';
+import {DAY, HOUR} from '../core/time.js';
 
 // The behaviours of the tabled brain (agents/behaviours/, docs/BEHAVIOUR.md) as ready lists a species row
 // copies (`behaviours: [...WAYS.grazer]`): the order is the order of the choice. A beast of the meadows runs,
@@ -345,3 +345,28 @@ export const HEAT = {
   undead: {perDegree: 0.0001, max: 0.012},
   caravan: {perDegree: 0.00005, max: 0.006},
 };
+
+// When a colonist thinks again (agents/attention.js): the heartbeat by what it is doing (ticks), the bands a need or the
+// health falls past to be an event, how dark is «night» for the whole colony's wake-up
+export const ATTENTION = {
+  heart: {job: 4 * HOUR, idle: HOUR, reserve: 15, muster: 30, other: 2 * HOUR},
+  needBands: [0.6, 0.4, 0.25, 0.12],
+  hpBands: [0.6, 0.35, 0.3],
+  night: 0.6,
+};
+
+// How a task ends (agents/lifecycle.js): one that ended blocked or impossible is not taken again for this many ticks
+export const LIFECYCLE = {skip: {blocked: 120, impossible: 600}};
+
+// The colony's body (agents/body.js stepBody): what is remembered, the diary, healing at rest
+export const BODY = {
+  remember: 0.004,   // a hardship remembered this much a tick while a need is below its rememberBelow (data/needs.js)
+  comfy: 0.4,        // every need above this: the body mends…
+  mend: 0.0003,      // …this share of full health a tick (× the body's regen)
+  mendBelow: 45,     // …while the heat underfoot is below this (°C)
+  regenStop: 30,     // a troll's regeneration stops in heat above this
+  fireDeath: 60,     // one dying in heat above this died of the fire («пожара»), else of its wounds
+};
+
+// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish
+export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4};

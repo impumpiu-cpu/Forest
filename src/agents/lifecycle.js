@@ -17,12 +17,14 @@ import {releaseAll} from '../settlement/reserve.js';
 import {TASKS} from './tasks.js';
 import {wake} from './attention.js';
 import {RUNNER_EXIT} from './runnerExit.js';
+import {LIFECYCLE} from '../data/behaviour.js';
 
+// (how long a refused task waits: data/behaviour.js LIFECYCLE.skip)
 export const OUTCOMES = {
-  done:        {label: 'сделано', skip: 0},
-  blocked:     {label: 'заблокировано', skip: 120},
-  impossible:  {label: 'невозможно', skip: 600},
-  interrupted: {label: 'прервано', skip: 0},
+  done:        {label: 'сделано'},
+  blocked:     {label: 'заблокировано'},
+  impossible:  {label: 'невозможно'},
+  interrupted: {label: 'прервано'},
 };
 
 // a task's key for skipping: a job by its job id, anything else by its task id. A fight and help are
@@ -46,7 +48,7 @@ function close(w, a, t, outcome, why) {
   const def = TASKS.get(t.id);
   def.exit?.(w, a, t, outcome);
   if (t.id === 'job') RUNNER_EXIT[def.runnerOf?.(t)]?.(w, a, t, outcome);
-  const skip = OUTCOMES[outcome].skip;
+  const skip = LIFECYCLE.skip[outcome] || 0;
   if (skip && !REFLEX.has(t.id)) {
     const sk = a.skips ||= {};
     for (const k in sk) if (sk[k] <= w.tick) delete sk[k];   // spent pauses go (a fight or a cry per foe would pile up)

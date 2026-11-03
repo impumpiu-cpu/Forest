@@ -42,6 +42,17 @@ const onDemand = id => w => inUse(w).has(id);
 // the warmth of the body grows only above this temperature (data/needs.js warmth)
 export const WARM_AT = 18;
 
+// How the maps are built (nav/navigation.js): what a cell's fire, smoke and heat add to a step (× a map's `hazard`), and
+// how often a map is rebuilt — in ticks, × `every` on a big map (one more step for every `cellsPerStep` cells)
+export const NAV = {
+  fire: 60, smoke: 1.5,        // a step through fire, through smoke costs this much more
+  hotFrom: 45, hot: 0.3,       // heat above this (°C) adds this a degree
+  diagonal: 1.414,             // a diagonal step costs this × a straight one
+  minGap: 24, period: 600, burning: 24,   // a dirty map waits at least minGap; a clean one is refreshed every period, every burning while a fire burns
+  cellsPerStep: 12288,
+  snowRebuild: 0.1,            // snow cover changed by more than this: every map is rebuilt
+};
+
 // label: where the map leads, in words (the colonist's card: agents/movement.js follow)
 NAVMAPS.registerAll([
   {id: 'camp', label: 'к лагерю', seed: (w, i) => w.camp.set.has(i)},
