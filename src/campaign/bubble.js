@@ -19,7 +19,7 @@ import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
 import {HIRES} from '../data/market.js';
 import {EPIC} from '../data/calamities.js';
 import {GAME, FOES} from '../data/campaign.js';
-import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
+import {dangers, cellRegion, lairFoe, lairFoeKind, withCompany} from './land.js';
 import {cultPool} from '../atlas/necro.js';
 import {personsAt, personLabel} from '../atlas/persons.js';
 import {dist} from '../core/util.js';
@@ -41,7 +41,7 @@ export function grow(a, K) {
   return 1 + G.way * way + G.clue * (Q.found || 0);
 }
 const sc = (a, v) => v * scaleOf(a);
-const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
+export const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 const land = (a, i) => !!a.f.land && !a.f.ocean[i];
 
 // a town of the caravan's friends at or by a cell: the land around it is quieter
@@ -133,7 +133,7 @@ export function worldThings(a, K) {
     // a leader of an old lair at the head of its own (atlas/leaders.js): on the local map it is the named one among them
     else if (p.kind === 'leader') {
       const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind);
-      if (l?.leader) { kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair'; who = {...lairFoe(l.kind), boss: {name: personLabel(l.leader), g: 'm', species: l.leader.species, add: l.leader.add}, person: l.leader.id}; }
+      if (l?.leader) { kind = lairFoeKind(L); who = {...lairFoe(l.kind), boss: {name: personLabel(l.leader), g: 'm', species: l.leader.species, add: l.leader.add}, person: l.leader.id}; }
     }
     if (!kind) continue;
     out.push({id: `p${p.id}`, party: p.id, kind, ...who, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,

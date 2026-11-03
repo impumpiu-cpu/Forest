@@ -25,7 +25,7 @@ import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {BUBBLE} from '../data/bubble.js';
 import {lairFoe} from './land.js';
-import {bubbleOf} from './bubble.js';
+import {bubbleOf, cellAt} from './bubble.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
 import {cellDist} from '../core/util.js';
 
@@ -182,7 +182,6 @@ export const questIntro = (a, K) => {
 };
 
 // ── the target: where the council sends the caravan now (K.goal)
-const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 export function questTarget(a, K, rnd, say = null) {
   const Q = K.quest; if (!Q) return K.goal;
   const g = target(a, K, rnd);

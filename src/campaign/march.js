@@ -60,9 +60,8 @@ const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const xyOf = (a, i) => [i % a.w, (i / a.w) | 0];
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
 
-// the A* buffers for the world's own path search (atlas/roads.js findPath), kept beside the world, never saved
-const SCRATCH = new WeakMap();
-export const scratch = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s = {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []}); return s; };
+// the A* buffers for the world's own path search (atlas/roads.js findPath): the caravan's own (campaign/path.js)
+export {scratchOf as scratch} from './path.js';
 
 export const alive = K => K.members.filter(m => m.alive);
 // the eight who set out from the capital (saves from before the joiners: the knights and squires)

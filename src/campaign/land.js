@@ -132,6 +132,10 @@ export function withCompany(d, ds, r) {
   return {...d, with: {...(o.beast ? {beast: o.beast} : {band: o.band}), label: lab, share: M.share[0] + r() * (M.share[1] - M.share[0])}, label: `${d.label} и ${lab}`};
 }
 
+// the fight a lair of the wild brings as a foe of the caravan (data/campaign.js FOES): its cult, its dead, its tribe, or the lair
+// (its beasts). (A raid of a lair counts a lair of neither kind a tribe, a guard of a grave counts a fiend undead: their own rules)
+export const lairFoeKind = L => (L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair');
+
 export function lairFoe(kind) {
   const L = LAIRS.get(kind);
   if (LAIR_BANDS[kind]) return {band: LAIR_BANDS[kind]};
@@ -145,7 +149,7 @@ export function dangers(a, i, K = null) {
   const out = [], N = NIGHT;
   const lair = lairAt(a, i);
   if (lair) {
-    const L = LAIRS.get(lair.kind), kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
+    const L = LAIRS.get(lair.kind), kind = lairFoeKind(L);
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
     const ld = lair.leader && isAt(lair.leader, 'lair', lair.id) ? lair.leader : null, M = ld ? LEADER.camp : null;   // (a leader out with its band is not at home: atlas/persons.js)
     out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),

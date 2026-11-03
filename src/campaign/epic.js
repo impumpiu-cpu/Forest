@@ -23,7 +23,7 @@ import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {reachable, foot, circle} from './quest.js';
 import {lairFoe} from './land.js';
-import {bubbleOf} from './bubble.js';
+import {bubbleOf, cellAt} from './bubble.js';
 import {QUEST} from '../data/quest.js';
 import {plural, cellDist} from '../core/util.js';
 
@@ -33,7 +33,6 @@ const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
 const dist = cellDist;   // (core/util.js)
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 
 // the seats where a fourth may gather: prepared once for the world, far from each other, the graves and the towns
 export function seats(a) {
