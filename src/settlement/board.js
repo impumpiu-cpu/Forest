@@ -43,6 +43,8 @@ import {wake} from '../agents/attention.js';
 import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
 import {BOARD} from '../data/colony.js';
 import {WATCH} from '../data/colony.js';
+import {allowed} from '../data/commands.js';
+import {tracing, noteDecision} from '../core/decide.js';
 
 export {BOARD};   // (data/colony.js)
 export {WATCH};   // (data/colony.js)
@@ -155,9 +157,13 @@ function learn(w, c, f, by) {
 }
 
 // ── once a tick (sim.js), before the creatures step
+// The decision points `settlement.board` and `settlement.watch` (data/commands.js): rules — the commands
+// `settlement.board.raise` (a flag raised and weighed) and `settlement.watch.post` (the evening's place); a profile that switches
+// one off leaves the colony without flags (each answers what touches it, by its reflexes) or without a watch
 export function stepBoard(w) {
   const B = boardOf(w), col = colonists(w);
   if (!col.length && !Object.keys(B.flags).length) return;
+  if (!allowed(w.cfg, 'settlement.board.raise')) { stepWatch(w, B); return; }
   const foes = [];
   for (const o of w.agents) if (isFoe(w, o)) foes.push(o);
   // 1. the lookouts look round
@@ -210,6 +216,8 @@ function newFlag(w, B, key, o, by) {
     known: {}, answered: {}, ignored: {}, killed: {}, shoutAt: -Infinity, weight: 0, wokeAt: 0, fresh: true, grew: false};
   f.label = flagLabel(w, {...f, members: [o.id]}); f.where = whereFromCamp(w, o.x, o.y);
   const b = w.behave?.board; if (b) b.flags++;
+  if (tracing()) noteDecision({point: 'settlement.board', who: 'board', at: w.tick, band: 'routine', policy: 'rule',
+    opts: [{cmd: 'settlement.board.raise', key: `settlement.board.raise(${kind})`, score: 1}], pick: `settlement.board.raise(${kind})`, by: by.id, flag: f.id});
   return f;
 }
 
@@ -256,7 +264,9 @@ function stepWatch(w, B) {
   }
   if (night != null && (!W || W.night !== night)) {
     if (W && !W.done) endWatch(w, W);
+    if (!allowed(w.cfg, 'settlement.watch.post')) { B.watch = null; return; }
     B.watch = {night, by: null, name: null, done: false};
+    if (tracing()) noteDecision({point: 'settlement.watch', who: 'board', at: w.tick, band: 'routine', policy: 'rule', opts: [{cmd: 'settlement.watch.post', key: 'settlement.watch.post', score: 1}], pick: 'settlement.watch.post'});
   } else if (night == null && W && !W.done) endWatch(w, W);
 }
 // morning: the watchman goes to sleep it off; a night nobody watched is remembered

@@ -32,6 +32,11 @@ POINTS.registerAll([
   {id: 'local.task', level: 'local', label: 'задача существа', clock: 'тик; полный выбор по сердцебиению или событию', policy: 'max', code: 'agents/brains/tabled.js'},
   {id: 'world.deed', level: 'world', label: 'дело субъекта мира', clock: 'сезон (главарь — весна)', policy: 'draw', code: 'atlas/actor.js'},
   {id: 'settlement.council', level: 'settlement', label: 'постройка совета', clock: 'вечер', policy: 'vote', code: 'settlement/council.js'},
+  // the colony's board (settlement/board.js): it knows and announces, the colonists choose (local.behaviour.flags, watch, muster, work)
+  {id: 'settlement.board', level: 'settlement', label: 'флаг тревоги', clock: 'тик', policy: 'rule', code: 'settlement/board.js stepBoard'},
+  {id: 'settlement.watch', level: 'settlement', label: 'место ночного дозора', clock: 'вечер', policy: 'rule', code: 'settlement/board.js stepWatch'},
+  {id: 'settlement.plan', level: 'settlement', label: 'места на работах', clock: 'утро и по событию', policy: 'rule', code: 'settlement/plan.js makePlan'},
+  {id: 'camp.alarm', level: 'settlement', label: 'тревога лагеря похода', clock: 'тик', policy: 'rule', code: 'campaign/camp.js raiseAlarm'},
   {id: 'town.project', level: 'town', label: 'новый проект', clock: 'сезон', policy: 'max', code: 'atlas/towns.js chooseBuilding'},
   {id: 'town.raze', level: 'town', label: 'освободить место', clock: 'сезон', policy: 'rule', code: 'atlas/build.js'},
   {id: 'town.buy', level: 'town', label: 'закупки мастерских', clock: 'сезон', policy: 'rule', code: 'atlas/treasury.js worksBuying'},
@@ -46,6 +51,10 @@ POINTS.registerAll([
 // the commands of the minds that had no catalogue; the order within a point is the order the old code asked them in
 const OWN = [
   {id: 'settlement.council.build', point: 'settlement.council', label: 'заложить постройку', note: 'каждый голосует за постройку с наибольшим мотивом; большинство, иначе второй тур'},
+  {id: 'settlement.board.raise', point: 'settlement.board', label: 'поднять флаг', note: 'дозорный увидел врага: флаг, крик по цепочке, вес — срочность × доля угрозы, которую никто не закрыл (красный — всегда полный)'},
+  {id: 'settlement.watch.post', point: 'settlement.watch', label: 'выставить дозор', note: 'вечером одно место у огня; кто встанет — решает сам'},
+  {id: 'settlement.plan.places', point: 'settlement.plan', label: 'раздать места', note: 'места на работах по нуждам поселения; пешки записываются сами'},
+  {id: 'camp.alarm.raise', point: 'camp.alarm', label: 'поднять лагерь', note: 'кто-то не спит и видит врага или по нашим ударили: будят всех, дружина бьёт'},
   {id: 'town.project.build', point: 'town.project', label: 'построить', note: 'по варианту на постройку: нужды × вкус народа + потоки, × тяга роли, × шум; ниже порога — ничего'},
   {id: 'town.raze.idle', point: 'town.raze', label: 'снести простаивающее', note: 'работа, что два года шла хуже четверти, при полных местах'},
   {id: 'town.raze.worst', point: 'town.raze', label: 'снести худшее', note: 'строить нечего, места полны: худшая работа ниже половины'},
@@ -99,7 +108,7 @@ export const MARKS = {
     'caravan.buy.tool', 'caravan.buy.pack', 'caravan.buy.pots', 'caravan.buy.herd', 'caravan.buy.cart', 'caravan.buy.mount', 'caravan.buy.golem',
     'caravan.buy.wagon', 'caravan.buy.building', 'caravan.buy.armor', 'caravan.buy.weapon', 'caravan.buy.potion', 'caravan.buy.bonds'],
   side: ['caravan.camp.build', 'caravan.camp.tame', 'caravan.camp.mine'],
-  must: ['caravan.quest.home', 'local.behaviour.downed', 'local.behaviour.fleeFire', 'local.behaviour.needs', 'local.behaviour.led', 'local.behaviour.keepIn', 'local.behaviour.penned'],
+  must: ['settlement.plan.places', 'caravan.quest.home', 'local.behaviour.downed', 'local.behaviour.fleeFire', 'local.behaviour.needs', 'local.behaviour.led', 'local.behaviour.keepIn', 'local.behaviour.penned'],
 };
 export const MARK_LABELS = {hostile: 'вражда', trade: 'торг', side: 'побочный промысел', must: 'обязательна'};
 

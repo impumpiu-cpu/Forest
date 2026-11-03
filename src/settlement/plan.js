@@ -31,6 +31,7 @@ import {esc} from '../core/util.js';
 import {outsideRisk, TOGETHER} from './together.js';
 import {perTick} from '../core/util.js';
 import {PLAN} from '../data/colony.js';
+import {tracing, noteDecision} from '../core/decide.js';
 
 export {PLAN};   // (data/colony.js)
 // how much firewood the colony burns in a day: the campfire through the night, every hearth all day
@@ -122,6 +123,10 @@ export function makePlan(w, reason = '') {
   const vac = {};
   for (const j of jobs) if (quota[j] > 0) vac[j] = {places: quota[j], why: need[j].why};
   w.plan = {day, at: w.tick, reason, need, vac, pop: col.length, built: w.buildings.filter(b => b.done).length};
+  // the decision point `settlement.plan` (data/commands.js): a rule, the command `settlement.plan.places` — one option a job,
+  // its places as its score
+  if (tracing()) noteDecision({point: 'settlement.plan', who: 'plan', at: w.tick, band: 'routine', policy: 'rule', reason,
+    opts: Object.entries(vac).map(([j, v]) => ({cmd: 'settlement.plan.places', key: `settlement.plan.places(${j})`, score: v.places})), pick: 'settlement.plan.places'});
   return w.plan;
 }
 

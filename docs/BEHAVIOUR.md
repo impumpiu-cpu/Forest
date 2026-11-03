@@ -95,6 +95,10 @@
 | `local.task` | пешка, зверь, налётчик, купец… | тик; полный выбор по сердцебиению или событию | наибольшая оценка в первой полосе | `local.behaviour.<id>` — каждое поведение | `agents/brains/tabled.js` |
 | `world.deed` | держава, логово, главарь, дракон | сезон (главарь — весна) | жребий по весу в первой полосе | `world.deed.<id>` — каждое дело мира | `atlas/actor.js` |
 | `settlement.council` | совет поселения | вечер | голосование, второй тур | `settlement.council.build` | `settlement/council.js` |
+| `settlement.board` | доска поселения | тик | правило: флаг, крик, вес = срочность × непокрытая доля (красный — полный) | `settlement.board.raise` | `settlement/board.js stepBoard` |
+| `settlement.watch` | доска поселения | вечер | правило: одно место у огня | `settlement.watch.post` | `settlement/board.js stepWatch` |
+| `settlement.plan` | совет поселения | утро и по событию | правило: места по нуждам (обязательна) | `settlement.plan.places` | `settlement/plan.js makePlan` |
+| `camp.alarm` | лагерь похода | тик | правило: кто видит врага или кого ударили — будит всех | `camp.alarm.raise` | `campaign/camp.js raiseAlarm` |
 | `town.project` | город | сезон | наибольшая оценка выше `TOWN_FX.floor` (с шумом `noise`) | `town.project.build` — вариант на постройку | `atlas/towns.js chooseBuilding` |
 | `town.raze` | город | сезон | правило | `town.raze.idle`, `town.raze.worst` | `atlas/build.js` |
 | `town.buy` | город | сезон | правило | `town.buy.works` | `atlas/treasury.js worksBuying` |
@@ -104,6 +108,8 @@
 | `caravan.quest` | караван | вечер | первое по порядку поиска | `caravan.quest.home` (обязательна), `.crown`, `.clue`, `.search`, `.back` | `campaign/quest.js questTarget` |
 | `caravan.pace` | караван | день | правило (`PACE_RULES`) | `caravan.pace.pursued`, `.danger` | `campaign/road.js choosePace` |
 | `caravan.buy` | караван | в городе | правило (порядок `BUY_ORDER`) | `caravan.buy.<что>` — 13 видов покупок | `campaign/town.js wants` |
+
+**Доска — сведения, не выбор.** Доска поселения знает и объявляет: поднимает флаг, кричит, взвешивает, выставляет место дозора, совет раздаёт места на работах. Никого не назначает: каждый поселенец сам решает, отвечать ли, — своими командами `local.behaviour.flags`, `watch`, `muster`, `work`. Поэтому её точки — правила: в каталоге, в следе, выключаются профилем (кроме мест на работах), но ничего не тянут жребием и никого не выбирают. Так же лагерь похода поднимает тревогу (`camp.alarm`), а дружина отвечает командой `warband`. Отрисовка доски на карте — слой «надмозга» (`render/minds.js`).
 
 **Каталог.** Поведения и дела по-прежнему живут в своих реестрах (`data/behaviours.js`, `data/deeds.js`) и входят в каталог через адаптеры под полными id: `local.behaviour.raid` и `world.deed.raid` — две разные команды. Команды города, совета и каравана — строки самого каталога; их порядок внутри точки — порядок, в котором их спрашивал прежний код.
 

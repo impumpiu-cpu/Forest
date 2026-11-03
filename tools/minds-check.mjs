@@ -8,7 +8,7 @@
 import {newGame, step} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
 import {worldHash} from '../src/world/save.js';
-import {HOUR} from '../src/core/time.js';
+import {HOUR, DAY} from '../src/core/time.js';
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, runCampaign, campaignHash} from '../src/campaign/index.js';
@@ -64,6 +64,21 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
   const best = local.filter(r => !r.kept).every(r => { const top = Math.max(...r.opts.map(o => o.score)); return r.opts.find(o => o.key === r.pick).score >= top - 1e-9 || r.opts.length > 1; });
   check('поселение: выбрано наибольшее (или удержанное)', best);
   check('поселение: у решений есть исходы', recs.some(r => r.outcome), `${recs.filter(r => r.outcome).length} с исходом`);
+  // the board over a longer stretch: flags come with the foes
+  const long = 3 * DAY, seenB = new Map();
+  traceMode('collect', {sink: r => { if (r.point) seenB.set(r.point, (seenB.get(r.point) || 0) + 1); }});
+  const watched = run(cfg, long);
+  traceMode('off');
+  check('поселение: доска поднимает флаги, совет раздаёт места, вечером выставляется дозор — всё в следе', ['settlement.board', 'settlement.plan', 'settlement.watch'].every(p => seenB.get(p) > 0),
+    ['settlement.board', 'settlement.plan', 'settlement.watch'].map(p => `${p} ${seenB.get(p) || 0}`).join(', '));
+  PROFILES.register({id: '_check_noboard', label: 'проверка', offMarks: [], off: ['settlement.board.raise', 'settlement.watch.post'], note: ''}); resetCommands();
+  let raised = 0;
+  traceMode('collect', {sink: r => { if (r.point === 'settlement.board' || r.point === 'settlement.watch') raised++; }});
+  const blind = run({...cfg, profile: '_check_noboard'}, long);
+  traceMode('off');
+  check('поселение без доски: ни флагов, ни дозора', !raised && !Object.keys(blind.board?.flags || {}).length && !blind.board?.watch, `в обычном за 3 дня флагов ${seenB.get('settlement.board') || 0}`);
+  void watched;
+  PROFILES.unregister('_check_noboard'); resetCommands();
 
   PROFILES.register({id: '_check_nowork', label: 'проверка', offMarks: [], off: ['local.behaviour.work'], note: ''}); resetCommands();
   const lazy = run({...cfg, profile: '_check_nowork'}, 12 * HOUR);
