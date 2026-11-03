@@ -11,11 +11,12 @@ import {think} from '../agents/mind.js';
 import {ambientTemp, DAY, HOUR} from '../core/time.js';
 import {plowField} from './farming.js';
 import {takeKind} from './kinds.js';
+import {STORE} from '../data/colony.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : d.gender === 'n' ? 'о' : '');
 
 // can the colony pay for it and still keep the fire going? Wood for a few cold nights is never spent on building
-export const fuelReserve = w => (ambientTemp(w, w.tick - (w.tick % DAY) + 3 * HOUR) < 6 ? 10 : 4);
+export const fuelReserve = w => (ambientTemp(w, w.tick - (w.tick % DAY) + STORE.fuelHour * HOUR) < STORE.coldBelow ? STORE.fuelCold : STORE.fuelMild);   // (data/colony.js STORE)
 export function canAfford(w, cost) {
   return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v + (r === 'wood' ? fuelReserve(w) : 0));
 }

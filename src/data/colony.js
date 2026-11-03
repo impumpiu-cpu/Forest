@@ -156,3 +156,13 @@ export const PRECIOUS = {
 // that brings what it lacks (`goalPull`), a colonist's fondness for building (`buildPref`) and the random sway of a vote
 // (`noise`) in the arguments; the share of the day's memories kept after it (`memory`)
 export const COUNCIL = {from: 19, to: 21.5, quorum: 0.7, late: 0.3, goalPull: 0.3, buildPref: 0.2, noise: 0.25, memory: 0.4};
+
+// the stores (settlement/stock.js, settlement/buildings.js): portions a pot holds (`potHolds`), what of the open food a
+// granary keeps out of reach (`granary`), how much of the money a forged chest keeps from raiders (`chest`), the spoiling
+// of food a tick (`spoil`) and how much slower it spoils in pots (`sealed`); the wood never spent on building — `fuelCold`
+// when the night ahead (`fuelHour` o'clock) is colder than `coldBelow`°, else `fuelMild`
+export const STORE = {potHolds: 6, granary: 0.5, chest: 0.4, spoil: 0.00015, sealed: 0.6, fuelHour: 3, coldBelow: 6, fuelCold: 10, fuelMild: 4};
+
+// the camp (settlement/query.js): how many people it takes in before any building adds room (`popBase`); the raid alarm is
+// raised when a raider would reach the camp within `alarmHours` hours at `alarmPace` of its own pace (woods and detours)
+export const CAMP_LIFE = {popBase: 8, alarmHours: 12, alarmPace: 0.8};
