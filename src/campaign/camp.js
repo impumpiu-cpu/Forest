@@ -276,7 +276,8 @@ function nearCell(w, d, r) {
   return null;
 }
 
-const foesLeft = w => w.agents.filter(o => w.campaign.foes.includes(o.id) && !o.dead && !o.gone && !o.downed && !o.captive && o.task?.id !== 'leave').length;   // the fallen and the bound are out of it
+// (over the foes themselves, not every creature: the dead and the gone leave w.agents and are out of it here too)
+const foesLeft = w => w.campaign.foeObjs.filter(o => !o.dead && !o.gone && !o.downed && !o.captive && o.task?.id !== 'leave').length;   // the fallen and the bound are out of it
 
 // a tick of the camp
 export function stepCamp(w) {

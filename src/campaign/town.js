@@ -110,12 +110,20 @@ const golems = K => K.beasts.filter(b => BEASTS[b.kind]?.golem && b.hp > 0).leng
 const herdOf = K => K.beasts.filter(b => BEASTS[b.kind]?.use === 'food' && b.hp > 0).length;
 export const herdMax = K => Math.round(CAMP_KIT.herd.max * (kitOf(K).herd ?? 1));   // (the greenskins keep twice the herd, the elves none)
 
+// the wheels' answer during one trade() (wants() is asked again and again by the smith): {i, goal, vehicles, fits}; never saved
+const FITS = new WeakMap();
 // ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
 function wants(a, K, t, st) {
   const out = [], ms = alive(K), tier = toolTier(K);
   // wheels are worth their price only when they can go the way to the goal (as the council asks, campaign/march.js)
-  let fits = null;
-  const wheelsFit = () => { if (fits == null) { const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true); fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost); } return fits; };
+  // (asked once a visit's trade: the way does not change while the caravan trades — trade() keeps the answer, K.wheelsFit)
+  const wheelsFit = () => {
+    const F = FITS.get(K);
+    if (F && F.i === K.i && F.goal === K.goal && F.vehicles === K.vehicles.length) return F.fits;
+    const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true), fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost);
+    if (F) Object.assign(F, {i: K.i, goal: K.goal, vehicles: K.vehicles.length, fits});
+    return fits;
+  };
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
@@ -205,6 +213,10 @@ function smithy(a, K, t, st) {
 // a visit's trade: the smith forges from the ore, sell the goods, buy food up to the stock wanted, then what is
 // wanted while the gold lasts
 export function trade(a, K, t, st) {
+  FITS.set(K, {i: null});   // the wheels are asked afresh once a trade (wants)
+  try { return tradeNow(a, K, t, st); } finally { FITS.delete(K); }
+}
+function tradeNow(a, K, t, st) {
   const done = [];
   // ore of a metal above the caravan's own goes to the smith first (what the smith leaves is sold after); in a town
   // without one it is kept for the next
