@@ -3,6 +3,7 @@
 // holds its kin as slaves (t.slavesOf, atlas/deeds/captives.js) or a lair that holds them captive (lair.captives), within
 // reach: against a realm it is war (the standing falls; a war already on goes on). The town's might against the other's,
 // with luck: the freed come to the town as free people; a loss costs the town some of its people.
+import {cap1} from '../../core/util.js';
 import {SLAVE, freesCaptives} from '../../data/slavery.js';
 import {addHeads, killShare} from '../population.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
@@ -16,7 +17,6 @@ import {realmLabel} from '../realms.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const kin = (held, people) => Math.floor(held?.[people] || 0);
 
 export const liberate = {

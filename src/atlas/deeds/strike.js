@@ -2,6 +2,7 @@
 // counted down a summer at a time); awake, it flies to the richest town within `reach` — the town's people weighed with
 // luck — and burns `burns` of its works and `loss` of its people, unless the town drives it off; then it flies home
 // and sleeps again. The lair's role only: a dragon raises no leader.
+import {cap1} from '../../core/util.js';
 import {DRAGON} from '../../data/parties.js';
 import {killShare} from '../population.js';
 import {LAIRS} from '../../data/lairs.js';
@@ -13,7 +14,6 @@ import {sendParty} from '../parties.js';
 import {scaleOf} from '../tectonics.js';
 import {dist} from './shared.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const nap = r => DRAGON.sleep[0] + Math.floor(r() * (DRAGON.sleep[1] - DRAGON.sleep[0] + 1));
 
 export const strike = {

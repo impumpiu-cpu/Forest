@@ -11,6 +11,7 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
+import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {takeHeads, sync, foundHeads} from './population.js';
 import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
@@ -225,7 +226,6 @@ export function raiseBuilding(a, t, b, say) {
 export const BURNT = {m: 'сожжён', f: 'сожжена', n: 'сожжено', pl: 'сожжены'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the peoples arrive: each founding band wakes in the best spot of its land, far from the others
 export function arrive(a, era, rnd, say) {

@@ -9,6 +9,7 @@
 //   the realm (ctx.role 'realm'): a town with warriors raids the nearest disliked town in DIPLOMACY.raidReach (raidTown.js);
 //     a win takes `realm.loss` of its people — `grow` of them become the raiding town's slaves (t.slaves: they work in its
 //     buildings, atlas/economy.js), the realm counts them (realm.captives).
+import {cap1, plural} from '../../core/util.js';
 import {plunder, plunderWords, lootOf} from '../treasury.js';
 import {takeHeads, killShare} from '../population.js';
 import {TOWN_MONEY} from '../../data/townBuildings.js';
@@ -31,8 +32,6 @@ import {dist} from './shared.js';
 import {raider} from './raid.js';
 import {liveTowns} from './realm.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
-const plural = (n, one, few, many) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; };
 const heads = n => `${n} ${plural(n, 'жителя', 'жителей', 'жителей')}`;
 
 // the raid for captives (lairs.js hitTown): the town loses people into captivity, not into graves; they live at the lair

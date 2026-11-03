@@ -1,5 +1,8 @@
 // Small helpers shared by every module.
 
+// the first letter capitalised («войско людей» → «Войско людей»)
+export const cap1 = s => s[0].toUpperCase() + s.slice(1);
+
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export function plural(n, one, few, many) {

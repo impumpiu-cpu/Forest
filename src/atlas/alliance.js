@@ -9,6 +9,7 @@
 //
 // a.alliances = [{id, calamity, members: [realm ids], since, tries, armies: [party ids], sent: [realm ids], before:
 //   {pair: att}, ended, peaceUntil, broken}]
+import {cap1} from '../core/util.js';
 import {sendArmy, refreshArmy, armyLosses} from './army.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
@@ -22,7 +23,6 @@ import {goHome} from './parties.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const pairKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 const power = sp => { const s = SPECIES.get(sp)?.special; return s ? (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2 : 10; };
 const names = (a, ids) => ids.map(id => realmLabel(a, id)).join(', ');

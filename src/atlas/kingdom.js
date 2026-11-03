@@ -9,6 +9,7 @@
 // event; its term running out (`until`) only sends it off the office. The throne after a ruler's death goes by the realm's
 // profile (data/polities.js, atlas/succession.js): a kingdom's court mourns `mourn` years and fills it again; a horde fights
 // What it does back to the world: data/kingdom.js FEEDBACK — schismFactor (atlas/realms.js), t.realmFx (growth, might).
+import {cap1} from '../core/util.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK} from '../data/kingdom.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
@@ -25,7 +26,6 @@ import {rulerTitle} from './polities.js';
 import {strangersOf} from './population.js';
 import {abilitiesFor} from './control.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
 
 const r3 = v => Math.round(v * 1000) / 1000;

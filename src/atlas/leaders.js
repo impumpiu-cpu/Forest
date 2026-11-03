@@ -14,6 +14,7 @@
 // lair.lord — the id of the lair it pays tribute to. The leader is one of the world's persons, and its death is the one
 // event of personDies: the lair's loss of it, its vassals' freedom and the dead's loss of a master follow from that
 // (atlas/succession.js, atlas/control.js)
+import {cap1} from '../core/util.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel} from './necro.js';
@@ -28,7 +29,6 @@ import {newPerson, personDies, moveTo, personsAt} from './persons.js';
 import {heldDead} from './control.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 function draw(a) {
   const r = mulberry(a.leadRnd ?? seedNumber(`${a.cfg.seed}:atlas:leaders`));

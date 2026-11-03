@@ -7,6 +7,7 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
+import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -110,7 +111,6 @@ export function joinRealm(a, t) {
 }
 
 // ── schisms
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const glory = t => t.pop * (1 + townFx(t).prestige);
 
 // the towns of two seats are divided by which seat is nearer

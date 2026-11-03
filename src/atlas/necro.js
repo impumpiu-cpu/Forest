@@ -15,9 +15,8 @@ import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {faunaCell} from './fauna.js';
 import {scaleOf} from './tectonics.js';
-import {dist} from '../core/util.js';
+import {dist, cap1} from '../core/util.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 export const isTower = l => !!l && l.alive && !!LAIRS.get(l.kind).domain;
 export const towers = a => (a.lairs || []).filter(isTower);
 

@@ -6,6 +6,7 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {cap1} from '../core/util.js';
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
 import {killShare, killHeads, takeHeads, addGroup, moveHeads, shareOfPeople, strangersOf} from './population.js';
 import {TOWN_LIFE as TL} from '../data/peoples.js';
@@ -72,7 +73,6 @@ function driftRealms(a) {
 }
 
 const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const label = id => WORLD_PEOPLES.get(id).label;
 
 // p and q are realm ids throughout

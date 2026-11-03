@@ -2,6 +2,7 @@
 // radius + `reach`, with the year's chance spread over the seasons) — a calamity's boss's lair is beyond one town
 // (atlas/alliance.js). The town's might × TOWN_WAR.might against the lair's strength × its owner's body, with luck on
 // both sides: the lair is burnt out, or the town pays `raidLoss` of its people and a work.
+import {cap1} from '../../core/util.js';
 import {LAIRS, NECRO} from '../../data/lairs.js';
 import {killShare} from '../population.js';
 import {deadAt} from '../necro.js';
@@ -16,7 +17,6 @@ import {BURNT} from '../peoples.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 export const clearLair = {
   want(a, realm, {r}) {

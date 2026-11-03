@@ -31,7 +31,7 @@ import {DOES} from './deeds/index.js';
 import {towerBirth, stepTower, deadField, bend, necroLabel, livingAt, darkness} from './necro.js';
 import {BURNT, townAt} from './peoples.js';
 import {realmLand} from './realms.js';
-import {dist} from '../core/util.js';
+import {dist, cap1} from '../core/util.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
@@ -558,7 +558,6 @@ function spawnLairs(a, rnd) {
   return lines;
 }
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 // words that agree with the lair's noun
 export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём', it: 'его'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней', it: 'её'},
   m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём', it: 'его'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них', it: 'их'}};

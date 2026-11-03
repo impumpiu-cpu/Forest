@@ -19,7 +19,7 @@ import {realmLabel} from '../atlas/realms.js';
 import {atWar, trades, realmAlign} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {clamp} from '../core/util.js';
+import {clamp, cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
 import {cultPool} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -32,7 +32,6 @@ import {SEAM, LAIR_BANDS, WAR_ONLY_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEP
 const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
 
 const ORE_KEYS = Object.keys(REGIONS.all()[0].ores);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const r2 = v => Math.round(v * 100) / 100;
 const xy = (a, i) => [i % a.w, (i / a.w) | 0];
 const RING = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
