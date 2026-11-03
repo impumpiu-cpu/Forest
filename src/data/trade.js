@@ -75,7 +75,7 @@ export const TRADE = {
 
   // the guards' kit: imperial iron armour, a finer sword and shield
   guardKit: [{type: 'sword', q: 1}, {type: 'shield', q: 1}, {type: 'chainmail', q: 0}],
-  guardHp: 1.4,
+  guardHp: 1.4, guardBravery: 1.5, guardAim: 0.5,   // the guards' body: × health, bravery, the ranged skill
 
   traderNames: [['Аврелий', 'm'], ['Флавий', 'm'], ['Марциан', 'm'], ['Луций', 'm'], ['Гай', 'm'], ['Публий', 'm'], ['Корнелия', 'f'], ['Ливия', 'f']],
   guardNames: [['Квинт', 'm'], ['Сервий', 'm'], ['Децим', 'm'], ['Тит', 'm'], ['Секст', 'm'], ['Маний', 'm']],
