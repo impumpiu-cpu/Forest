@@ -33,13 +33,15 @@ import {POTION, hutGrades} from './potions.js';
 export const RECIPES = new Registry('recipe');
 
 const short = (n, target) => Math.max(0, target - n);
-// silvered forge blades: a few while silver is spare; once something that fears silver has come, many
-const silverWant = (c, calm, alarm) => (c.silverFoes
-  ? (c.stock('silverBar') >= 1 && short(c.silvered(), Math.ceil(c.pop / 2)) ? alarm : 0)
-  : (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? calm : 0));
-
-// stores for the winter: dried and salted food the colony aims to have per colonist (about a month of lean days)
-const STORES_PER_HEAD = 10;
+// How keen the colony's crafts are beyond their own hooks (the table «Ремесло: правила»):
+//   silver — silvered forge blades: one for every `calm` people while `calmBars` silver ingots are spare; once something
+//            that fears silver has come, one for every `alarm` people while `alarmBars` are
+//   stores — stores for the winter: dried and salted food the colony aims to have `perHead` a colonist (about a month of lean
+//            days), while it keeps `rawPerHead` of the raw food a head besides what the recipe takes
+export const RECIPE_WANT = {silver: {calm: 4, calmBars: 2, alarm: 2, alarmBars: 1}, stores: {perHead: 10, rawPerHead: 1.5}};
+const silverWant = (c, calm, alarm) => { const S = RECIPE_WANT.silver; return c.silverFoes
+  ? (c.stock('silverBar') >= S.alarmBars && short(c.silvered(), Math.ceil(c.pop / S.alarm)) ? alarm : 0)
+  : (c.stock('silverBar') >= S.calmBars && short(c.silvered(), Math.ceil(c.pop / S.calm)) ? calm : 0); };
 
 RECIPES.registerAll([
   // clothing and armour: everyone should wear something, better pieces replace worse ones
@@ -189,7 +191,7 @@ RECIPES.registerAll([
       ['saltFish', {fish: 2, salt: 1}, 2, 150, null], ['saltMeat', {meat: 2, salt: 1}, 2, 150, null]].map(([id, cost, n, work, needsWeather]) => {
     const raw = Object.keys(cost)[0];
     return {id, at: 'dryrack', cost, work, makes: {resource: id, n},
-      want: c => ((needsWeather && !c.drying) || c.stores >= c.pop * STORES_PER_HEAD || c.stock(raw) < c.pop * 1.5 + cost[raw] ? 0 : (needsWeather ? 1.3 : 1.6) * c.stockpile)};
+      want: c => ((needsWeather && !c.drying) || c.stores >= c.pop * RECIPE_WANT.stores.perHead || c.stock(raw) < c.pop * RECIPE_WANT.stores.rawPerHead + cost[raw] ? 0 : (needsWeather ? 1.3 : 1.6) * c.stockpile)};
   }),
 
   // ── the hearth: a hot stew from two portions; fresh food first, the stores only when there is none

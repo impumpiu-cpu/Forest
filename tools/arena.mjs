@@ -98,7 +98,7 @@ export async function engine() {
     import('../src/data/terrain.js'), import('../src/agents/equipment.js'), import('../src/agents/special.js'), import('../src/data/items.js'),
     import('../src/data/species.js'), import('../src/data/races.js'), import('../src/data/monsters.js'), import('../src/core/rng.js'), import('../src/data/special.js')]);
   const {itemDef} = await import('../src/agents/equipment.js'), power = await import('../src/data/balance/power.js'), {RULES} = await import('../src/data/balance/rules.js');
-  const strength = await import('../src/agents/strength.js'), {STRENGTH, CREATURES} = await import('../src/data/balance/creatures.js'), {kitFor: raidKit} = await import('../src/data/raids.js');
+  const strength = await import('../src/agents/strength.js'), {STRENGTH, CREATURES} = await import('../src/data/balance/creatures.js'), {kitFor: raidKit} = await import('../src/outside/bands.js');
   return {newGame, DEFAULT_CFG, createAgent, maxHp, TASKS, T, dress, refreshBody, ITEMS, SPECIES, RACES, MONSTERS, newStreams, mulberry, seedNumber, STATS, itemDef, power, RULES, strength, STRENGTH, CREATURES, raidKit};
 }
 

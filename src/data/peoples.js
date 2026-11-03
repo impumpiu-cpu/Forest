@@ -6,7 +6,7 @@
 //   kin:      the races a town of this people holds (atlas/population.js; docs/WORLD.md «Расы и народы»): {race: {base}} —
 //             every town holds them all, each × base × (KIN.any + the race's `home` of the town's biome, data/races.js); the
 //             shares drift by each race's births and deaths, and the land pulls them back a little (KIN.pull). A building or a
-//             recipe of a race's own asks for its share (data/townBuildings.js `kin`; data/requirements.js). The first race
+//             recipe of a race's own asks for its share (a recipe's `req` 'kin:<race>', data/townBuildings.js; data/requirements.js). The first race
 //             is the people's own (`race`); the others are its lesser kin — the humans' halflings and giants, the horde's goblins,
 //             gnolls, trolls and ogres. Folk of other peoples that settle in a town (atlas/demography.js migrate, atlas/diplomacy.js
 //             mingling) join its composition as their own race

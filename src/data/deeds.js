@@ -35,7 +35,7 @@ DEEDS.registerAll([
   {id: 'strike', label: 'вылет дракона', band: 'routine', party: 'dragon', requires: [],
     note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
   {id: 'captives', label: 'набег за пленными', band: 'routine', party: 'raid | null', requires: [],
-    note: 'набег за пленными (CAPTIVE_RAID): логово разумных — как набег, но город теряет жителей в полон, а не в могилы, и они живут при логове (lair.captives; караван, разбивший его людей, освобождает их); держава (орки) — набег города с воинами, пленные растят город'},
+    note: 'набег за пленными (CAPTIVE_RAID): логово разумных — как набег, но город теряет жителей в полон, а не в могилы, и они живут при логове (lair.captives; караван, разбивший его людей, освобождает их); держава (зеленокожие) — набег города с воинами, пленные растят город'},
   // ── the realm's (atlas/court.js; the relations' body: atlas/diplomacy.js; the numbers: data/diplomacy.js DIPLOMACY, data/parties.js ARMY, data/peoples.js TOWN_WAR)
   {id: 'makePeace', label: 'мир', band: 'red', party: null, requires: [],
     note: 'держава, уставшая от войны (отношение поднялось до peaceAt) или воюющая дольше longest лет, заключает мир прежде всех прочих дел; войска в пути поворачивают домой'},
@@ -44,7 +44,7 @@ DEEDS.registerAll([
   {id: 'march', label: 'войско в поход', band: 'routine', party: 'army', requires: [],
     note: 'в войне ход державы: войско из ближайшего к врагу города идёт осадой на его ближайший город (ARMY); одно войско на войну, не чаще everyYears'},
   {id: 'raidTown', label: 'набег на город', band: 'routine', party: null, requires: [],
-    note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У орков'},
+    note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У зеленокожих'},
   {id: 'clearLair', label: 'выжечь логово', band: 'routine', party: null, requires: [],
     note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье; скрытого логова не видит — его сперва надо найти'},
   {id: 'liberate', label: 'освобождение', band: 'routine', party: null, requires: [],

@@ -158,7 +158,6 @@ export const GENDER_INDEX = {m: 0, f: 1, n: 2, pl: 3};
 
 // lairs this old (years) become «ancient» — once, with a line in the chronicle; an ancient lair may raise a leader
 export const LAIR_AGE = {ancient: 30};
-export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says it; what the game reads is LAIR_AGE
 
 // Leaders of the old lairs (atlas/leaders.js, docs/WORLD.md «Главари логов»). An ancient lair (any kind but a dragon's,
 // a vampire's manor and a calamity's boss's) may raise a named leader: a creature of its kind grown past its kind's

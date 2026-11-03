@@ -4,6 +4,7 @@
 // Prices are in imperial gold, as everywhere; every price and coefficient here comes from data/balance/prices.js
 // (CAMPAIGN), the one place to balance them.
 import {CAMPAIGN} from './balance/prices.js';
+import {POTION} from './potions.js';
 
 // how a town stands to the caravan's realm: own — its own realm; friend — a realm it trades with and is
 // not at war with; anyone else does not let the caravan in. × on what the caravan pays and gets
@@ -154,7 +155,7 @@ export const EARN = {hide: 0.3, pan: 0.4};
 // `reserve` — days of food money the caravan keeps after paying the smith
 // a town's laboratory (data/townBuildings.js alchemist) brews the strong potions from the caravan's makings: the
 // potion's price × `fee` for the work; the caravan keeps `pots` pots for its own healer's hut (it sets out with as many)
-export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, pots: 12};
+export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, get pots() { return POTION.keep.pots; }};   // (pots: data/potions.js POTION.keep)
 
 export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
   bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};

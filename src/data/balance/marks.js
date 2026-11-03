@@ -14,7 +14,7 @@
 //   price — × to the price of the piece (on top of its quality)
 export const MARKS = {
   elf:   {id: 'elf', people: 'elves', blow: 'pierce', label: 'эльфийской работы', short: 'эльф.'},
-  orc:   {id: 'orc', people: 'orcs', blow: 'slash', label: 'орочьей работы', short: 'орк.'},
+  orc:   {id: 'orc', people: 'orcs', blow: 'slash', label: 'работы зеленокожих', short: 'зелен.'},
   dwarf: {id: 'dwarf', people: 'dwarves', blow: 'blunt', label: 'дварфийской работы', short: 'дварф.'},
 };
 

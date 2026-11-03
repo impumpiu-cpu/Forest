@@ -28,8 +28,6 @@ export const START = {
   winter: {label: 'Зима', day: 90, stock: 2, clothes: 1, perHead: {jerky: 8, driedFish: 4, wood: 5}},
 };
 
-export const LEVELS3 = ['мало', 'обычно', 'много'];
-
 // starting supplies; `kit` items go to the colony's gear store and are handed out at once,
 // `clothes` is the share of settlers who arrive dressed
 export const STOCKS = {

@@ -31,8 +31,6 @@ export const TAINT = {perHit: 0, fade: 0.5, stages: [5, 10, 20]};
 export const AFFLICTION_FROM = {dressed: 'после перевязанной смертельной раны', cold: 'в холод без тепла'};
 export const illTicks = A => Math.max(1, Math.round(A.every * DAY));
 export const illStage = a => (a.ill && AFFLICTIONS.has(a.ill.id) ? AFFLICTIONS.get(a.ill.id).stages[a.ill.stage - 1] ?? null : null);
-// the stage of taint (0 — none)
-export const taintStage = a => TAINT.stages.filter(x => (a.taint || 0) >= x).length;
 
 // what is wrong with the stages of an illness → [error] (the table's check)
 export function stagesErrors(stages, keysOf) {

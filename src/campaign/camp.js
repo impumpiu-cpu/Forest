@@ -15,7 +15,7 @@ import {step} from '../sim.js';
 import {PROVIDERS} from '../outside/index.js';
 import {formLinks, formUndeadLinks, promote, trimBand} from '../agents/ranks.js';
 import {RANK_RULES} from '../data/ranks.js';
-import {memberStrength} from '../data/raids.js';
+import {memberStrength} from '../outside/bands.js';
 import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
@@ -198,7 +198,7 @@ function spawnFoe(w) {
   const beast = F.beast || map.beast, band = F.band || map.band;
   // the foe is bought by the caravan's strength (campSetup: C.ourMight — everyone who stands in the fight, with all
   // they wear) × the fight's weight (foeWeight), never by the thing's own strength: a caravan in copper is not sent
-  // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)
+  // against a boss bought for a caravan in steel. The heads are rounded up (outside/bands.js fill `up`)
   const t = raidThreat(w), budget = C.ourMight * foeWeight(r, F, S.kind);
   C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record
   // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
@@ -213,7 +213,7 @@ function spawnFoe(w) {
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
-    // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
+    // the band counted out in strength rating (outside/bands.js fill): the budget, rounded up by heads, the bands' caps lifted
     return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}, ...(F.pool && who.band === 'cultists' ? {pool: F.pool} : {})}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
   };
   // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain

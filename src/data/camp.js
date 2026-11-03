@@ -31,7 +31,7 @@ export const CAMP = {
   far: 18,
   // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone
   // who stands in the fight, with all they wear — campaign/camp.js campSetup): the fight's budget is that strength
-  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (data/raids.js fill `up`: when a
+  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (outside/bands.js fill `up`: when a
   // giant and a half fit, two come). In the quick mode the same, in the caravan's own might (campaign/fight.js)
   foe: {
     skirmish: [0.7, 1],   // a chance meeting — a nameless band at night or in ambush: down to −30 %

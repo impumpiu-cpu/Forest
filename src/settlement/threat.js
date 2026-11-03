@@ -4,11 +4,11 @@
 //                     already sent, with the colony's strength the rumours tell of and with its fame. The
 //                     level decides which bands come (data/raids.js `weight`), their gear and toughness.
 //   raidStrength(w) — the threat itself, in strength rating (КС, agents/strength.js): how strong the next
-//                     band is. Members are added until their ratings reach it (data/raids.js fill), so a
+//                     band is. Members are added until their ratings reach it (outside/bands.js fill), so a
 //                     band of 600 is five bandits, a dozen goblins or two trolls, and the colony's own
 //                     rating (colonyStrength) says how it stands against it.
 import {DAY} from '../core/time.js';
-import {raiderStrength} from '../data/raids.js';
+import {raiderStrength} from '../outside/bands.js';
 import {THREAT} from '../data/colony.js';
 
 export {THREAT};   // (data/colony.js)

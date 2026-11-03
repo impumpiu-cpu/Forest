@@ -41,7 +41,7 @@ export const POTION = {
   beltNow: 3,      // a foe on the map counts this many times one that came before (settlement/potions.js expectedFoes)
   beltFights: 12,  // the caravan expects the foes of its last this many fights (campaign/potions.js)
   keepMakings: 6,  // the caravan keeps this many of each making of a potion; the rest is goods to sell or leave
-  keep: {pots: 12, herbs: 10},   // … and of these this many (every potion takes a pot: data/market.js ALCHEMY.pots)
+  keep: {pots: 12, herbs: 10},   // … and of these this many (every potion takes a pot; the caravan sets out with `pots` of them: data/market.js ALCHEMY)
   hutTier: 2,      // the highest step a healer's hut brews: what is harder is the alchemist's
   hutPots: 4,      // the potter keeps this many pots for a settlement's healer's hut
   // the settlement's stock fills its people's slots and belts (settlement/potions.js): every `hand` ticks
