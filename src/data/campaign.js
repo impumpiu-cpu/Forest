@@ -203,7 +203,8 @@ export const FINDS = [
 //   mission  the caravan's mission profile: three axes 0 … 1, each its own (not shares) — pace (on to the goal), caution (food,
 //            healing, the winter in a town), side (wheels, beasts, ore, the smith and the shop). A command's weight × (1 + k ×
 //            Σ its leaning along an axis × (the axis − 0.5) × 2): at 0.5 everywhere nothing changes; `people` — each people's
-//            profile (a people not listed, or the profile «без влияния склонностей»: `mid` on every axis)
+//            profile (a people not listed, or the profile «без влияния склонностей»: `mid` on every axis). The humans' was
+//            tuned on 20 worlds (tools/council-probe.mjs): 0.5 · 0.5 · 0.55 won 15 walks, 0.6 · 0.5 · 0.4 — 19 (the old order: 17)
 export const COUNCIL = {
   want: {'caravan.visit.winter': 6, 'caravan.visit.food': 3, 'caravan.visit.heal': 3, 'caravan.visit.smith': 1, 'caravan.visit.shop': 1,
     'caravan.camp.food': 3, 'caravan.camp.heal': 2, 'caravan.camp.build': 1, 'caravan.camp.tame': 1, 'caravan.camp.mine': 1, 'caravan.camp.goOn': 0.5},
@@ -214,7 +215,7 @@ export const COUNCIL = {
       'caravan.visit.smith': {pace: 0, caution: 0, side: 1}, 'caravan.visit.shop': {pace: -0.5, caution: 0, side: 1},
       'caravan.camp.food': {pace: -0.5, caution: 0.5, side: 0}, 'caravan.camp.heal': {pace: -0.5, caution: 1, side: 0},
       'caravan.camp.build': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.tame': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.mine': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.goOn': {pace: 1, caution: 0, side: 0}},
-    people: {humans: {pace: 0.5, caution: 0.5, side: 0.55}, elves: {pace: 0.45, caution: 0.65, side: 0.4},
+    people: {humans: {pace: 0.6, caution: 0.5, side: 0.4}, elves: {pace: 0.45, caution: 0.65, side: 0.4},
       dwarves: {pace: 0.4, caution: 0.55, side: 0.75}, orcs: {pace: 0.7, caution: 0.3, side: 0.45}},
   },
 };
