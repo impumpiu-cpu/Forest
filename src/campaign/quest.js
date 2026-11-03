@@ -27,7 +27,7 @@ import {BUBBLE} from '../data/bubble.js';
 import {lairFoe} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
-import {cellDist} from '../core/util.js';
+import {cellDist, weighted} from '../core/util.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -37,11 +37,6 @@ const dist = cellDist;   // (core/util.js)
 const NEUT = {'её': 'его', 'Её': 'Его', 'она лежит': 'оно лежит', 'отбита': 'отбито', 'найдена': 'найдено', 'досталась': 'досталось'};
 const gx = (Q, f, m) => (Q.g === 'm' ? m : Q.g === 'n' ? NEUT[f] ?? m : f);
 const pick = (r, list) => list[(r() * list.length) | 0];
-function weighted(r, list) {   // [[item, weight]]
-  const tot = list.reduce((s, e) => s + e[1], 0); let x = r() * tot;
-  for (const [it, wt] of list) { x -= wt; if (x <= 0) return it; }
-  return list.at(-1)?.[0] ?? null;
-}
 
 // ── the land the caravan can walk from home: a mask, and the cells it may stop on
 export function reachable(a, K) {
