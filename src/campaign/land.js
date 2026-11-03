@@ -34,6 +34,7 @@ import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {NIGHT, WILD_FOES} from '../data/campaign.js';
 import {MIGRATIONS} from '../data/migrations.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
 // Game by the beasts that live there (as the local map would have them), plants by the soil and biomes
@@ -67,9 +68,12 @@ export function seasonFood(a, i, seasonId) {
 // ── the wild as foes (data/campaign.js WILD_FOES): who lives in a cell by the world's fields — every beast of prey that
 // hunts people, every lair's monster, every tribe's folk, by its density there. The lair whose land it is counts its own
 // kind itself (above)
-const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
+// (made on first use, made anew after a table edit: a lair's species and tribe are table cells)
+let folk = null;
+const FOLK_BAND = () => folk || (folk = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]])));
 const MIG = new Map();
-onSpeciesChange(() => MIG.clear());   // (a species made or removed in the constructor: data/species.js)
+onSpeciesChange(() => MIG.clear());
+onEdit(() => { folk = null; MIG.clear(); });   // (a species made or removed in the constructor: data/species.js)
 // the beasts' arrival on the local map that brings a species as a hunter of people (data/migrations.js), or null
 const hunterOf = id => { if (!MIG.has(id)) MIG.set(id, MIGRATIONS.all().find(m => m.species === id && m.faction === 'predators')?.id || null); return MIG.get(id); };
 export function wildFoes(a, i, lair = lairAt(a, i)) {
@@ -80,7 +84,7 @@ export function wildFoes(a, i, lair = lairAt(a, i)) {
     const v = s.N[j]; if (!(v >= W.at)) continue;
     let kind, who;
     if (s.role === 'dead') { kind = 'undead'; who = {band: 'undead'}; }   // the risen of a necromancer (atlas/necro.js)
-    else if (s.role === 'folk') { if (!FOLK_BAND[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND[s.id]}; }
+    else if (s.role === 'folk') { if (!FOLK_BAND()[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND()[s.id]}; }
     else { const m = hunterOf(s.id); if (!m) continue; kind = s.lair ? 'lair' : 'beasts'; who = {beast: m}; }
     const P = W[kind === 'undead' ? 'dead' : kind], x = Math.min(P.cap, v);
     out.push({kind, p: P.p * x, strength: P.s[0] + P.s[1] * x, label: s.sp.plural, species: s.id, ...who});

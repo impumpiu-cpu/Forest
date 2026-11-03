@@ -31,6 +31,7 @@ import {takeKind, giveKind, kindsOf} from './kinds.js';
 import {FAMILIES, mayMake, mayWield, useOf} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {degreeOf, degreeValue} from '../data/checks.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // stock resources that are a family's total (wood → 'wood', stone → 'stone')
 const FAMILY_RES = Object.fromEntries(Object.entries(FAMILIES).filter(([, F]) => F.resource).map(([f, F]) => [F.resource, f]));
@@ -118,6 +119,7 @@ export function recipesAt(station) {
   return byStation[station] || [];
 }
 let melee = null;
+onEdit(() => { byStation = null; melee = null; });   // a recipe's station, an item's slot and blow are table cells
 const MELEE = () => melee || (melee = ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged));
 
 // someone alive in the colony can take this recipe. A T1 recipe anyone can; otherwise the living are looked

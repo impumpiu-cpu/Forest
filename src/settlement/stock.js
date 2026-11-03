@@ -5,6 +5,7 @@ import {FOODS, tasteOf} from '../data/foods.js';
 import {season} from '../data/seasons.js';
 import {takeKind} from './kinds.js';
 import {FURNACE} from '../data/colony.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const foods = () => RESOURCES.filter(r => r.tags.includes('food'));
 
@@ -38,7 +39,9 @@ export function eatMeal(w, a) {
 }
 
 // ── fuel
+// the fuels sorted once, made anew after a table edit (a resource's tags, burn and furnace tier are table cells)
 let cf, sf;
+onEdit(() => { cf = sf = null; });
 const campFuels = () => cf || (cf = RESOURCES.filter(r => r.tags.includes('fuel')).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
 
 // what the campfire would burn now: wood first, then coal
