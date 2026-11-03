@@ -7,7 +7,7 @@
 // out on the night watch or in an alarm an invigorating one, one hurt or with a grave wound a strengthening one
 // (POTION.home); one of a kind at a time.
 import {colonists, raidAlarm} from './query.js';
-import {POTION, BELT_ORDER, HOME_RES, potionOf, sameKind} from '../data/potions.js';
+import {POTION, BELT_ORDER, HOME_RES, potionOf} from '../data/potions.js';
 import {holdsBlade, brewFor, drinkFor, threatOf, rebelt} from '../agents/potions.js';
 import {nightness} from '../core/time.js';
 import {darkness} from '../agents/combat.js';

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «broad» — широкое: орк, гнолл. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="33" r="31"/>
+  <circle data-anchor="hand" cx="77.4" cy="76.5" r="5"/>
+  <circle data-anchor="off" cx="22.6" cy="76.5" r="5"/>
+  <circle data-anchor="back" cx="37.4" cy="62" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M22 66Q22 56 32 56L68 56Q78 56 78 66L73.5 92Q73.5 97 68.5 97L31.5 97Q26.5 97 26.5 92Z"/>
+  <path class="figure" fill="shade" d="M43 56L50 65L57 56Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M19 68Q19 55 30 55L70 55Q81 55 81 68L77.5 94L64 98L55.6 94L44.4 98L36 94L22.5 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M24 57Q50 72 76 57Q50 62 24 57Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M25 62L45 59L50 72L55 59L75 62L71.4 89L28.6 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M26 70Q26 60 36 60L64 60Q74 60 74 70L70.2 86Q70.2 91 65.2 91L34.8 91Q29.8 91 29.8 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M30 68H70M31 76H69M32 84H68"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M32.5 68Q36 72.5 39.5 68M39.5 68Q43 72.5 46.5 68M46.5 68Q50 72.5 53.5 68M53.5 68Q57 72.5 60.5 68M60.5 68Q64 72.5 67.5 68M32.5 75Q36 79.5 39.5 75M39.5 75Q43 79.5 46.5 75M46.5 75Q50 79.5 53.5 75M53.5 75Q57 79.5 60.5 75M60.5 75Q64 79.5 67.5 75M32.5 82Q36 86.5 39.5 82M39.5 82Q43 86.5 46.5 82M46.5 82Q50 86.5 53.5 82M53.5 82Q57 86.5 60.5 82M60.5 82Q64 86.5 67.5 82"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M30 68h0.1M35 68h0.1M40 68h0.1M45 68h0.1M50 68h0.1M55 68h0.1M60 68h0.1M65 68h0.1M70 68h0.1M35 74h0.1M40 74h0.1M45 74h0.1M50 74h0.1M55 74h0.1M60 74h0.1M65 74h0.1M35 80h0.1M40 80h0.1M45 80h0.1M50 80h0.1M55 80h0.1M60 80h0.1M65 80h0.1M35 86h0.1M40 86h0.1M45 86h0.1M50 86h0.1M55 86h0.1M60 86h0.1M65 86h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M30 68L70 74M31.1 77L68.9 83M32.2 86L67.8 92"/>
+    <rect class="figure" x="45.5" y="60" width="9" height="31" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M26.5 78.5H73.5"/>
+  <rect class="detail" x="46" y="75" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="25" cy="61" rx="8.3" ry="6.7"/>
+    <ellipse cx="75" cy="61" rx="8.3" ry="6.7"/>
+  </g>
+</svg>

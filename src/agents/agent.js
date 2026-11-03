@@ -5,13 +5,14 @@ import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS, BASE_MODS, LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../data/traits.js';
-import {shuffle, weighted, esc, g} from '../core/util.js';
+import {shuffle, weighted, esc, g, cap, between} from '../core/util.js';
 import {log} from '../core/log.js';
 import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 import {think} from './mind.js';
 import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
+import {deposit} from '../settlement/stock.js';
 import {addCorpse} from '../settlement/life.js';
 import {rollCreature, refreshBody, BODY_VER} from './special.js';
 import {startSkills} from './skills.js';
@@ -23,6 +24,7 @@ import {decideTrophies} from './trophies.js';
 import {noteBoardDeath} from '../settlement/board.js';
 import {load} from './jobRunners.js';
 import {captiveDied} from '../settlement/captives.js';
+import {RAID_BANDS} from '../data/raids.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -34,8 +36,6 @@ export function trophyText(t) {
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
-
-const between = (rng, [a, b]) => a + rng() * (b - a);
 
 // liked and disliked work are drawn from preferable jobs; up to two traits from different groups.
 // Skills start from SPECIAL (agents/skills.js): a little of everything, more where the letter is strong.
@@ -130,8 +130,9 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.faction === 'colony' && !quiet) log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
     // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
-    for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
-    for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
+    // into the stores as a hunter's game goes (settlement/stock.js deposit: the buildings' yield bonus; the stores hold any amount)
+    for (const [r, n] of Object.entries(sp.yields)) deposit(w, r, n);
+    for (const [r, n] of Object.entries(trophy?.got || {})) deposit(w, r, n);
     const got = Object.keys(sp.yields).map(r => RESOURCES.get(r).label).join(', ');
     log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? 'упокоил' : 'убил', sp.undead ? 'упокоила' : 'убила')} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} — в лагерь.${trophyText(trophy)}`, 'danger', 'notice');
   } else if (sp.resident && by?.faction === 'colony') {
@@ -141,12 +142,13 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    const who = a.band === 'bandits' ? a.name || 'Налётчик' : a.name !== sp.label.replace(/^./, c => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+    const pawn = a.band && RAID_BANDS.has(a.band) ? RAID_BANDS.get(a.band).pawn : null;   // (a band whose members have no names of their own)
+    const who = pawn ? a.name || pawn : a.name !== cap(sp.label) ? `${a.name}, ${sp.label},` : a.name;
     const verb = sp.undead ? g(a, 'упокоен', 'упокоена') : g(a, 'убит', 'убита');
     log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
   // the necromancer falls: his dead lose their way
-  if (a.species === 'necromancer' && w.agents.some(o => o.obeys === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');   // scan: once, at a necromancer's death
+  if (sp.bandHead === 'dead' && w.agents.some(o => o.obeys === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');   // scan: once, at a necromancer's death
   // a wight falls (data/ranks.js): its link goes to the necromancer if he stands, else it wanders off
   if (a.marks?.includes('wight') && w.agents.some(o => o.obeys === a.id && !o.dead)) {   // scan: once, at a wight's death
     const up = w.agents.find(o => o.obeys === a.id && o.obeysUp != null && !o.dead);
@@ -156,5 +158,4 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
-  else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }
 }

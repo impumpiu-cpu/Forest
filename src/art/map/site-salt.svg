@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- угодье: солеварня: чан и белые кучи -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="snow" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M10 86Q22 56 34 86Z"/><path fill="snow" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M66 86Q78 54 90 86Z"/><path fill="iron" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M32 58H68L64 86H36Z"/><path class="detail" fill="smoke" d="M44 40a6 6 0 1 0 12 0a6 6 0 1 0-12 0Z"/>
+</svg>

@@ -4,8 +4,13 @@
 // view, its offices filled or emptied, its edicts, the year's event, its upkeep and its four kinds of ruin.
 //
 // realm.kingdom = {stats: {culture, economy, loyalty, stability}, ruin: {corruption, crime, decay, strife}, upkeep,
-//                  edicts: {taxes: level, …}, court: {ruler: {name, since, until} | null, …}, event: id | null}
+//                  edicts: {taxes: level, …}, court: {ruler: {person, since, until} | null, …}, event: id | null}
+// A holder of an office is a person of the world (atlas/persons.js): it lives at the seat, ages and dies by its own
+// event; its term running out (`until`) only sends it off the office. The throne after a ruler's death goes by the realm's
+// profile (data/polities.js, atlas/succession.js): a kingdom's court mourns `mourn` years and fills it again; a horde fights
 // What it does back to the world: data/kingdom.js FEEDBACK — schismFactor (atlas/realms.js), t.realmFx (growth, might).
+import {warsOf} from './common.js';
+import {cap1} from '../core/util.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK} from '../data/kingdom.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
@@ -17,8 +22,11 @@ import {attitude} from './diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
+import {newPerson, personOf, moveTo, nameOut, hasGrown, backToCrowd, whereIs} from './persons.js';
+import {rulerTitle} from './polities.js';
+import {strangersOf} from './population.js';
+import {abilitiesFor} from './control.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
 
 const r3 = v => Math.round(v * 1000) / 1000;
@@ -59,7 +67,7 @@ export const upkeepOf = towns => towns.reduce((s, t) => s + [...new Set(t.built)
 // a realm's might: the might of its towns (atlas/towns.js might) — for tribute
 const mightOfRealm = a => { const m = new Map(); for (const t of a.towns || []) if (t.alive && t.realm != null) m.set(t.realm, (m.get(t.realm) || 0) + might(t, townFx(t))); return id => m.get(id) || 0; };
 
-const atWarAny = (a, realm) => Object.entries(a.rel || {}).some(([k, x]) => x.war && k.split(':').includes(String(realm.id)));
+const atWarAny = (a, realm) => warsOf(a, realm.id) > 0;
 
 // each season: every living realm keeps its war host out of its treasury — garrisons, its armies' pay, food and kit
 // (atlas/treasury.js realmKeep)
@@ -83,18 +91,24 @@ export function stepKingdom(a, say) {
     const K = realm.kingdom ||= {ruin: zero(RUINS), court: Object.fromEntries(OFFICES.all().map(o => [o.id, null])), edicts: {}, stats: zero(REALM_STATS)};
     const name = realmLabelGen(a, realm.id), Name = cap1(realmLabel(a, realm.id)), war = atWarAny(a, realm);
     const stats = baseStats(a, realm, towns);
-    // the court: a holder's years run out, an empty office is filled
-    const race = WORLD_PEOPLES.get(realm.people).race;
+    // the court: a holder's years run out (it lives on), an empty office is filled with a person of the realm's race at
+    // its seat — the throne not while the realm mourns or the horde fights over it (atlas/succession.js)
+    const race = WORLD_PEOPLES.get(realm.people).race, seat = towns.find(t => t.id === realm.capital) || towns[0];
     for (const O of OFFICES.all()) {
-      const h = K.court[O.id];
-      if (h && year >= h.until) { K.court[O.id] = null; tell(`${cap1(h.f ? O.labelF : O.label)} ${name} ${h.name} оставил${h.f ? 'а' : ''} свой пост.`); }
-      if (!K.court[O.id] && r() < COURT.fill) {
+      const h = K.court[O.id], hp = h ? personOf(a, h.person) : null;
+      if (h && (!hp || !hp.alive)) K.court[O.id] = null;   // (its holder is dead: the office was freed by its death — atlas/succession.js; an old save's holder of no person is let go)
+      else if (h && year >= h.until) { K.court[O.id] = null; backToCrowd(a, hp, whereIs(a, hp) || seat); tell(`${cap1(O.id === 'ruler' ? rulerTitle(realm, hp) : hp.g === 'f' ? O.labelF : O.label)} ${name} ${hp.name} оставил${hp.g === 'f' ? 'а' : ''} свой пост.`); }   // (back into the crowd of its town; with a host on the march — at the town it steps off at: atlas/persons.js)
+      const held = O.id === 'ruler' && ((realm.mourn ?? -1) > year || realm.contest != null);
+      // (one of the seat's own: a grown one of the realm's race must be there to be named — none, the office waits)
+      if (!K.court[O.id] && !held && seat && hasGrown(a, seat, race) && r() < COURT.fill) {
         // a name nobody at this court has yet; a people without names leaves the office empty
-        const used = new Set(Object.values(K.court).filter(Boolean).map(x => x.name));
+        const used = new Set(Object.values(K.court).filter(Boolean).map(x => personOf(a, x.person)?.name).filter(Boolean));
         const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
         if (nm) {
-          K.court[O.id] = {name: nm, f, since: year, until: year + years};
-          tell(`${f ? 'Новая' : 'Новый'} ${f ? O.labelF : O.label} ${name} — ${nm}.`);
+          const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r, abilities: O.id === 'ruler' ? abilitiesFor(realm) : [], health: townFx(seat).health});   // (the throne's channels: one who has their art is chosen — atlas/control.js)
+          if (seat) { moveTo(p, 'town', seat.id); nameOut(a, p, seat); }   // (one of the seat's own: out of its count — atlas/persons.js)
+          K.court[O.id] = {person: p.id, since: year, until: year + years};
+          tell(`${f ? 'Новая' : 'Новый'} ${O.id === 'ruler' ? rulerTitle(realm, p) : f ? O.labelF : O.label} ${name} — ${nm}.`);
         }
       }
       addTo(stats, K.court[O.id] ? O.adds : O.vacant);
@@ -127,8 +141,8 @@ export function stepKingdom(a, say) {
     realmSpend(realm, towns, war, a);   // grants to build, by the council's wind (atlas/treasury.js, atlas/mind.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
-    const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
-    const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + Object.values(t.folk || {}).reduce((x, v) => x + v, 0), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    const wars = warsOf(a, realm.id), raided = towns.filter(t => t.raided === year).length;
+    const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), strangers: towns.reduce((s, t) => s + strangersOf(a, t).strangers, 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     src.court = courtUnpaid;   // the court unpaid: decay
     const RP = WORLD_PEOPLES.get(realm.people), bureau = RP?.bureau ?? 1;   // (corruption × the people's bureaucracy; any ruin × its `ruinGrow`)
     for (const R of RUINS.all()) {

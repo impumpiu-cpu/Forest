@@ -18,11 +18,16 @@ import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
 import {season} from '../data/seasons.js';
 import {moodOf} from '../agents/mind.js';
-import {penRoom, herd} from './herd.js';
+import {penRoom, herd, isTameable} from './herd.js';
 import {councilRoster} from './plan.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {COUNCIL} from '../data/colony.js';
+import {onEdit} from '../data/schema/layer.js';
 
-export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
+export {COUNCIL};   // (data/colony.js)
+// (kept for agents/outfit.js: live bindings, renewed on a table edit; the council's own steps read COUNCIL)
+export let COUNCIL_FROM = COUNCIL.from, COUNCIL_TO = COUNCIL.to;
+onEdit(() => { COUNCIL_FROM = COUNCIL.from; COUNCIL_TO = COUNCIL.to; });
 
 // a building the council may pick: allowed, and everything its price still lacks can be come by
 export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.get(key).cost).every(([r]) => obtainable(w, r));
@@ -30,7 +35,7 @@ export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.ge
 
 export function councilDue(w) {
   const h = hourOf(w.tick);
-  return !w.light && h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+  return !w.light && h >= COUNCIL.from && h < COUNCIL.to && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
 }
 
 // extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way
@@ -41,7 +46,7 @@ export function councilDue(w) {
 // workshop had nothing to make and the colony sat idle with the goal stuck).
 export function goalNeed(w, res) {
   if (!w.council.goal) return 0;
-  return goalWants(w).has(res) ? 0.3 : 0;
+  return goalWants(w).has(res) ? COUNCIL.goalPull : 0;
 }
 const goalWants = w => perTick(w, 'goalWants', () => {
   const want = new Set(), lack = missing(w, BUILDINGS.get(w.council.goal).cost);
@@ -61,7 +66,7 @@ function motive(w, a, def, ctx, noise = true) {
   const args = def.motive ? def.motive(a, ctx) : [];
   let best = [0, ''];
   for (const o of args) if (o[0] > best[0]) best = o;
-  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rngs.colony() * 0.25 : 0);
+  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * COUNCIL.buildPref + (noise ? w.rngs.colony() * COUNCIL.noise : 0);
   return [score, best[0] > 0.05 ? best[1] : def.wish];
 }
 
@@ -80,7 +85,7 @@ function councilCtx(w, cands) {
     // wounded by each one's own measure: a giant's 1.0 is not a human's 1.0
     wounded: colonists(w).filter(a => hpShare(a) < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
-    wildHerd: w.agents.filter(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null).length,
+    wildHerd: w.agents.filter(isTameable).length,
     herdFull: herd(w).length > 0 && penRoom(w) < 1,
     gloomy: colonists(w).filter(a => moodOf(w, a) < -0.2).length / Math.max(1, colonists(w).length),
     graves: (w.graves || []).length + (w.corpses || []).length,
@@ -101,11 +106,11 @@ export function councilWish(w, a) {
 export function stepCouncil(w) {
   const day = dayOf(w.tick), h = hourOf(w.tick);
   if (!councilDue(w)) {
-    if (w.council.lastDay !== day && h >= COUNCIL_TO && colonists(w).length) w.council.lastDay = day;   // nobody came
+    if (w.council.lastDay !== day && h >= COUNCIL.to && colonists(w).length) w.council.lastDay = day;   // nobody came
     return;
   }
   const col = colonists(w).filter(a => !a.captive && !a.former), present = col.filter(a => a.task?.id === 'council' && a.task.seated);   // captives have no seat (settlement/captives.js)
-  if (!present.length || (present.length < Math.ceil(col.length * 0.7) && h < COUNCIL_TO - 0.3)) return;
+  if (!present.length || (present.length < Math.ceil(col.length * COUNCIL.quorum) && h < COUNCIL.to - COUNCIL.late)) return;
   hold(w, present, col.length);
 }
 
@@ -174,7 +179,7 @@ function hold(w, present, total) {
   const quotes = args.slice(0, 3).map(x => `${x.name}: ${BUILDINGS.get(x.key).name.toLowerCase()}, ${x.why}`).join('; ');
   log(w, `Совет у костра (${present.length} из ${total}). ${quotes ? quotes + '. ' : ''}${decision}`, 'council');
   for (const a of colonists(w)) {
-    for (const k of Object.keys(a.mem)) a.mem[k] *= 0.4;
+    for (const k of Object.keys(a.mem)) a.mem[k] *= COUNCIL.memory;
     if (a.task?.id === 'council') a.task = null;
   }
   w.stats.spoiledToday = 0;

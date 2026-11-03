@@ -11,7 +11,7 @@
 import {FREEDOM, BONDS} from '../data/captives.js';
 import {opinion} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
-import {COUNCIL_FROM} from './council.js';
+import {COUNCIL} from '../data/colony.js';
 import {colonists, raidAlarm} from './query.js';
 import {raidOnBoard} from './board.js';
 import {leave} from './life.js';
@@ -74,7 +74,7 @@ function council(w) {
 export function stepFreedom(w) {
   const fs = formers(w), S = (w.freedom ??= {dawn: -1, council: -1});
   const day = dayOf(w.tick), h = hourOf(w.tick);
-  if (!w.light && S.council !== day && h >= COUNCIL_FROM && w.council?.lastDay === day) { S.council = day; council(w); }
+  if (!w.light && S.council !== day && h >= COUNCIL.from && w.council?.lastDay === day) { S.council = day; council(w); }
   if (!fs.length) return;
   if (h >= 6 && S.dawn !== day) {
     S.dawn = day;

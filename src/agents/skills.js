@@ -6,11 +6,9 @@ import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills, recipeSkill} fro
 import {NORM, STATS} from '../data/special.js';
 import {curve} from '../data/curves.js';
 
-const STAT_IDS = STATS.ids();
-
 
 // the creature's letter for a skill (no SPECIAL: the human norm)
-export const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
+const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
 
 // learning speed from the skill's own letter: 1 at 5, 1.4 at 10, 0.68 at 1, open upwards (the curve 'skillPace')
 export const letterFactor = v => curve('skillPace', v);
@@ -30,7 +28,7 @@ export const skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
 // A refusal says why, in data the card can word:
 //   {ok: false, reasons: [{code: 'tier', stat: 'S', need: 6, have: 4, tier: 3, skill: 'smithing'}]}
 // Only abilities are checked here; materials, fuel, benches and targets are the system's own business.
-export function actionNeed(skill, tier = 1) {
+function actionNeed(skill, tier = 1) {
   if (!skill || (tier || 1) <= 1) return null;
   return {code: 'tier', stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill};
 }
@@ -50,7 +48,7 @@ export const canMake = (a, r) => recipeAccess(a, r).ok;
 export const jobAccess = (a, job) => actionAccess(a, job.skill, job.tier);
 
 // a key that is the same for any two workers whom the tiers treat alike: one letter's tier per character
-export const accessKey = a => STAT_IDS.map(id => tierFor(a.special?.[id] ?? NORM)).join('');
+export const accessKey = a => STATS.ids().map(id => tierFor(a.special?.[id] ?? NORM)).join('');
 
 // the reason as a phrase for the card and the log: «сила от 6, у него 4»
 export const reasonText = x => (x.code === 'tier' ? `${STATS.get(x.stat).label.toLowerCase()} от ${x.need}${x.have != null ? `, сейчас ${x.have}` : ''}` : x.code);

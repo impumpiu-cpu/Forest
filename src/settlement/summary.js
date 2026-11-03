@@ -1,6 +1,6 @@
 // The final summary: totals, awards for the colonists who stood out, and curious facts.
 // Pure: reads the world and its chronicle, returns plain data for the end screen.
-import {DAY} from '../core/time.js';
+import {DAY, HOUR} from '../core/time.js';
 import {g, plural} from '../core/util.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {ITEMS} from '../data/items.js';
@@ -28,7 +28,7 @@ function deeds(w, r) {
   if (s.hunted) out.push(`${s.hunted} ${plural(s.hunted, 'заяц', 'зайца', 'зайцев')}`);
   const top = Object.entries(s.gathered).sort((a, b) => b[1] - a[1])[0];
   if (top) out.push(`${top[1]} ед.: ${RESOURCES.get(top[0]).label}`);
-  if (s.labour > 120) out.push(`${Math.round(s.labour / 120)} ч на стройке`);
+  if (s.labour > 120) out.push(`${Math.round(s.labour / HOUR)} ч на стройке`);   // (labour: work a tick, about one a tick — HOUR of it an hour)
   return out.slice(0, 3);
 }
 
@@ -66,7 +66,7 @@ export function summarize(w) {
     award('Скотник', r => (r.stats.gathered.milk || 0) + (r.stats.gathered.wool || 0), (r, v) => `${v} ед. молока и шерсти`),
     award('Каменотёс', r => r.stats.gathered.stone || 0, (r, v) => `${v} ед. камня`),
     award('Мастер', r => r.stats.crafted, (r, v) => `${v} ${plural(v, 'вещь', 'вещи', 'вещей')}`),
-    award('Строитель', r => r.stats.labour, (r, v) => `${Math.round(v / 120)} ч на стройке`, 240),
+    award('Строитель', r => r.stats.labour, (r, v) => `${Math.round(v / HOUR)} ч на стройке`, 240),
     award('Защитник', r => r.stats.raiders + r.stats.wolves, r => [r.stats.raiders && `${r.stats.raiders} налётч.`, r.stats.wolves && `${r.stats.wolves} зверей`].filter(Boolean).join(', ')),
     award('Долгожитель', r => daysLived(w, r), (r, v) => `${daysText(v)} в поселении`),
     award('Живучий', r => r.stats.wounds, (r, v) => `${v} тяжёл. ${plural(v, 'рана', 'раны', 'ран')}`),

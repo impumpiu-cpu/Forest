@@ -44,8 +44,10 @@ export const REALM_BANDS = {orcs: 'orcs', dwarves: 'dwarves', elves: 'elves'};  
 export const HOST_BANDS = {humans: {base: 'host', by: {tiltyard: 'k', hippodrome: 'h', den: 'd'}}};
 // the peoples whose bands come only in a war (not for mere dislike): the dwarves do not raid
 export const WAR_ONLY_BANDS = ['dwarves', 'elves'];
+// the peoples whose towns raid a colony of no realm (a hamlet off any realm's land) by their nature
+export const RAID_UNRULED = ['orcs'];
 // outlaws live wherever people do: a little banditry near any town of men
-export const OUTLAWS = {band: 'bandits', weight: 0.4};
+export const OUTLAWS = {band: 'bandits', weight: 0.4, people: ['humans']};   // people: the towns they haunt the roads near
 // the tribes as fields (data/lairs.js LAIR_FIELD): a tribe's folk living within the reach send their band too, without a
 // lair of theirs near — from the coarse cell where they are thickest for the distance; weight × their density there
 // (at least `at`)

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- жетон на малом размере: круг в цвете фракции, на нём голова -->
+  <circle cx="50" cy="50" r="46" fill="faction" stroke="ink" stroke-width="7"/>
+</svg>

@@ -4,6 +4,7 @@
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
 import {isFighter, inLine, toolOf} from '../data/campaign.js';
+import {memberFate} from '../atlas/persons.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
@@ -21,7 +22,8 @@ import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
-import {say, die, alive, caravanMight, gainBeast, shake, stopFood} from './march.js';
+import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
+import {shake} from './people.js';
 import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
@@ -63,7 +65,7 @@ function recordFight(a, K, d, how, win, before) {
   const F = o?.foes, B = F?.boss;
   const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
     fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
-    plundered: o ? !!o.plundered : null, foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, species: F ? F.species : null,
+    plundered: o ? !!o.plundered : null, foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, led: o ? o.led || 0 : null, species: F ? F.species : null,
     ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null, weight: F ? F.weight : A?.weight ?? null,
     boss: d.boss ? {name: d.boss.name, species: d.boss.species, mustDie: !!d.boss.mustDie, came: !!B, fate: !B ? 'absent' : B.dead ? 'dead' : B.bound ? 'bound' : B.fled ? 'fled' : 'stood', hp: B?.hp ?? null} : null,
     fell, hurt, kills: o ? Object.fromEntries(Object.entries(o.ours.kills).map(([id, n]) => [K.members.find(m => m.id === +id)?.name || id, n])) : {}};
@@ -91,7 +93,7 @@ export function playStop(a, K) {
   const food0 = K.food;
   applyCamp(a, K, S, o, null, 'stop'); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;
   if (K.food > food0) K.food = food0 + (K.food - food0) * stopFood(a, K);   // the cauldron and the people's way of the land (data/transport.js)
-  const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
+  const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && !CAMP.notDug.includes(id));
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
   for (const [id, n] of dug) K.stats.dug = (K.stats.dug || 0) + n;
@@ -124,7 +126,7 @@ export function applyCamp(a, K, S, o, d, how) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     if (mo.taken) {   // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
-      m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1;
+      m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken');
       say(a, K, `На стоянке ${m.name} ${m.gender === 'f' ? 'уведена' : 'уведён'} налётчиками в плен.`, 'leave', false, [m.id]); assign(K); continue;
     }
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
@@ -152,6 +154,7 @@ export function applyCamp(a, K, S, o, d, how) {
   if (K.vehicles.some(v => v.gone)) { K.vehicles = K.vehicles.filter(v => !v.gone); assign(K); K.path = null; }
   const took = takeGear(K, o.items);
   const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
+  o.led = taken.length;   // (those really led away — the caravan's room may be short of the bound; the rest get away: recordFight `led`)
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
     for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, stopDeath(m, why)); }

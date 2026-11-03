@@ -21,6 +21,7 @@ export const PACE = [
 export const DEFAULT_PACE = 'watch';
 export const paceOf = id => PACE.find(p => p.id === id) || PACE[0];
 const BUDGET = 30;   // ms of stepping a frame at `max`
+const BREATH = 16;   // ms the screen is given between two runs of steps at `max` (a frame to draw in; a season of a grown world is longer than BUDGET alone)
 
 // the seasons' clock. `step()` — one season (true when there is more to run); `after()` — after every step, for the
 // screen; `done()` — the clock has nothing more to run
@@ -59,7 +60,7 @@ export class SeasonClock {
       const fast = more === 'fast' || !P.season;
       this.tickAt = performance.now(); this.tickWait = fast ? 0 : P.season;
       this.after();
-      if (more) this.timer = setTimeout(this.next, fast ? BUDGET : P.season); else { this.timer = 0; this.done(); }
+      if (more) this.timer = setTimeout(this.next, fast ? BREATH : P.season); else { this.timer = 0; this.done(); }
     };
     this.timer = setTimeout(this.next, delay);
   }

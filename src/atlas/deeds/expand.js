@@ -28,7 +28,7 @@ export const expand = {
     }
     const X = LEADER.expand;
     if (!(l.strength > X.from && ofKind(a, L) < L.max * X.crowd)) return null;
-    const i = findSpot(a, L, r, l, 60);
+    const i = findSpot(a, L, r, l, X.tries);
     return i >= 0 ? [[{goal: i}, LEADER.plans.expand, () => 'логово сильно, своих ещё немного']] : null;
   },
   // the lair without a leader: the brood sets out (no line: the founding is told when it gets there)

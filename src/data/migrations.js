@@ -6,9 +6,7 @@
 //   retry             — a due arrival that could not happen is tried again this often;
 //   species/faction/init/kit/groupInit/message — the group itself;
 //   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
-import {mountUp} from '../agents/mount.js';
 import {Registry} from '../core/registry.js';
-import {POTION, FOE_BELTS} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
@@ -16,17 +14,11 @@ import {BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
 import {homeCell} from '../agents/nechist.js';
-import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, BAND_BEASTS, kitFor, raiderBody} from './raids.js';
-import {formLinks, formUndeadLinks, trimBand} from '../agents/ranks.js';
-import {RANK_RULES} from './ranks.js';
-import {sideStrength, strengthOf} from '../agents/strength.js';
-import {COMBAT_ROLES} from './roles.js';
-import {faunaLevel} from '../world/region.js';
-import {createSquad} from '../agents/squad.js';
+import {RAID_BANDS} from './raids.js';
+import {raidMembers, raidArrives} from '../settlement/raiders.js';
 import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
@@ -37,7 +29,7 @@ export const MIGRATIONS = new Registry('migration');
 
 // meadow cells on the map (counted again a few times a day): what grazers can live on
 function grassland(w) {
-  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + BY_CODE[t].graze, 0);
+  if (w.cache.grass == null || w.tick % DAY < DAY / 5) w.cache.grass = w.grid.terr.reduce((s, t) => s + BY_CODE[t].graze, 0);
   return w.cache.grass;
 }
 
@@ -50,51 +42,51 @@ MIGRATIONS.registerAll([
     accept: (w, n) => (MIGRATIONS.get('settlers').blocked(w) ? 0 : n),
     members: (w, rng, n) => Array.from({length: n}, () => ({species: settlerSpecies(w, rng)})),
     message: (w, group) => (group[0].species === 'human' ? `К лагерю пришла новая душа: <b>${group[0].name}</b>.`
-      : `К лагерю ${group[0].gender === 'f' ? 'пришла' : 'пришёл'} <b>${group[0].name}</b> (${raceLabel(SPECIES.get(group[0].species), group[0])}). Просится в поселение.`)},
+      : `К лагерю ${group[0].gender === 'f' ? 'пришла' : 'пришёл'} <b>${group[0].name}</b> (${raceLabel(SPECIES.get(group[0].species))}). Просится в поселение.`)},
 
   // hares stay only while the meadows can feed more of them
   {id: 'hares', species: 'hare', faction: 'wild', minDist: 20, topic: 'wildlife',
     accept: (w, n) => {
       const k = WILDLIFE[w.cfg.wildlife].hares;
-      const cap = Math.round(grassland(w) / 500 * k);
+      const cap = Math.round(grassland(w) / ARRIVALS.hares.grass * k);
       return Math.max(0, Math.min(n, cap - ofSpecies(w, 'hare').length));
     },
     message: (w, group, side) => (group.length > 1 ? `С ${side} прибежали зайцы: ${group.length}.` : null)},
 
   // a wolf pack settles in only while there are hares to eat and no other pack around
   {id: 'wolves', species: 'wolf', faction: 'predators', minDist: 30, topic: 'danger', level: 'notice',
-    accept: (w, n) => (ofSpecies(w, 'wolf').length || ofSpecies(w, 'hare').length < 5 ? 0 : n),
+    accept: (w, n) => (ofSpecies(w, 'wolf').length || ofSpecies(w, 'hare').length < ARRIVALS.wolves.hares ? 0 : n),
     // members share a pack id; the first one leads
     groupInit: group => { const pack = group[0].id; for (const a of group) { a.pack = pack; a.name = 'Волк'; } },
     message: (w, group, side) => `С ${side} пришла стая волков: ${group.length}. Одному в лес лучше не ходить.`},
 
   // game: the meadows and woods feed only so many
   {id: 'deer', species: 'deer', faction: 'wild', minDist: 25, topic: 'wildlife',
-    accept: (w, n) => Math.max(0, Math.min(n, Math.round(grassland(w) / 900) - ofSpecies(w, 'deer').length)),
+    accept: (w, n) => Math.max(0, Math.min(n, Math.round(grassland(w) / ARRIVALS.deer.grass) - ofSpecies(w, 'deer').length)),
     init: a => { a.name = 'Олень'; },
     message: (w, group, side) => `С ${side} к лугам вышли олени: ${group.length}.`},
   {id: 'foxes', species: 'fox', faction: 'wild', minDist: 25, topic: 'wildlife',
-    accept: (w, n) => Math.max(0, Math.min(n, 3 - ofSpecies(w, 'fox').length)),
+    accept: (w, n) => Math.max(0, Math.min(n, ARRIVALS.foxes.cap - ofSpecies(w, 'fox').length)),
     init: a => { a.name = 'Лиса'; }},
   {id: 'boars', species: 'boar', faction: 'wild', minDist: 30, topic: 'wildlife',
-    accept: (w, n) => Math.max(0, Math.min(n, 4 - ofSpecies(w, 'boar').length)),
+    accept: (w, n) => Math.max(0, Math.min(n, ARRIVALS.boars.cap - ofSpecies(w, 'boar').length)),
     init: a => { a.name = 'Кабан'; },
     message: (w, group, side) => `С ${side} в лес пришли кабаны: ${group.length}. Подранок бросается на охотника.`},
   // rats come while there is a lot of food lying in the open; never more than six
   {id: 'rats', species: 'rat', faction: 'wild', minDist: 20, topic: 'wildlife',
-    accept: (w, n) => (foodTotal(w) * exposedShare(w) < 30 ? 0 : Math.max(0, Math.min(n, 6 - ofSpecies(w, 'rat').length))),
+    accept: (w, n) => (foodTotal(w) * exposedShare(w) < ARRIVALS.rats.food ? 0 : Math.max(0, Math.min(n, ARRIVALS.rats.cap - ofSpecies(w, 'rat').length))),
     init: a => { a.name = 'Крыса'; },
     message: (w, group) => (ofSpecies(w, 'rat').length >= 3 ? 'На складе завелись крысы. Горшки и амбар спрячут от них еду.' : null)},
 
   // a wild mule wanders onto the meadows now and then; never more than two at a time
   {id: 'mules', species: 'mule', faction: 'wild', minDist: 25, topic: 'wildlife',
-    accept: (w, n) => Math.max(0, Math.min(n, 2 - w.agents.filter(o => o.species === 'mule' && o.faction === 'wild').length)),
+    accept: (w, n) => Math.max(0, Math.min(n, ARRIVALS.mules.cap - w.agents.filter(o => o.species === 'mule' && o.faction === 'wild').length)),
     init: a => { a.name = 'Мул'; },
     message: (w, group, side) => `С ${side} на луга вышел дикий мул. Охотиться на него опасно: он лягается и бросается на стрелков.`},
 
   // wild goats come down to the meadows in small flocks; never more than five wild ones about
   {id: 'goats', species: 'goat', faction: 'wild', minDist: 25, topic: 'wildlife',
-    accept: (w, n) => Math.max(0, Math.min(n, 5 - w.agents.filter(o => o.species === 'goat' && o.faction === 'wild').length)),
+    accept: (w, n) => Math.max(0, Math.min(n, ARRIVALS.goats.cap - w.agents.filter(o => o.species === 'goat' && o.faction === 'wild').length)),
     init: a => { a.name = 'Дикая коза'; },
     message: (w, group, side) => `С ${side} на луга вышли дикие козы: ${group.length}. Терпеливый скотник с охапкой сена мог бы их приручить.`},
 
@@ -106,7 +98,7 @@ MIGRATIONS.registerAll([
       const pickName = list => list[Math.floor(rng() * list.length)];
       const out = [{species: 'human', init: a => { setStanding(a, 'trader'); [a.name, a.gender] = pickName(TRADE.traderNames); }}];
       for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
-        init: a => { setStanding(a, 'guard'); a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
+        init: a => { setStanding(a, 'guard'); a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: TRADE.guardBravery}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: TRADE.guardAim}; a.skillVer = 1; }});
       const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
       for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
       return out;
@@ -121,51 +113,9 @@ MIGRATIONS.registerAll([
   // is (n: a budget in strength rating, КС); toughness and aim grow with the threat level they have reached.
   // A campaign's camp (campaign/camp.js) adds `fill` options: `up` — the heads rounded up, `max` — the caps lifted
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
-    members: (w, rng, n, opts) => {
-      const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
-      // on a world cell the war beasts come as thick as they live there (data/raids.js BAND_BEASTS)
-      const here = w.site?.world ? Object.fromEntries(SPECIES.filter(sp => sp.behaviours && sp.habitat).map(sp => [sp.id, Math.min(1, faunaLevel(w, sp.id) / BAND_BEASTS.full)])) : null;
-      const list = band.members(w, rng, n, t, {...(opts.fill || {}), ...(here ? {here} : {})});
-      // beasts that joined the band on the way (campaign/camp.js: a camp's foe of two kinds) — its war beasts
-      if (opts.beasts) for (let k = 0; k < opts.beasts.n; k++) list.push({species: opts.beasts.species});
-      // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
-      if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
-      return list.map(m => ({...m, kit: m.kit || kitFor(m.species, rng, t, m.role),
-        init: (a, w) => {
-          a.band = band.id;
-          if (m.role && COMBAT_ROLES.get(m.role).mount) mountUp(a, COMBAT_ROLES.get(m.role).mount);   // a rider on its beast (agents/mount.js)
-          if (m.role) a.fightRole = m.role;   // its fighting role (data/roles.js): what it carries, where it stands in the band
-          if (m.linkNo != null) { a.linkNo = m.linkNo; a.linkKind = m.linkKind; }   // the link of the band it came in (data/roles.js LINKS)
-          if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
-          const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt
-          if (SPECIES.get(m.species).inventory) for (const [res, p] of Object.entries(FOE_BELTS[m.species] || {})) if ((a.belt?.length || 0) < POTION.belt && w.rngs.outside() < p) (a.belt ||= []).push(res);   // its people's potions (data/potions.js FOE_BELTS)
-          if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
-          // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
-          // — trained (data/conditions.js «выученный»): stronger than a wild one, it does not run while it lives
-          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; a.marks = [...(a.marks || []), 'trained']; refreshBody(a); }
-        }}));
-    },
-    groupInit: (group, w) => {
-      const t = raidThreat(w); w.stats.raids++;
-      const big = w.chronicle.biggestRaid;
-      if (!big || group.length > big.size) w.chronicle.biggestRaid = {size: group.length, tick: w.tick};
-      const body = raiderBody(t);
-      for (const a of group) { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; a.skillVer = 1; }
-      RAID_BANDS.get(group[0].band).groupInit?.(group, w);
-      // a band of champions (data/raids.js `champion`: the greenskins): its strongest fighter grows into one — never two
-      if (RAID_BANDS.get(group[0].band).champion) {
-        const best = group.filter(a => !a.warBeast && SPECIES.get(a.species).inventory).sort((x, y) => strengthOf(y) - strengthOf(x))[0];
-        if (best) { best.marks = [...(best.marks || []), 'champion']; refreshBody(best); best.hp = best.maxHp || best.hp; best.name = `Чемпион ${best.name}`; }
-      }
-      const sq = createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
-      // ranks on a settlement's raids (agents/ranks.js): only where data/ranks.js says so (a campaign's camp ranks its foe
-      // itself); officers and wights are worth more than the band was bought for — its weakest pawns stay home
-      if (!w.campaign) {
-        const bought = sideStrength(group, {now: true});
-        const made = formLinks(w, group, 'settlement', sq.leader).length + formUndeadLinks(w, group, 'settlement').length;
-        if (made) trimBand(w, group, bought * RANK_RULES.pay.settlement);
-      }
-    },
+    // who comes and how the band is set up as it arrives: settlement/raiders.js
+    members: (w, rng, n, opts) => raidMembers(w, rng, n, opts),
+    groupInit: (group, w) => raidArrives(group, w),
     ammo: 8,
     message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)}${side ? ` — с ${side}` : ''}.`},   // (a camp's foe may come from close by, not from an edge: no side)
 ]);
@@ -205,8 +155,10 @@ onSpeciesChange((what, sp) => {
 // How often the wild sends its beasts to the local map (outside/scripted.js), before the land decides how many stay:
 // the first after `first` days (hares and wolves: `every` ticks, again and again), then again after wait[0] + wait[1] ×
 // a roll days; each time with `chance` (× the season's for the grazers), n[0] + ⌊n[1] × a roll⌋ of them (wolves: n[2]
-// in place of n[1] where the preset's wolves are rare)
-export const ARRIVALS = {hares: {every: 240, n: [1, 3]}, wolves: {every: 1500, n: [2, 3, 2]},
-  deer: {first: 1, chance: 0.5, n: [2, 3], wait: [1, 1]}, foxes: {first: 2, chance: 0.4, n: [1], wait: [1.5, 1]},
-  boars: {first: 4, chance: 0.35, n: [1, 3], wait: [2.5, 2]}, rats: {first: 3, chance: 0.5, n: [1, 2], wait: [0.5, 1]},
-  mules: {first: 2, chance: 0.35, n: [1], wait: [1.5, 1]}, goats: {first: 3, chance: 0.45, n: [1, 3], wait: [2, 2]}};
+// in place of n[1] where the preset's wolves are rare). How many the land keeps (the arrivals' `accept` above): hares one for
+// each `grass` of the meadows' grazing (× the preset), deer one for each `grass`; a wolf pack only while `hares` hares are about;
+// foxes, boars, rats, wild mules and goats at most `cap` on the map; rats only while `food` of it lies in the open
+export const ARRIVALS = {hares: {every: 240, n: [1, 3], grass: 500}, wolves: {every: 1500, n: [2, 3, 2], hares: 5},
+  deer: {first: 1, chance: 0.5, n: [2, 3], wait: [1, 1], grass: 900}, foxes: {first: 2, chance: 0.4, n: [1], wait: [1.5, 1], cap: 3},
+  boars: {first: 4, chance: 0.35, n: [1, 3], wait: [2.5, 2], cap: 4}, rats: {first: 3, chance: 0.5, n: [1, 2], wait: [0.5, 1], cap: 6, food: 30},
+  mules: {first: 2, chance: 0.35, n: [1], wait: [1.5, 1], cap: 2}, goats: {first: 3, chance: 0.45, n: [1, 3], wait: [2, 2], cap: 5}};

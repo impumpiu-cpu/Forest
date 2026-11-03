@@ -23,7 +23,7 @@ import {DEED_WAYS} from './deeds.js';
 const human = RACES.find(r => r.id === 'human');
 // what the necromancer takes from a human as he is (not what he has of his own, nor his body's row): read again after
 // an edit of the tables, so an edit of the human race reaches him too (data/schema/layer.js onEdit)
-const OWN = new Set(['id', 'kind', 'label', 'labelAcc', 'plural', 'settle', 'mind', 'look', 'innate', 'align', 'values', 'needs', 'special', 'hp', 'speed', 'attack', 'resist', 'peoples', 'ks', 'names']);
+const OWN = new Set(['id', 'kind', 'bandHead', 'label', 'labelAcc', 'plural', 'settle', 'mind', 'look', 'innate', 'align', 'values', 'needs', 'special', 'hp', 'speed', 'attack', 'resist', 'peoples', 'ks', 'names']);
 onEdit(() => { const n = MONSTERS.find(m => m.id === 'necromancer'); if (n) for (const k of Object.keys(human)) if (!OWN.has(k)) n[k] = human[k]; });
 
 export const MONSTERS = [
@@ -48,14 +48,16 @@ export const MONSTERS = [
     drinks: 0.5, sun: 0.0004,
     killMessage: name => `Упыри выпили кровь поселенца: <b>${name}</b>.`},
 
-  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true,
+  // bandHead: 'band' — leads the band it comes with and takes no rank in it (agents/squad.js, agents/ranks.js); 'dead' — and
+  // the dead walk behind him: no wight is made of him, his fall is told (agents/agent.js)
+  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, bandHead: 'band',
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.64, color: '#5a1f2a', skin: '#e8e2e8'},
     drinks: 0.6, sun: 0.0006, weakTo: ['silver'],
     names: personNames('vampire'),
     killMessage: name => `Вампир осушил поселенца: <b>${name}</b>.`},
 
   // a necromancer is a human: he walks behind his dead and steers them; kill him and they stagger off
-  {...human, id: 'necromancer', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient',
+  {...human, id: 'necromancer', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient', bandHead: 'dead',
     look: {shape: 'person', size: 0.62, color: '#3d3550', skin: '#c8b8a0'},
     innate: [{label: 'гнильщик', note: 'растит гниль и водит мертвецов запахами и отварами'}],
     align: {order: 2, mercy: -5, spread: {order: 0.5, mercy: 0.5}}, values: {knowledge: 3, gold: 1}},

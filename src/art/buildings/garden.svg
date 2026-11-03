@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ягодный огород: куст с ягодами -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<g fill="leaf" stroke="ink" stroke-width="4" stroke-linejoin="round"><circle cx="34" cy="60" r="22"/><circle cx="64" cy="56" r="24"/><circle cx="50" cy="40" r="20"/></g><g fill="#c45c95" stroke="ink" stroke-width="2"><circle cx="30" cy="56" r="5"/><circle cx="46" cy="40" r="5"/><circle cx="62" cy="50" r="5"/><circle cx="72" cy="66" r="5"/><circle cx="42" cy="70" r="5"/></g>
+</svg>

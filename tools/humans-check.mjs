@@ -11,6 +11,7 @@ import {eligible, putUp} from '../src/settlement/buildings.js';
 import {recomputeMods} from '../src/settlement/mods.js';
 import {caravanChance} from '../src/outside/scripted.js';
 import {spawnGroup} from '../src/settlement/migration.js';
+import {addHeads, shareOfPeople} from '../src/atlas/population.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {realmBand} from '../src/atlas/towns.js';
 import {stepDiplomacy} from '../src/atlas/diplomacy.js';
@@ -32,7 +33,7 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
 {
   const H = WORLD_PEOPLES.get('humans'), D = WORLD_PEOPLES.get('dwarves');
   check('люди принимают чужих в полтора раза охотнее и теплеют от торговли; толпа чужих растит преступность; дварфы чужих почти не берут',
-    H.folk.take > 1 && H.trade > 1 && RUINS.get('crime').grows.folk > 0 && D.folk.take < 1 && D.folk.expel > 0 && D.folk.push > 1);
+    H.strangers.take > 1 && H.trade > 1 && RUINS.get('crime').grows.strangers > 0 && D.strangers.take < 1 && D.strangers.expel > 0 && D.strangers.push > 1);
 }
 // the ploughland: the humans plough instead of the field — poorer land (`arable`), half as much again; the field's upgrades,
 // the apiary and the brewery take it as a field
@@ -51,13 +52,15 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
   const a = generateAtlas({seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north'});
   // (a town on many routes with humans takes some back by trade: the push is measured against the same world without it)
   const saved = saveAtlas(a, 'humans'), b = loadAtlas(structuredClone(saved));
-  const t = a.towns.find(x => x.alive && x.people === 'dwarves'), tb = b.towns.find(x => x.id === t.id); t.folk = {humans: 0.2}; tb.folk = {humans: 0.2};
+  const t = a.towns.find(x => x.alive && x.people === 'dwarves'), tb = b.towns.find(x => x.id === t.id);
+  for (const x of [t, tb]) { addHeads(a, x, 'human', x.pop / 4, 1); }   // a fifth of each are humans now (atlas/population.js)
   const lines = []; stepDiplomacy(a, mulberry(1), s => lines.push(s), () => 0);
-  const ex = WORLD_PEOPLES.get('dwarves').folk.expel; WORLD_PEOPLES.get('dwarves').folk.expel = 0;
+  const ex = WORLD_PEOPLES.get('dwarves').strangers.expel; WORLD_PEOPLES.get('dwarves').strangers.expel = 0;
   stepDiplomacy(b, mulberry(1), () => {}, () => 0);
-  WORLD_PEOPLES.get('dwarves').folk.expel = ex;
-  const now = t.folk.humans || 0, kept = tb.folk.humans || 0;
-  check('дварфы выживают чужаков из своих городов', now < kept && Math.abs(kept - now - Math.min(ex, 0.2)) < 1e-6, `люди ${0.2} → ${now.toFixed(3)}, без выселения ${kept.toFixed(3)}`);
+  WORLD_PEOPLES.get('dwarves').strangers.expel = ex;
+  const now = shareOfPeople(a, t, 'humans'), kept = shareOfPeople(b, tb, 'humans');
+  // (expel of the town's people leave: the share of strangers falls to (was − expel) / (1 − expel), the town being that much smaller)
+  check('дварфы выживают чужаков из своих городов', now < kept && Math.abs(now - (kept - ex) / (1 - ex)) < 1e-3, `люди ${0.2} → ${now.toFixed(3)}, без выселения ${kept.toFixed(3)}`);
   const r = a.realms.find(x => x.people === 'humans'), town = a.towns.find(x => x.alive && x.realm === r.id);
   const was = [...town.built]; town.built = was.filter(id => !['tiltyard', 'hippodrome', 'den'].includes(id));
   const plain = realmBand(a, r.id, 'humans');

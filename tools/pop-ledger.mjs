@@ -1,5 +1,6 @@
 // Where each people's town folk come from and go to, from one start (as tools/race-start-probe.mjs): every change of
-// `t.pop` in a town is booked to the function that made it (the first frame of the stack outside this file), by decade.
+// `t.pop` in a town is booked to the function that made it (the first frame of the stack outside this file and the composition's
+// own sums, atlas/population.js), by decade.
 // `node tools/pop-ledger.mjs [seed]` → JSON on stdout: {book: {people: {decade: {function: [gained, lost]}}}, pops: {people: {decade:
 // person-years}}}
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
@@ -12,7 +13,7 @@ const book = {}, watched = new WeakSet();
 const callerOf = () => {
   const lines = new Error().stack.split('\n').slice(2);
   for (const l of lines) {
-    if (/pop-ledger/.test(l)) continue;
+    if (/pop-ledger|atlas\/population\.js/.test(l)) continue;   // (the composition's own sums: the caller that changed it counts)
     const m = /at (?:(\S+) \()?.*?\/src\/([\w/]+)\.js:(\d+)/.exec(l);
     if (m) return `${m[2]}:${m[1] || 'anon'}`;
   }

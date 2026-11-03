@@ -23,7 +23,7 @@ import {wake} from './attention.js';
 import {noteFallen} from './squad.js';
 import {HIT_LOCATIONS} from '../data/anatomy.js';
 import {degreeOf, passed, degreeValue} from '../data/checks.js';
-import {AFFLICTIONS} from '../data/afflictions.js';
+import {caughtFrom} from '../data/afflictions.js';
 import {catchIll} from './afflictions.js';
 
 const luckOf = a => a.special?.L ?? NORM;
@@ -41,7 +41,7 @@ export function traumasAt(t) {
 }
 
 // still healing the wound of an earlier fall: luck is spent until it closes
-export const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
+const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
 
 // A blow took the last health. Returns true if the creature fell instead of dying.
 export function lethal(w, t, cause, by) {
@@ -105,8 +105,8 @@ export function dress(w, a, medicine = 0) {
 export function stabilize(w, helper, a) {
   const d = dress(w, a, helper?.skill?.medicine || 0); if (!d) return;
   // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)
-  const FV = AFFLICTIONS.get('fever');
-  if (FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, 'fever');
+  const FV = caughtFrom('dressed');
+  if (FV && FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, FV.id);
   a.task = null; wake(a, 'очнулся после раны', 'очнулся');
   const f = tally(w, a); f.saved++; if (d.trauma) f.traumas++;
   think(w, a, 'survived', {name: helper?.name, gender: helper?.gender});
@@ -124,5 +124,3 @@ export function healWounds(w, a) {
   think(w, a, 'woundHealed');
 }
 
-// the wounds a creature carries, for the card
-export const woundsText = a => (a.wounds || []).map(x => WOUNDS.get(x.id).label);

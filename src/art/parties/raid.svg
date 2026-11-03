@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- набег: рваный стяг и факел, без строя -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="6" stroke-linecap="round" d="M28 92L36 12"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M28 92L36 12"/>
+<path fill="faction" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M36 14L74 20L62 28L72 36L58 38L66 46L34 42Z"/>
+<path fill="none" stroke="ink" stroke-width="6" stroke-linecap="round" d="M74 92L70 56"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M74 92L70 56"/>
+<path fill="fire" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M70 30C78 38 80 46 76 54C74 58 66 58 64 54C60 46 64 40 70 30Z"/><path fill="flame" d="M70 42C73 46 74 50 72 54H68C66 50 67 46 70 42Z"/>
+</svg>

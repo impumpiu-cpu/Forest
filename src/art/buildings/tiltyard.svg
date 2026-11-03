@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ристалище: барьер, знамёна по краям -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="straw" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 90L14 46H86L96 90Z"/><path fill="none" stroke="ink" stroke-width="8" d="M10 70H90"/><path fill="none" stroke="#c8402e" stroke-width="4" stroke-dasharray="8 6" d="M10 70H90"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M12 46V16"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M12 46V16"/><path fill="faction" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M12 16L26 21L12 26Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M84 46V16"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M84 46V16"/><path fill="faction" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M84 16L98 21L84 26Z"/>
+</svg>

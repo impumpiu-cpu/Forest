@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- шалаш: ветки шатром, листва сверху -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M10 88L50 18L90 88Z"/><path fill="leaf" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M26 60L50 18L74 60Q50 52 26 60Z"/><path fill="#2a2018" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M40 88L50 60L60 88Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M20 80L50 26M80 80L50 26M34 86L50 40M66 86L50 40"/>
+</svg>

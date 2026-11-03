@@ -17,17 +17,19 @@ import {releaseAll} from '../settlement/reserve.js';
 import {TASKS} from './tasks.js';
 import {wake} from './attention.js';
 import {RUNNER_EXIT} from './runnerExit.js';
+import {LIFECYCLE} from '../data/behaviour.js';
 
+// (how long a refused task waits: data/behaviour.js LIFECYCLE.skip)
 export const OUTCOMES = {
-  done:        {label: 'сделано', skip: 0},
-  blocked:     {label: 'заблокировано', skip: 120},
-  impossible:  {label: 'невозможно', skip: 600},
-  interrupted: {label: 'прервано', skip: 0},
+  done:        {label: 'сделано'},
+  blocked:     {label: 'заблокировано'},
+  impossible:  {label: 'невозможно'},
+  interrupted: {label: 'прервано'},
 };
 
 // a task's key for skipping: a job by its job id, anything else by its task id. A fight and help are
 // keyed by whom: «the foe slipped away» or «could not reach the wounded» keeps one from that one, not
-// from the next foe or the next wounded (a band's healer too: agents/tasks.js mend); a cry answered in vain keeps one from that cry, not from the next;
+// from the next foe or the next wounded (a band's healer too: agents/tasks/raid.js mend); a cry answered in vain keeps one from that cry, not from the next;
 // a carcass a beast cannot reach keeps it from that carcass, a victim it cannot get at from that victim (agents/behaviours/feed.js, maul.js)
 export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'mend' ? 'mend:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id === 'feed' ? 'feed:' + t.c : t.id === 'maul' ? 'maul:' + (t.target?.id ?? '') : t.id);
 // the reflexes are never skipped: running from fire or home, the alarm, the firefighting
@@ -46,7 +48,7 @@ function close(w, a, t, outcome, why) {
   const def = TASKS.get(t.id);
   def.exit?.(w, a, t, outcome);
   if (t.id === 'job') RUNNER_EXIT[def.runnerOf?.(t)]?.(w, a, t, outcome);
-  const skip = OUTCOMES[outcome].skip;
+  const skip = LIFECYCLE.skip[outcome] || 0;
   if (skip && !REFLEX.has(t.id)) {
     const sk = a.skips ||= {};
     for (const k in sk) if (sk[k] <= w.tick) delete sk[k];   // spent pauses go (a fight or a cry per foe would pile up)

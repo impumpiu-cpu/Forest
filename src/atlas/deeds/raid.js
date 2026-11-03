@@ -9,7 +9,6 @@
 //     lair when the party is home, a beating may kill the leader. A beast's leader goes for a town less often
 //     (LEADER.beastRaid): it hunts the woods.
 import {LEADER, TRIBE_RAID} from '../../data/lairs.js';
-import {CAL} from '../../data/calamities.js';
 import {PARTIES} from '../../data/parties.js';
 import {SPECIES} from '../../data/species.js';
 import {RELATIONS} from '../../data/relations.js';

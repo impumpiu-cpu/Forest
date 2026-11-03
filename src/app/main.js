@@ -13,8 +13,9 @@ import {SettleView} from './settleView.js';
 import {CampaignView} from '../ui/campaignView.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
+import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 
-const $ = id => document.getElementById(id);
+import {$, seg, press} from '../ui/dom.js';
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
 const OBSERVER = new Set(['settle', 'campaign']);   // the screens laid out as the observer's: no page scroll, the map fills the window
 const STORE = 'forest.app.quick';
@@ -56,6 +57,16 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
   show(b.dataset.go);
 });
+// the look of the maps on the settings screen: a row of two buttons that follows the switch
+{
+  seg('setSkinSeg', SKINS, skin.mode, v => skin.set(v), {toggle: true});   // (pressed by the switch itself: SKIN_EVENT)
+  document.addEventListener(SKIN_EVENT, () => press('setSkinSeg', skin.mode));
+}
+// G (П in the Russian layout): the look of the maps, pictures or the plain scheme (render/skin.js), on any screen
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select')) return;
+  if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') skin.toggle();
+});
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || screen === 'home' || e.target.closest('input, textarea, select')) return;
   e.preventDefault(); show('home');
@@ -78,11 +89,7 @@ $('quickCopy').addEventListener('click', async () => {
   setTimeout(() => { note.textContent = noteText; }, 2500);
 });
 
-const sizes = $('quickSize');
-const syncSize = () => sizes.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === quick.size)));
-sizes.innerHTML = EPIC_SIZES.map(([id, l]) => `<button type="button" data-val="${id}">${l}</button>`).join('');
-sizes.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; quick.size = b.dataset.val; keep(); syncSize(); });
-syncSize();
+seg('quickSize', EPIC_SIZES, quick.size, v => { quick.size = v; keep(); });
 
 // the epic campaign: a new world with a long history on the campaign screen, then the capital and the walk
 $('quickGo').addEventListener('click', () => {

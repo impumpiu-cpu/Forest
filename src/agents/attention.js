@@ -16,18 +16,17 @@ import {tradeOpen} from '../settlement/trade.js';
 import {planStale, makePlan} from '../settlement/plan.js';
 import {outsideRisk, TOGETHER} from '../settlement/together.js';
 import {agentInZone} from '../settlement/zone.js';
-import {nightness, HOUR} from '../core/time.js';
+import {nightness} from '../core/time.js';
+import {ATTENTION} from '../data/behaviour.js';
 import {hpShare} from './agent.js';
 import {NEEDS} from '../data/needs.js';
 
 // ticks until a colonist looks round with nothing having happened, by what it is doing
-export const HEART = {job: 4 * HOUR, idle: HOUR, reserve: 15, muster: 30, other: 2 * HOUR};
-export const heartOf = a => HEART[a.task?.id] ?? HEART.other;
+// (data/behaviour.js ATTENTION.heart)
+export const heartOf = a => ATTENTION.heart[a.task?.id] ?? ATTENTION.heart.other;
 
-// a need falling past one of these is an event (eat, sleep, warm up may now beat the work)
-const NEED_BANDS = [0.6, 0.4, 0.25, 0.12];
-// health falling past these (to the healer, out of a fight)
-const HP_BANDS = [0.6, 0.35, 0.3];
+// a need falling past one of ATTENTION.needBands is an event (eat, sleep, warm up may now beat the work); health falling
+// past one of ATTENTION.hpBands too (to the healer, out of a fight)
 const bandOf = (v, bands) => { let k = 0; while (k < bands.length && v < bands[k]) k++; return k; };
 
 // wake a colonist: it thinks again at its next step. `why` goes on its card, `kind` is what is counted
@@ -43,11 +42,11 @@ const wakeAll = (w, why, keep = () => true, kind = why) => { for (const a of col
 export function noticeSelf(w, a) {
   const bands = a.bands ||= {};
   for (const id in a.needs) {
-    const b = bandOf(a.needs[id], NEED_BANDS), was = bands[id] ?? b;
+    const b = bandOf(a.needs[id], ATTENTION.needBands), was = bands[id] ?? b;
     if (b > was) wake(a, `${NEEDS.get(id).label} ${Math.round(a.needs[id] * 100)}%`, 'нужда тела');
     bands[id] = b;
   }
-  const h = bandOf(hpShare(a), HP_BANDS), was = bands.hp ?? h;
+  const h = bandOf(hpShare(a), ATTENTION.hpBands), was = bands.hp ?? h;
   if (h > was) wake(a, `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`, 'ранен');
   bands.hp = h;
 }
@@ -58,7 +57,7 @@ export function stepAttention(w) {
   if (!col.length) return;
   const S = w.attention ||= {};
   const flip = (key, now, on, off) => { const was = S[key]; S[key] = now; if (was == null || was === now) return; if (now && on) wakeAll(w, on); else if (!now && off) wakeAll(w, off); };
-  flip('night', nightness(w) > 0.6, 'стемнело', 'рассвело');
+  flip('night', nightness(w) > ATTENTION.night, 'стемнело', 'рассвело');
   flip('council', councilDue(w), 'время совета', null);
   flip('trade', tradeOpen(w), 'пришёл купец: торг', null);
   flip('raid', raidAlarm(w), 'тревога: налётчики', 'тревога кончилась');

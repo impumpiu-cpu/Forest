@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- частокол: заострённые брёвна -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M4 92V30L10 18L16 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M16 92V30L22 18L28 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M28 92V30L34 18L40 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M40 92V30L46 18L52 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M52 92V30L58 18L64 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M64 92V30L70 18L76 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M76 92V30L82 18L88 30V92Z"/><path fill="wood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M88 92V30L94 18L100 30V92Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke="rope" stroke-width="3" d="M4 48H94M4 76H94"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- арбалет: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="74" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M50 90V30"/><path fill="none" stroke="wood" stroke-width="4" stroke-linecap="round" d="M50 90V30"/>
+  <path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M30 40Q50 26 70 40"/><path fill="none" stroke="metal" stroke-width="3.5" stroke-linecap="round" d="M30 40Q50 26 70 40"/>
+  <path fill="none" stroke="trim" stroke-width="1.6" d="M30 40L50 46L70 40"/>
+</svg>

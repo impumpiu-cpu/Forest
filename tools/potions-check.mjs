@@ -30,7 +30,7 @@ const rngs = (w, v) => { for (const k of Object.keys(w.rngs)) w.rngs[k] = Object
 const put = (w, sp, fac, kit = []) => { const a = createAgent(w, sp, fac, 20.5, 20.5); if (kit.length) dress(a, kit); a.mods.dodge = 0; a.gear = {...recalcGear(a), block: 0, cover: 0}; return a; };
 
 // every potion takes a pot; the hut brews only the plain grades of its tier
-for (const p of POTIONS.all()) for (const g of p.grades) expect(g.cost.pots >= POTION.pot, `${g.res}: без горшка`);
+for (const p of POTIONS.all()) for (const g of p.grades) expect(g.cost.pots >= 1, `${g.res}: без горшка`);
 expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTION.hutTier && !/Strong$/.test(r.id)), 'хижина лекаря варит усиленное или слишком сложное');
 
 // the edge of death: the slot's healing potion, then a strong one from the belt

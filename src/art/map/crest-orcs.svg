@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- герб Зеленокожих: череп с клыками -->
+<path fill="faction" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M12 10H88V48C88 72 70 88 50 96C30 88 12 72 12 48Z"/>
+<path fill="light" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M50 24C66 24 72 36 70 50C69 56 64 60 64 66H36C36 60 31 56 30 50C28 36 34 24 50 24Z"/><g fill="ink"><circle cx="41" cy="46" r="6"/><circle cx="59" cy="46" r="6"/></g><path fill="light" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 66L38 80L44 66ZM56 66L62 80L64 66Z"/>
+</svg>

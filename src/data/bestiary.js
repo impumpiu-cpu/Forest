@@ -235,7 +235,7 @@ export const BESTIARY = [
   // ── beasts of the far lands: the steppe, the hot south, the ice. Few of them reach the first
   // colonies' regions (data/regions.js); they are here for the world map and the lands to come
   // Horse: a herd of the open steppe, fast and shy; tamed, it carries the hunter and the builder
-  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, legend: 'лошадь',
+  beast({id: 'horse', kind: 'beast', label: 'лошадь', g: 'f', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, legend: 'лошадь',
     arrive: {group: [2, 5], every: [3, 5], chance: 0.5, cap: 6, first: 2, message: 'на луга вышел табун: {n}'},
     habitat: {steppe: 'common', meadow: 'common', savanna: 'usual', shrubland: 'rare', foothills: 'rare'},
     look: {shape: 'horse', size: 0.8, color: '#8c5a34'},
@@ -243,7 +243,7 @@ export const BESTIARY = [
     flee: {radius: 5, sprint: 1.6, from: ['people', 'wolf', 'varg', 'lion'], stamina: 0.004},
     grazes: {terrain: ['grass'], eatsBerries: 0},
     leaveChance: 0.0002,
-    tame: {chance: 0.3, tier: 2, space: 2, bait: {hay: 2}, eats: 1.2, breed: 0.04, grownDays: 30, stack: 2, max: 3,
+    tame: {chance: 0.3, tier: 2, space: 2, bait: {hay: 2}, eats: 1.2, breed: 0.04, grownDays: 30, keep: 2, young: 'жеребёнок', youngAcc: 'жеребёнка', stack: 2, max: 3,
       effects: {jobSpeed: {hunt: 1.15, build: 1.1, farm: 1.15}},
       names: petNames('horse'),
       effect: 'возит охотника и брёвна (охота +15%, стройка +10%), тянет соху (поле +15%)'}}),
@@ -256,7 +256,7 @@ export const BESTIARY = [
     yields: {meat: 14, hide: 4, bone: 4},
     killMessage: name => `Тур поднял на рога поселенца: <b>${name}</b>.`,
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0002, mule: stands({kickRange: 1.2, charge: 1.8, chargeHit: 1.8, grudge: 420, giveUp: 24}),
-    tame: {chance: 0.2, tier: 3, space: 3, bait: {hay: 3}, eats: 2, milk: 2.5, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 3,
+    tame: {chance: 0.2, tier: 3, space: 3, bait: {hay: 3}, eats: 2, milk: 2.5, breed: 0.03, grownDays: 40, keep: 2, young: 'телёнок', youngAcc: 'телёнка', kicks: true, stack: 2, max: 3,
       effects: {jobSpeed: {farm: 1.3, dig: 1.1}},
       names: petNames('aurochs'),
       effect: 'даёт много молока, тянет соху (поле +30%)'}}),
@@ -297,7 +297,7 @@ export const BESTIARY = [
     yields: {meat: 10, hide: 3, bone: 4, wool: 2},
     killMessage: name => `Верблюд затоптал поселенца: <b>${name}</b>.`,
     grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0002, mule: stands({grudge: 240, giveUp: 16}),
-    tame: {chance: 0.25, tier: 2, space: 2, bait: {hay: 2}, eats: 0.8, milk: 1, wool: 2, woolDays: 60, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 2,
+    tame: {chance: 0.25, tier: 2, space: 2, bait: {hay: 2}, eats: 0.8, milk: 1, wool: 2, woolDays: 60, breed: 0.03, grownDays: 40, keep: 2, young: 'верблюжонок', youngAcc: 'верблюжонка', kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {gather: 1.2}},
       names: petNames('camel'),
       effect: 'возит собранное (сбор +20%), даёт молоко и немного шерсти'}}),
@@ -332,7 +332,7 @@ export const BESTIARY = [
     leaveChance: 0.0003}),
 
   // Sheep: the hills' flock; tamed for wool first of all
-  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, legend: 'овца',
+  beast({id: 'sheep', kind: 'beast', label: 'овца', g: 'f', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, legend: 'овца',
     arrive: {group: [3, 6], every: [2, 4], chance: 0.5, cap: 8, first: 2, message: 'по склонам разбрелись овцы: {n}'},
     habitat: {meadow: 'common', shrubland: 'common', foothills: 'usual', steppe: 'usual', highlands: 'rare'},
     look: {shape: 'sheep', size: 0.46, color: '#ece6d6'},
@@ -340,7 +340,7 @@ export const BESTIARY = [
     flee: {radius: 4, sprint: 1.3, from: ['people', 'wolf', 'varg', 'lynx', 'lion'], stamina: 0.007},
     grazes: {terrain: ['grass'], eatsBerries: 0.001},
     leaveChance: 0.0001,
-    tame: {chance: 0.5, tier: 1, space: 1, bait: {hay: 1}, eats: 0.5, milk: 0.6, wool: 5, woolDays: 35, breed: 0.07, grownDays: 20,
+    tame: {chance: 0.5, tier: 1, space: 1, bait: {hay: 1}, eats: 0.5, milk: 0.6, wool: 5, woolDays: 35, breed: 0.07, grownDays: 20, keep: 2, young: 'ягнёнок', youngAcc: 'ягнёнка',
       names: petNames('sheep'),
       effect: 'даёт много шерсти и немного молока, в тёплое время приносит ягнят'}}),
 ].map(bodyFor);

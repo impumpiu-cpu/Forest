@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тёмный эльф: силуэт эльфа, тёмная кожа, белые волосы гребнем -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="hair" d="M27 36C24 18 34 4 50 3C66 4 76 18 73 36L80 88C66 82 34 82 20 88Z"/>
+    <path fill="skin" d="M30 52L0 30L26 64Z"/>
+    <path fill="skin" d="M70 52L100 30L74 64Z"/>
+    <path fill="skin" d="M50 24C66 24 72 36 72 52C72 70 60 84 50 87C40 84 28 70 28 52C28 36 34 24 50 24Z"/>
+    <path fill="hair" d="M28 44C30 26 40 20 50 20C60 20 70 26 72 44C66 36 58 32 50 38C42 32 34 36 28 44Z"/>
+  </g>
+  <g class="figure" fill="#e05a5a"><ellipse cx="41" cy="57" rx="3.6" ry="2.4"/><ellipse cx="59" cy="57" rx="3.6" ry="2.4"/></g>
+  <g class="detail" fill="none" stroke="#eceaf2" stroke-width="3.5" stroke-linecap="round">
+    <path d="M34 53L46 51M54 51L66 53"/>
+    <path d="M45 76L55 76"/>
+  </g>
+</svg>

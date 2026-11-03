@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- козлы для распила: бревно на козлах, пила -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="8" d="M18 90L32 50L46 90M54 90L68 50L82 90"/><path fill="none" stroke="wood" stroke-width="4" stroke-linecap="round" d="M18 90L32 50L46 90M54 90L68 50L82 90"/><rect x="6" y="40" width="88" height="16" rx="8" fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round"/><circle cx="10" cy="48" r="5" fill="plank" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="iron" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 22H64V58H50Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="1.5" d="M50 28H54M50 34H54M50 40H54M50 46H54"/><path fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M52 14H62V22H52Z"/>
+</svg>

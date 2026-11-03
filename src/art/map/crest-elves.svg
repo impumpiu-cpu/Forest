@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- герб Эльфов: лист -->
+<path fill="faction" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M12 10H88V48C88 72 70 88 50 96C30 88 12 72 12 48Z"/>
+<path fill="light" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M50 22C68 36 70 58 50 78C30 58 32 36 50 22Z"/><path fill="none" stroke="ink" stroke-width="3" d="M50 30V84M50 46L40 40M50 46L60 40M50 58L38 52M50 58L62 52"/>
+</svg>

@@ -15,7 +15,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, CARAVAN_GOLEMS, CAMP_KIT, kitOf} from '../data/transport.js';
 import {golemMetal} from '../atlas/golems.js';
-import {golemOf} from '../data/constructs.js';
+import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
@@ -76,10 +76,9 @@ const offerPrice = (o, st, t = null) => (o.price ?? (o.kind === 'goods' ? RESOUR
 // (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
 // the golem a town with a golem forge sells: the best of its guard golems (one of them goes), else one of its realm's best
 // metal (atlas/golems.js); null — none
-const GOLEM_RANK = ['bronze', 'iron', 'steel', 'mithril'];
 export const townGolem = (a, t) => {
   const guard = t.golems?.guard || [];
-  const m = guard.length ? guard.reduce((b, x) => (GOLEM_RANK.indexOf(x) > GOLEM_RANK.indexOf(b) ? x : b)) : a ? golemMetal(a, t) : null;
+  const m = guard.length ? guard.reduce((b, x) => (GOLEM_METALS.indexOf(x) > GOLEM_METALS.indexOf(b) ? x : b)) : a ? golemMetal(a, t) : null;
   return m && BEASTS[golemOf(m)] ? m : null;
 };
 const golemOffer = (o, t, a) => { if (!o.golem) return o; if (!has(t, o.at)) return null; const m = townGolem(a, t); return m ? {...o, id: golemOf(m), metal: m, price: PRICES.beasts[golemOf(m)]} : null; };
@@ -105,18 +104,26 @@ const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.for
 
 // the gold kept for food: `days` of rations for everyone, at this town's price
 // (the reserve is counted at the town's terms for this caravan — its tongue and fame, campaign/road.js: 1 by default)
-const reserveFor = (K, t, st, days, a = null) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
+export const reserveFor = (K, t, st, days, a) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
 
 const golems = K => K.beasts.filter(b => BEASTS[b.kind]?.golem && b.hp > 0).length;
 const herdOf = K => K.beasts.filter(b => BEASTS[b.kind]?.use === 'food' && b.hp > 0).length;
 export const herdMax = K => Math.round(CAMP_KIT.herd.max * (kitOf(K).herd ?? 1));   // (the greenskins keep twice the herd, the elves none)
 
+// the wheels' answer during one trade() (wants() is asked again and again by the smith): {i, goal, vehicles, fits}; never saved
+const FITS = new WeakMap();
 // ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
 function wants(a, K, t, st) {
   const out = [], ms = alive(K), tier = toolTier(K);
   // wheels are worth their price only when they can go the way to the goal (as the council asks, campaign/march.js)
-  let fits = null;
-  const wheelsFit = () => { if (fits == null) { const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true); fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost); } return fits; };
+  // (asked once a visit's trade: the way does not change while the caravan trades — trade() keeps the answer, K.wheelsFit)
+  const wheelsFit = () => {
+    const F = FITS.get(K);
+    if (F && F.i === K.i && F.goal === K.goal && F.vehicles === K.vehicles.length) return F.fits;
+    const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true), fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost);
+    if (F) Object.assign(F, {i: K.i, goal: K.goal, vehicles: K.vehicles.length, fits});
+    return fits;
+  };
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
@@ -148,12 +155,18 @@ function equip(K, id) {
   const d = gearDef(id), ms = free(K).filter(m => !m.former && mayTake(m.race, id));   // no arms for a former slave, nor for one whose race will not touch it
   if (d.slot === 'body') {
     const m = ms.filter(x => inLine(x) || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
+    if (m.gear.body && gearDef(m.gear.body)) K.spoils = [...(K.spoils || []), m.gear.body];   // the old armour goes with the spoils
     m.gear.body = id; return m;
   }
   if (d.tool) { const m = ms.find(x => toolOf(x, gearDef)) || ms[0], k = m.gear.hand.indexOf(toolOf(m, gearDef)); if (k >= 0) m.gear.hand[k] = id; else m.gear.hand.push(id); return m; }
   const m = ms.filter(x => isFighter(x) && !gearDef(x.gear.hand[0])?.ranged).sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
   const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
-  if (k >= 0) m.gear.hand[k] = id; else m.gear.hand[0] = id;
+  if (k >= 0) { K.spoils = [...(K.spoils || []), m.gear.hand[k]]; m.gear.hand[k] = id; }   // the old blade goes with the spoils
+  else {   // no blade in hand: the new one takes the first hand, what was there (a tool, a shield) goes with the spoils
+    const old = m.gear.hand[0];
+    if (old && gearDef(old)) K.spoils = [...(K.spoils || []), old];
+    m.gear.hand[0] = id;
+  }
   return m;
 }
 
@@ -164,7 +177,7 @@ function alchemy(a, K, t, st) {
   for (const p of POTIONS.all()) for (const g of p.grades.filter(x => x.at === 'alchemist')) {   // the strong grades, and what only an alchemist brews
     while (roomFor(K, p, g.res) > 0 && Object.entries(g.cost).every(([r, n]) => (K.cargo[r] || 0) >= n)) {
       const price = gold(RESOURCES.get(g.res).value * ALCHEMY.fee * STANDING[st].buy);
-      if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve)) break;
+      if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve, a)) break;
       for (const [r, n] of Object.entries(g.cost)) { K.cargo[r] -= n; if (K.cargo[r] <= 0) delete K.cargo[r]; }
       K.cargo[g.res] = (K.cargo[g.res] || 0) + 1; K.gold = gold(K.gold - toTown(t, price)); K.stats.alchemy = (K.stats.alchemy || 0) + 1;
       done.push(`алхимик сварил из запасов каравана ${RESOURCES.get(g.res).label} — за работу ${price} зол.`);
@@ -191,7 +204,7 @@ function smithy(a, K, t, st) {
     const made = townMade({kind: 'item', id: type}, t, forgeQ(t)).id;
     // the price is that of the town's plain piece: the better work of its forge is what draws the caravan to it
     const p = gold(offerPrice(o, st, t) * SMITH.discount);
-    if (K.gold - p < reserveFor(K, t, st, SMITH.reserve)) continue;
+    if (K.gold - p < reserveFor(K, t, st, SMITH.reserve, a)) continue;
     // still wanted after what the smith made before it
     if (!wants(a, K, anvil, st).some(x => x.kind === 'item' && x.id === o.id)) continue;
     K.cargo[B.ore] -= need; if (K.cargo[B.ore] <= 0) delete K.cargo[B.ore];
@@ -206,6 +219,10 @@ function smithy(a, K, t, st) {
 // a visit's trade: the smith forges from the ore, sell the goods, buy food up to the stock wanted, then what is
 // wanted while the gold lasts
 export function trade(a, K, t, st) {
+  FITS.set(K, {i: null});   // the wheels are asked afresh once a trade (wants)
+  try { return tradeNow(a, K, t, st); } finally { FITS.delete(K); }
+}
+function tradeNow(a, K, t, st) {
   const done = [];
   // ore of a metal above the caravan's own goes to the smith first (what the smith leaves is sold after); in a town
   // without one it is kept for the next
@@ -296,7 +313,7 @@ export function hire(a, K, t, st, r) {
     if (typeof H !== 'object' || !H.wage) continue;
     if (!room(K, `hire:${id}`) || !hireAt(t, H)) continue;
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
-    if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
+    if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve, a)) continue;
     K.gold = gold(K.gold - toTown(t, cost));
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
     K.members.push(m);
@@ -310,7 +327,7 @@ export function companion(a, K, t, st, r) {
   const C = COMPANIONS;
   if (!room(K, 'joined') || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
   const charm = Math.max(...free(K).map(m => m.special?.C ?? NORM)), gratis = charm >= C.freeAt;
-  if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
+  if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve, a)) return null;
   // of the town's people, or of a minor people living near (as their homes favour the land)
   const minor = r() < C.minor ? C.minorRaces[(r() * C.minorRaces.length) | 0] : null;
   const race = minor || WORLD_PEOPLES.get(t.people).race;

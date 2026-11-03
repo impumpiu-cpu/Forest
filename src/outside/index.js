@@ -53,12 +53,6 @@ export function arrive(w, flowId, offered) {
   return n > 0 ? spawnGroup(w, flowId, n, opts) : [];
 }
 
-// the «Набег» button and similar: a group arrives now, outside any schedule
-export function arriveNow(w, flowId) {
-  const f = provider(w).flows[flowId];
-  return arrive(w, flowId, (f.size ? f.size(w, w.rngs.outside) : f.offer(w, w.rngs.outside)) || 1);
-}
-
 export function stepOutside(w) {
   if (w.tick % DAY === 0) tell(w, 'report', colonyReport(w));
   const o = w.outside, P = provider(w);

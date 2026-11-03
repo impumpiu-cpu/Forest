@@ -42,6 +42,7 @@ export const CAPTIVE = {
     startRope: 8,
     auto: {bandits: 0.35, army: 0.3, tribe: 0.3, lair: 0.15},
     two: 0.3,
+    hp: [0.3, 0.3],   // one bound where it fell: hp[0] + U(0, hp[1])
     races: {bandits: ['human'], army: ['human', 'orc', 'dwarf', 'elf'], tribe: ['goblin', 'gnoll', 'orc'], lair: ['goblin', 'ogre', 'troll']},
     gear: {hand: [], body: 'clothes'},
     // a town buys bonds while the caravan has fewer than `keep` captives' worth, and gold to spare

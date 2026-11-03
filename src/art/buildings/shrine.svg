@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- святилище: каменный алтарь, свечи, свет -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<circle class="detail" cx="50" cy="40" r="30" fill="#f4e6a0" opacity="0.35"/><path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 90V58H82V90Z"/><path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 60H88V50H12Z"/><path fill="#d6b8e6" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M38 50V24Q50 10 62 24V50Z"/><path fill="gold" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M50 22V40M43 30H57"/><g fill="canvas" stroke="ink" stroke-width="2"><rect x="24" y="40" width="5" height="10"/><rect x="71" y="40" width="5" height="10"/></g><g fill="flame"><circle cx="26.5" cy="37" r="2.5"/><circle cx="73.5" cy="37" r="2.5"/></g>
+</svg>

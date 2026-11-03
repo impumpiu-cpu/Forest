@@ -5,11 +5,8 @@
 //   rel      — which line of the relations table (data/relations.js) speaks for it
 //   special, hp, speed, attack — in data/balance/creatures.js: SPECIAL limits per characteristic [min, max]
 //              (nothing pushes past them) and the body
-//   peoples  — sub-races: their shift of the limits is in data/balance/creatures.js, `mods` and `innate` add
-//              to the species'; on the world
-//              map a realm takes the sub-race that fits the land of its seat best (`home` over the race's,
-//              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные дварфы Медной горы»),
-//              `taste` leans its towns' building (data/peoples.js taste); `world: false` — never a realm
+//   (sub-races are gone from the model — docs/WORLD.md «Расы и народы»: a variety of a race is a race of its own,
+//              added by copying a row; the author's values of the old ones are kept in docs/MIGRATION.md)
 //   body     — physiology for the card and, later, for the world map (growth of a node):
 //              adult in years; lifeFrom…life — how long it lives, the town's health lifting it towards `life` (atlas/
 //              demography.js lifeYear); fertility 0…1 — on the world map, × its people's births as against the race the
@@ -33,7 +30,7 @@ const NEEDS = ['food', 'rest', 'warmth'];
 
 export const RACES = [
   {id: 'human', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05},
-    label: 'человек', plural: 'люди', rel: 'human', settle: 6,
+    label: 'человек', labelAcc: 'человека', plural: 'люди', rel: 'human', settle: 6,
     heatHarm: 70, look: person(0.62, '#e2b48c'),
     body: {adult: 16, lifeFrom: 60, life: 80, fertility: 0.5, diet: 'всеядный'},
     innate: [{label: 'приспособляемость', note: 'учится любому делу быстрее других', mods: {learn: 1.15}}],
@@ -42,7 +39,7 @@ export const RACES = [
     names: personNames('human')},
 
   {id: 'halfling', kind: 'race', home: {meadow: 1, forest: 0.6, shrubland: 0.5, steppe: 0.3, foothills: 0.3, swamp: 0.1},
-    label: 'полурослик', plural: 'полурослики', rel: 'halfling', settle: 1.6,
+    label: 'полурослик', labelAcc: 'полурослика', plural: 'полурослики', rel: 'halfling', settle: 1.6,
     heatHarm: 70, look: person(0.48, '#eac29c'),
     body: {adult: 20, life: 100, fertility: 0.5, diet: 'всеядный, ест часто'},
     mods: {hunger: 1.2, cold: 1.1},
@@ -52,7 +49,7 @@ export const RACES = [
     names: personNames('halfling')},
 
   {id: 'giant', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {highlands: 1, foothills: 0.6, tundra: 0.6, taiga: 0.3, ice: 0.3},
-    label: 'великан', plural: 'великаны', rel: 'giant', settle: 0.6,
+    label: 'великан', labelAcc: 'великана', plural: 'великаны', rel: 'giant', settle: 0.6,
     heatHarm: 70, look: person(0.8, '#c9a27e'),
     body: {adult: 25, life: 150, fertility: 0.25, diet: 'всеядный, ест за троих'},
     mods: {hunger: 2.2, cold: 0.7},
@@ -62,7 +59,7 @@ export const RACES = [
     names: personNames('giant')},
 
   {id: 'elf', kind: 'race', deeds: {realm: [...DEED_WAYS.wardens]}, home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
-    label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
+    label: 'лесной эльф', labelAcc: 'лесного эльфа', plural: 'лесные эльфы', rel: 'elf', settle: 1,
     heatHarm: 70, look: person(0.6, '#f1dcc0'),
     body: {adult: 50, lifeFrom: 1000, life: 1500, fertility: 0.08, diet: 'почти травоядный'},
     mods: {hunger: 0.8, cold: 1.3, sleep: 0.5},
@@ -74,18 +71,12 @@ export const RACES = [
     summons: 0.15,
     innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'},
       {label: 'дитя леса', note: 'в лесу удар ранит на пятую часть слабее; камень добывает вдвое медленнее, поле родит на четверть быстрее'}],
-    peoples: [
-      {id: 'wood', label: 'лесной эльф', plural: 'лесные эльфы', gen: 'лесных эльфов', weight: 3},
-      {id: 'high', label: 'высокий эльф', plural: 'высокие эльфы', gen: 'высоких эльфов', weight: 1,
-        home: {meadow: 1, forest: 0.6, shrubland: 0.6, foothills: 0.45, savanna: 0.3, jungle: 0.3, taiga: 0.3},
-        taste: {lore: 1.6, prestige: 1.3, trade: 1, defence: 0.8}, innate: [{label: 'старая кровь', note: 'помнит книги, которых другие не читали'}]},
-    ],
     align: {order: 2, mercy: 0, spread: {order: 0.8, mercy: 1}},
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
     names: personNames('elf')},
 
   {id: 'darkelf', kind: 'race', home: {underground: 1, foothills: 0.3, jungle: 0.3, swamp: 0.3, forest: 0.2},
-    label: 'тёмный эльф', plural: 'тёмные эльфы', rel: 'darkelf', settle: 0,
+    label: 'тёмный эльф', labelAcc: 'тёмного эльфа', plural: 'тёмные эльфы', rel: 'darkelf', settle: 0,
     heatHarm: 70, look: person(0.6, '#5b5470'),
     body: {adult: 50, life: 500, fertility: 0.1, diet: 'всеядный'},
     mods: {hunger: 0.9, cold: 1.2, sleep: 0.5},
@@ -97,7 +88,7 @@ export const RACES = [
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
   {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.liberators]}, home: {highlands: 1, volcano: 0.5, foothills: 0.4, taiga: 0.1, tundra: 0.1, forest: 0.05, steppe: 0.05},   // the mountains; the hills seldom
-    label: 'дварф', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
+    label: 'дварф', labelAcc: 'дварфа', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
     body: {adult: 40, lifeFrom: 300, life: 400, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
     mods: {cold: 0.7},
@@ -107,22 +98,13 @@ export const RACES = [
     brew: {food: 0.3, drunk: 1.1, sober: 0.85, lasts: 1.5},
     innate: [{label: 'хмельная кровь', note: 'брага кормит и бодрит; без неё по утрам хмурится'},
       {label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'жаростойкий', note: 'не боится жара горна'}],
-    peoples: [
-      {id: 'mountain', label: 'горный дварф', plural: 'горные дварфы', gen: 'горных дварфов', weight: 3,
-        home: {foothills: 1, highlands: 0.9, volcano: 0.5, taiga: 0.15, tundra: 0.15}, taste: {prod: 1.5, defence: 1.3, trade: 0.9}},
-      {id: 'hill', label: 'холмовой дварф', plural: 'холмовые дварфы', gen: 'холмовых дварфов', weight: 2,
-        home: {foothills: 0.8, meadow: 0.6, forest: 0.45, steppe: 0.4, shrubland: 0.4}, taste: {trade: 1.4, food: 1.2, prod: 1.2, defence: 1},
-        innate: [{label: 'торговая жилка', note: 'знает цену всему, что лежит на прилавке'}]},
-      {id: 'deep', label: 'глубинный дварф', plural: 'глубинные дварфы', gen: 'глубинных дварфов', weight: 1, world: false,
-        mods: {cold: 0.85}, innate: [{label: 'дитя глубин', note: 'бледен, видит во мраке ещё лучше'}]},
-    ],
     align: {order: 5, mercy: 0, spread: {order: 0.5, mercy: 0.9}},
     values: {ancestors: 2, work: 2, gold: 1.4, family: 0.8},
     names: personNames('dwarf')},
 
   // The greenskins: orcs, goblins, ogres, trolls — kin, they may share a camp.
   {id: 'orc', kind: 'race', deeds: {realm: [...DEED_WAYS.raiders]}, home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
-    label: 'орк', plural: 'орки', rel: 'greenskin', settle: 0,
+    label: 'орк', labelAcc: 'орка', plural: 'орки', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.66, '#6f9a4a'),
     body: {adult: 12, lifeFrom: 40, life: 60, fertility: 0.75, brawled: 1, diet: 'хищник-всеядный'},
     mods: {hunger: 1.4, cold: 0.85, regen: 1.6, bravery: 1.2},
@@ -132,7 +114,7 @@ export const RACES = [
     names: personNames('orc')},
 
   {id: 'goblin', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
-    label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
+    label: 'гоблин', labelAcc: 'гоблина', plural: 'гоблины', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.45, '#8fb04c'),
     body: {adult: 6, lifeFrom: 20, life: 30, fertility: 1, brawled: 2.5, diet: 'ест что угодно'},
     mods: {hunger: 0.7, cold: 1.1, bravery: 0.7},
@@ -142,7 +124,7 @@ export const RACES = [
     names: personNames('goblin')},
 
   {id: 'ogre', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
-    label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
+    label: 'огр', labelAcc: 'огра', plural: 'огры', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.86, '#9b8a6a'),
     body: {adult: 15, lifeFrom: 120, life: 200, fertility: 0.25, brawled: 0.3, diet: 'ест что угодно, за четверых'},
     mods: {hunger: 3, cold: 0.7, bravery: 1.3},
@@ -153,23 +135,18 @@ export const RACES = [
 
   // Trolls regrow wounds unless fire or acid stops it.
   {id: 'troll', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
-    label: 'тролль', plural: 'тролли', rel: 'greenskin', settle: 0,
+    label: 'тролль', labelAcc: 'тролля', plural: 'тролли', rel: 'greenskin', settle: 0,
     heatHarm: 62, look: person(0.76, '#4f8f86'),
     body: {adult: 14, lifeFrom: 150, life: 250, fertility: 0.3, brawled: 0.3, diet: 'хищник'},
     mods: {hunger: 1.8, regen: 6, bravery: 1.3},
     innate: [{label: 'регенерация', note: 'рана затягивается на глазах, пока рядом нет огня'}],
-    peoples: [
-      {id: 'forest', label: 'лесной тролль', plural: 'лесные тролли', gen: 'лесных троллей', weight: 2, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}},
-      {id: 'swamp', label: 'болотный тролль', plural: 'болотные тролли', gen: 'болотных троллей', weight: 1, home: {swamp: 1, jungle: 0.5, forest: 0.3}},
-      {id: 'ice', label: 'ледяной тролль', plural: 'ледяные тролли', gen: 'ледяных троллей', weight: 1, mods: {cold: 0.3}, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}},
-    ],
     align: {order: -2, mercy: -2, spread: {order: 1.1, mercy: 1}},
     values: {nature: 1.6, faith: 1.6, strength: 1},
     names: personNames('troll')},
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
   {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
-    label: 'гнолл', plural: 'гноллы', rel: 'greenskin', settle: 0,
+    label: 'гнолл', labelAcc: 'гнолла', plural: 'гноллы', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.64, '#a98d5a'),
     body: {adult: 8, lifeFrom: 30, life: 45, fertility: 0.75, brawled: 1, diet: 'падальщик'},
     mods: {hunger: 1.2, cold: 0.9},

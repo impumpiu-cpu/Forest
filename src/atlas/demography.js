@@ -14,79 +14,73 @@
 //   a town left with fewer than TOWN_LIFE.abandon people is left: they go to the nearest town of their realm;
 //   the captives of a lair gone go home (freeCaptives); an army whose town fell comes back to the nearest town of its realm
 //   (atlas/army.js); the crowned seat draws people from its realm's towns (drawTo), it does not make them.
-import {WORLD_PEOPLES, TOWN_LIFE as TL, KIN} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {townFx, room, townLabel, townKin, kinOfLand} from './towns.js';
+import {townFx, room, townLabel, townKin} from './towns.js';
+import {lifeOf, headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
+import {townGone} from './persons.js';
 import {trades} from './diplomacy.js';
 import {scaleOf} from './tectonics.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 
-// ── age and death (docs/WORLD.md «Демография»; each kind's lifeFrom, life, fertility, brawled — the races table, data/races.js
-// body; data/peoples.js `brawl`, TOWN_LIFE.age). A town keeps how many of each kind it holds (t.kin — shares — for a people of
-// many kinds; its race for the others) and each kind's mean age (t.kinAge; t.age — the town's). Each year each kind dies by
-// its age against how long it lives — a long-lived kind hardly dies in a history, a short-lived one turns over many times —
-// and, in a people that brawls, by its brawls (the weak first); the old die first (the dead are older than the mean), all
-// grow a year older; the born, shared among the kinds by their fertility, are of age 0. So the kinds of a town drift: the
-// goblins breed and die fast, the trolls and the ogres slowly. → {born, dead, brawl, want}
+// ── age and death (docs/WORLD.md «Демография»; each race's adult, lifeFrom, life, fertility, brawled — the races table,
+// data/races.js body; data/peoples.js `brawl`, TOWN_LIFE.age). A town holds its people by race and band of age — the young,
+// the grown, the old (atlas/population.js t.heads). Each year each band of each race dies by its middle age against how long
+// the race lives — a long-lived race hardly dies in a history, a short-lived one turns over many times — and, in a people
+// that brawls, by its brawls (the weak first); the young grow up, the grown grow old; the born are young. So the races of a
+// town drift: the goblins breed and die fast, the trolls and the ogres slowly; and the land pulls them back a little
+// (KIN.pull). → the year's vital signs: {born, dead, brawl, want, …the losses booked by cause during the year}
 const bodyOf = id => (SPECIES.has(id) ? SPECIES.get(id).body || {} : {});
-// the kinds of a town, {species: share}: its kinds (atlas/towns.js townKin) or its race
-export function kindsOf(a, t) {
-  const P = WORLD_PEOPLES.get(t.people);
-  const K = P?.kin && (a?.f || t.kin) ? townKin(a, t) : null;
-  return K || {[P?.race || 'human']: 1};
-}
-// how long a kind lives in a town of this health (its lifeFrom … life, the health a soft lift)
-export function lifeOf(kind, health = 0) {
-  const B = bodyOf(kind), hi = B.life || 70, lo = B.lifeFrom ?? hi, lift = 1 - Math.exp(-Math.max(0, health) / TL.age.health);
-  return lo + (hi - lo) * lift;
-}
 // the base of death, the children, the sick and the unlucky: high in a poor land, low where the town is healthy
 const baseOf = health => { const [hi, lo] = TL.age.base; return lo + (hi - lo) * Math.exp(-Math.max(0, health) / TL.age.health); };
-// the share of a kind of this age that dies of age this year
+// the share of a race of this age that dies of age this year
 export const deathRate = (L, age, health = 0) => Math.min(TL.age.most, (1 / L) * (baseOf(health) + Math.pow(age / (L / 2), TL.age.hazard)));
-// the age of a founding band or of settlers of a kind
-export const foundAge = kind => Math.round((bodyOf(kind).lifeFrom ?? bodyOf(kind).life ?? 54) * TL.age.found);
-// the share of a town that dies in brawls this year (data/peoples.js `brawl`: the greenskins), before each kind's `brawled`
+// the age of a founding band or of settlers of a race
+export const foundAge = race => Math.round((bodyOf(race).lifeFrom ?? bodyOf(race).life ?? 54) * TL.age.found);
+// the share of a town that dies in brawls this year (data/peoples.js `brawl`: the greenskins), before each race's `brawled`
 export function brawlRate(a, t, fx = townFx(t)) {
   const B = WORLD_PEOPLES.get(t.people)?.brawl; if (!B) return 0;
   const crime = a?.realms?.find(r => r.id === t.realm)?.kingdom?.ruin?.crime || 0;
   return B.crime * crime + B.crowd * Math.max(0, t.pop / Math.max(1, room(fx)) - B.from);
 }
-// how much more a town of these kinds breeds than its people's own race (each kind's fertility against the race's)
+// how much more a town of these races breeds than its people's own race (each race's fertility against the people's)
 export function breedOf(a, t) {
-  const P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, K = kindsOf(a, t);
+  const P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, K = townKin(a, t);
   return Object.entries(K).reduce((s, [k, sh]) => s + sh * (bodyOf(k).fertility ?? ref) / ref, 0);
 }
-// a year of a town's people: `born` came of them this year (by the people's breed: the kinds' own fertility shares and
-// scales it), `want` died of hunger and crowding (atlas/peoples.js bornOf, < 0); its kinds and their ages move on
+// a year of a town's people: `born` came of them this year (by the people's breed: the races' own fertility and grown ones
+// share and scale it), `want` died of hunger and crowding (atlas/peoples.js bornOf, < 0); the bands move on
 export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
-  const A = TL.age, P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, K = kindsOf(a, t), P0 = Math.max(0, t.pop);
-  const ages = t.kinAge ||= {}, health = fx.health || 0, br = brawlRate(a, t, fx);
-  const w = Object.fromEntries(Object.entries(K).map(([k, sh]) => [k, sh * (bodyOf(k).fertility ?? ref) / ref]));
-  const n1 = {}, V = {born: 0, dead: 0, brawl: 0, want: 0};
-  for (const [k, sh] of Object.entries(K)) {
-    const n = sh * P0, age = ages[k] ?? t.age ?? foundAge(k);
-    const dead = n * deathRate(lifeOf(k, health), age, health);
-    const fight = Math.max(0, n - dead) * Math.min(1, br * (bodyOf(k).brawled ?? 1));
-    const hunger = want * sh, b = born * w[k];   // (its share of the births × its fertility against the race's)
-    const left = Math.max(0, n - dead - fight - hunger);
-    // the old die first; brawls and hunger take any age; a year older; the born are young
-    const oldAge = n > dead ? Math.max(0, (age * n - dead * Math.min(age * A.dead, age * n / Math.max(dead, 1e-9))) / (n - dead)) : 0;
-    n1[k] = left + b;
-    ages[k] = n1[k] > 0 ? Math.round(((oldAge + 1) * left) / n1[k] * 100) / 100 : foundAge(k);
-    V.born += b; V.dead += dead; V.brawl += fight; V.want += hunger;
+  const A = TL.age, P = WORLD_PEOPLES.get(t.people), ref = bodyOf(P?.race).fertility || 1, H = headsOf(a, t), P0 = Math.max(0, t.pop);
+  const health = fx.health || 0, br = brawlRate(a, t, fx);
+  const V = {born: 0, came: 0, dead: 0, brawl: 0, want: 0};
+  for (const [k, b] of Object.entries(H)) {
+    const L = lifeOf(k, health), fight = Math.min(1, br * (bodyOf(k).brawled ?? 1)), [ad, old] = bandEdges(k);
+    const n0 = b[0] + b[1] + b[2], grown = b[1];
+    for (let i = 0; i < 3; i++) {
+      const n = b[i]; if (!(n > 0)) continue;
+      const dead = n * deathRate(L, bandAge(k, i, L), health);
+      const brawl = Math.max(0, n - dead) * fight;
+      const hunger = P0 > 0 ? want * n / P0 : 0;
+      b[i] = Math.max(0, n - dead - brawl - hunger);
+      V.dead += dead; V.brawl += brawl; V.want += Math.min(hunger, n);
+    }
+    // a year older: a share of the young grow up, of the grown grow old
+    const up0 = b[0] / Math.max(1, ad), up1 = b[1] / Math.max(1, old - ad);
+    b[0] -= up0; b[1] += up0 - up1; b[2] += up1;
+    // the growth: the births — children of the grown ones of this race (none, no children), by its share and fertility against
+    // the people's race — and the folk of the land that come, in the bands of TOWN_LIFE.age.arrive
+    const gk = P0 > 0 ? born * (n0 / P0) * (bodyOf(k).fertility ?? ref) / ref : 0;
+    const births = Math.min(gk * A.births, grown * A.perGrown * (bodyOf(k).fertility ?? ref) / ref), came = gk - births;   // (as many children as its grown ones can have)
+    b[0] += births; for (let i = 0; i < 3; i++) b[i] += came * A.arrive[i];
+    V.born += births; V.came += came;
   }
-  const P1 = Object.values(n1).reduce((s, v) => s + v, 0);
-  t.pop = P1;
-  if (P?.kin && P1 > 0) {
-    // the kinds drift by their births and deaths, and the land's wild tribes pull them back a little (KIN.pull)
-    const land = kinOfLand(a, t), pull = land ? KIN.pull : 0;
-    t.kin = Object.fromEntries(Object.entries(n1).map(([k, v]) => [k, Math.round(((1 - pull) * v / P1 + pull * (land?.[k] || 0)) * 10000) / 10000]));
-  }
-  t.age = P1 > 0 ? Math.round(Object.entries(n1).reduce((s, [k, v]) => s + v * ages[k], 0) / P1 * 100) / 100 : 0;
-  t.vital = Object.fromEntries(Object.entries(V).map(([k, v]) => [k, Math.round(v * 10) / 10]));
+  sync(t);
+  if (P?.kin && t.pop > 0) pullToLand(a, t);   // the land's wild tribes pull the races back a little (KIN.pull)
+  t.vital = Object.fromEntries(Object.entries({...(t.book || {}), ...V}).map(([k, v]) => [k, Math.round(v * 10) / 10]));
+  t.book = null;
   return t.vital;
 }
 
@@ -98,12 +92,13 @@ const pull = t => (1 + Math.max(0, townFx(t).prestige)) * (t.needs?.basic ?? 1);
 export function mayMove(a, s, d) {
   if (s.realm === d.realm) return true;
   if (s.realm == null || d.realm == null || !trades(a, s.realm, d.realm)) return false;
-  if (d.people !== s.people && (!(WORLD_PEOPLES.get(d.people).welcome || []).includes(s.people) || (d.folk?.[s.people] || 0) >= DIPLOMACY.mingleMax)) return false;
+  if (d.people !== s.people && (!(WORLD_PEOPLES.get(d.people).welcome || []).includes(s.people) || shareOfPeople(a, d, s.people) >= DIPLOMACY.mingleMax)) return false;
   return Math.hypot(d.x - s.x, d.y - s.y) <= TL.moveReach * WORLD_PEOPLES.get(s.people).spacing * scaleOf(a);
 }
 
 // a season of moving: people go where they like it better, as far as there is room — a town of another realm counts
-// TOWN_LIFE.abroad as much (home is home); folk of another people settle as the town's folk (t.folk). → people moved
+// TOWN_LIFE.abroad as much (home is home); folk of another people settle as their own races among the town's (atlas/
+// population.js), up to DIPLOMACY.mingleMax of it. → people moved
 export function migrate(a) {
   const live = (a.towns || []).filter(t => t.alive);
   if (live.length < 2) return 0;
@@ -122,23 +117,23 @@ export function migrate(a) {
     const best = Math.max(...to.map(x => x[1]));
     let go = s.over * TL.overflow + rate * s.t.pop * (1 - s.A / best);
     go = Math.min(go, Math.max(0, s.t.pop - TL.minTarget));
-    if (go <= 0.5) continue;
+    if (go <= TL.moveLeast) continue;   // (fewer than this a season do not set out: TOWN_LIFE.moveLeast)
     const W = to.reduce((sum, [d, A]) => sum + A * d.free, 0);
     let left = go;
     for (const [d, A] of to) {
       const n = Math.min(d.free, go * A * d.free / W);
       if (n <= 0) continue;
       let n2 = n;
-      if (d.t.people !== s.t.people) {   // newcomers of another people: the town's folk of them grows, up to DIPLOMACY.mingleMax
-        const f = d.t.folk ||= {}, had = (f[s.t.people] || 0) * d.t.pop;
+      if (d.t.people !== s.t.people) {   // newcomers of another people: their share of the town grows, up to DIPLOMACY.mingleMax
+        const had = shareOfPeople(a, d.t, s.t.people) * d.t.pop;
         n2 = Math.max(0, Math.min(n, (DIPLOMACY.mingleMax * d.t.pop - had) / (1 - DIPLOMACY.mingleMax)));
-        f[s.t.people] = Math.min(DIPLOMACY.mingleMax, (had + n2) / (d.t.pop + n2));
       }
       if (n2 <= 0) continue;
       if (d.t.realm !== s.t.realm) abroad += n2;
-      d.t.pop += n2; d.free -= n2; left -= n2;
+      const went = moveHeads(a, s.t, d.t, n2, 'moved');   // (as they are: their races and ages go with them)
+      d.free -= went; left -= went;
     }
-    s.t.pop -= go - left; moved += go - left;
+    moved += go - left;
   }
   a.hist.moved = (a.hist.moved || 0) + moved;
   a.hist.movedAbroad = (a.hist.movedAbroad || 0) + abroad;
@@ -151,13 +146,14 @@ export function abandonEmpty(a, rnd, say) {
     if (!t.alive || t.pop >= TL.abandon) continue;
     let best = null, bd = Infinity;
     for (const o of a.towns) if (o !== t && o.alive && (t.realm != null ? o.realm === t.realm : o.people === t.people)) { const d = Math.hypot(o.x - t.x, o.y - t.y); if (d < bd) { bd = d; best = o; } }
-    if (best) best.pop += t.pop;
-    else (a.hist.lost ||= {}).abandoned = (a.hist.lost?.abandoned || 0) + t.pop;   // the last of a people: they scatter
-    t.pop = 0; t.alive = false; t.died = a.hist.year;
+    if (best) moveHeads(a, t, best, t.pop, 'left');
+    else { (a.hist.lost ||= {}).abandoned = (a.hist.lost?.abandoned || 0) + t.pop; takeHeads(a, t, t.pop, {how: 'scattered'}); }   // the last of a people: they scatter
+    t.alive = false; t.died = a.hist.year;
     razeSites(a, t, a.hist.year);
     (a.ruins ||= []).push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by: null, year: a.hist.year, how: 'опустел'});
     say(`Последние жители покинули ${townLabel(t, 1)} ${t.name}${best ? ` и ушли в ${townLabel(best, 1)} ${best.name}` : ''}.`);
     if (t.capital) seatFallen(a, t, rnd, say);
+    townGone(a, t, say);
   }
 }
 
@@ -171,7 +167,7 @@ export function freeCaptives(a) {
       if (!(n > 0)) continue;
       let best = null, bd = Infinity;
       for (const t of a.towns || []) if (t.alive && t.people === p) { const d = Math.hypot(t.x - l.x, t.y - l.y); if (d < bd) { bd = d; best = t; } }
-      if (best) { best.pop += n; freed += n; }
+      if (best) { addHeads(a, best, WORLD_PEOPLES.get(p).race, n, 1); freed += n; }   // (home as grown ones of their people's race)
     }
     l.captives = null;
   }
@@ -185,7 +181,6 @@ export function drawTo(a, t, n) {
   const spare = o => Math.max(0, o.pop - TL.minTarget), all = from.reduce((s, o) => s + spare(o), 0);
   if (all <= 0 || n <= 0) return 0;
   const take = Math.min(n, all);
-  for (const o of from) o.pop -= take * spare(o) / all;
-  t.pop += take;
+  for (const o of from) moveHeads(a, o, t, take * spare(o) / all, 'drawn');
   return take;
 }

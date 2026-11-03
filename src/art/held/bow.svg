@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- лук: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="50" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M44 10Q66 50 44 90"/><path fill="none" stroke="wood" stroke-width="3.5" stroke-linecap="round" d="M44 10Q66 50 44 90"/>
+  <path fill="none" stroke="trim" stroke-width="1.6" d="M44 10V90"/>
+</svg>

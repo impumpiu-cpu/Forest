@@ -38,7 +38,7 @@ import {nearAgents} from '../agents/spatial.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {clamp, esc, g} from '../core/util.js';
-import {nightness, hourOf, dayOf, DAY, HOUR} from '../core/time.js';
+import {hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {wake} from '../agents/attention.js';
 import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
 import {BOARD} from '../data/colony.js';
@@ -320,7 +320,7 @@ export function redInSight(w, a, r) {
   return null;
 }
 
-// a raid on the board: the gathering at the fire (agents/tasks.js muster) holds while it is
+// a raid on the board: the gathering at the fire (agents/tasks/camp.js muster) holds while it is
 export const raidOnBoard = w => Object.values(w.board?.flags || {}).some(f => f.kind === 'raid' && f.red);
 
 // the closest live member of a known flag within r, or null
@@ -386,20 +386,4 @@ export function flagLead(w, a, key) {
   let at = null, ad = Infinity;
   for (const p of Object.values(f.seen)) { const d = Math.hypot(p.x - a.x, p.y - a.y); if (d < ad) { ad = d; at = p; } }
   return {f, at: at || {x: f.x, y: f.y}};
-}
-
-// for the panel: who keeps the watch tonight
-export function watchSummary(w) {
-  const W = w.board?.watch;
-  if (!W || W.done || W.night !== watchNight(w)) return null;
-  return {by: W.name, slept: !!W.slept, onPost: watchOnPost(w)};
-}
-
-// for the panel: the flags on the board now
-export function boardSummary(w) {
-  const B = w.board; if (!B) return [];
-  return Object.values(B.flags).map(f => {
-    const ms = liveMembers(w, f), going = answering(w, f);
-    return {key: f.key, red: !!f.red, label: f.label, where: f.where, by: f.byName, byG: f.byG, weight: f.weight, known: Object.keys(f.known).length, going: going.map(c => c.name)};
-  });
 }

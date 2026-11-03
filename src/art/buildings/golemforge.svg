@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- кузня големов: горн и каменная голова голема в лесах -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 90V48H44V90Z"/><path fill="fire" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M25 71.6C31.3 77.9 32.2 82.4 28.6 86H21.4C17.8 82.4 18.7 77.9 25 71.6Z"/><path fill="flame" d="M25 77.9C27.7 80.6 27.7 84.2 26.8 86H23.2C22.3 84.2 22.3 80.6 25 77.9Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M52 90V20M92 90V20M50 40H94"/><path fill="none" stroke="wood" stroke-width="3" stroke-linecap="round" d="M52 90V20M92 90V20M50 40H94"/><rect x="58" y="46" width="28" height="34" rx="4" fill="iron" stroke="ink" stroke-width="4" stroke-linejoin="round"/><rect class="figure" x="62" y="56" width="20" height="4" fill="#ff8a2a"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M64 70H80M72 46V80"/>
+</svg>

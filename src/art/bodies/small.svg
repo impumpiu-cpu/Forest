@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «small» — мелкое: гоблин, полурослик. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="42" r="31"/>
+  <circle data-anchor="hand" cx="66.7" cy="81" r="5"/>
+  <circle data-anchor="off" cx="33.3" cy="81" r="5"/>
+  <circle data-anchor="back" cx="42.4" cy="71" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M33 75Q33 65 43 65L57 65Q67 65 67 75L65.3 92Q65.3 97 60.3 97L39.7 97Q34.7 97 34.7 92Z"/>
+  <path class="figure" fill="shade" d="M45.8 65L50 74L54.2 65Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M30 77Q30 64 41 64L59 64Q70 64 70 77L69.3 94L58.5 98L53.4 94L46.6 98L41.5 94L30.7 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M35 66Q50 81 65 66Q50 71 35 66Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 71L45 68L50 81L55 68L64 71L62.7 89L37.3 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M37 79Q37 69 47 69L53 69Q63 69 63 79L61.7 86Q61.7 91 56.7 91L43.3 91Q38.3 91 38.3 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M40.5 77H59.5M40.9 85H59.1"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M46.5 77Q50 81.5 53.5 77M46.5 84Q50 88.5 53.5 84"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M45 77h0.1M50 77h0.1M55 77h0.1M45 83h0.1M50 83h0.1M55 83h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M40.5 77L59.5 83M41 86L59 92"/>
+    <rect class="figure" x="47.3" y="69" width="5.4" height="22" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M35.9 82.6H64.1"/>
+  <rect class="detail" x="46" y="79.1" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="36" cy="70" rx="5.1" ry="4.1"/>
+    <ellipse cx="64" cy="70" rx="5.1" ry="4.1"/>
+  </g>
+</svg>

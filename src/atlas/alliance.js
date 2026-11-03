@@ -9,6 +9,9 @@
 //
 // a.alliances = [{id, calamity, members: [realm ids], since, tries, armies: [party ids], sent: [realm ids], before:
 //   {pair: att}, ended, peaceUntil, broken}]
+import {between, relKey} from './common.js';
+import {power as lairPower} from './lairs.js';
+import {cap1, luck} from '../core/util.js';
 import {sendArmy, refreshArmy, armyLosses} from './army.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
@@ -21,10 +24,8 @@ import {townLabel} from './towns.js';
 import {goHome} from './parties.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 
-const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
-const pairKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
-const power = sp => { const s = SPECIES.get(sp)?.special; return s ? (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2 : 10; };
+const pairKey = relKey;
+const power = sp => (SPECIES.get(sp)?.special ? lairPower(sp) : 10);   // (atlas/lairs.js power; a body of no SPECIAL — 10)
 const names = (a, ids) => ids.map(id => realmLabel(a, id)).join(', ');
 
 // the realms that stand against a calamity: those with a living town in its reach, else the nearest
@@ -114,7 +115,7 @@ export function allianceStay(a, p, rnd, say, fall) {
   const retinue = a.lairs.filter(l => l.alive && l.retinue === c.id).length;
   const boss = lair.strength * power(L.species) * ALLY.boss + ALLY.retinue * retinue;
   for (const q of waiting) refreshArmy(q);
-  const we = waiting.reduce((s, q) => s + q.might, 0) * (0.6 + 0.8 * rnd()), they = boss * (0.6 + 0.8 * rnd());
+  const we = waiting.reduce((s, q) => s + q.might, 0) * luck(ALLY.luck, rnd), they = boss * luck(ALLY.luck, rnd);
   const who = names(a, [...new Set(waiting.map(q => q.owner))]);
   if (we > they) {
     for (const q of waiting) { armyLosses(q, ALLY.loss.won, rnd, 'won'); goHome(a, q); }

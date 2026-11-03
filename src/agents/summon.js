@@ -25,8 +25,8 @@ export function isSummoner(w, a) {
   const p = SPECIES.get(a.species).summons;
   return !!p && mulberry(seedNumber(`${w.cfg?.seed ?? ''}:summoner:${a.id}`))() < p;
 }
-const cost = new Map();
-const beastCost = sp => cost.get(sp) ?? cost.set(sp, expectedStrength(sp, {key: 'summon', n: 16})).get(sp);
+// (kept by agents/strength.js per species and key, and made again after an edit of the tables)
+const beastCost = sp => expectedStrength(sp, {key: 'summon', n: 16});
 
 // call them, if it may now: the beasts called, [] when none came
 export function trySummon(w, a, foe) {

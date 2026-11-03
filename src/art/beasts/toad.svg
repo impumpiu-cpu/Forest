@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- жаба: широкая, глаза на макушке; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M10 80Q8 54 40 50Q76 48 90 70Q94 84 80 86H22Q10 86 10 80Z"/><circle cx="56" cy="50" r="9" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><circle cx="74" cy="52" r="9" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><g class="figure"><circle cx="56" cy="49" r="4" fill="#ffd36a"/><circle cx="74" cy="51" r="4" fill="#ffd36a"/><path fill="ink" d="M53 49H59V50.5H53ZM71 51H77V52.5H71Z"/></g><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M62 70Q76 74 88 70"/><g class="detail" fill="shade"><circle cx="30" cy="64" r="4"/><circle cx="42" cy="72" r="3"/><circle cx="24" cy="76" r="3"/></g>
+</svg>

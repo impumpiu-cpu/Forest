@@ -4,10 +4,12 @@
 import {build} from 'esbuild';
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {execSync} from 'node:child_process';
+import {buildSprites} from './art-build.mjs';
 
 let commit = 'без git';
 try { commit = execSync('git rev-parse --short HEAD').toString().trim(); } catch (e) { /* not a git checkout */ }
 
+buildSprites();   // the pictures (src/art/*.svg → src/art/sprites.js) as they are now
 const res = await build({entryPoints: ['src/app/main.js'], bundle: true, format: 'iife', write: false, minify: false, target: 'es2020',
   define: {__BUILD__: JSON.stringify('сборка ' + commit)}});
 const js = res.outputFiles[0].text;

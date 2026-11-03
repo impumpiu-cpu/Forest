@@ -10,8 +10,12 @@
 // (atlas/calamity.js). While a lair has a leader it sends no raids or broods by chance.
 // The leaders draw from their own stream (seed:atlas:leaders), kept by its position in a.leadRnd.
 //
-// lair.leader = {name, title, species, g, special, add, born, dies, deeds}; lair.lord — the id of the lair it pays tribute to
-import {mulberry, seedNumber} from '../core/rng.js';
+// lair.leader — a person (atlas/persons.js): {id, name, title, species, g, special, add, born, dies, deeds, since, at};
+// lair.lord — the id of the lair it pays tribute to. The leader is one of the world's persons, and its death is the one
+// event of personDies: the lair's loss of it, its vassals' freedom and the dead's loss of a master follow from that
+// (atlas/succession.js, atlas/control.js)
+import {stream, between} from './common.js';
+import {cap1} from '../core/util.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel} from './necro.js';
 import {TITLE, makeName} from '../data/names.js';
@@ -21,14 +25,11 @@ import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 import {wherePhrase, power} from './lairs.js';
 import {actorStep} from './actor.js';
 import {DOES} from './deeds/index.js';
+import {newPerson, personDies, moveTo, personsAt} from './persons.js';
+import {heldDead} from './control.js';
 
-const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
-function draw(a) {
-  const r = mulberry(a.leadRnd ?? seedNumber(`${a.cfg.seed}:atlas:leaders`));
-  return {r, done: () => { a.leadRnd = r.state; }};
-}
+const draw = a => stream(a, 'leadRnd', 'leaders');
 
 // the lairs that may raise a leader: ancient, not a dragon's (it is one beast), not a vampire's manor, not a boss's
 export const canLead = (l, L = LAIRS.get(l.kind)) => l.alive && l.ancient && l.boss == null && !L.dragon && L.at !== 'town';
@@ -46,23 +47,18 @@ export function raise(a, l, r) {
   const roll = sp.special ? bossSpecial(sp, r, {stats: [], add: [0, 0], cap: LEADER.cap}) : {special: null};
   if (roll.special) for (const id of LEADER.stats) roll.special[id] = Math.min(LEADER.cap, roll.special[id] + add[id]);
   const y = a.hist.year;
-  l.leader = {name, title, since: a.hist.step, species: L.species, ...(l.race ? {race: l.race} : {}), g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), deeds: 0};
+  // (a tower's master is a necromancer by ability, of the race he was — `race`; his body on the local map is the necromancer's template)
+  l.leader = newPerson(a, {name, title, species: L.species, race: l.race || null, g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), at: {kind: 'lair', id: l.id}, abilities: L.domain ? ['necromancy'] : []});
+  l.leader.since = a.hist.step;   // (born: the year it rose — a leader is grown past its kind when it rises)
   l.heirAt = null;
   return `${cap1(L.label)} «${l.name}» ${wherePhrase(a, l.i)}: поднялся ${title[0].toLowerCase()} — ${name}, ${l.race ? necroLabel(l.race) : sp.label} сильнее всех своих. Теперь ${L.domain ? 'мертвецы' : sp.plural} оттуда не бродят, а ходят за ним.`;
 }
 
-// the leader is gone: its lair is a field again; the vassals go free when their lord's lair has no leader
+// the leader is gone: the one event of a person's death (atlas/persons.js); its lair is a field again, and the vassals go
+// free when their lord's lair has no leader (freeVassals)
 export function leaderFalls(a, l, how, say) {
   if (!l?.leader) return;
-  const who = leaderName(l), L = LAIRS.get(l.kind);
-  (a.fallenLeaders ||= []).push({lair: l.id, name: who, species: l.leader.species, year: a.hist.year, how, deeds: l.leader.deeds});
-  l.leader = null;
-  if (how === 'age') l.heirAt = a.hist.year + 1;
-  say?.({age: `Умер своей смертью ${who}, хозяин «${l.name}» (${L.label}): логово ждёт нового.`,
-    beaten: `${who} пал в бою, и «${l.name}» осталось без главаря.`,
-    lair: `${who} сгинул вместе с «${l.name}».`,
-    caravan: `${who} из «${l.name}» убит караваном.`,
-    boss: null}[how] || `${who} из «${l.name}» пропал.`);
+  personDies(a, l.leader, how, say);
 }
 
 // the leader's role for the actor's brain (atlas/actor.js): the deeds of its species' lairs, the party it has out, and how
@@ -76,6 +72,7 @@ const leaderRole = {
     const p = sendParty(a, 'leader', l.i, plan.goal, {owner: l.id, plan: d.id, target: plan.target ?? null, might: mightOf(l, L, r),
       speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `${leaderName(l)} (${SPECIES.get(L.species).plural})`, color: L.color, leader: true});
     if (!p) return;
+    moveTo(l.leader, 'party', p.id);   // the leader rides at its head: it is not at the lair while it is out (atlas/persons.js)
     // only a raid is told as it sets out (the towns see it coming); the rest — when it is done
     const line = DOES[d.id].told?.(a, l, plan);
     if (line) say(line);
@@ -83,13 +80,13 @@ const leaderRole = {
 };
 
 // a vassal whose lord's lair is gone or has no leader goes free — every season, so that no vassal outlives its lord
-// till the next spring (a necromancer's tower is a seat with a leader or without)
+// till the next spring (a necromancer's tower too: its vassals are its master's, atlas/control.js)
 export function freeVassals(a) {
   if (!a.lairs) return;
   for (const v of a.lairs) {
     if (!v.alive || v.lord == null) continue;
     const lord = a.lairs.find(o => o.id === v.lord);
-    if (!lord?.alive || (!lord.leader && !LAIRS.get(lord.kind).domain)) v.lord = null;
+    if (!lord?.alive || !lord.leader || (LAIRS.get(lord.kind).domain && !heldDead(lord))) v.lord = null;
   }
 }
 
@@ -138,6 +135,7 @@ BEHAVIOURS.leader = {
   home(a, p) {
     const l = a.lairs.find(x => x.id === p.owner);
     if (l?.alive) DOES[p.plan]?.home?.(a, p, l);
+    for (const q of personsAt(a, 'party', p.id)) moveTo(q, 'lair', p.owner);   // the leader is home
   },
 };
 

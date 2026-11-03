@@ -20,7 +20,6 @@ import {initFauna, faunaCell} from './fauna.js';
 import {seedRot, wildLairs, newLair, groundFits, homeField, wherePhrase, lairFolk, R as lairRadius} from './lairs.js';
 import {landBand, townAt} from './peoples.js';
 import {addCalamity, deadGraves} from './calamity.js';
-import {worldSubs} from './realms.js';
 
 function say(a, text) {
   const H = a.hist;
@@ -56,20 +55,20 @@ export function wildByLand(a) {
   return {n};
 }
 
-// what the hand may set: the peoples with their sub-races, the lair kinds, the calamities
+// what the hand may set: the peoples, the lair kinds, the calamities
 export const PLACEABLE = {
-  peoples: () => WORLD_PEOPLES.all().map(P => ({id: P.id, label: P.label, color: P.color, subs: worldSubs(P.race).map(s => ({id: s.id, label: s.plural || s.label}))})),
+  peoples: () => WORLD_PEOPLES.all().map(P => ({id: P.id, label: P.label, color: P.color})),
   // a vampire's manor is in a town (it comes by itself, or as a calamity)
   lairs: () => LAIRS.filter(L => L.at !== 'town').map(L => ({id: L.id, label: L.label, color: L.color, kind: L.tribe ? 'племя' : L.undead ? 'мёртвые' : L.fiend ? 'демоны' : L.dragon ? 'дракон' : 'чудовища'})),
   calamities: () => CALAMITIES.map(C => ({id: C.id, label: C.label, town: !!C.town})),
 };
 
 // a people's band landed by hand near a cell → {town, realm} or {error}
-export function landPeople(a, peopleId, i, subId = null) {
+export function landPeople(a, peopleId, i) {
   if (busy(a)) return {error: 'время идёт — дождитесь конца отрезка'};
   if (!WORLD_PEOPLES.has(peopleId)) return {error: 'нет такого народа'};
   if (a.f.ocean[i]) return {error: 'это море'};
-  return landBand(a, peopleId, i, subId, a.hist.rnd, t => say(a, t));
+  return landBand(a, peopleId, i, a.hist.rnd, t => say(a, t));
 }
 
 const GROUND = {heights: 'им нужны высокие крутые горы', volcano: 'им нужен вулкан', caves: 'им нужны пещеры — известняк или базальт', deep: 'им нужна глухая чаща',

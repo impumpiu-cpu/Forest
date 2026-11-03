@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- бой, ярость: оранжевые штрихи по бокам -->
+  <g fill="none" stroke="anger" stroke-width="9" stroke-linecap="round">
+    <path d="M4 42L20 40"/><path d="M6 56L20 52"/><path d="M96 40L80 38"/><path d="M94 54L80 50"/>
+  </g>
+</svg>

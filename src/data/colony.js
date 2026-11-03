@@ -28,6 +28,9 @@ export const LIFE = {
   prayGap: DAY,               // one prayer a day is enough
 };
 
+// a prayer (agents/tasks.js pray): the building prayed at, how long it takes (ticks)
+export const PRAYER = {at: 'shrine', ticks: 60};
+
 export const HEAL = {
   seekBelow: 0.75,  // a colonist this hurt (share of health) goes to the healer's hut…
   until: 0.97,      // …and stays until healed this far
@@ -43,10 +46,9 @@ export const HERD = {
   hungryDays: 3,            // days in a row with less than starveBelow of its food before it breaks out
   starveBelow: 0.55,
   reach: 75,                // how far from the camp the herder goes for a wild one
-  slaughterBelow: 1.5,      // food per colonist below which a goat is slaughtered…
-  keepGoats: 2,             // …as long as this many are left
+  slaughterBelow: 1.5,      // food per colonist below which the youngest of a breeding kind is slaughtered
   meatBelow: 4,            // regular slaughter of grown surplus livestock below this food per colonist
-  breeders: 2,             // keep this many grown, breeding animals of each kind
+  breeders: 2,             // breeders kept of a kind whose tame block names no `keep` (data/species.js)
 };
 
 export const THREAT = {
@@ -80,6 +82,7 @@ export const PLAN = {
   skill: 0.15,        // × skill / 10
   best: 0.15,         // the colony's best at the job's skill
   habit: 0.12,        // the same job as yesterday
+  buildCrew: {most: 4, perSite: 2},   // builders at once: two to an open site, at most `most` (settlement/plan.js crewCap)
 };
 
 // ── furnace fuel. A recipe asks for `fuel` units of heat at a `heat` level (data/recipes.js); each fuel
@@ -149,3 +152,19 @@ export const PRECIOUS = {
   fameVein: 6,          // added to the raid threat by the rumour of gold…
   fameMithril: 4,       // …and of mithril
 };
+
+// the evening council at the campfire (settlement/council.js): the hours it sits (from, to), the share of the colony that
+// must come before it starts (`quorum`), unless it is this many hours (`late`) before the end; the pull a goal gives to work
+// that brings what it lacks (`goalPull`), a colonist's fondness for building (`buildPref`) and the random sway of a vote
+// (`noise`) in the arguments; the share of the day's memories kept after it (`memory`)
+export const COUNCIL = {from: 19, to: 21.5, quorum: 0.7, late: 0.3, goalPull: 0.3, buildPref: 0.2, noise: 0.25, memory: 0.4};
+
+// the stores (settlement/stock.js, settlement/buildings.js): portions a pot holds (`potHolds`), what of the open food a
+// granary keeps out of reach (`granary`), how much of the money a forged chest keeps from raiders (`chest`), the spoiling
+// of food a tick (`spoil`) and how much slower it spoils in pots (`sealed`); the wood never spent on building — `fuelCold`
+// when the night ahead (`fuelHour` o'clock) is colder than `coldBelow`°, else `fuelMild`
+export const STORE = {potHolds: 6, granary: 0.5, chest: 0.4, spoil: 0.00015, sealed: 0.6, fuelHour: 3, coldBelow: 6, fuelCold: 10, fuelMild: 4};
+
+// the camp (settlement/query.js): how many people it takes in before any building adds room (`popBase`); the raid alarm is
+// raised when a raider would reach the camp within `alarmHours` hours at `alarmPace` of its own pace (woods and detours)
+export const CAMP_LIFE = {popBase: 8, alarmHours: 12, alarmPace: 0.8};

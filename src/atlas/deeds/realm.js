@@ -1,9 +1,10 @@
 // What the deeds of a realm share (the role: atlas/realms.js realmRole; the relations' body: atlas/diplomacy.js):
 // the realm's relations, its live towns, who is at war with whom.
+import {relKey} from '../common.js';
 import {relation} from '../diplomacy.js';
 import {realmTowns} from '../realms.js';
 
-const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
+const key = relKey;
 // the realm's relations with every realm it has met: [{kk, r, other}]
 export function relationsOf(a, realm) {
   const out = [];

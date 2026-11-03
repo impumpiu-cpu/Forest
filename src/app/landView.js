@@ -23,11 +23,11 @@ import {Camera} from '../render/camera.js';
 import {seedNumber} from '../core/rng.js';
 import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
+import {STAGE_ERAS} from '../data/labels.js';
 
 const STORE = 'forest.land';
 const LAYERS = ATLAS_OPTS.layer.filter(([id]) => !['fauna', 'wild', 'rot', 'peoples', 'realms'].includes(id));
 const TOOLS = [['look', 'Смотреть'], ['plate', 'Плиты'], ['raise', 'Поднять'], ['lower', 'Опустить']];
-const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 // the compass of the plate card: screen directions (y grows down the map)
 const DIRS = [['↖', -1, -1], ['↑', 0, -1], ['↗', 1, -1], ['←', -1, 0], ['·', 0, 0], ['→', 1, 0], ['↙', -1, 1], ['↓', 0, 1], ['↘', 1, 1]];
 const WORDS = ['на восток', 'на юго-восток', 'на юг', 'на юго-запад', 'на запад', 'на северо-запад', 'на север', 'на северо-восток'];
@@ -108,7 +108,7 @@ export class LandView extends MapView {
     $('landMap').addEventListener('lostpointercapture', () => { if (this.painting != null) { this.painting = null; this.paintEnd(); } });
 
     this.buildLandLibrary();
-    this.wireCamera({map: 'landMap', readout: 'landReadout', zoomIn: 'landZoomIn', zoomOut: 'landZoomOut', zoomFit: 'landZoomFit', screen: 'land', legend: 'landLegend',
+    this.wireCamera({map: 'landMap', readout: 'landReadout', zoomIn: 'landZoomIn', zoomOut: 'landZoomOut', zoomFit: 'landZoomFit', skin: 'landSkin', screen: 'land', legend: 'landLegend',
       hint: 'Наведите на карту, чтобы увидеть клетку. «Плиты» — щелчок выбирает плиту; «Поднять», «Опустить» — ведите кистью (сдвиг карты — правой кнопкой).'});
   }
 
@@ -199,14 +199,15 @@ export class LandView extends MapView {
     $('landPlateReset').disabled = busy || !this.maker.shape.plates[p.id];
   }
 
-  cellAt(e) {
+  // the point under the cursor in cells, [x, y] (floats), or null off the map (MapView.cellAt is the cell's index)
+  cellXY(e) {
     const a = this.atlas, cv = $(this.ids.map), r = cv.getBoundingClientRect();
     const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
     return fx < 0 || fy < 0 || fx >= a.w || fy >= a.h ? null : [fx, fy];
   }
   clickAt(e) {
     const a = this.atlas; if (!a || !a.f.plate || !this.cam || this.tool !== 'plate') return;
-    const c = this.cellAt(e); if (!c) return;
+    const c = this.cellXY(e); if (!c) return;
     this.selectPlate(a.f.plate[Math.floor(c[1]) * a.w + Math.floor(c[0])]);
   }
   // ── the brush: the maker shows a stroke at once on the relief and works the chain out again when it ends
@@ -219,7 +220,7 @@ export class LandView extends MapView {
   }
   paintMove(e) {
     if (!this.stroking) return;
-    const c = this.cellAt(e); if (!c) return;
+    const c = this.cellXY(e); if (!c) return;
     const st = this.maker.stroke(c[0], c[1], this.radius, this.tool === 'raise'); if (!st) return;
     // only the dab's box is painted again
     const R = Math.ceil(st.r * 2.2);
@@ -256,7 +257,7 @@ export class LandView extends MapView {
   }
   hover(e) {
     super.hover(e);
-    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellAt(e) : null; if (!this.stroking) this.draw(); }
+    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellXY(e) : null; if (!this.stroking) this.draw(); }
   }
 
   renderSide() {
@@ -274,7 +275,7 @@ export class LandView extends MapView {
       (a.f.land ? `<dt>Суша</dt><dd>${Math.round(land / a.n * 100)}%</dd>` : '') +
       (a.lakes ? `<dt>Озёра</dt><dd>${a.lakes.length}</dd>` : '') +
       `<dt>Правки</dt><dd>${n ? `${n} ${plural(n, 'правка', 'правки', 'правок')}` : 'нет'}</dd>`;
-    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${esc(ERA[c.era] || c.era)}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${esc(STAGE_ERAS[c.era] || c.era)}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
   }
 
   // ── the library: only lands here (the worlds are the polygon's and the campaign's)

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- полурослик: круглое лицо, кудри, румянец, чуть острые уши -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="skin" d="M27 56L17 44L24 66Z"/>
+    <path fill="skin" d="M73 56L83 44L76 66Z"/>
+    <circle cx="50" cy="61" r="28" fill="skin"/>
+    <path fill="hair" d="M21 58C14 50 18 40 24 38C22 28 32 21 39 24C42 16 56 15 60 22C67 18 77 25 75 33C83 36 85 48 79 58C74 50 70 46 64 45C58 47 52 44 47 41C41 45 34 46 28 46C25 50 23 54 21 58Z"/>
+  </g>
+  <g class="figure"><circle cx="40" cy="62" r="3.6" fill="ink"/><circle cx="60" cy="62" r="3.6" fill="ink"/></g>
+  <g class="detail">
+    <circle cx="33" cy="72" r="5" fill="#e8846a" opacity="0.6"/><circle cx="67" cy="72" r="5" fill="#e8846a" opacity="0.6"/>
+    <path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M47 66Q50 70 53 66M42 79Q50 86 58 79"/>
+  </g>
+</svg>

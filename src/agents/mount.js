@@ -8,7 +8,7 @@ import {createAgent} from './agent.js';
 import {refreshBody} from './special.js';
 import {joinSquad} from './squad.js';
 import {log} from '../core/log.js';
-import {esc} from '../core/util.js';
+import {esc, cap} from '../core/util.js';
 
 export const mounted = a => !!a?.mount && a.mount.hp > 0;
 
@@ -53,6 +53,6 @@ export function loose(w, a) {
   b.hp = Math.max(RIDE.least, m.hp); b.band = a.band; b.warBeast = true;
   if (a.faction === 'colony') { b.brain = 'summoned'; b.summoned = {by: a.id, last: w.tick}; }
   else { b.brain = 'raider'; joinSquad(w, a, b); }
-  b.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase());
+  b.name = cap(SPECIES.get(m.species).label);
   return b;
 }

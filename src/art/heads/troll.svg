@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тролль: вытянутое лицо, длинный висячий нос, клочья волос, уши вниз -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="skin" d="M26 50L4 66L26 62Z"/>
+    <path fill="skin" d="M74 50L96 66L74 62Z"/>
+    <path fill="skin" d="M50 10C68 10 76 24 76 44C76 66 72 92 50 98C28 92 24 66 24 44C24 24 32 10 50 10Z"/>
+    <path fill="hair" d="M28 30C24 14 36 4 44 10C46 2 58 2 60 10C68 4 80 14 72 30C66 22 58 20 50 22C42 20 34 22 28 30Z"/>
+  </g>
+  <g class="figure" fill="#ffd36a" stroke="ink" stroke-width="2.5"><circle cx="40" cy="42" r="4.5"/><circle cx="60" cy="42" r="4.5"/></g>
+  <path fill="skin" stroke="ink" stroke-width="4.5" stroke-linejoin="round" d="M45 44C42 56 38 68 44 76C48 80 56 80 58 74C60 66 56 56 55 44Z"/>
+  <g class="detail" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round">
+    <path d="M32 34L46 37M68 34L54 37"/>
+    <path d="M34 86Q50 80 66 86"/>
+  </g>
+  <g fill="light" stroke="ink" stroke-width="3" stroke-linejoin="round">
+    <path d="M36 84L39 94L42 83Z"/>
+    <path d="M58 83L61 94L64 84Z"/>
+  </g>
+</svg>

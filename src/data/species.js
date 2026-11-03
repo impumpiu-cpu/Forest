@@ -9,6 +9,7 @@
 //   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
 //            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
+//   g:       the grammatical gender of `label` when it is not masculine ('f', 'n'): «коза — своя» (ui/cards.js)
 //   kind:    what it is to the world (KINDS below): the world map lets each kind in through its own door
 //            (docs/WORLD.md); data/species.js and data/bestiary.js set it on
 //            the beasts, monsters and spirits, data/races.js on the races, data/monsters.js on the undead
@@ -30,6 +31,8 @@ export const SPECIES = new Registry('species');
 
 // a hunter of the pack: has the `predator` block (data/behaviour.js WAYS.predator reads it)
 export const isPredator = sp => !!sp.predator;
+// silver bites it (`weakTo`, the tag «Боится серебра»)
+export const fearsSilver = sp => !!sp?.weakTo?.includes('silver');
 // the brain a creature of this species is born with: its own (a race names none: the faction's — colonist, raider, caravan),
 // or the tabled one for every row that lists its behaviours (agents/brains/tabled.js, docs/BEHAVIOUR.md)
 export const brainOf = (sp, fa) => sp.brain || (sp.behaviours ? 'tabled' : fa?.brain);
@@ -61,7 +64,9 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', sylvan: true, kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  // remembers: the key of a colonist's memory of a fight with one of these (a.mem; the council's motives read it,
+  // data/buildings.js); a fight with anyone else is remembered as 'raid' (agents/combat.js)
+  {id: 'wolf', remembers: 'wolf', sylvan: true, kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
@@ -129,7 +134,7 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
+  {id: 'mule', remembers: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
     habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     yields: {meat: 9, hide: 3, bone: 4},
@@ -153,7 +158,7 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, legend: 'коза',
+  {id: 'goat', kind: 'beast', label: 'коза', g: 'f', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, legend: 'коза',
     habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},
@@ -168,10 +173,12 @@ SPECIES.registerAll([
     //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
     //   milk:   portions a day while fed (little in winter);  wool: fleece sheared once it has grown back
     //   breed:  chance a day for a kid while there are two of them, room in the pen and it is not winter
+    //   keep:   breeders the pen keeps whatever happens (the winter cull, the famine, the slaughter of the surplus);
+    //   young, youngAcc: the young one, as the pen's line and the log call it
     //   kicks:  a failed try ends with a kick;  max: no more of them are tamed (the colony has no use for more)
 //   effects: work it does for the colony (settlement/mods.js),
     //   counted for up to `stack` animals;  names: what the herders call them
-    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
+    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20, keep: 2, young: 'козлёнок', youngAcc: 'козлёнка',
       names: petNames('goat'),
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ].map(sp => bodyFor({mind: 'beast', relativeStats: true, ...sp})));

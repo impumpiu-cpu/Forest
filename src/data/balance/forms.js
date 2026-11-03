@@ -62,7 +62,7 @@ export const FORMS = {
     parts: {material: 2, wood: 1}, work: 600, ids: {bone: 'hatchet'}, names: {bone: ['Метательный топорик с костяным клином', 'топорик']},
     name: m => [`${cap(m.adj.m)} метательный топорик`, `${m.short} топорик`], glyph: 'axe'},
   // a torch: light in the dark (agents/combat.js darkness), a blow that sets alight (quality `burn`), and thrown —
-  // no harm to a body, but the wall it lands on catches (agents/tasks.js torch); the bands' fire-raisers carry it
+  // no harm to a body, but the wall it lands on catches (agents/tasks/raid.js torch); the bands' fire-raisers carry it
   torch:    {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', melee: {dmg: 0.5, cd: 12},
     ranged: {dmg: 0, range: 5, cd: 20, ammo: null, type: 'blunt'}, qualities: {thrown: 1, burn: 0.3}, dur: 20, quality: false,
     parts: {material: 1, fiber: 1}, work: 120, ids: {wood: 'torch'}, names: {wood: ['Факел', 'факел']}, name: m => ['Факел', 'факел'], glyph: 'club'},

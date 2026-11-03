@@ -11,6 +11,7 @@
 // a.parties = [{id, kind, x, y, px, py, i, goal, path, k, state, days, stay, home, speed, might, men,
 //               people, owner (lair id or realm id), target (town id), label, color}]
 import {PARTIES} from '../data/parties.js';
+import {stranded} from './persons.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 import {findPath, moveCost} from './roads.js';
 import {scaleOf} from './tectonics.js';
@@ -65,11 +66,10 @@ function walk(a, p) {
   return false;
 }
 
-export const partyGone = (a, p) => { p.state = 'gone'; };
 // the party turns home; it disbands where it stands if it cannot find the way
 export function goHome(a, p) {
   p.state = 'home';
-  if (!aim(a, p, p.home)) p.state = 'gone';
+  if (!aim(a, p, p.home)) { p.state = 'gone'; stranded(a, p); }
 }
 
 // a season of all parties: SEASON_DAYS days each; the lines go to `say`; `onDay(day)` runs after every
@@ -92,7 +92,7 @@ export function stepParties(a, rnd, say, onDay = null) {
           if (p.state === 'home') { B.home?.(a, p, rnd, say); p.state = 'gone'; }
           else { tally.arrived++; B.arrive(a, p, rnd, say); }
         } else if (p.days > PARTIES.giveUp) {
-          if (p.state === 'home') p.state = 'gone'; else { tally.lost++; B.lost?.(a, p, rnd, say); goHome(a, p); }
+          if (p.state === 'home') { p.state = 'gone'; stranded(a, p); } else { tally.lost++; B.lost?.(a, p, rnd, say); goHome(a, p); }
         }
       } else if (p.state === 'stay') { p.stay++; B.stay?.(a, p, rnd, say); }
     }

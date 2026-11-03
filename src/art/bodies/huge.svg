@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «huge» — громадное: великан, огр, тролль. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="28" r="25"/>
+  <circle data-anchor="hand" cx="82.3" cy="73.5" r="5"/>
+  <circle data-anchor="off" cx="17.7" cy="73.5" r="5"/>
+  <circle data-anchor="back" cx="35.1" cy="56" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M17 60Q17 50 27 50L73 50Q83 50 83 60L77.1 92Q77.1 97 72.1 97L27.9 97Q22.9 97 22.9 92Z"/>
+  <path class="figure" fill="shade" d="M41.8 50L50 59L58.2 50Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M14 62Q14 49 25 49L75 49Q86 49 86 62L81.1 94L66.5 98L56.6 94L43.4 98L33.5 94L18.9 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M19 51Q50 66 81 51Q50 56 19 51Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M20 56L45 53L50 66L55 53L80 56L75.1 89L24.9 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M21 64Q21 54 31 54L69 54Q79 54 79 64L73.8 86Q73.8 91 68.8 91L31.2 91Q26.2 91 26.2 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M25.1 62H74.9M26.3 70H73.7M27.4 78H72.6M28.5 86H71.5"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M25.5 62Q29 66.5 32.5 62M32.5 62Q36 66.5 39.5 62M39.5 62Q43 66.5 46.5 62M46.5 62Q50 66.5 53.5 62M53.5 62Q57 66.5 60.5 62M60.5 62Q64 66.5 67.5 62M67.5 62Q71 66.5 74.5 62M32.5 69Q36 73.5 39.5 69M39.5 69Q43 73.5 46.5 69M46.5 69Q50 73.5 53.5 69M53.5 69Q57 73.5 60.5 69M60.5 69Q64 73.5 67.5 69M32.5 76Q36 80.5 39.5 76M39.5 76Q43 80.5 46.5 76M46.5 76Q50 80.5 53.5 76M53.5 76Q57 80.5 60.5 76M60.5 76Q64 80.5 67.5 76M32.5 83Q36 87.5 39.5 83M39.5 83Q43 87.5 46.5 83M46.5 83Q50 87.5 53.5 83M53.5 83Q57 87.5 60.5 83M60.5 83Q64 87.5 67.5 83"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M30 62h0.1M35 62h0.1M40 62h0.1M45 62h0.1M50 62h0.1M55 62h0.1M60 62h0.1M65 62h0.1M70 62h0.1M30 68h0.1M35 68h0.1M40 68h0.1M45 68h0.1M50 68h0.1M55 68h0.1M60 68h0.1M65 68h0.1M70 68h0.1M30 74h0.1M35 74h0.1M40 74h0.1M45 74h0.1M50 74h0.1M55 74h0.1M60 74h0.1M65 74h0.1M70 74h0.1M30 80h0.1M35 80h0.1M40 80h0.1M45 80h0.1M50 80h0.1M55 80h0.1M60 80h0.1M65 80h0.1M70 80h0.1M30 86h0.1M35 86h0.1M40 86h0.1M45 86h0.1M50 86h0.1M55 86h0.1M60 86h0.1M65 86h0.1M70 86h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M25.1 62L74.9 68M26.4 71L73.6 77M27.7 80L72.3 86"/>
+    <rect class="figure" x="44.7" y="54" width="10.6" height="37" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M22.3 75.8H77.7"/>
+  <rect class="detail" x="46" y="72.3" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="20" cy="55" rx="9.8" ry="7.9"/>
+    <ellipse cx="80" cy="55" rx="9.8" ry="7.9"/>
+  </g>
+</svg>

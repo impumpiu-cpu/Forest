@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forest · витрина картинок</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{padding:16px 20px 60px}
+  .g-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:12px}
+  .g-head h1{font-size:20px;margin:0 12px 0 0}
+  .g-sec{margin:18px 0 6px;font-size:16px}
+  .g-note{color:var(--muted,#a8a28e);font-size:13px;max-width:900px}
+  .g-scene{position:relative;height:560px;border:1px solid #333;border-radius:8px;overflow:hidden}
+  .g-scene canvas{width:100%;height:100%;display:block}
+  .g-sheet{border-radius:8px;display:block;max-width:100%}
+  .g-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+  <div class="g-head">
+    <h1>Витрина картинок</h1>
+    <div class="seg" id="gSkin"></div>
+    <div class="seg" id="gBg"></div>
+    <span class="g-note">G — картинки/схема. Картинки — <code>src/art/**/*.svg</code>, правите файл и обновляете страницу (docs/ART.md).</span>
+  </div>
+
+  <h2 class="g-sec">Сцена: настоящая локальная карта</h2>
+  <div class="g-row" style="margin-bottom:6px">
+    <button type="button" id="gPlay">Пуск</button>
+    <button type="button" id="gDay">+ день</button>
+    <button type="button" id="gZin">+</button><button type="button" id="gZout">−</button>
+    <button type="button" id="gCrowd">Толпа всех рас</button>
+    <button type="button" id="gBuild">Все постройки</button>
+    <span class="g-note" id="gInfo"></span>
+  </div>
+  <div class="g-scene"><canvas id="gMap"></canvas></div>
+
+  <div id="gSheets"></div>
+  <script type="module" src="src/app/gallery.js"></script>
+</body>
+</html>

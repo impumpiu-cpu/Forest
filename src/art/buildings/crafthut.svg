@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- хижина ремесленника: дом с вывеской-молотом -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<rect x="16" y="46" width="68" height="42" fill="wood" stroke="ink" stroke-width="4" stroke-linejoin="round"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke-width="1.8" d="M18 52H82M18 58H82M18 64H82M18 70H82M18 76H82M18 82H82"/><path fill="roof" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 48L50.0 16L88 48Z"/><rect x="44" y="66" width="12" height="22" fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect class="figure" x="22" y="56" width="8" height="8" fill="#f4d67a" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2.5" d="M70 52V58"/><rect x="62" y="58" width="18" height="14" fill="plank" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path fill="iron" stroke="ink" stroke-width="2" d="M66 61H76V65H66Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="2" d="M71 65V70"/>
+</svg>

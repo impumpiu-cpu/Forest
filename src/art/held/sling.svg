@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- праща: рукоять — точка grip, в неё ставится кисть -->
+  <circle data-anchor="grip" cx="50" cy="62" r="5"/>
+  <path fill="none" stroke="ink" stroke-width="6" stroke-linecap="round" d="M50 64Q58 44 62 26"/><path fill="none" stroke="leather" stroke-width="3" stroke-linecap="round" d="M50 64Q58 44 62 26"/>
+  <circle cx="63" cy="22" r="6" fill="stone" stroke="ink" stroke-width="3"/>
+</svg>

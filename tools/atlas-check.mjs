@@ -150,7 +150,16 @@ function townsCheck(a, tag) {
   if (razed !== (a.ruins || []).length) relBad ||= `сожжено ${razed}, пепелищ ${(a.ruins || []).length}`;
   const battles = Object.values(a.rel || {}).reduce((x, r) => x + (r.war?.battles || 0), 0) + a.chronicle.filter(c => /Битва под|сожгли/.test(c.text)).length;
   if (battles && !(a.f.barrows && a.f.barrows.some(v => v > 0))) relBad ||= 'битвы были, курганов нет';
-  for (const t of a.towns) for (const v of Object.values(t.folk || {})) if (v > DIPLOMACY.mingleMax + 1e-9) relBad ||= `${t.name}: чужих больше предела`;
+  // the strangers of a town — the races of other peoples among its people (atlas/population.js) — come by trade and moving up to
+  // DIPLOMACY.mingleMax for each coming (tools/polity-check.mjs «чужаки»: the operation never passes the cap and makes nobody);
+  // once in, they breed by their own race's fertility and the shares drift (the orcs out-breed the humans of a town they
+  // settled in) — no cap on the standing follows from the model, so none is asserted here: only that the count stays a count
+  // (finite, no band below nought, the bands summing to the town)
+  for (const t of a.towns) if (t.alive && t.pop > 0 && t.heads) {
+    let sum = 0;
+    for (const [race, b] of Object.entries(t.heads)) { for (const x of b) { if (!Number.isFinite(x) || x < -1e-6) relBad ||= `${t.name}: состав ${race} ${JSON.stringify(b)}`; sum += x; } }
+    if (Math.abs(sum - t.pop) > 0.5) relBad ||= `${t.name}: состав ${Math.round(sum)} при жителях ${Math.round(t.pop)}`;
+  }
   // realms: every town holds to one of its people; a seat is its realm's; one throne hall a realm
   for (const t of a.towns) if (t.alive) { const r = a.realms.find(x => x.id === t.realm); if (!r) relBad ||= `${t.name}: без державы`; else if (r.people !== t.people) relBad ||= `${t.name}: держава чужого народа`; }
   for (const r of a.realms) { const thrones = a.towns.filter(t => t.alive && t.realm === r.id && t.built.includes('throne')); if (thrones.length > 1) relBad ||= `${r.name}: тронных залов ${thrones.length}`; if (thrones.length && !thrones[0].capital) relBad ||= `${r.name}: тронный зал не в столице`; }

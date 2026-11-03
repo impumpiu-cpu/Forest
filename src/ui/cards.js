@@ -6,25 +6,27 @@ import {POTION} from '../data/potions.js';
 import {captiveText} from '../settlement/captives.js';
 import {masterTitle} from '../settlement/masters.js';
 import {formerText} from '../settlement/freedom.js';
-import {RESOURCES} from '../data/resources.js';
+import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
 import {lotFertility} from '../settlement/buildings.js';
+import {soilYield} from '../settlement/farming.js';
 import {OUTCOMES} from '../agents/lifecycle.js';
 import {goodsUnits} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
 import {oreOf} from '../world/ores.js';
-import {furnacePick} from '../settlement/stock.js';
+import {furnacePick, campFuel} from '../settlement/stock.js';
+import {peekKinds} from '../settlement/kinds.js';
 import {fuelReserve} from '../settlement/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, MINDS} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, dayOf} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
-import {colonists, has} from '../settlement/query.js';
+import {colonists, has, foodTotal} from '../settlement/query.js';
 import {taskLabel} from '../agents/tasks.js';
 import {cellOf} from '../world/grid.js';
 import {BY_CODE} from '../data/terrain.js';
@@ -45,7 +47,7 @@ import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
 import {squadText, fighterLabel} from '../agents/squad.js';
 import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
-import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
+import {raceLabel, innateOf, limits} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -55,14 +57,17 @@ import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd
 import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 import {WOODS, STONES} from '../data/kinds.js';
 import {STANDINGS} from '../agents/standing.js';
+import {TRADE} from '../data/trade.js';
 
+// the fuels a furnace of this heat takes for `units` of work (data/resources.js furnace: tier, per), as words: «уголь 2 или древесина 6»
+const fuelWords = (units, heat) => RESOURCES.filter(x => x.furnace && x.furnace.tier >= heat).sort((x, y) => y.furnace.tier - x.furnace.tier).map(x => `${x.short} ${+(units * x.furnace.per).toFixed(1)}`).join(' или ');
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
 
 // SPECIAL as seven small cells; the tooltip gives the race's limits
 function specialHtml(a) {
   if (!a.special) return '';
-  const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
+  const sp = SPECIES.get(a.species), lim = limits(sp);
   return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
 }
 
@@ -112,8 +117,8 @@ function lockedHtml(a) {
   const all = [
     ...RECIPES.all().map(r => [(r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short) + (r.makes.silver ? ' посеребр.' : ''), recipeAccess(a, r)]),
     ...JOBS.all().filter(j => j.tier > 1).map(j => [j.label, jobAccess(a, j)]),
-    ...JOBS.all().filter(j => j.tendTier).map(j => ['лечить в хижине', actionAccess(a, j.skill, j.tendTier)]),
-    ...JOBS.all().filter(j => j.riskyTier).map(j => ['охотиться на крупного зверя', actionAccess(a, j.skill, j.riskyTier)]),
+    ...JOBS.all().filter(j => j.tendTier).map(j => [j.tendLabel || j.label, actionAccess(a, j.skill, j.tendTier)]),
+    ...JOBS.all().filter(j => j.riskyTier).map(j => [j.riskyLabel || j.label, actionAccess(a, j.skill, j.riskyTier)]),
     ...SPECIES.filter(sp => sp.tame?.tier > 1).map(sp => ['приручать: ' + sp.label, actionAccess(a, 'husbandry', sp.tame.tier)]),
   ].filter(([, r]) => !r.ok).map(([what, r]) => [what, r.reasons[0]]);
   if (!all.length) return '<p class="muted pc-small">Доступно всё, что есть в поселении.</p>';
@@ -123,7 +128,7 @@ function lockedHtml(a) {
   return `<ul class="pc-list">${rows.join('')}</ul>${all.length > rows.length ? `<p class="muted pc-small">и ещё ${all.length - rows.length}</p>` : ''}`;
 }
 
-const raceOf = a => raceLabel(SPECIES.get(a.species), a);
+const raceOf = a => raceLabel(SPECIES.get(a.species));
 
 
 
@@ -135,7 +140,7 @@ export function where(w, a) {
   return `в ${d} ${plural(d, 'клетке', 'клетках', 'клетках')} от лагеря`;
 }
 
-export function whyHtml(w, a) {
+function whyHtml(w, a) {
   if (a.downed) return '';   // senseless: no choice to explain (agents/wounds.js)
   const y = a.why, rows = [];
   const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
@@ -152,7 +157,7 @@ export function whyHtml(w, a) {
 export function creatureHtml(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
   const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%${a.potions ? ` · зелий лечения ${a.potions}` : ''}${a.belt?.length ? ` · в поясе: ${a.belt.map(r => RESOURCES.get(r).label).join(', ')}` : ''}</dd>`];
-  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{mindless: 'безмозглый', beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${MINDS[sp.mind] || sp.mind}</dd>`);
   const herd = herdOf(w, a);
   if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
   const h = huntOf(w, a);
@@ -161,7 +166,7 @@ export function creatureHtml(w, a) {
   const sq = squadText(w, a);
   if (sq) rows.push(`<dt>Отряд</dt><dd>${esc(sq)}</dd>`);
   if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
-  const inn = innateOf(sp, a);
+  const inn = innateOf(sp);
   if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
   if (a.brain === 'trader' && w.caravan?.traderId === a.id) {
     const c = w.caravan;
@@ -169,7 +174,7 @@ export function creatureHtml(w, a) {
   }
   if (a.tame) rows.push(`<dt>Хозяйство</dt><dd>${beastText(w, a)}</dd>`);
   else if (isTameable(a)) rows.push(`<dt>Можно приручить</dt><dd>скотнику с приманкой: ${Object.entries(sp.tame.bait).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(', ')}${has(w, 'pen') ? '' : '; сначала нужен загон'}</dd>`);
-  if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из 20 (два ящика по 10)</dd>`);
+  if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из ${TRADE.crates * TRADE.crate} (ящиков ${TRADE.crates} по ${TRADE.crate})</dd>`);
   if (sp.mule && a.owner == null) rows.push(`<dt>Нрав</dt><dd>${a.task?.mule ? 'в ярости' : 'спокоен'}; охотиться опасно</dd>`);
   if (sp.predator) {
     const b = boldness(a, sp.predator);
@@ -179,7 +184,7 @@ export function creatureHtml(w, a) {
   if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
   if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
   rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-  const who = a.brain === 'trader' || a.brain === 'guard' ? STANDINGS[a.brain].label : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
+  const who = a.brain === 'trader' || a.brain === 'guard' ? STANDINGS[a.brain].label : a.tame ? `${sp.label}, ${{f: 'своя', n: 'своё'}[sp.g] || 'свой'}` : raceOf(a);
   const whoFull = fighterLabel(w, a, who);   // in a band: «гоблин-стрелок-грабитель»
   const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${esc(whoFull)}` : whoFull[0].toUpperCase() + esc(whoFull.slice(1));
   return `<div class="pc-head"><h3>${title}</h3></div><dl class="kv">${rows.join('')}</dl>${whyHtml(w, a)}`;   // the beast's choice too (agents/brains/tabled.js a.why)
@@ -194,7 +199,7 @@ export function personHtml(w, a) {
     `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>` +
     (a.potions ? `<div class="pc-bar"><span>зелья лечения</span>${bar(a.potions / POTION.slot, '#d8506a')}<b>${a.potions}</b></div>` : '') +
     (a.belt?.length ? `<div class="pc-bar"><span>в поясе</span><b>${a.belt.map(r => esc(RESOURCES.get(r).label)).join(', ')}</b></div>` : '');
-  const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
+  const inn = innateOf(sp).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
   const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
   const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
   const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}"${Math.abs(history(a, b)) >= 0.3 ? ` title="личный опыт: ${history(a, b) > 0 ? '+' : ''}${history(a, b).toFixed(1)}"` : ''}>${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}${history(a, b) >= 0.8 ? ' · многое вместе' : history(a, b) <= -0.8 ? ' · старые обиды' : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';
@@ -253,7 +258,7 @@ export function buildingHtml(w, b) {
   let extra = '';
   if (d.soil) {
     const f = lotFertility(w, b.x, b.y, b.w || 2, b.h || 2);
-    rows.push(`<dt>Почва</dt><dd>${Math.round(f * 100)}% · ${soilWord(f)} (урожай ×${(0.4 + 1.2 * f).toFixed(2)})</dd>`);
+    rows.push(`<dt>Почва</dt><dd>${Math.round(f * 100)}% · ${soilWord(f)} (урожай ×${soilYield({grid: {fert: [f]}}, 0).toFixed(2)})</dd>`);
   }
   if (b.plots && b.key === 'field') {
     const by = {}; let empty = 0, ripe = 0;
@@ -269,7 +274,7 @@ export function buildingHtml(w, b) {
     const by = {}; for (const id of b.furniture || []) by[id] = (by[id] || 0) + 1;
     const items = Object.entries(by).map(([id, n]) => FURNITURE.get(id).label + (n > 1 ? ' ×' + n : ''));
     const st = statusOf(b);
-    const what = b.key === 'house' ? 'сон здесь лучше для настроения' : b.key === 'shrine' ? 'молитва утешает сильнее' : d.station || b.key === 'healerhut' ? `работа здесь быстрее на ${Math.round(st * 100)}%` : 'поселение выглядит богаче';
+    const what = d.furnishText || (d.station ? `работа здесь быстрее на ${Math.round(st * 100)}%` : 'поселение выглядит богаче');
     rows.push(`<dt>Убранство</dt><dd>${items.length ? items.join(', ') : 'голые стены'} (${(b.furniture || []).length}/${FURNISH_MAX})${st ? ` · ${what}` : ''}</dd>`);
   }
   if (d.pen && b.done) {
@@ -285,7 +290,7 @@ export function buildingHtml(w, b) {
     const recs = RECIPES.filter(r => r.at === d.id).map(r => {
       const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} ×${r.makes.n}`;
       const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
-        (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} угля` : `${r.fuel} угля или ${r.fuel * 3} дров`}</span>`; })() : '') +
+        (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : fuelWords(r.fuel, r.heat ?? 2)}</span>`; })() : '') +
         (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? '' : ' short'}">${RESOURCES.get(r.tool).short}</span>` : '');
       const want = r.want(ctx), need = recipeNeed(r);
       // the tier: who in the colony may take it (agents/skills.js); nobody — the order waits for a master
@@ -313,4 +318,24 @@ export function cellHtml(w, i) {
   for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>Могила</dt><dd>${esc(gr.name)} · умер${gr.f ? 'ла' : ''} в день ${dayOf(gr.died) + 1}${gr.rite ? ', похоронен' + (gr.f ? 'а' : '') + ' с обрядом' : ''}</dd>`);
   for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>Тело</dt><dd>${esc(c.name)}, ещё не похоронен${c.f ? 'а' : ''}</dd>`);
   return `<div class="pc-head"><h3>Клетка ${x}, ${y}</h3></div><dl class="kv">${rows.join('')}</dl>`;
+}
+
+// The stock by its groups (data/resources.js `group`, in RESOURCE_GROUPS order): the dock's «Склад» of a camp. `stock` is
+// {resource: amount} — the camp's w.stock, or the caravan's cargo between camps (no `w` then: no kinds of wood and stone,
+// no food total, no fire). `all`: the empty ones too, dimmed; else only what there is.
+export function stockHtml(stock, w = null, all = false) {
+  const amount = r => stock[r.id] || 0;
+  const groups = resourceGroups().map(name => {
+    const rs = RESOURCES.filter(r => (r.group || 'Прочее') === name && (all || amount(r) >= 0.05));
+    if (!rs.length) return '';
+    const rows = rs.map(r => {
+      const v = amount(r);
+      const of = w && (r.id === 'wood' || r.id === 'stone') && v >= 0.5 ? Object.entries(peekKinds(w, r.id)).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([id, n]) => `${(WOODS.has(id) ? WOODS : STONES).get(id).label} ${Math.floor(n)}`).join(', ') : '';
+      return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label + (of ? ': ' + of : ''))}"><span><i class="dot" style="background:${r.color || 'var(--muted)'}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`;
+    }).join('');
+    const extra = !w ? '' : name === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>`
+      : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
+    return `<div class="sgroup"><h3>${esc(name)}</h3>${rows}${extra}</div>`;
+  }).join('');
+  return groups || '<p class="muted">Склад пуст.</p>';
 }

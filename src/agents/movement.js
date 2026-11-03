@@ -1,6 +1,7 @@
 // Moving through the world: straight steps, walking down a flow field, escaping heat.
 import {SPECIES, fearHeat, fearsFire} from '../data/species.js';
 import {BY_CODE} from '../data/terrain.js';
+import {NAVMAPS} from '../data/navmaps.js';
 import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
@@ -9,6 +10,8 @@ import {SNOW} from '../world/weather.js';
 import {CONDITIONS} from '../data/conditions.js';
 import {THORNS} from '../data/buildings.js';
 import {agentInZone} from '../settlement/zone.js';
+import {mountSpeed} from './mount.js';
+import {MOVE} from '../data/behaviour.js';
 
 // one not of the colony inside the zone of a colony with a thorn hedge (data/buildings.js thornhedge, THORNS)
 export const thornedBy = (w, a) => !!w.mods?.add?.thorns && a.faction !== 'colony' && !a.tame && !a.captive && !!w.zone && agentInZone(w, a);
@@ -20,7 +23,7 @@ export function speedOf(w, a) {
   // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
   const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
   const thorns = thornedBy(w, a) ? THORNS.slow : 1;   // in the elves' thorn hedge
-  return (a.mount?.hp > 0 ? SPECIES.get(a.mount.species).speed : SPECIES.get(a.species).speed) * a.mods.speed   // (a rider at its mount's pace: agents/mount.js)
+  return (mountSpeed(a) ?? SPECIES.get(a.species).speed) * a.mods.speed   // (a rider at its mount's pace: agents/mount.js)
      * (a.gear?.speed || 1) * web * daze * d.speed * snow * thorns;
 }
 
@@ -47,11 +50,8 @@ export function sameLand(w, a, j) {
   return c[cellOf(w, a)] >= FAR || c[j] < FAR;
 }
 
-// where a flow field leads, in words (for the colonist's card)
-const FIELD_NAMES = {camp: 'к лагерю', trees: 'к лесу', berries: 'к ягодам', prey: 'по следу дичи', edge: 'к краю карты',
-  zone: 'в поселение', sites: 'к стройке', safe: 'прочь от огня', warm: 'к теплу', healer: 'к лекарю', shore: 'к берегу',
-  fire: 'к пожару', rockface: 'к скалам', ore: 'к руде', fieldwork: 'в поле'};
-const fieldName = id => FIELD_NAMES[id] || (id.startsWith('station:') ? 'к мастерской' : id.startsWith('plant') ? 'к зарослям' : 'по тропе');
+// where a flow field leads, in words (for the colonist's card): the map's own `label` (data/navmaps.js)
+const fieldName = id => (NAVMAPS.has(id) && NAVMAPS.get(id).label) || 'по тропе';
 
 // step toward the neighbour with the smallest distance; returns 'arrived' | 'moving' | 'stuck' | 'none'
 export function follow(w, a, mapId, mul = 1) {
@@ -72,7 +72,7 @@ export function follow(w, a, mapId, mul = 1) {
   return 'moving';
 }
 
-export const danger = (w, i) => tempAt(w, i) + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+export const danger = (w, i) => tempAt(w, i) + w.grid.fire[i] * MOVE.danger.fire + w.grid.smoke[i] * MOVE.danger.smoke;
 
 // does this animal run from the heat here: too hot underfoot, or flames close by (unless it fears no fire)
 export const shunsHeat = (w, a, sp, T, r) => T > fearHeat(sp) || (fearsFire(sp) && nearFire(w, a, r));
@@ -87,7 +87,7 @@ export function nearFire(w, a, r) {
 }
 
 // escape heat: the 'safe' flow field routes around fire; fall back to the coolest neighbour
-export function escapeHeat(w, a, mul = 1.35) {
+export function escapeHeat(w, a, mul = MOVE.escapePace) {
   if (follow(w, a, 'safe', mul) === 'moving') return;
   const i = cellOf(w, a), x = i % w.w, y = (i / w.w) | 0;
   let bj = i, bd = danger(w, i);
@@ -99,7 +99,7 @@ export function escapeHeat(w, a, mul = 1.35) {
 }
 
 // open space around a point: distance to the map border, capped
-const roomAt = (w, x, y) => Math.min(6, x, y, w.w - x, w.h - y);
+const roomAt = (w, x, y) => Math.min(MOVE.room, x, y, w.w - x, w.h - y);
 
 // run away from a set of threats. The direction is scored by the distance gained from the threats
 // plus open space (so a cornered animal slides along the edge instead of pressing into it),
@@ -110,15 +110,16 @@ export function bolt(w, a, threats, mul) {
     if (moveToward(w, a, a.x + dx, a.y + dy, mul) !== null) return;
   }
   let best = null, bs = -Infinity;
-  for (let k = 0; k < 16; k++) {
-    const ang = k / 16 * Math.PI * 2, dx = Math.cos(ang) * 1.5, dy = Math.sin(ang) * 1.5, tx = a.x + dx, ty = a.y + dy;
+  const B = MOVE.bolt;
+  for (let k = 0; k < B.dirs; k++) {
+    const ang = k / B.dirs * Math.PI * 2, dx = Math.cos(ang) * B.step, dy = Math.sin(ang) * B.step, tx = a.x + dx, ty = a.y + dy;
     if (!inMap(w, tx, ty) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
-    let s = 0; for (const t of threats) s += Math.min(8, Math.hypot(tx - t.x, ty - t.y));
-    s += roomAt(w, tx, ty) * 0.9 * Math.max(1, threats.length);
+    let s = 0; for (const t of threats) s += Math.min(B.far, Math.hypot(tx - t.x, ty - t.y));
+    s += roomAt(w, tx, ty) * B.room * Math.max(1, threats.length);
     if (s > bs) { bs = s; best = [dx, dy]; }
   }
   if (!best) return;
-  a.boltDir = {v: best, left: 6};
+  a.boltDir = {v: best, left: B.keep};
   moveToward(w, a, a.x + best[0], a.y + best[1], mul);
 }
 
@@ -130,9 +131,9 @@ export function approach(w, a, tx, ty, mul = 1) {
   // safety net: trying to reach one target tick after tick without moving means "unreachable".
   // The watch belongs to one run of attempts at one target: a pause (sleep, work) or a new target
   // starts it afresh, so an old mark cannot refuse a fresh, open way.
-  const g = a.approachGuard;
-  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || !(w.tick - g.last <= 3) || !(Math.hypot(g.tx - tx, g.ty - ty) <= 2)) a.approachGuard = {x: a.x, y: a.y, t: w.tick, last: w.tick, tx, ty};
-  else if (w.tick - g.t > 40) { a.approachGuard = null; a.path = null; return null; }
+  const g = a.approachGuard, G = MOVE.guard, PA = MOVE.path;
+  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > G.moved || !(w.tick - g.last <= G.gap) || !(Math.hypot(g.tx - tx, g.ty - ty) <= G.drift)) a.approachGuard = {x: a.x, y: a.y, t: w.tick, last: w.tick, tx, ty};
+  else if (w.tick - g.t > G.stuck) { a.approachGuard = null; a.path = null; return null; }
   else g.last = w.tick;
   const where = `к точке (${tx | 0}, ${ty | 0})`;
   a.route = {how: where + ' прямо', t: w.tick};
@@ -143,16 +144,16 @@ export function approach(w, a, tx, ty, mul = 1) {
   }
   let p = a.path;
   const goal = (ty | 0) * w.w + (tx | 0);
-  if (!p || Math.hypot((p.goal % w.w) - (tx | 0), ((p.goal / w.w) | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
+  if (!p || Math.hypot((p.goal % w.w) - (tx | 0), ((p.goal / w.w) | 0) - (ty | 0)) > PA.drift || w.tick - p.at > PA.every || p.k >= p.cells.length) {
     // the search budget grows with the distance: through woods (dearer than the estimate) a far target
     // needs more expansions, and a budget run out must not read as "no way there"
-    const far = Math.hypot(tx - a.x, ty - a.y), cells = findPath(w, a.x, a.y, tx, ty, Math.max(6000, Math.ceil(far * far * 6)));
+    const far = Math.hypot(tx - a.x, ty - a.y), cells = findPath(w, a.x, a.y, tx, ty, Math.max(PA.budget, Math.ceil(far * far * PA.perCell)));
     if (!cells) { a.path = null; a.route.how = where + ': пути нет'; if (w.behave) { w.behave.noPath++; const k = `${a.species}:${a.task?.id === 'job' ? a.task.job : a.task?.id}`; (w.behave.noPathBy ||= {})[k] = (w.behave.noPathBy[k] || 0) + 1; } return null; }
     p = a.path = {cells, k: 0, goal, at: w.tick};
   }
   a.route.how = `${where} в обход, ${p.cells.length - p.k} шагов`;
   // skip ahead to the furthest waypoint still in plain sight, then step toward it
-  while (p.k + 1 < p.cells.length && p.k < 6) {
+  while (p.k + 1 < p.cells.length && p.k < PA.skip) {
     const c = p.cells[p.k + 1];
     if (!clearLine(w, a.x, a.y, (c % w.w) + 0.5, ((c / w.w) | 0) + 0.5)) break;
     p.k++;
@@ -162,7 +163,7 @@ export function approach(w, a, tx, ty, mul = 1) {
   const cx = (c % w.w) + 0.5, cy = ((c / w.w) | 0) + 0.5;
   const r = moveToward(w, a, cx, cy, mul);
   if (r === null) moveToward(w, a, (a.x | 0) + 0.5, (a.y | 0) + 0.5, mul);   // step back to the middle of our cell and try again
-  else if (r === true || Math.hypot(cx - a.x, cy - a.y) < 0.3) p.k++;
+  else if (r === true || Math.hypot(cx - a.x, cy - a.y) < PA.reach) p.k++;
   return false;
 }
 
@@ -182,9 +183,9 @@ export function ascend(w, a, mapId, mul = 1) {
 // sprinting drains stamina; a tired animal slows down and gets it back while walking
 export function sprintMul(a, sprint, drain) {
   a.stamina = Math.max(0, a.stamina - drain);
-  return a.stamina > 0.15 ? sprint : 1;
+  return a.stamina > MOVE.stamina.tired ? sprint : 1;
 }
-export const recover = a => { a.stamina = Math.min(1, a.stamina + 0.002); };
+export const recover = a => { a.stamina = Math.min(1, a.stamina + MOVE.stamina.recover); };
 
 // soft push so agents don't stack on the same spot.
 // The pairs closer than 0.4 are found through a grid of 1 × 1 cells (a creature's own cell and the

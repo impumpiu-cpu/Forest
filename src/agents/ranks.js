@@ -13,16 +13,16 @@ import {refreshBody} from './special.js';
 import {maxHp} from './agent.js';
 import {recalcGear, allItems} from './equipment.js';
 import {strengthOf, sideStrength} from './strength.js';
+import {cap} from '../core/util.js';
 
-const cap = s => s[0].toUpperCase() + s.slice(1);
 // the officer's rank name in its band
-export const officerName = band => (band && RAID_BANDS.has(band) ? RAID_BANDS.get(band).ranks?.officer : null) || OFFICER_DEFAULT;
+const officerName = band => (band && RAID_BANDS.has(band) ? RAID_BANDS.get(band).ranks?.officer : null) || OFFICER_DEFAULT;
 
-// who may take a rank: a thinking fighter that carries things, not a beast, not the boss, not a necromancer or a vampire
-// (they lead their own)
+// who may take a rank: a thinking fighter that carries things, not a beast, not the boss, not one who leads its own band
+// (species `bandHead`: a necromancer, a vampire)
 const mayRank = a => {
   const sp = SPECIES.get(a.species);
-  return sp.inventory && !isMindless(sp) && !a.warBeast && !a.boss && a.species !== 'necromancer' && a.species !== 'vampire' && !a.gone;
+  return sp.inventory && !isMindless(sp) && !a.warBeast && !a.boss && !sp.bandHead && !a.gone;
 };
 
 // make a member an officer: the mark, a finer grade of everything it carries, full health, its rank's name
@@ -37,7 +37,8 @@ export function promote(a, band, leader) {
   // the band's leader keeps its title (Атаман, Орк-вожак); another officer is named by its rank
   if (!leader) {
     const rank = officerName(band), kind = SPECIES.get(a.species).label;
-    a.name = a.name === 'Налётчик' || a.cultist ? cap(rank) : `${cap(kind)}-${rank}`;
+    const pawn = band && RAID_BANDS.has(band) ? RAID_BANDS.get(band).pawn : null;   // a band whose members have no names of their own
+    a.name = (pawn && a.name === pawn) || a.cultist ? cap(rank) : `${cap(kind)}-${rank}`;
   }
 }
 
@@ -84,7 +85,7 @@ export function formLinks(w, group, where, leaderId = null) {
 export function formUndeadLinks(w, group, where) {
   const R = RANK_RULES;
   if (!R[where]) return [];
-  const dead = group.filter(a => isMindless(SPECIES.get(a.species)) && !a.gone && !a.boss && a.species !== 'necromancer');
+  const dead = group.filter(a => isMindless(SPECIES.get(a.species)) && !a.gone && !a.boss && SPECIES.get(a.species).bandHead !== 'dead');
   const bones = dead.filter(a => SPECIES.get(a.species).inventory);
   if (dead.length < R.least || !bones.length) return [];
   const nos = [...new Set(bones.map(a => a.linkNo).filter(x => x != null))];

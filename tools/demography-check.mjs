@@ -4,12 +4,15 @@
 // no births makes nobody. `node tools/demography-check.mjs`
 import {generateAtlas} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../src/data/peoples.js';
-import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove, lifeOf, deathRate, brawlRate, lifeYear, breedOf, foundAge} from '../src/atlas/demography.js';
+import {lifeOf} from '../src/atlas/population.js';
+import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove, deathRate, brawlRate, lifeYear, breedOf, foundAge} from '../src/atlas/demography.js';
 import {foundFrom, settleSpot, stepPeoples, bornOf} from '../src/atlas/peoples.js';
 import {returnArmy} from '../src/atlas/army.js';
 import {mulberry} from '../src/core/rng.js';
 import {setCell, resetAll} from '../src/data/schema/edits.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
+import {stepHistory} from '../src/atlas/history.js';
+import {groupSize} from '../src/atlas/population.js';
 
 const fail = [];
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   ${name}${info ? `: ${info}` : ''}`); if (!ok) fail.push(name); };
@@ -131,23 +134,41 @@ check('ни в одном живом городе нет меньше, чем д
   check('тролли и огры живут дольше орков и людей', lifeOf('troll') > 100 && lifeOf('ogre') > 100 && lifeOf('orc') < lifeOf('human'));
   check('здоровье продлевает жизнь к верхней границе и бережёт детей', lifeOf('human', 0) === 60 && lifeOf('human', 0.3) > 60 && lifeOf('human', 10) <= 80 && rate('human', 10, 1) < rate('human', 10, 0));
   check('основатели — треть срока своего вида', foundAge('human') === 20 && foundAge('goblin') < foundAge('orc') && foundAge('troll') > foundAge('orc'));
-  check('гоблины плодовитее орков, тролли и огры — реже', breedOf(null, {people: 'orcs', kin: {goblin: 1}}) > 1 && breedOf(null, {people: 'orcs', kin: {troll: 1}}) < 1 && breedOf(null, {people: 'humans'}) === 1);
+  const town = (people, race) => ({people, pop: 100, kin: {[race]: 1}});
+  check('гоблины плодовитее орков, тролли и огры — реже', breedOf(null, town('orcs', 'goblin')) > 1 && breedOf(null, town('orcs', 'troll')) < 1 && near(breedOf(null, town('humans', 'human')), 1));
   check('драки за место у костра — только у зеленокожих, от тесноты и преступности', (() => {
     const a = {realms: [{id: 'r1', kingdom: {ruin: {crime: 10}}}]}, fx = {housing: 0, health: 0};
     return brawlRate(a, {people: 'humans', realm: 'r1', pop: 120}, fx) === 0 && brawlRate(a, {people: 'orcs', realm: 'r1', pop: 120}, fx) > brawlRate({realms: []}, {people: 'orcs', realm: 'r1', pop: 60}, fx);
   })());
   {
-    const t = {people: 'humans', pop: 1000, age: 30};
-    const v = lifeYear(null, t, 50, 10, {health: 0, housing: 0});
-    check('год жизни: родились + выжили, умершие не возвращаются; возраст растёт на год и молодеет от рождений', Math.abs(t.pop - (1000 - v.dead - 10 + 50)) < 0.1 && t.age > 20 && t.age < 31, `жителей ${t.pop.toFixed(1)}, умерло ${v.dead}, возраст ${t.age}`);
+    const t = {people: 'humans', pop: 1000, age: 30}, young0 = () => (t.heads?.human?.[0] || 0);
+    const v = lifeYear(null, t, 50, 10, {health: 0, housing: 0}), y1 = young0();
+    check('год жизни: родились и пришли + выжили, умершие не возвращаются; дети рождаются детьми, пришедшие — по полосам', Math.abs(t.pop - (1000 - v.dead - v.brawl - v.want + v.born + v.came)) < 0.1 && v.born > 0 && v.came > 0 && y1 >= v.born && t.age > 20 && t.age < 50, `жителей ${t.pop.toFixed(1)}, родилось ${v.born}, пришло ${v.came}, умерло ${v.dead}, детей ${y1.toFixed(1)}, возраст ${t.age}`);
   }
   {
     const a = {realms: [{id: 'r1', kingdom: {ruin: {crime: 10}}}]};
-    const t = {people: 'orcs', realm: 'r1', pop: 1000, kin: {orc: 0.5, goblin: 0.3, troll: 0.2}, kinAge: {orc: 15, goblin: 8, troll: 50}};
+    const t = {people: 'orcs', realm: 'r1', pop: 1000, kin: {orc: 0.5, goblin: 0.3, troll: 0.2}, kinAge: {orc: 15, goblin: 8, troll: 50}};   // (an old save's town: its races and their mean ages become bands)
     const v = lifeYear(a, t, 0, 0, {health: 0, housing: 10});
     check('виды города расходятся: гоблины гибнут в драках и от старости быстрее, тролли держатся', t.kin.goblin < 0.3 && t.kin.goblin > 0.1 && t.kin.troll > 0.2 && v.brawl > 0, JSON.stringify(t.kin));
   }
   check('рабы зеленокожих живут 1–4 года', 2 / (WORLD_PEOPLES.get('orcs').slaveLife[0] + WORLD_PEOPLES.get('orcs').slaveLife[1]) >= 0.4);
+}
+
+// ── the composition (atlas/population.js): one place changes who lives in a town. A year of history with every town's
+// `pop` watched: nothing outside atlas/population.js writes it; the sums hold (pop = Σ heads, the shares sum to 1); the
+// year's losses are booked by cause, the war's among them
+{
+  const a = copy(), bad = [];
+  const outside = () => { const st = new Error().stack.split('\n').slice(2); return st.some(l => /atlas\/population\.js/.test(l)) ? null : (st.find(l => /\/src\//.test(l)) || '?').trim(); };
+  for (const t of a.towns) { let v = t.pop; Object.defineProperty(t, 'pop', {get: () => v, set: x => { if (x !== v) { const o = outside(); if (o) bad.push(o); } v = x; }, enumerable: true, configurable: true}); }
+  const live0 = live(a).length;
+  for (let k = 0; k < 4; k++) stepHistory(a);
+  for (const t of a.towns) { const d = Object.getOwnPropertyDescriptor(t, 'pop'); if (d?.get) { const v = d.get(); delete t.pop; t.pop = v; } }
+  check('жителей города меняет только atlas/population.js', bad.length === 0, bad.slice(0, 3).join(' | '));
+  const sums = live(a).every(t => t.heads && Math.abs(t.pop - groupSize(t.heads)) < 1e-6 && Math.abs(Object.values(t.kin).reduce((s, v) => s + v, 0) - 1) < 0.01);
+  check('жители — сумма состава по расам и полосам возраста; доли рас сходятся к 1', sums);
+  const booked = live(a).filter(t => t.vital && Object.keys(t.vital).length > 4).length;
+  check('потери года записаны по причинам (война, набег, осада, голод…)', booked > 0, `городов с причинами: ${booked} из ${live(a).length}; были ${live0}`);
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

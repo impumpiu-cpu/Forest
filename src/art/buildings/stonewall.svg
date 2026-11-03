@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- каменная стена: кладка с зубцами -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 92V32H16V22H30V32H42V22H58V32H70V22H84V32H96V92Z"/><path class="detail" fill="none" stroke="ink" stroke-linecap="round" stroke="shade" stroke-width="2.5" d="M4 48H96M4 66H96M4 84H96M24 32V48M54 32V48M84 32V48M14 48V66M40 48V66M70 48V66M26 66V84M56 66V84M84 66V84"/>
+</svg>

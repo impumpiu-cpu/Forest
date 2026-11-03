@@ -11,7 +11,8 @@ import {raidBand, felt, R as lairR} from '../src/atlas/lairs.js';
 import {cellNeighbours} from '../src/seam/cell.js';
 import {darkness, raceAt, stepTower, bend, cultPool, zoneOf, deadField} from '../src/atlas/necro.js';
 import {cultFoes} from '../src/campaign/land.js';
-import {RAID_BANDS, raiderStrength} from '../src/data/raids.js';
+import {RAID_BANDS} from '../src/data/raids.js';
+import {raiderStrength} from '../src/outside/bands.js';
 import {bandAllowed} from '../src/outside/scripted.js';
 import {revealLair} from '../src/atlas/lairs.js';
 import {faunaCell} from '../src/atlas/fauna.js';
@@ -19,7 +20,8 @@ import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
 import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
 import {DOES} from '../src/atlas/deeds/index.js';
-import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
+import {meet, stepDiplomacy, newWar} from '../src/atlas/diplomacy.js';
+import {breakAway} from '../src/atlas/realms.js';
 import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
@@ -37,6 +39,7 @@ import {scaleOf} from '../src/atlas/tectonics.js';
 import {mulberry} from '../src/core/rng.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
+import {DRAGON} from '../src/data/parties.js';
 import {townFx} from '../src/atlas/towns.js';
 const townFxDefence = t => townFx(t).defence > 0;
 
@@ -207,7 +210,7 @@ scene_('W10', 'логово без главаря: весной сильное �
   return (a.lairs.length === n0 + 1 && a.lairs.at(-1).kind === 'goblins' && a.lairs.at(-1).lord == null) || `выводок не осел: ${lines.join(' | ')}`;
 });
 
-scene_('W11', 'дракон: спит; проснувшись летом, летит на самый богатый город в досягаемости и жжёт его; потом спит снова', () => {
+scene_('W11', 'дракон по общим делам: летом выбирает сон (вес rest) или вылет (вес strike); проснувшись, летит на город и жжёт его; раненый только спит; want ничего не меняет и не тянет жребий', () => {
   // a volcano with land for a town of men within the dragon's reach
   const a = world(), homely = i => (SPECIES.get('human').home[biomeAt(a, i)?.id] || 0) >= 0.5;
   let volc = -1, plain = -1;
@@ -220,18 +223,29 @@ scene_('W11', 'дракон: спит; проснувшись летом, лет
   if (!lair?.id) return `логово дракона не встало: ${lair?.error}`;
   const {town} = landPeople(a, 'humans', plain);
   if (!town) return 'люди не высадились';
-  lair.sleep = 1;
-  if (ask(a, lair, ['strike'], () => 0, 'lair', 'spring') !== null) return 'дракон вылетел весной';
-  lair.sleep = 1;
-  const o = ask(a, lair, ['strike'], () => 0, 'lair', 'summer');
-  if (!o || o[0].target !== town.id) return `летом предложено: ${o ? o[0].target : 'ничего'} (${lair.lines.join(' | ')})`;
+  const both = ['sleep', 'strike'];
+  if (ask(a, lair, both, () => 0.99, 'lair', 'spring') !== null) return 'дракон выбирал весной';
+  // want is pure: the lair as it was, no draw
+  const before = JSON.stringify(lair); let drew = 0; const rr = () => { drew++; return 0.5; };
+  const ctx = {L: LAIRS.get('dragon'), role: 'lair', season: 'summer', r: rr};
+  const ws = DOES.sleep.want(a, lair, ctx), wk = DOES.strike.want(a, lair, ctx);
+  if (JSON.stringify(lair) !== before || drew) return `want что-то менял: тянул ${drew}`;
+  const total = wk ? wk.reduce((s, x) => s + x[1], 0) : 0;
+  if (!ws || Math.abs(ws[0][1] - DRAGON.rest) > 1e-9 || Math.abs(total - DRAGON.strike) > 1e-9) return `веса: сон ${ws?.[0][1]}, вылет ${total}`;
+  const s0 = ask(a, lair, both, () => 0, 'lair', 'summer');
+  if (s0?.[3].id !== 'sleep' || (a.parties || []).some(x => x.kind === 'dragon')) return `при малом жребии не уснул: ${s0?.[3].id}`;
+  const o = ask(a, lair, both, () => 0.99, 'lair', 'summer');
+  if (o?.[3].id !== 'strike' || o[0].target !== town.id) return `летом предложено: ${o ? `${o[3].id} ${o[0].target}` : 'ничего'} (${lair.lines.join(' | ')})`;
   const p = (a.parties || []).find(x => x.kind === 'dragon' && x.owner === lair.id);
   if (!p) return 'дракон не вылетел отрядом';
+  if (DOES.strike.want(a, lair, ctx) !== null) return 'вылетел второй раз, пока летит';
   const pop0 = town.pop, lines = [];
   p.might = 1e6; BEHAVIOURS.dragon.arrive(a, p, mulberry(3), t => lines.push(t));
   if (!(town.pop < pop0)) return `не выжег: ${lines.join(' | ')}`;
-  BEHAVIOURS.dragon.home(a, p, mulberry(4));
-  return lair.sleep > 1 || `не уснул: sleep ${lair.sleep}`;
+  p.state = 'gone';
+  lair.wakes = a.hist.year + 5;   // wounded (atlas/calamity.js): it only sleeps
+  const w = ask(a, lair, both, () => 0.99, 'lair', 'summer');
+  return w?.[3].id === 'sleep' || `раненый: ${w ? w[3].id : 'ничего'}`;
 });
 
 // two peoples landed within the front of each other, their realms met with the attitude given → {A, B, rel}
@@ -275,7 +289,7 @@ scene_('W12', 'державы: при общей границе и вражде 
   const b = world(), m = neighbours(b, 'elves', 'dwarves', -4);
   if (!m) return true;   // (this land gave the elves no forest by the dwarves: the half is not tried)
   if (m.rel.border && court(b, m.A)?.[3].id === 'warOn') return 'эльфы объявили войну';
-  m.rel.war = {since: b.hist.year, battles: 0, razed: 0, turn: m.A.id, mustered: null};
+  newWar(b, m.rel, m.A.id);
   m.t1.pop = 400;
   const o2 = court(b, m.A);
   return (o2?.[3].id === 'march') || `эльфы в войне: ${o2 ? o2[3].id : 'ничего'} (${m.rel.front ? 'фронт есть' : 'фронта нет'})`;
@@ -284,7 +298,7 @@ scene_('W12', 'державы: при общей границе и вражде 
 scene_('W13', 'держава в войне: ход её — войско из города у фронта идёт на город врага; ход переходит; второго войска в тот же год нет', () => {
   const a = world(), n = neighbours(a, 'humans', 'dwarves', -4);
   if (!n?.rel.border) return 'соседи не легли границей';
-  n.rel.war = {since: a.hist.year, battles: 0, razed: 0, turn: n.A.id, mustered: null}; n.t1.pop = 400;
+  newWar(a, n.rel, n.A.id); n.t1.pop = 400;
   const o = court(a, n.A, ['march']);
   if (o?.[3].id !== 'march') return `предложено: ${o ? o[3].id : 'ничего'} (${n.rel.front ? 'фронт есть' : 'фронта нет'})`;
   const army = (a.parties || []).find(p => p.kind === 'army' && p.owner === n.A.id);
@@ -292,6 +306,19 @@ scene_('W13', 'держава в войне: ход её — войско из �
   if (n.rel.war.turn !== n.B.id) return 'ход не перешёл';
   if (court(a, n.A, ['march']) !== null) return 'второе войско в тот же год';
   return court(a, n.B, ['march']) === null || 'дварфы собрали войско, пока людское в пути';
+});
+
+scene_('W13b', 'раскол с войной: у войны есть ход — старая держава собирает войско на отколовшуюся', () => {
+  const a = world(), n = neighbours(a, 'humans', 'humans', 0);
+  if (!n) return 'соседи не высадились';
+  n.t2.realm = n.A.id;   // (one realm of two towns: the second breaks away)
+  const nr = breakAway(a, n.A, n.t2, () => 0, () => {}, 'Раскол.'), rel = meet(a, n.A.id, nr.id, a.hist.year);
+  if (!rel.war) return 'войны нет';
+  if (rel.war.turn !== n.A.id || rel.war.mustered !== null) return `запись войны без хода: ${JSON.stringify(rel.war)}`;
+  stepDiplomacy(a, mulberry(1), () => {}, () => 0); n.t1.pop = 400;
+  if (!rel.front) return 'фронта нет';
+  const o = court(a, n.A, ['march']);
+  return o?.[3].id === 'march' || `предложено: ${o ? o[3].id : 'ничего'}`;
 });
 
 scene_('W14', 'усталость от войны: мир — красная полоса, он прежде набега и войска', () => {
@@ -469,13 +496,13 @@ scene_('W23b', 'сколько пришло — по плотности: гус�
   const B = CAMP.foe, mid = B.skirmish[0] + 0.5 * (B.skirmish[1] - B.skirmish[0]);
   if (Math.abs(thin - mid * D.lo) > 1e-9 || Math.abs(thick - mid * D.hi) > 1e-9) return `пределы: ${thin} / ${thick}`;
   if (w({kind: 'army', strength: 3}) !== w({kind: 'army', strength: 0.3})) return 'войско зависит от плотности';
-  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, leaderLair: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, leaderLair: 1})) return 'именной бой зависит от плотности';
+  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, person: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, person: 1})) return 'именной бой зависит от плотности';
   return true;
 });
 scene_('W23c', 'что пришло в пузыре, то и в бою: второй вид, пул культа, логово (его пленные), главарь — не теряются по дороге', () => {
-  const t = {kind: 'tribe', strength: 1, label: 'гоблины и волки', band: 'goblins', with: {beast: 'wolves', label: 'волки', share: 0.3}, pool: [['goblin', 1]], lair: 7, leaderLair: 7, boss: {name: 'Вожак'}, species: 'goblin'};
+  const t = {kind: 'tribe', strength: 1, label: 'гоблины и волки', band: 'goblins', with: {beast: 'wolves', label: 'волки', share: 0.3}, pool: [['goblin', 1]], lair: 7, person: 7, boss: {name: 'Вожак'}, species: 'goblin'};
   const f = foeOf(t);
-  return (f.with?.beast === 'wolves' && f.pool?.length === 1 && f.lair === 7 && f.leaderLair === 7 && f.boss?.name === 'Вожак' && f.species === 'goblin') || `потеряно: ${JSON.stringify(f)}`;
+  return (f.with?.beast === 'wolves' && f.pool?.length === 1 && f.lair === 7 && f.person === 7 && f.boss?.name === 'Вожак' && f.species === 'goblin') || `потеряно: ${JSON.stringify(f)}`;
 });
 scene_('W24', 'набег логова: звери стана — только если живут рядом; второй вид его земли пристаёт и прибавляет силы', () => {
   const a = world(), {lair} = townAndLair(a, 'goblins', 20);
@@ -558,18 +585,22 @@ scene_('W28', 'раса некроманта — жребий по плотно�
   set(0.1, 0.1); const even = odds();
   return (many > 0.8 && even < 0.5) || `эльфов много — ${many}, поровну — ${even}`;
 });
-scene_('W29', 'башня — насос: забирает гниль вокруг, поле мертвецов растёт; вербует — округа и город слабо хиреют', () => {
+scene_('W29', 'башня — насос: с хозяином забирает гниль вокруг, поле мертвецов растёт (без хозяина — нет: мертвецы его, atlas/control.js); вербует — округа и город слабо хиреют', () => {
   const S = towerWorld(); if (S.error) return S.error;
   const {a, tw, L, town} = S, j = faunaCell(a, tw.i), dead = a.fauna.list[a.fauna.idx.dead];
   a.rot[j] = 0.8; const r0 = a.rot[j], d0 = dead.N[j], pop0 = town.pop, lines = [];
+  stepTower(a, tw, L, () => 0.99, lines, revealLair);
+  if (a.rot[j] < r0 || dead.N[j] > d0) return `без хозяина подняла: гниль ${r0} → ${a.rot[j]}, мертвецы ${d0} → ${dead.N[j]}`;
+  lead(a, tw);
   stepTower(a, tw, L, () => 0.99, lines, revealLair);
   if (!(a.rot[j] < r0) || !(dead.N[j] > d0)) return `гниль ${r0} → ${a.rot[j]}, мертвецы ${d0} → ${dead.N[j]}`;
   if (dist(town, tw) < zoneOf(a, tw) && !(town.pop < pop0 && town.pop > pop0 * 0.98)) return `город ${pop0} → ${town.pop}`;
   return true;
 });
-scene_('W30', 'зона башни: логово мёртвых в ней — данник некроманта, вне её — нет; дань идёт башне и без главаря', () => {
+scene_('W30', 'зона башни: логово мёртвых в ней — данник некроманта (башни с хозяином), вне её — нет; дань идёт башне', () => {
   const S = towerWorld(); if (S.error) return S.error;
   const {a, tw} = S, z = zoneOf(a, tw);
+  lead(a, tw);
   const near = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > 3 && dist(p, tw) < z - 1 && !a.towns.some(t => dist(t, p) < 4); }));
   const far = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > z + 3 && !a.towns.some(t => dist(t, p) < 4); }));
   if (!near?.id || !far?.id) return `курганы не встали: ${near?.error || ''} ${far?.error || ''}`;

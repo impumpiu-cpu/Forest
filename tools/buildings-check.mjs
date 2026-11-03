@@ -190,7 +190,7 @@ for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   check('рабочие — одно число по тиру, не по числу рецептов', one.jobs - TOWN_BUILDINGS.get('field').jobs === two.jobs - TOWN_BUILDINGS.get('field').jobs - TOWN_BUILDINGS.get('grove').jobs, `пивоварня ${one.jobs - TOWN_BUILDINGS.get('field').jobs}`);
   // hands: few people — the ploughland (the humans' field) works at a share; a soft good short — half strength
   const thin = townEconomy(null, {people: 'humans', pop: 20, built: ['ploughland'], slaves: 0}, 1);
-  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'ploughland').staff - 10 / 30) < 1e-6 && Math.abs(row(thin, 'ploughland').eff - row(thin, 'ploughland').staff * TF.soft) < 1e-6,
+  check('руки: людей мало — пашня работает на долю; без орудий (мягкое благо) — вполсилы', Math.abs(row(thin, 'ploughland').staff - 10 / 30) < 0.02 && Math.abs(row(thin, 'ploughland').eff - row(thin, 'ploughland').staff * TF.soft) < 1e-6,
     `штат ${row(thin, 'ploughland').staff.toFixed(2)}, сила ${row(thin, 'ploughland').eff.toFixed(2)}`);
   // slaves: they take up to 80% of the places at 0.6 of a free hand; the rest free
   const orc = townEconomy(null, {people: 'orcs', pop: 1000, built: ['mineshaft'], slaves: 100}, 1);

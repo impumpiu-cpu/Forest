@@ -31,7 +31,7 @@ export const CAMP = {
   far: 18,
   // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone
   // who stands in the fight, with all they wear — campaign/camp.js campSetup): the fight's budget is that strength
-  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (data/raids.js fill `up`: when a
+  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (outside/bands.js fill `up`: when a
   // giant and a half fit, two come). In the quick mode the same, in the caravan's own might (campaign/fight.js)
   foe: {
     skirmish: [0.7, 1],   // a chance meeting — a nameless band at night or in ambush: down to −30 %
@@ -64,10 +64,12 @@ export const CAMP = {
   // a stop on the map (a deliberate camp to hunt and gather): played day by day, at most `maxDays`
   // of it on the map; the rest of the stop goes on as before, on the world map
   // they come to it fed (the day's meal is the campaign's), the land's game on the map: × its level
-  stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2},
+  stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2, gameCap: 2, smallGame: 1.5, roll: 0.4},   // × min(gameCap, level) × (roll + U(0,1)); small game (below HERD.big) × smallGame
   // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
   // rest — firewood, hay, stone — stays at the camp)
   // (every potion and its makings: data/potions.js — the alchemy goes on in the cargo)
+  // what of `carry` a stop to dig counts as dug (the rest the hunt and the camp give)
+  notDug: ['hide', 'leather', 'rope'],
   carry: [...POTION_RES, 'herbs', 'sleepgrass', 'wort', 'pots', 'slime', 'bile', 'venom', 'wax', 'lynxEyes', 'bone', 'gland', 'feathers', 'silverBar', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,

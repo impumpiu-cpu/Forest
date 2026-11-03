@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тело «common» — обычное: человек, тёмный эльф, мертвяк, упырь. Голова ставится в круг head, оружие — в hand, щит — в off, заплечное — в back -->
+  <circle data-anchor="head" cx="50" cy="32" r="29"/>
+  <circle data-anchor="hand" cx="71.6" cy="75.5" r="5"/>
+  <circle data-anchor="off" cx="28.4" cy="75.5" r="5"/>
+  <circle data-anchor="back" cx="40.1" cy="60" r="5"/>
+  <path fill="cloth" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M28 64Q28 54 38 54L62 54Q72 54 72 64L68.9 92Q68.9 97 63.9 97L36.1 97Q31.1 97 31.1 92Z"/>
+  <path class="figure" fill="shade" d="M44.5 54L50 63L55.5 54Z"/>
+  <g class="coat"><path fill="armor" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M25 66Q25 53 36 53L64 53Q75 53 75 66L72.9 94L61 98L54.4 94L45.6 98L39 94L27.1 98Z"/>
+    <path fill="fur" stroke="ink" stroke-width="4" d="M30 55Q50 70 70 55Q50 60 30 55Z"/></g>
+  <path class="jerkin" fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M31 60L45 57L50 70L55 57L69 60L66.5 89L33.5 89Z"/>
+  <g class="plate">
+    <path fill="armor" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 68Q32 58 42 58L58 58Q68 58 68 68L65.5 86Q65.5 91 60.5 91L39.5 91Q34.5 91 34.5 86Z"/>
+    <path class="lamellar detail" fill="none" stroke="shade" stroke-width="2.5" d="M35.6 66H64.4M36.2 74H63.8M36.8 82H63.2"/>
+    <path class="scale detail" fill="none" stroke="shade" stroke-width="2" d="M39.5 66Q43 70.5 46.5 66M46.5 66Q50 70.5 53.5 66M53.5 66Q57 70.5 60.5 66M39.5 73Q43 77.5 46.5 73M46.5 73Q50 77.5 53.5 73M53.5 73Q57 77.5 60.5 73M39.5 80Q43 84.5 46.5 80M46.5 80Q50 84.5 53.5 80M53.5 80Q57 84.5 60.5 80"/>
+    <path class="mail detail" fill="none" stroke="shade" stroke-width="2.6" stroke-linecap="round" d="M40 66h0.1M45 66h0.1M50 66h0.1M55 66h0.1M60 66h0.1M40 72h0.1M45 72h0.1M50 72h0.1M55 72h0.1M60 72h0.1M40 78h0.1M45 78h0.1M50 78h0.1M55 78h0.1M60 78h0.1M40 84h0.1M45 84h0.1M50 84h0.1M55 84h0.1M60 84h0.1"/>
+    <path class="wicker detail" fill="none" stroke="shade" stroke-width="2.5" d="M35.6 66L64.4 72M36.3 75L63.7 81M37 84L63 90"/>
+    <rect class="figure" x="46.5" y="58" width="7" height="33" fill="cloth" stroke="ink" stroke-width="3"/>
+  </g>
+  <path class="figure" fill="none" stroke="leather" stroke-width="6" d="M31.7 77.7H68.3"/>
+  <rect class="detail" x="46" y="74.2" width="8" height="7" rx="1.5" fill="gold" stroke="ink" stroke-width="2"/>
+  <g class="heavy" fill="armor" stroke="ink" stroke-width="4">
+    <ellipse cx="31" cy="59" rx="6.6" ry="5.3"/>
+    <ellipse cx="69" cy="59" rx="6.6" ry="5.3"/>
+  </g>
+</svg>

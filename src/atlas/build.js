@@ -10,6 +10,9 @@
 // the town comes back to it, it goes on from there and is not paid twice. So a town builds as fast as its hands let it:
 // a big, busy town many things a year, a hamlet one in a few.
 import {TOWN_BUILDINGS, TOWN_MONEY, TOWN_SLOTS, slotKind} from '../data/townBuildings.js';
+import {needsOf, tierNeed} from '../data/requirements.js';
+import {meets} from '../core/requirements.js';
+import {townFacts} from './requirements.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SEASON_DAYS, SEASONS_PER_YEAR} from '../data/atlas.js';
 import {townFx, chooseBuilding, canBuild, slotsUsed, slotsOf} from './towns.js';
@@ -78,6 +81,9 @@ export function razeWorst(t) {
 
 // a season of building in every town: the project goes on, a finished one stands, the council picks the next (after the
 // towns' economies and the growth: atlas/history.js)
+// what the building asks of the town, as one requirement (core/requirements.js), at every step of a project
+const hardOk = (a, t, b) => meets([tierNeed(b, t.people), needsOf(b)].filter(Boolean), townFacts(a, t));
+
 export function stepBuilds(a, rnd, say) {
   for (const t of a.towns || []) {
     if (!t.alive || !t.wants || !WORLD_PEOPLES.has(t.people)) continue;
@@ -85,7 +91,10 @@ export function stepBuilds(a, rnd, say) {
     let days = crewDays(t);
     for (let guard = 0; guard < 4 && days > 1e-9; guard++) {   // a big crew may finish a small work and begin the next in a season
       let P = projectOf(t);
-      if (P && !(P.done > 0 || canBuild(a, t, P.b))) { t.project = null; P = null; }   // (it may not any more: its realm lost what it needed)
+      // a project begun goes on while the town still meets what the building asks (data/requirements.js: its people, its realm's
+      // works, the races among its people, the land); lost, it is laid down — the work done waits in t.works (the limits of count and
+      // slot are asked only when it is begun)
+      if (P && !(P.done > 0 ? hardOk(a, t, P.b) : canBuild(a, t, P.b))) { t.project = null; P = null; }
       if (!P) {
         const b = pickProject(a, t, rnd);
         if (!b) { razeWorst(t); break; }   // nothing to build: a full town makes room
@@ -95,6 +104,7 @@ export function stepBuilds(a, rnd, say) {
       W.done += put; days -= put;
       if (W.done < P.days - 1e-9) break;
       t.project = null;
+      if (!hardOk(a, t, P.b)) break;   // finished, but the town no longer meets what it asks: it waits, paid, until it does
       if (!placeWork(a, t, P.b, rnd)) break;   // its cell was taken meanwhile: the work waits, paid, for the town to come back to it
       delete t.works[P.b.id];
       raiseBuilding(a, t, P.b, say);

@@ -4,7 +4,8 @@ import {yieldOf} from './mods.js';
 import {FOODS, tasteOf} from '../data/foods.js';
 import {season} from '../data/seasons.js';
 import {takeKind} from './kinds.js';
-import {FURNACE} from '../data/colony.js';
+import {FURNACE, STORE} from '../data/colony.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const foods = () => RESOURCES.filter(r => r.tags.includes('food'));
 
@@ -38,7 +39,9 @@ export function eatMeal(w, a) {
 }
 
 // ── fuel
+// the fuels sorted once, made anew after a table edit (a resource's tags, burn and furnace tier are table cells)
 let cf, sf;
+onEdit(() => { cf = sf = null; });
 const campFuels = () => cf || (cf = RESOURCES.filter(r => r.tags.includes('fuel')).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
 
 // what the campfire would burn now: wood first, then coal
@@ -73,14 +76,13 @@ export function furnacePick(w, heat, units, woodReserve = 0) {
 // heat units in stock at a heat level (for the panels and the charcoal pit's orders)
 export const furnaceHeat = (w, heat = 2) => furnaceFuels().filter(r => r.furnace.tier >= heat).reduce((s, r) => s + (w.stock[r.id] || 0) / r.furnace.per, 0);
 
-// share of the food in stock that lies in the open: pots hold POT_HOLDS portions each, a granary
+// share of the food in stock that lies in the open: pots hold STORE.potHolds portions each, a granary
 // keeps half of the rest out of reach (rats nibble only the open food; it also spoils faster)
-const POT_HOLDS = 6;
 export function potShare(w) {
   let food = 0; for (const r of foods()) food += w.stock[r.id] || 0;
-  return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * POT_HOLDS / food);
+  return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * STORE.potHolds / food);
 }
-export const exposedShare = w => (1 - potShare(w)) * (w.buildings.some(b => b.key === 'granary' && b.done) ? 0.5 : 1);
+export const exposedShare = w => (1 - potShare(w)) * (w.buildings.some(b => b.key === 'granary' && b.done) ? STORE.granary : 1);
 
 // rats: eat `amount` of food from whatever lies in the open, the most plentiful first
 export function nibble(w, amount) {
@@ -94,9 +96,9 @@ export function nibble(w, amount) {
 
 export function spoil(w) {
   // food in pots spoils at 40% of the rate
-  const S = season(w), sealed = 1 - 0.6 * potShare(w);
+  const S = season(w), sealed = 1 - STORE.sealed * potShare(w);
   for (const r of foods()) {
-    const lost = w.stock[r.id] * 0.00015 * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
+    const lost = w.stock[r.id] * STORE.spoil * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
     w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
     w.stats.spoiledToday += lost;
   }
@@ -106,12 +108,12 @@ export function burnStock(w, frac) { for (const r of RESOURCES.all()) w.stock[r.
 
 // raiders take up to `loot` units of each resource, less behind a palisade; gold and silver locked in
 // a forged chest (furniture, settlement/life.js) are harder to get at; returns the total taken
-// a raider takes its share of the stores: what it carries off, by resource (agents/tasks.js assault).
+// a raider takes its share of the stores: what it carries off, by resource (agents/tasks/raid.js assault).
 // It is on the raider's back (a.loot) until it leaves the map with it — or someone of ours brings it down
 // and takes it back (agents/agent.js kill)
 export function plunder(w) {
   const got = {};
-  const chest = w.buildings.some(b => b.done && b.furniture?.includes('chest')) ? 0.4 : 1;
+  const chest = w.buildings.some(b => b.done && b.furniture?.includes('chest')) ? STORE.chest : 1;
   for (const r of RESOURCES.all()) {
     const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
     if (take <= 0) continue;

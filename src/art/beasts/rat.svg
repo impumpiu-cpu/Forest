@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- крыса: серый комок, длинный хвост; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="6" d="M24 76Q6 82 4 66"/><path fill="none" stroke="#c8b0a8" stroke-width="3" stroke-linecap="round" d="M24 76Q6 82 4 66"/><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M20 74Q22 56 46 56Q68 58 78 70L86 74L76 82Q50 88 30 84Q20 82 20 74Z"/><circle cx="60" cy="58" r="7" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><circle class="figure" cx="60" cy="58" r="3" fill="#e8a0a0"/><circle class="figure" cx="72" cy="68" r="2.2" fill="ink"/>
+</svg>

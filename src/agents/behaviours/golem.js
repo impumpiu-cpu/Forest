@@ -7,15 +7,15 @@ import {nearestHostile} from '../combat.js';
 import {nearAgents} from '../spatial.js';
 import {approach} from '../movement.js';
 import {mendAtForge} from '../golem.js';
+import {isAttack, ours} from '../lookup.js';
 
-const ours = (a, o) => o.faction === a.faction || (a.faction === 'allies' && o.faction === 'colony');
 
 export const golem = {
   want(w, a) {
     const G = GOLEM_GUARD;
     let foe = nearestHostile(w, a, G.sight);
     if (!foe) for (const o of nearAgents(w, a.x, a.y, G.help)) {
-      if (!o.dead && !o.downed && o.task?.target && ours(a, o.task.target) && (o.task.id === 'fight' || o.task.id === 'maul')) { foe = o; break; }
+      if (!o.dead && !o.downed && isAttack(o.task) && ours(a, o.task.target)) { foe = o; break; }
     }
     if (foe) return [[a.task?.id === 'fight' && a.task.target === foe ? a.task : {id: 'fight', target: foe}, G.want.fight, () => `бьётся за своих: ${foe.name}`]];
     return [[a.task?.id === 'golem' ? a.task : {id: 'golem'}, G.want.post, () => 'стоит на посту']];

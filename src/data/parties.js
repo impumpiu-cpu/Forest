@@ -44,6 +44,9 @@ export const ARMY = {levy: 0.1, beasts: 0.25, might: 2.85, prod: 0.3, defence: 0
   supplies: 120, supplyFloor: 0.5, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.45, scourged: 0.45, everyYears: 1};
 
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in
-// an ancient lair at a volcano. It sleeps for years, then flies out: to the richest town within
-// `reach` cells, burns `burns` of its works and `loss` of its people, and flies home to sleep again.
-export const DRAGON = {sleep: [6, 14], reach: 45, burns: [2, 4], loss: 0.1, might: 60};
+// an ancient lair at a volcano. Each summer it chooses as any actor does (atlas/deeds/strike.js; atlas/actor.js draws by
+// weight): to sleep (`rest`) or to fly out (`strike`, shared among the towns within `reach` cells by their people ^ `pick`)
+// — rest 9 to strike 1: a flight one summer in ten, as the old sleep of 6–14 years; it burns `burns` of its works and
+// `loss` of its people, unless the town drives it off, and flies home.
+//   luck: the town's and the dragon's might × luck[0] + luck[1] × a roll;  might: the dragon's
+export const DRAGON = {rest: 9, strike: 1, pick: 1, reach: 45, burns: [2, 4], loss: 0.1, might: 60, luck: [0.6, 0.8]};

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- колючая изгородь: куст с шипами -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<g fill="darkleaf" stroke="ink" stroke-width="4" stroke-linejoin="round"><circle cx="22" cy="68" r="20"/><circle cx="50" cy="60" r="24"/><circle cx="78" cy="68" r="20"/></g><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="3" d="M8 56L2 50M20 48L18 40M40 38L36 30M60 38L64 30M80 48L84 40M92 56L98 50M50 84V94"/>
+</svg>

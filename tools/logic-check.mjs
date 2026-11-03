@@ -60,7 +60,10 @@ import {ITEMS} from '../src/data/items.js';
 import {TRADE} from '../src/data/trade.js';
 import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../src/settlement/trade.js';
 import {JOBS, huntable} from '../src/data/jobs.js';
-import {canTame} from '../src/settlement/herd.js';
+import {canTame, makeTame, stepHerd, herd, penRoom, winterHay} from '../src/settlement/herd.js';
+import {PLANTS} from '../src/data/plants.js';
+import {BUILDINGS as BUILDING_ROWS} from '../src/data/buildings.js';
+import {season as seasonOf, daysLeftInSeason, SEASON_DAYS} from '../src/data/seasons.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
 import {stepAttention} from '../src/agents/attention.js';
@@ -2099,6 +2102,39 @@ check('T143', 'клеймо входит в цену и в коэффициен�
   a.equip.right = newItem('sword', {mark: 'dwarf'}); recalcGear(a); const s1 = strengthOf(a);
   if (!(s1 > s0)) return `КС: простой меч ${s0.toFixed(1)}, дварфийский ${s1.toFixed(1)}`;
   return itemPrice('sword', 0, false, 'dwarf') > itemPrice('sword') || 'клеймо не дороже простого';
+});
+
+check('T144', 'стадо — не только козы: зимний забой без сена оставляет пару овец и пару коз, мула забивают последним', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  human(w); w.stock.hay = 0; w.stock.meat = 50;
+  const herdOf = sp => herd(w).filter(a => a.species === sp).length;
+  for (const [sp, n] of [['sheep', 4], ['goat', 3], ['mule', 1]]) for (let k = 0; k < n; k++) { const b = put(w, sp, 'wild', 20.5 + k, 20.5); makeTame(w, b, null, true); b.age = 100 + k; }
+  // the first morning of winter: the cull is planned for the whole season
+  let d = 0;
+  for (; d < 400; d++) { w.tick = d * DAY + 6 * HOUR; w.scratch = {}; if (seasonOf(w).lean && daysLeftInSeason(w) > SEASON_DAYS - 1) break; }
+  stepHerd(w);
+  return (herdOf('sheep') === 2 && herdOf('goat') === 2 && herdOf('mule') === 0) || `осталось: овец ${herdOf('sheep')}, коз ${herdOf('goat')}, мулов ${herdOf('mule')}`;
+});
+
+check('T145', 'места в загоне и зимнее сено считает одно правило (settlement/herd.js): боевой зверь их не занимает, косцы запасают ровно столько', () => {
+  const w = scene();
+  w.buildings.push({id: 9001, key: 'pen', done: true, cells: [], x: 40, y: 40});
+  const goat = put(w, 'goat', 'wild', 20.5, 20.5); makeTame(w, goat, null, true);
+  const war = put(w, 'mule', 'wild', 21.5, 20.5); makeTame(w, war, null, true); war.warBeast = true; w.scratch = {};
+  const mow = PLANTS.all().find(p => p.job?.id === 'mow').job, pen = BUILDING_ROWS.get('pen');
+  if (mow.keep(w) !== 30 + winterHay(w)) return `косцы держат ${mow.keep(w)}, а зимнего корма ${winterHay(w)} + 30`;
+  if (penRoom(w) !== pen.pen - 1) return `свободно ${penRoom(w)} мест из ${pen.pen}: боевой мул занял место`;
+  return pen.available(w) === (penRoom(w) < 2) || 'второй загон решает не по penRoom';
+});
+
+check('T146', '«Тяжело ранен» — доля полного здоровья (MIND.woundedBelow), а не само число здоровья', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  const foe = raider(w), dwarf = put(w, 'dwarf', 'colony', 31.5, 30.5), elf = put(w, 'elf', 'colony', 29.5, 30.5);
+  const hurt = (a, share) => { a.hp = share * maxHp(a); damage(w, foe, a, 0.001); return !!a.diary?.some(e => e.id === 'wounded'); };
+  if (!dwarf.diary || !elf.diary) return 'у поселенца нет дневника';
+  // a dwarf at 43% (more than 0.45 of health in points) is badly hurt; an elf at 47% (less than 0.45 in points) is not yet
+  const d = hurt(dwarf, 0.43), e = hurt(elf, 0.47);
+  return (d && !e) || `дварф на 43%: ${d ? '' : 'не '}ранен, эльф на 47%: ${e ? '' : 'не '}ранен`;
 });
 
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }

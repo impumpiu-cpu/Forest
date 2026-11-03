@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гоблин: огромные уши вбок, острый нос, большие жёлтые глаза, ухмылка -->
+  <g stroke="ink" stroke-width="5" stroke-linejoin="round">
+    <path fill="skin" d="M28 54L-1 36L3 49L26 68Z"/>
+    <path fill="skin" d="M72 54L101 36L97 49L74 68Z"/>
+    <ellipse cx="50" cy="60" rx="28" ry="28" fill="skin"/>
+  </g>
+  <g class="figure">
+    <circle cx="39" cy="54" r="7" fill="#fff3a0" stroke="ink" stroke-width="3"/>
+    <circle cx="61" cy="54" r="7" fill="#fff3a0" stroke="ink" stroke-width="3"/>
+    <circle cx="40" cy="55" r="2.6" fill="ink"/><circle cx="60" cy="55" r="2.6" fill="ink"/>
+  </g>
+  <g class="detail">
+    <path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M37 77Q50 87 63 77"/>
+    <path fill="light" d="M44 79L47 85L50 80Z"/>
+    <path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" stroke-width="3" d="M30 44L41 46M70 44L59 46"/>
+  </g>
+  <path fill="skin" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M47 56L62 72L45 68Z"/>
+</svg>

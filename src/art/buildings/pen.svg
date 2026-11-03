@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- загон: ворота в ограде -->
+<ellipse cx="50" cy="90" rx="44" ry="8" fill="shade"/>
+<path fill="none" stroke="ink" stroke-linecap="round" stroke-width="9" d="M8 88V36M92 88V36"/><path fill="none" stroke="wood" stroke-width="5" stroke-linecap="round" d="M8 88V36M92 88V36"/><path fill="plank" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M14 40H86V48H14ZM14 58H86V66H14ZM14 76H86V84H14Z"/><path fill="none" stroke="ink" stroke-linecap="round" stroke-width="3" d="M16 44L84 80"/>
+</svg>

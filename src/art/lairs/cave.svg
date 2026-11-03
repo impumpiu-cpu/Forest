@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<!-- логово: пещера в скале (драконы, дрейки, черви, мыши) -->
+<ellipse cx="50" cy="90" rx="40" ry="7" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M4 92L22 36L44 20L66 30L84 24L96 92Z"/><path fill="#1e1a18" stroke="ink" stroke-width="5" stroke-linejoin="round" d="M28 92V66Q50 40 72 66V92Z"/><g class="detail" fill="none" stroke="shade" stroke-width="3"><path d="M30 44L40 38M70 40L78 46"/></g><g class="figure" fill="#ffd36a"><circle cx="44" cy="72" r="3"/><circle cx="56" cy="72" r="3"/></g>
+</svg>

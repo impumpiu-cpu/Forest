@@ -5,7 +5,8 @@
 // this registry by themselves; a resource dug from a vein (data/ores.js) gets its map layer from there.
 // A new resource needs only an entry here plus a source (job, animal or recipe).
 // `map(w, i)` (0..1) shows where it can be gathered on the resource layer, in `mapColor`.
-// `group` is its section on the stock panel (RESOURCE_GROUPS gives the order, new groups go last);
+// `group` is its section on the stock panel (the camp dock «Склад», ui/cards.js stockHtml; RESOURCE_GROUPS gives the order,
+// new groups go last);
 // `target` is how much the colony likes to keep (miners dig ore that is below it).
 // `furnace: {tier, per}` — fuel for a furnace or a forge (settlement/stock.js, furnacePick).
 // Prices: data/balance/prices.js gives every resource `value` (the price of one unit in imperial gold),

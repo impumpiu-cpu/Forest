@@ -5,6 +5,7 @@
 // History draws from its own random stream, so the land made before it does not change when history
 // is reworked.
 import {mulberry, seedNumber} from '../core/rng.js';
+import {killShare} from './population.js';
 import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
@@ -28,6 +29,8 @@ import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
 import {stepKingdom, stepRealmKeep} from './kingdom.js';
+import {stepPersons} from './persons.js';
+import {stepSuccession} from './succession.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -115,8 +118,8 @@ export function stepHistory(a, onDay = null) {
       const hit = [];
       for (const t of a.towns || []) {
         if (!t.alive || Math.abs(((t.x / F.c) | 0) - bx) > r || Math.abs(((t.y / F.c) | 0) - by) > r) continue;
-        const fx = townFx(t), loss = FAUNA.townHarsh * Math.max(0.25, 1 - 0.6 * fx.food - 0.4 * fx.health);
-        t.pop *= 1 - loss; hit.push(t);
+        const fx = townFx(t), HK = FAUNA.townHarshK, loss = FAUNA.townHarsh * Math.max(HK.floor, 1 - HK.food * fx.food - HK.health * fx.health);
+        killShare(a, t, loss, cold ? 'cold' : 'drought'); hit.push(t);
       }
       const dead = hit.length ? `; в ${hit.length === 1 ? `${townLabel(hit[0], 3)} ${hit[0].name}` : `${hit.length} ${plural(hit.length, 'городе', 'городах', 'городах')}`} ${cold ? 'голод и мор' : 'голод'}` : '';
       say(a, cold ? `Лютая зима ${wherePhrase(a, cell)}: звери гибли от мороза и бескормицы${dead}.` : `Засуха ${wherePhrase(a, cell)}: травы выгорели, звери гибли от бескормицы${dead}.`);
@@ -144,6 +147,8 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepPersons(a, t => say(a, t));   // age takes the rulers and the courts whose years are out (atlas/persons.js)
+  stepSuccession(a, t => say(a, t));   // the hordes without a chief settle it (atlas/succession.js)
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   if (H.era !== 'wild') stepRealmKeep(a);   // the realms keep their garrisons and armies, a season's pay, food and kit (atlas/treasury.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
