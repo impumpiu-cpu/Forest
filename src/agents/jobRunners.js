@@ -33,7 +33,7 @@ import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
 import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
-import {liveById, ofSpeciesList, noteAttacker} from './lookup.js';
+import {liveById, ofSpeciesList, noteAttacker, onMap} from './lookup.js';
 import {apprenticeBonus} from '../settlement/masters.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
@@ -314,7 +314,7 @@ export const RUNNERS = {
     task.age = (task.age || 0) + 1;
     let prey = task.prey;
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
-    if (!prey || prey.dead || !w.agents.includes(prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
+    if (!prey || prey.dead || !onMap(w, prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
       prey = null; let bd = 80 * 80;
       for (const o of huntable(w, job, a)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;

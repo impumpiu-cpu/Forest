@@ -28,6 +28,8 @@ export function agentById(w, id) {
   if (id == null) return null;
   return cached(w, 'lk.id', ags => { const m = new Map(); for (const a of ags) if (!m.has(a.id)) m.set(a.id, a); return m; }).get(id) || null;
 }
+// is this creature on the map's list (as w.agents.includes(o), through the index: ids are unique)
+export const onMap = (w, o) => !!o && agentById(w, o.id) === o;
 // the living one with this id — what most brains mean by «byId»
 export const liveById = (w, id) => { const a = agentById(w, id); return a && !a.dead ? a : null; };
 

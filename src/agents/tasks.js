@@ -29,7 +29,7 @@ import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER}
 import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
-import {liveById} from './lookup.js';
+import {liveById, onMap} from './lookup.js';
 import {flagLead, raidOnBoard} from '../settlement/board.js';
 import {wake} from './attention.js';
 import {bindStillOn, bindCaptive} from '../settlement/captives.js';
@@ -129,7 +129,7 @@ TASKS.registerAll([
   // fight: archers and slingers keep their distance and shoot, everyone else closes in
   {id: 'fight', label: t => (t.shooting ? 'стреляет' : 'дерётся'), step(w, a, task) {
     const t = task.target;
-    if (!t || t.dead || t.downed || !w.agents.includes(t)) { done(w, a); return; }   // the fallen are left alone
+    if (!t || t.dead || t.downed || !onMap(w, t)) { done(w, a); return; }   // the fallen are left alone
     // the foe slipped out of sight (dived, melted into the thicket): go to where it was seen last,
     // look about for a little, then give up
     if (!canSee(w, a, t)) {

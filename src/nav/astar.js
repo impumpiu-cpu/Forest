@@ -1,7 +1,7 @@
 // Point-to-point paths around water and rocks (A* on the grid, 8 directions, no corner cutting).
 // Flow fields cover shared targets (camp, berries, prey…); this covers one agent chasing one
 // moving target or walking to a spot of its own. Buffers are allocated once per world and reused.
-import {BY_CODE, WALKABLE, T} from '../data/terrain.js';
+import {BY_CODE, WALKABLE, T, cheapestStep} from '../data/terrain.js';   // (cheapestStep: the table «Рельеф» may change it; kept till an edit)
 
 const ROCK = T.ROCK;
 import {DX, DY} from '../world/grid.js';
@@ -45,12 +45,6 @@ export const clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i =>
 // a shot's line: only rock stops an arrow or a stone (water, grass and wood do not)
 export const lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => w.grid.terr[i] !== ROCK);
 
-// the cheapest step of any walkable ground (the table «Местность» may change it): the scale of the estimate
-function cheapestStep() {
-  let m = Infinity;
-  for (const t of Object.values(BY_CODE)) if (t && t.walkable && t.pathCost > 0 && t.pathCost < m) m = t.pathCost;
-  return Number.isFinite(m) ? Math.min(1, m) : 1;
-}
 
 // cells from start to goal (excluding start), or null when the goal cannot be reached within `budget` expansions
 export function findPath(w, sx, sy, gx, gy, budget = 6000) {

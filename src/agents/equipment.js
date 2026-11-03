@@ -160,7 +160,10 @@ export function itemPrice(type, q = 0, silver = false, mark = null, of = null, m
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
 // the colony has met such a creature (w.chronicle.silverFoes, settlement/migration.js), nothing before
 const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && SPECIES.get(o.species).weakTo?.includes('silver'));
-const silverWorth = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);
+// (worked out once per outfit() — the search weighs many loadouts, and nothing on the map changes meanwhile)
+let silverNow = null, inOutfit = false;
+const silverOf = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);
+const silverWorth = w => (!inOutfit ? silverOf(w) : (silverNow ??= silverOf(w)));
 export const emptySlots = () => Object.fromEntries(SLOTS.map(s => [s.id, null]));
 
 export function handItems(a) {
@@ -379,8 +382,10 @@ export function outfit(w, a) {
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
   const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)) && mayWield(a.species, def(it).form));
-  const best = bestLoadout(w, a, pool);
-  if (best && best.score > currentScore(w, a) + GEAR.swap) {
+  let best, now;
+  inOutfit = true; silverNow = null;
+  try { best = bestLoadout(w, a, pool); now = currentScore(w, a); } finally { inOutfit = false; silverNow = null; }
+  if (best && best.score > now + GEAR.swap) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
     const gained = [...keep].filter(it => !own.includes(it)).map(it => def(it).short);
     if (gained.length) think(w, a, 'newGear', {items: gained.join(', ')});

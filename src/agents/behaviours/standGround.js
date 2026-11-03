@@ -9,7 +9,7 @@ import {approach, bolt as run, sprintMul} from '../movement.js';
 import {damage} from '../combat.js';
 import {maxHp} from '../agent.js';
 import {nearAgents} from '../spatial.js';
-import {liveById} from '../lookup.js';
+import {liveById, onMap} from '../lookup.js';
 import {herdOf, nerveOf} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
 import {log} from '../../core/log.js';
@@ -63,7 +63,7 @@ export const standGround = {
 // the step of `maul` in the `kick` mode
 export function kickStep(w, a, t) {
   const sp = SPECIES.get(a.species), M = sp.mule, foe = t.target;
-  if (!foe || foe.dead || !w.agents.includes(foe)) { endTask(w, a); return; }
+  if (!foe || foe.dead || !onMap(w, foe)) { endTask(w, a); return; }
   const d = dist(a, foe);
   if (d > M.kickRange) {
     if (t.stay) { endTask(w, a); return; }   // a tame mule kicks where it stands and goes after nobody (fendOff)
