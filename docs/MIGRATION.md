@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · [Карта мира](WORLD.md) · [Таблицы](TABLES.md) · [Проверки](TESTING.md)
+[Главная](../README.md) · [Как играть](GAME.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Карта мира](WORLD.md) · [Поселение](SETTLEMENT.md) · [Поведение](BEHAVIOUR.md) · [Плен и свита](CAPTIVES.md) · [Кампания](CAMPAIGN.md) · [Правила](RULES.md) · [Баланс вещей](BALANCE.md) · [Картинки](ART.md) · [Таблицы](TABLES.md) · [Справочник](REFERENCE.md) · [Проверки](TESTING.md) · **Перенос Ver_b** · [Отложено](TODO.md)
 
 # Перенос: ветка Ver_b
 
