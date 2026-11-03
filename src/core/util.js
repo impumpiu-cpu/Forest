@@ -1,5 +1,11 @@
 // Small helpers shared by every module.
 
+// the first letter capitalised («войско людей» → «Войско людей»)
+export const cap1 = s => s[0].toUpperCase() + s.slice(1);
+
+// a roll of luck by a data pair [base, span]: base + span × a draw (data/lairs.js TRIBE_RAID.luck, DIPLOMACY.luck, …)
+export const luck = (L, rnd) => L[0] + L[1] * rnd();
+
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export function plural(n, one, few, many) {

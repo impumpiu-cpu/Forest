@@ -2,6 +2,7 @@
 // counted down a summer at a time); awake, it flies to the richest town within `reach` — the town's people weighed with
 // luck — and burns `burns` of its works and `loss` of its people, unless the town drives it off; then it flies home
 // and sleeps again. The lair's role only: a dragon raises no leader.
+import {cap1, luck} from '../../core/util.js';
 import {DRAGON} from '../../data/parties.js';
 import {killShare} from '../population.js';
 import {LAIRS} from '../../data/lairs.js';
@@ -13,7 +14,6 @@ import {sendParty} from '../parties.js';
 import {scaleOf} from '../tectonics.js';
 import {dist} from './shared.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const nap = r => DRAGON.sleep[0] + Math.floor(r() * (DRAGON.sleep[1] - DRAGON.sleep[0] + 1));
 
 export const strike = {
@@ -22,8 +22,8 @@ export const strike = {
     if (l.sleep == null) l.sleep = nap(r);
     if (--l.sleep > 0 || !a.towns.length) return null;
     let target = null, bv = 0;
-    for (const t of a.towns) if (t.alive && dist(l, t) <= DRAGON.reach * scaleOf(a)) { const v = t.pop * (0.7 + 0.6 * r()); if (v > bv) { bv = v; target = t; } }
-    if (!target) { l.sleep = 2; return null; }   // nothing worth the flight: a short nap
+    for (const t of a.towns) if (t.alive && dist(l, t) <= DRAGON.reach * scaleOf(a)) { const v = t.pop * luck(DRAGON.pick, r); if (v > bv) { bv = v; target = t; } }
+    if (!target) { l.sleep = DRAGON.nap; return null; }   // nothing worth the flight: a short nap
     return [[{goal: target.i, target: target.id}, 1, () => `проснулся: ${target.name} — самый богатый город в досягаемости`]];
   },
   act(a, l, plan, {L}) {
@@ -34,8 +34,8 @@ export const strike = {
   arrive(a, p, l, L, rnd, say) {
     const target = a.towns.find(t => t.id === p.target), D = DRAGON;
     if (!target?.alive) return;
-    const fx = townFx(target), town = might(target, fx) * (0.6 + 0.8 * rnd());
-    if (town > p.might * (0.6 + 0.8 * rnd())) { say(`${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отогнали дракона: стрелы и копья его не взяли, но и он не стал жечь.`); return; }
+    const fx = townFx(target), town = might(target, fx) * luck(D.luck, rnd);
+    if (town > p.might * luck(D.luck, rnd)) { say(`${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отогнали дракона: стрелы и копья его не взяли, но и он не стал жечь.`); return; }
     let burnt = 0;
     const n = D.burns[0] + Math.floor(rnd() * (D.burns[1] - D.burns[0] + 1));
     for (let q = 0; q < n; q++) if (raidSite(a, target, () => 0)) burnt++;

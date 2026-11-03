@@ -66,7 +66,6 @@ function walk(a, p) {
   return false;
 }
 
-export const partyGone = (a, p) => { p.state = 'gone'; stranded(a, p); };
 // the party turns home; it disbands where it stands if it cannot find the way
 export function goHome(a, p) {
   p.state = 'home';

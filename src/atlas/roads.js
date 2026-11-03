@@ -5,6 +5,7 @@
 // joins their towns (atlas/diplomacy.js).
 //
 // Field (a.f): road — the wear of each cell (0 none; data/roads.js levels: path, road, highway).
+import {linkKey} from './common.js';
 import {Heap, DIRS8} from './heap.js';
 import {ROADS} from '../data/roads.js';
 import {NET} from '../data/sites.js';
@@ -80,7 +81,7 @@ export function tradeLinks(a, links = ROADS.links, reach = ROADS.reach) {
     const near = towns.filter(o => o !== t && trades(a, t.realm, o.realm))
       .map(o => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= far).sort((p, q) => p[1] - q[1]).slice(0, links);
     for (const [o] of near) {
-      const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);
+      const key = linkKey(t, o);
       if (!done.has(key)) { done.add(key); out.push([t, o]); }
     }
   }
@@ -96,7 +97,7 @@ export function wearRoads(a) {
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
   const fresh = [], net = a.net?.links;
   for (const [t, o] of tradeLinks(a)) {
-    const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);
+    const key = linkKey(t, o);
     const path = findPath(a, t.i, o.i, t.people, scratch);
     if (!path) continue;
     const flow = net?.get(key)?.flow || 0;

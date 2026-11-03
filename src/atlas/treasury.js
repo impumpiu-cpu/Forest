@@ -44,10 +44,9 @@ import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
 
-const FOODS = new Set(['food', 'raw', 'brush']);   // (raw food too: it is cooked where it is made, not traded; brushwood is burnt where it is gathered; stores keep and are traded)
 const r2 = v => Math.round(v * 100) / 100;
 const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
-const stored = g => !FOODS.has(g) && g !== 'gold';
+const stored = g => g !== 'gold' && !(TOWN_GOODS.has(g) && TOWN_GOODS.get(g).local);   // (TOWN_GOODS `local`: food, raw food, brushwood stay where they are made; stores keep and are traded)
 const add = (o, k, v) => { o[k] = r2((o[k] || 0) + v); };
 const KINDS = ['basic', 'comfort'];
 const peopleOf = id => (WORLD_PEOPLES.has(id) ? WORLD_PEOPLES.get(id) : null);
@@ -340,8 +339,9 @@ export const plunderWords = p => (p ? `, вывезли добра и золот
 
 // ── the caravan at a town's market (campaign/town.js): the town's goods, prices and makers
 // the town good a stock resource is (data/townBuildings.js TOWN_GOODS `res`, `per`): [good, units of it in one of the resource] or null
-const BY_RES = new Map(TOWN_GOODS.all().filter(g => g.res).map(g => [g.res, [g.id, 1 / (g.per || 1)]]));
-export const goodOfRes = res => BY_RES.get(res) || null;
+let BY_RES = null;   // (made when first asked, again after an edit of the tables)
+onEdit(() => { BY_RES = null; });
+export const goodOfRes = res => (BY_RES ||= new Map(TOWN_GOODS.all().filter(g => g.res).map(g => [g.res, [g.id, 1 / (g.per || 1)]]))).get(res) || null;
 // × the price of a good at this town's market this season
 export const marketK = (t, g) => (g && t.market?.[g]) || 1;
 // the caravan pays the town's makers, or they pay the caravan as far as their purse goes → what was paid

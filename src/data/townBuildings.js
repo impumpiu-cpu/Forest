@@ -99,18 +99,20 @@ export const CATEGORIES = {
 // bronze, iron and steel, silver, gold, mithril — each its own ore and its own ingots. Fuel is one good of charges (coal of the
 // charcoal burners and of the mines, the herds' dung); logs burn too, a charge a log, and the brushwood the people gather by hand
 // (`brush`: not kept, not traded). `feeds` — how a good counts as food for the town's choice (foodNet): 'ready' as it is, 'raw' at
-// what a kitchen makes of it, 'herd' as the meat a head gives at the slaughterhouse; none — not food.
+// what a kitchen makes of it, 'herd' as the meat a head gives at the slaughterhouse; none — not food. `local` — a good that stays
+// where it is made, never in the store nor traded (ready and raw food go down the net as people, brushwood is burnt where it is
+// gathered: atlas/treasury.js).
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
-  {id: 'food', label: 'готовая еда', unit: 'чел.-год', feeds: 'ready', get price() { return CAMPAIGN.ration * 365; }},
-  {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, feeds: 'raw', get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд, мука — всё одно: на кухню, в заготовки, в брагу; вид сырья — индикатор'},
+  {id: 'food', label: 'готовая еда', unit: 'чел.-год', feeds: 'ready', local: true, get price() { return CAMPAIGN.ration * 365; }},
+  {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, feeds: 'raw', local: true, get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд, мука — всё одно: на кухню, в заготовки, в брагу; вид сырья — индикатор'},
   {id: 'stores', label: 'заготовки', unit: 'чел.-год', feeds: 'ready', price: 150, note: 'вяленое, солёное, копчёное: не портится'},
   {id: 'drink', label: 'брага', unit: 'шт.', res: 'braga', soft: true, note: 'одна брага из любого сбраживаемого сырья'},
   {id: 'salt', label: 'соль', unit: 'шт.', res: 'salt', soft: true, note: 'мягкое сырьё засолки'},
   {id: 'wood', label: 'древесина', unit: 'шт.', res: 'wood'},
   {id: 'planks', label: 'тёс', unit: 'шт.', res: 'planks'},
   {id: 'fuel', label: 'топливо', unit: 'заряд', price: 0.1, note: 'древесный и каменный уголь, кизяк — заряды одного топлива (FUEL)'},
-  {id: 'brush', label: 'хворост', unit: 'вязанок', price: 0.02, note: 'жители собирают руками, без построек (TOWN_FLOW.gather): топливо бедного жилья, ползаряда; не копится'},
+  {id: 'brush', label: 'хворост', unit: 'вязанок', price: 0.02, local: true, note: 'жители собирают руками, без построек (TOWN_FLOW.gather): топливо бедного жилья, ползаряда; не копится'},
   {id: 'stone', label: 'камень', unit: 'шт.', res: 'stone'},
   {id: 'clay', label: 'глина', unit: 'шт.', res: 'clay'},
   {id: 'ware', label: 'тара', unit: 'шт.', res: 'pots', soft: true, note: 'горшки или бурдюки — одна тара разными путями'},
@@ -478,6 +480,8 @@ export const peopleBuildsLocal = (people, localId) => { const p = localPeoples(l
 // every metal some building opens, and its word for the cards
 export const gatedMetals = () => [...new Set(TOWN_BUILDINGS.all().flatMap(b => b.metals || []))];
 export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel: 'сталь', silver: 'серебро', gold: 'золото', mithril: 'мифрил'};
+// the metal as a word of a thing made of it: a golem (atlas/peoples.js)
+export const METAL_ADJ = {bronze: 'бронзовый', iron: 'железный', steel: 'стальной', mithril: 'мифриловый'};
 
 // How a town lives by its buildings' flows (atlas/economy.js), a year:
 //   order     — the categories in the order the town's hands are shared out: food first, the great works last

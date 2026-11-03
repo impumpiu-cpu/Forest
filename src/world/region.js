@@ -1,15 +1,15 @@
 // The outpost's region (data/regions.js), rolled once from the world seed on its own random stream,
 // so it does not change the rest of a world made from the same seed. Every system asks it through
 // the helpers here: an ore, a beast or a wild bed the region does not have simply is not there.
+import {ORE_KINDS} from '../data/worldLand.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {REGIONS, LEVELS, REGION_SHIFT, LEGACY_REGION} from '../data/regions.js';
 import {RARITY, FAUNA_FLOOR} from '../data/biomes.js';
 import {SPECIES} from '../data/species.js';
 
 // mithril and magma never appear where the kind of land has none; everything else may
-const RARE = new Set(['mithril']);
 const shift = (rnd, v, key) => {
-  if (rnd() >= REGION_SHIFT || (v === 0 && RARE.has(key))) return v;
+  if (rnd() >= REGION_SHIFT || (v === 0 && ORE_KINDS.rare.includes(key))) return v;
   const k = LEVELS.indexOf(v), up = rnd() < 0.5;
   return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k + (up ? 1 : -1)))] ?? v;
 };
@@ -58,8 +58,6 @@ export function faunaLevel(w, sp) {
   const v = faunaFrom(r.biomes || {}, sp) * (r.faunaShift?.[sp] ?? 1);
   return Math.max(v < FAUNA_FLOOR ? 0 : v, r.extra?.[sp] || 0);
 }
-// every beast of the region with its level, most common first (for the panel)
-export const regionFauna = w => SPECIES.filter(s => s.habitat).map(s => [s, faunaLevel(w, s.id)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
 export const floraLevel = (w, id) => (id === 'placer' ? region(w).placer : region(w).flora[id] ?? 1);
 
 // older saves: the land they were made on

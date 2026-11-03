@@ -56,6 +56,7 @@ import {TOWN_FX as TOWN_WORK, PLACE_AT} from '../townBuildings.js';
 import {CAL, ALLY, EPIC} from '../calamities.js';
 import {FAUNA, FREE, EPIC_YEARS} from '../history.js';
 import {ARMY, DRAGON, PARTIES} from '../parties.js';
+import {LAND_BIOMES, LAIR_GROUND, ROCK_CAVES, ROCK_CLAY, ORE_KINDS, TOWN_ROLES} from '../worldLand.js';
 import {ROADS, SEA} from '../roads.js';
 import {NET, SITES} from '../sites.js';
 import {SEAM, FLORA, OUTLAWS} from '../seam.js';
@@ -507,6 +508,7 @@ TABLES.push(
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',
     ...grp({fauna: FAUNA, army: ARMY, dragon: DRAGON, parties: PARTIES, roads: ROADS, sea: SEA, net: NET, sites: SITES, seam: SEAM, flora: FLORA, outlaws: OUTLAWS})},
+  {id: 'worldLand', label: 'Земля мира: виды', group: 'Мир', note: 'Какие биомы, породы и руды карта мира считает пастбищем, сухим краем, глушью, пещерами, рудой; постройки по ролям (data/worldLand.js).', ...grp({biomes: LAND_BIOMES, lairGround: LAIR_GROUND, caves: ROCK_CAVES, clay: ROCK_CLAY, ores: ORE_KINDS, roles: TOWN_ROLES})},
   {id: 'landRules', label: 'Создание земли', group: 'Мир', note: 'Пределы руки на экране «Создать землю» (data/atlas.js SHAPE), эрозия и реки генератора (data/hydrology.js).',
     ...grp({shape: SHAPE, erosion: EROSION, rivers: RIVERS})},
   objectTable({id: 'soilsAuto', label: 'Почвы', group: 'Мир', note: 'Почвы карты мира (data/soils.js).', obj: () => Object.fromEntries(SOILS.all().map(x => [x.id, x]))}),

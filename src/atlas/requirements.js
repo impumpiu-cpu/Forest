@@ -5,12 +5,13 @@
 //   townFacts(a, t, {inRealm, lit, stock}) → {get(fact, arg, scope)}; `inRealm` — what stands in the realm's towns (realmBuilt),
 //   `lit` — the town's lit indicators (atlas/economy.js townLights), `stock` — the store to read (the economy: the season's
 //   supply, imports too); all worked out once by a caller asking many times
+import {personOf} from './persons.js';
 import {WORLD_PEOPLES, placeNeed} from '../data/peoples.js';
 import {POLITIES} from '../data/polities.js';
 import {lineHas} from '../data/townBuildings.js';
 import {FACTS} from '../data/requirements.js';
-import {meets, explain, reqText} from '../core/requirements.js';
-import {townKin, realmBuilt, placeHas} from './towns.js';
+import {explain, reqText} from '../core/requirements.js';
+import {realmBuilt, placeHas} from './towns.js';
 import {headsOf} from './population.js';
 import {SPECIES} from '../data/species.js';
 
@@ -35,7 +36,7 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
         case 'pop': return t.pop;
         case 'tier': return t.tier || 0;
         case 'capital': return !!t.capital;
-        case 'ruler': { const r = (a?.realms || []).find(x => x.id === t.realm); const h = r?.kingdom?.court?.ruler; return !!h && !!(a.persons || []).find(p => p.id === h.person && p.alive); }
+        case 'ruler': { const r = (a?.realms || []).find(x => x.id === t.realm); const h = r?.kingdom?.court?.ruler; return !!h && !!personOf(a, h.person)?.alive; }
       }
       if (!FACTS.has(fact)) throw new Error(`requirements: unknown fact «${fact}»`);
       return undefined;
@@ -50,12 +51,9 @@ export const WORDS = {
     : fact === 'place' ? (PLACE_NEEDS[arg] || arg) : fact === 'opens' ? indicatorLabel(arg) : fact === 'stock' ? `на складе: ${TOWN_GOODS.has(arg) ? TOWN_GOODS.get(arg).label : arg}` : null),
   value: (fact, v) => (fact === 'people' ? PEOPLE_WORDS[v] || v : fact === 'polity' ? (POLITIES.has(v) ? POLITIES.get(v).label : v) : v),
 };
-export const townMeets = (a, t, req, opts) => meets(req, townFacts(a, t, opts));
 export const townExplain = (a, t, req, opts) => explain(req, townFacts(a, t, opts), WORDS);
 // the words of what a building asks (its row's short fields and its `need`), for the tables and the cards
-import {needsOf, tierNeed, workNeeds} from '../data/requirements.js';
+import {needsOf, tierNeed} from '../data/requirements.js';
 export const buildingNeedText = (b, people = null) => reqText([tierNeed(b, people), needsOf(b)].filter(Boolean), WORDS) || '—';
-export const recipeNeedText = q => reqText(workNeeds(q, true), WORDS) || '—';
-export const workNeedText = b => reqText(workNeeds(b, false), WORDS) || '—';
 // why a town may or may not build this now: [{text, ok}] (the limits of count, slot, line and site are not asked here)
 export const whyBuild = (a, t, b, opts) => townExplain(a, t, [tierNeed(b, t.people), needsOf(b)].filter(Boolean), opts).flatMap(x => (x.all ? x.items : [x]));   // (the building's own «all» opened into its lines)

@@ -18,14 +18,17 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
+import {onEdit} from '../data/schema/layer.js';
+import {LAND_BIOMES, ORE_KINDS, ROCK_CLAY, ROCK_CAVES} from '../data/worldLand.js';
 import {vectorOf, along} from '../data/mind.js';
 import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet, POOLS, makesOf, takesOf, recipesOf, reqLit, lineHas, TOWN_SLOTS, slotKind} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet, POOLS, makesOf, recipesOf, lineHas, TOWN_SLOTS, slotKind} from '../data/townBuildings.js';
 
-// the buildings that make a good (once)
+// the buildings that make a good (worked out once, again after an edit of the tables: data/schema/layer.js onEdit)
 const MAKERS = new Map();
+onEdit(() => MAKERS.clear());
 const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g)).map(b => b.id)); return MAKERS.get(g); };
-import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods, placeNeed} from '../data/peoples.js';
+import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN, swapGoods} from '../data/peoples.js';
 import {needsOf, tierNeed, workNeeds} from '../data/requirements.js';
 import {meets} from '../core/requirements.js';
 import {townFacts} from './requirements.js';
@@ -139,8 +142,7 @@ const nextTo = (a, i, test) => {
   return false;
 };
 
-// the open land a nomad people's herds and hunts use (data/peoples.js `places`: the greenskins' pasture is any of it)
-const GRAZING = ['meadow', 'steppe', 'savanna', 'tundra', 'shrubland', 'desert', 'foothills', 'highlands'];
+// (the land's kinds — grazing, pasture, dry, the ores, caves, clay: data/worldLand.js)
 export function placeHas(a, i, need) {
   const f = a.f, k2 = scaleOf(a) ** 2, rock = j => ROCK_BY_CODE[f.rock[j]]?.id, bio = j => biomeAt(a, j)?.id;
   switch (need) {
@@ -148,27 +150,27 @@ export function placeHas(a, i, need) {
     case 'coast': return nextTo(a, i, j => f.ocean[j]);
     case 'lake': return around(a, i, PA.lake, j => f.lake[j] >= 0);
     case 'water': return placeHas(a, i, 'river') || placeHas(a, i, 'coast') || placeHas(a, i, 'lake');
-    case 'ore': return ['iron', 'bronze', 'silver'].some(id => f[`ore_${id}`][i] >= lv(id)[1]);
+    case 'ore': return ORE_KINDS.ore.some(id => f[`ore_${id}`][i] >= lv(id)[1]);
     case 'gems': return f.ore_gems[i] >= lv('gems')[1];
     case 'coal': return f.ore_coal[i] >= lv('coal')[1];
     case 'magma': return around(a, i, PA.magma, j => f.ore_magma[j] >= lv('magma')[1]);
-    case 'precious': return f.ore_gold[i] >= lv('gold')[1] || f.ore_silver[i] >= lv('silver')[1] || f.ore_placer[i] >= lv('placer')[1];
+    case 'precious': return ORE_KINDS.precious.some(id => f[`ore_${id}`][i] >= lv(id)[1]);
     case 'placer': return around(a, i, PA.placer, j => f.ore_placer[j] >= lv('placer')[1]);
     case 'salt': return around(a, i, PA.salt, j => f.lake[j] >= 0 && a.lakes[f.lake[j]].salt) || (placeHas(a, i, 'coast') && f.temp[i] >= PA.saltSea);
-    case 'clay': return f.alluvium[i] >= PA.clay || rock(i) === 'shale' || rock(i) === 'limestone';
+    case 'clay': return f.alluvium[i] >= PA.clay || ROCK_CLAY.includes(rock(i));
     case 'stone': return around(a, i, PA.near, j => !f.ocean[j] && (f.flat[j] < PA.stoneFlat || (f.elev[j] - a.sea) / (1 - a.sea) > PA.stoneHigh));
     case 'fertile': return f.fert[i] >= PA.fertile;
     case 'arable': return f.fert[i] >= PA.arableFert && f.flat[i] > PA.arableFlat;
     case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
-    case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
-    case 'grazing': return around(a, i, PA.near, j => GRAZING.includes(bio(j)));
+    case 'pasture': return around(a, i, PA.near, j => LAND_BIOMES.pasture.includes(bio(j)));
+    case 'grazing': return around(a, i, PA.near, j => LAND_BIOMES.grazing.includes(bio(j)));
     case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
     case 'flat': return f.flat[i] > PA.flat;
-    case 'caves': return around(a, i, PA.near, j => rock(j) === 'limestone' || rock(j) === 'basalt');
+    case 'caves': return around(a, i, PA.near, j => (ROCK_CAVES[rock(j)] || 0) > 0);
     case 'road': return around(a, i, 1, j => f.road[j] >= ROADS.levels[1].wear);
     case 'graves': return around(a, i, PA.graves, j => (f.barrows?.[j] || 0) >= PA.gravesAt);
     case 'warm': return f.temp[i] >= PA.warm;
-    case 'dry': return around(a, i, PA.dry, j => ['steppe', 'desert', 'savanna'].includes(bio(j)));
+    case 'dry': return around(a, i, PA.dry, j => LAND_BIOMES.dry.includes(bio(j)));
   }
   throw new Error(`town building: unknown place need «${need}»`);
 }

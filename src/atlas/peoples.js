@@ -11,6 +11,9 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
+import {townsByRealm} from './common.js';
+import {ORE_KINDS, LAND_BIOMES, TOWN_ROLES} from '../data/worldLand.js';
+import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {takeHeads, sync, foundHeads} from './population.js';
 import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
@@ -21,7 +24,7 @@ import {stepWarBeasts} from './beasts.js';
 import {stepWilds} from './wilds.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY, goodPrice} from '../data/townBuildings.js';
+import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY, goodPrice, METAL_ADJ} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -41,7 +44,7 @@ import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
-export const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'gems'].map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
+export const oreWealth = (a, i) => Math.max(...ORE_KINDS.wealth.map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
 
 export function initPeoples(a, era) {
   for (const P of WORLD_PEOPLES.filter(p => p.era === era)) initPeople(a, P);
@@ -94,7 +97,7 @@ const hasWater = (a, i) => a.f.flow[i] >= RIVERS.stream * scaleOf(a) ** 2 || nea
 // how good a cell is for a town of this people
 function siteScore(a, P, i) {
   const f = a.f, b = biomeAt(a, i);
-  if (!b || f.ocean[i] || f.lake[i] >= 0 || b.id === 'water' || b.id === 'ice' || f.flow[i] >= RIVERS.great * scaleOf(a) ** 2) return -Infinity;
+  if (!b || f.ocean[i] || f.lake[i] >= 0 || LAND_BIOMES.barren.includes(b.id) || f.flow[i] >= RIVERS.great * scaleOf(a) ** 2) return -Infinity;
   const S = P.site;
   return (P.home[b.id] || 0) + S.water * (hasWater(a, i) ? 1 : 0) + S.coast * (near(a, i, j => f.ocean[j]) ? 1 : 0) +
     S.fert * f.fert[i] + S.trees * f.trees[i] + S.ores * Math.min(1.5, oreWealth(a, i)) + S.steep * (1 - f.flat[i]);
@@ -218,14 +221,13 @@ export function raiseBuilding(a, t, b, say) {
     const s = (t.sites || []).map(id => a.sites?.[id - 1]).find(x => x?.alive && x.kind === old);
     if (s) { s.alive = false; s.died = a.hist?.year ?? 0; if (a.siteAt) a.siteAt[s.i] = 0; t.sites = t.sites.filter(id => id !== s.id); }
   }
-  if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
-  if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
+  if (TOWN_ROLES.crossing[b.id] != null) markCrossing(a, t.i, TOWN_ROLES.crossing[b.id]);   // (data/worldLand.js)
+  if (first && TOWN_ROLES.crowns.includes(b.id)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
   else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
 }
 export const BURNT = {m: 'сожжён', f: 'сожжена', n: 'сожжено', pl: 'сожжены'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the peoples arrive: each founding band wakes in the best spot of its land, far from the others
 export function arrive(a, era, rnd, say) {
@@ -422,11 +424,12 @@ export function stepPeoples(a, rnd, say) {
   abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
+  const byRealm = townsByRealm(a.towns);
   for (const r of a.realms) for (const q of a.realms) {
     if (r.id >= q.id) continue;
     const key = `${r.id}:${q.id}`; if (a.contacts[key]) continue;
     let where = -1;
-    for (const t of a.towns) if (t.alive && t.realm === r.id) for (const o of a.towns) if (o.alive && o.realm === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { where = Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2); break; }
+    for (const t of byRealm.get(r.id) || []) for (const o of byRealm.get(q.id) || []) if (Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { where = Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2); break; }
     if (where < 0) continue;
     const fe = meet(a, r.id, q.id, a.hist.year).att;
     a.contacts[key] = {year: a.hist.year, feeling: fe};
@@ -481,9 +484,8 @@ export function landOf(a, i) {
 }
 
 // a golem made, remade or set on guard: told when it is the first of its kind in the town
-const GOLEM_WORDS = {bronze: 'бронзовый', iron: 'железный', steel: 'стальной', mithril: 'мифриловый'};
 function golemLine(a, t, g, say) {
-  const w = GOLEM_WORDS[g.metal], where = `${townLabel(t, 3)} ${t.name}`;
+  const w = METAL_ADJ[g.metal], where = `${townLabel(t, 3)} ${t.name}`;
   if (g.kind === 'auto' && (t.golems.auto[g.id] || []).length === 1) say(`В ${where} ${w} голем встал к работе: ${TOWN_BUILDINGS.get(g.id).name}.`);
   else if (g.kind === 'guard' && t.golems.guard.length === 1) say(`В ${where} ${w} голем встал на стражу.`);
 }

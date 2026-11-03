@@ -143,7 +143,7 @@ export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5,
 //               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
 //   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
 //               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
-export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 20, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
+export const CAPTIVE_RAID = {minPop: 20, chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 20, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [
@@ -183,7 +183,7 @@ export const LAIR_AGE = {ancient: 30};
 export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'], add: [2, 5], cap: 30, life: [20, 50],
   think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, luck: [0.6, 0.8], reach: 1.5,
   subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, wiped: 0.12, beatenCost: 0.75, beastRaid: 0.35,
-  expand: {from: 0.6, crowd: 1.5, cost: 0.8},
+  expand: {from: 0.6, crowd: 1.5, cost: 0.8, tries: 60},
   // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
   camp: {p: 1.6, strength: 1.3}};
 // what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)

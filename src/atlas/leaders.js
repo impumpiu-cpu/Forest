@@ -14,7 +14,8 @@
 // lair.lord — the id of the lair it pays tribute to. The leader is one of the world's persons, and its death is the one
 // event of personDies: the lair's loss of it, its vassals' freedom and the dead's loss of a master follow from that
 // (atlas/succession.js, atlas/control.js)
-import {mulberry, seedNumber} from '../core/rng.js';
+import {stream, between} from './common.js';
+import {cap1} from '../core/util.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel} from './necro.js';
 import {TITLE, makeName} from '../data/names.js';
@@ -27,13 +28,8 @@ import {DOES} from './deeds/index.js';
 import {newPerson, personDies, moveTo, personsAt} from './persons.js';
 import {heldDead} from './control.js';
 
-const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
-function draw(a) {
-  const r = mulberry(a.leadRnd ?? seedNumber(`${a.cfg.seed}:atlas:leaders`));
-  return {r, done: () => { a.leadRnd = r.state; }};
-}
+const draw = a => stream(a, 'leadRnd', 'leaders');
 
 // the lairs that may raise a leader: ancient, not a dragon's (it is one beast), not a vampire's manor, not a boss's
 export const canLead = (l, L = LAIRS.get(l.kind)) => l.alive && l.ancient && l.boss == null && !L.dragon && L.at !== 'town';

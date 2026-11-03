@@ -6,6 +6,9 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {TOWN_ROLES} from '../data/worldLand.js';
+import {relKey, townsByRealm} from './common.js';
+import {cap1, luck} from '../core/util.js';
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
 import {killShare, killHeads, takeHeads, addGroup, moveHeads, shareOfPeople, strangersOf} from './population.js';
 import {TOWN_LIFE as TL} from '../data/peoples.js';
@@ -71,8 +74,7 @@ function driftRealms(a) {
   }
 }
 
-const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
+const key = relKey;
 const label = id => WORLD_PEOPLES.get(id).label;
 
 // p and q are realm ids throughout
@@ -143,7 +145,7 @@ function battlefield(a, lose, win) {
   return best;
 }
 
-export const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
+export const fight = (t, rnd) => might(t, townFx(t)) * luck(D.luck, rnd);
 
 // ── armies (data/parties.js ARMY). A realm at war musters an army at its town nearest the enemy:
 // a levy of the town's people with the town's arms; it marches to the enemy's town and lays siege.
@@ -225,7 +227,7 @@ BEHAVIOURS.army = {
     const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
     if (!ready) return;
     const r = a.rel[p.war]; if (r?.war) r.war.battles++;
-    const we = p.might * (0.6 + 0.8 * rnd()), they = town * (0.6 + 0.8 * rnd());
+    const we = p.might * luck(D.luck, rnd), they = town * luck(D.luck, rnd);
     const hunger = S.starved > 0 ? `, в ${townLabel(t, 3)} умерло от голода ${Math.round(S.starved)}` : '', burnt = p.burnt ? `, сожжено угодий: ${p.burnt}` : '';
     barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
     if (we > they) {
@@ -275,9 +277,10 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     }
   }
   // the nearest towns of two peoples, and how far apart they are
+  const byRealm = townsByRealm(towns), of = id => byRealm.get(id) || [];
   const nearest = (p, q) => {
     let best = null, bd = Infinity;
-    for (const t of towns) if (t.realm === p && t.alive) for (const o of towns) if (o.realm === q && o.alive) {
+    for (const t of of(p)) for (const o of of(q)) {
       const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; best = [t, o]; }
     }
     return [best, bd];
@@ -289,9 +292,9 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     // trade routes: road-joined towns of the two near each other
     let routes = 0;
     if (trades(a, p, q)) {
-      for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && ((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
+      for (const t of of(p)) for (const o of of(q)) if (((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) || laneBetween(a, t, o))) {
-        routes += t.built.includes('mint') || o.built.includes('mint') || t.built.includes('tradepost') || o.built.includes('tradepost') ? 2 : 1;   // coin and a trading post carry further than barter
+        routes += TOWN_ROLES.coinRoutes.some(id => t.built.includes(id) || o.built.includes(id)) ? 2 : 1;   // coin and a trading post carry further than barter
         // folk of each settle in the other's town (of another people; kin need no settling): the route is remembered, the
         // moving is done once for the town over all its routes (below)
         if (!kin) for (const [x, from] of [[t, o], [o, t]]) (mingling.get(x) || mingling.set(x, []).get(x)).push(from);

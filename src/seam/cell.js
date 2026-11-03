@@ -19,7 +19,7 @@ import {realmLabel} from '../atlas/realms.js';
 import {atWar, trades, realmAlign} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {clamp} from '../core/util.js';
+import {clamp, cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
 import {cultPool} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -27,12 +27,11 @@ import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
 import {BIOMES} from '../data/biomes.js';
 import {faunaLevel} from '../world/region.js';
-import {SEAM, LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
-// the raid band of a tribe's folk (by the lair kinds of its species)
-const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
+import {SEAM, LAIR_BANDS, WAR_ONLY_BANDS, RAID_UNRULED, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
+// the raid band of a tribe's folk (by the lair kinds of its species), read when asked (the lairs' table edits `species`)
+const folkBand = sp => { let out = null; for (const L of LAIRS.all()) if (L.tribe && LAIR_BANDS[L.id] && L.species === sp) out = LAIR_BANDS[L.id]; return out; };
 
 const ORE_KEYS = Object.keys(REGIONS.all()[0].ores);
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const r2 = v => Math.round(v * 100) / 100;
 const xy = (a, i) => [i % a.w, (i / a.w) | 0];
 const RING = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
@@ -146,14 +145,14 @@ export function cellNeighbours(a, i, race = 'human') {
   }
   for (const {t, d} of towns) {
     const band = realmBand(a, t.realm, t.people);
-    if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm) && !WAR_ONLY_BANDS.includes(t.people))) : t.people === 'orcs'))
+    if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm) && !WAR_ONLY_BANDS.includes(t.people))) : RAID_UNRULED.includes(t.people)))
       sources.push({band, d, wt: Math.sqrt(t.pop) / 10, label: `${tLabel(t)} (${realmName(a, t.realm)})`});
   }
   // the tribes' folk about (atlas/lairs.js lairFolk), a lair of theirs near or not: where they are thickest for the way
   if (a.fauna) {
     const F = a.fauna, R0 = Math.ceil(reach / F.c);
     for (const s of F.list) {
-      const band = s.role === 'folk' ? FOLK_BAND[s.id] : null; if (!band) continue;
+      const band = s.role === 'folk' ? folkBand(s.id) : null; if (!band) continue;
       const cx = (x0 / F.c) | 0, cy = (y0 / F.c) | 0;
       let best = null;
       for (let y = Math.max(0, cy - R0); y <= Math.min(F.H - 1, cy + R0); y++) for (let x = Math.max(0, cx - R0); x <= Math.min(F.W - 1, cx + R0); x++) {
@@ -175,7 +174,7 @@ export function cellNeighbours(a, i, race = 'human') {
     }
     if (best) sources.push({band: 'undead', d: best.d, wt: FOLK_RAIDS.weight * best.v, label: 'мертвецы некроманта в округе'});
   }
-  const men = towns.find(o => o.t.people === 'humans');
+  const men = towns.find(o => OUTLAWS.people.includes(o.t.people));
   if (men) sources.push({band: OUTLAWS.band, d: men.d, wt: OUTLAWS.weight, label: 'лихие люди на дорогах'});
   if (a.rot && a.rot[faunaCell(a, i)] > SEAM.rotUndead) sources.push({band: 'undead', d: SEAM.rotCells, wt: a.rot[faunaCell(a, i)], label: 'гниль в здешней земле'});
   const near = sources.map(s => ({...s, days: daysFor(s.d)})).filter(s => s.days <= SEAM.raidDays).sort((p, q) => p.days - q.days);

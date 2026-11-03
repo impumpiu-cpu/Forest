@@ -3,20 +3,21 @@
 // holds its kin as slaves (t.slavesOf, atlas/deeds/captives.js) or a lair that holds them captive (lair.captives), within
 // reach: against a realm it is war (the standing falls; a war already on goes on). The town's might against the other's,
 // with luck: the freed come to the town as free people; a loss costs the town some of its people.
+import {townBeatsLair} from '../lairs.js';
+import {cap1} from '../../core/util.js';
 import {SLAVE, freesCaptives} from '../../data/slavery.js';
 import {addHeads, killShare} from '../population.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
-import {TOWN_WAR, WORLD_PEOPLES} from '../../data/peoples.js';
+import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {LAIRS} from '../../data/lairs.js';
 import {SPECIES} from '../../data/species.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
-import {townFx, might, townLabel} from '../towns.js';
+import {townLabel} from '../towns.js';
 import {fight, meet} from '../diplomacy.js';
 import {realmLabel} from '../realms.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const kin = (held, people) => Math.floor(held?.[people] || 0);
 
 export const liberate = {
@@ -52,9 +53,8 @@ export const liberate = {
     }
     const l = (a.lairs || []).find(x => x.id === plan.lair); if (!l?.alive) return null;
     const n = kin(l.captives, P); if (!n) return null;
-    const LK = LAIRS.get(l.kind), owner = SPECIES.get(LK.species), s = owner.special, W = TOWN_WAR;
-    const town = might(t, townFx(t)) * W.might * (W.luck[0] + W.luck[1] * r()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (W.luck[0] + W.luck[1] * r());
-    if (town > beast) {
+    const owner = SPECIES.get(LAIRS.get(l.kind).species);
+    if (townBeatsLair(t, l, r)) {
       delete l.captives[P];
       const home = Math.round(n * L.home); addHeads(a, t, WORLD_PEOPLES.get(P).race, home, 1);
       return `${us} из ${townLabel(t, 2)} ${t.name} вызволили сородичей из полона в «${l.name}»: ${home} вернулись домой.`;

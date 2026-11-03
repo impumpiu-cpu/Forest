@@ -2,6 +2,7 @@
 // has met and dislikes within DIPLOMACY.raidReach — a few times a year for the realm (raidsPerYear), each town with the
 // year's chance spread over the seasons. The loot grows the raiders' town, the beaten town loses `raidLoss`; either way
 // the standing between the two sinks by `raid`.
+import {cap1} from '../../core/util.js';
 import {plunder, plunderWords, lootOf, driveOff} from '../treasury.js';
 import {killHeads, takeHeads, addGroup, killShare} from '../population.js';
 import {TOWN_MONEY} from '../../data/townBuildings.js';
@@ -17,7 +18,6 @@ import {BURNT} from '../peoples.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 export const raidTown = {
   want(a, realm, {r}) {

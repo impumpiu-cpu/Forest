@@ -12,7 +12,16 @@
 import {SPECIES} from '../data/species.js';
 import {SUCCESSION} from '../data/polities.js';
 
-export const personOf = (a, id) => (id == null ? null : (a.persons || []).find(p => p.id === id) || null);
+// (by id through an index kept beside the list, never saved: persons are only ever added — newPerson — so the index
+// catches up with the list's new tail; a list replaced, as on loading, gets a new index)
+const INDEX = new WeakMap();
+export function personOf(a, id) {
+  if (id == null || !a.persons) return null;
+  let X = INDEX.get(a.persons);
+  if (!X) INDEX.set(a.persons, (X = {n: 0, by: new Map()}));
+  for (; X.n < a.persons.length; X.n++) { const p = a.persons[X.n]; if (!X.by.has(p.id)) X.by.set(p.id, p); }
+  return X.by.get(id) || null;
+}
 export const livingPersons = a => (a.persons || []).filter(p => p.alive && !p.inCount);   // (one back in the crowd is counted with its town, not as a person)
 export const personLabel = p => (p.title ? `${p.title[0]} ${p.name}` : p.name);
 export const ageOf = (a, p) => (a.hist?.year ?? 0) - p.born;

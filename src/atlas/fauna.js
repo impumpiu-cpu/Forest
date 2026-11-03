@@ -7,6 +7,7 @@
 // dwindle (data/lairs.js LAIR_FIELD.fade).
 //
 // a.fauna = {c, W, H, list: [{id, sp, role: 'prey'|'predator'|'spirit'|'folk', lair?, K, N, prey: [indices], usual}], folk}
+import {ROCK_CAVES} from '../data/worldLand.js';
 import {SPECIES} from '../data/species.js';
 import {RARITY} from '../data/biomes.js';
 import {FAUNA} from '../data/history.js';
@@ -27,9 +28,8 @@ export function initFauna(a, rnd) {
     if (a.f.ocean[i]) continue;
     const j = (((i / a.w) | 0) / c | 0) * W + ((i % a.w) / c | 0), b = biomeAt(a, i), sh = shares[j];
     sh[b.id] = (sh[b.id] || 0) + 1;
-    const rock = ROCK_BY_CODE[a.f.rock[i]]?.id;
-    if (rock === 'limestone') sh.underground = (sh.underground || 0) + 0.15;
-    else if (rock === 'basalt') sh.underground = (sh.underground || 0) + 0.08;
+    const cave = ROCK_CAVES[ROCK_BY_CODE[a.f.rock[i]]?.id];   // (data/worldLand.js)
+    if (cave) sh.underground = (sh.underground || 0) + cave;
   }
   const list = species.map(sp => {
     const K = new Float32Array(N);

@@ -14,6 +14,7 @@
 //
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
+import {linkKey} from './common.js';
 import {SITES, NET} from '../data/sites.js';
 import {killHeads} from './population.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -53,20 +54,22 @@ function fitness(a, i, b, people) {
 export const siteRadius = (a, t) => Math.max(2, Math.round(SITES.radius[t.tier] * scaleOf(a)));
 const footprint = (a, t) => Math.round(SITES.footprint[t.tier] * scaleOf(a));
 
-// is the cell taken: by a site, by the town's own ground or another town's
-function taken(a, i, x, y) {
+// is the cell taken: by a site, by the town's own ground or another town's (`towns`: those whose ground may reach it)
+function taken(a, i, x, y, towns = a.towns) {
   if (a.siteAt && a.siteAt[i]) return true;
-  for (const t of a.towns) if (t.alive && Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) <= footprint(a, t)) return true;
+  for (const t of towns) if (t.alive && Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) <= footprint(a, t)) return true;
   return false;
 }
 
 // the cell for a new site of this building near this town, or -1 when there is none
 export function siteCell(a, t, b, rnd) {
   const f = a.f, R = siteRadius(a, t), x0 = t.x, y0 = t.y;
+  // the towns whose ground may reach the window at all (the rest can take none of its cells)
+  const near = a.towns.filter(o => o.alive && Math.max(Math.abs(o.x - x0), Math.abs(o.y - y0)) <= R + footprint(a, o));
   let best = -1, bv = -Infinity;
   for (let y = Math.max(0, y0 - R); y <= Math.min(a.h - 1, y0 + R); y++) for (let x = Math.max(0, x0 - R); x <= Math.min(a.w - 1, x0 + R); x++) {
     const i = y * a.w + x;
-    if (f.ocean[i] || f.lake[i] >= 0 || taken(a, i, x, y) || !cellFits(a, i, b, t.people)) continue;
+    if (f.ocean[i] || f.lake[i] >= 0 || taken(a, i, x, y, near) || !cellFits(a, i, b, t.people)) continue;
     let beside = 0;
     for (const [dx, dy] of DIRS8) {
       const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= a.w || ny >= a.h) continue;
@@ -131,7 +134,6 @@ export const siteAt = (a, i) => (a.siteAt && a.siteAt[i] ? a.sites[a.siteAt[i] -
 export const townSites = (a, t) => (t.sites || []).map(id => a.sites[id - 1]).filter(s => s.alive);
 
 // ── the net of supply
-const linkKey = (p, q) => Math.min(p.id, q.id) * 100000 + Math.max(p.id, q.id);
 
 // a year of the net: the links are renewed, the surplus of each town flows to the lacking towns
 // it is linked with, the links thicken or waste by the flow. `feeds` maps town id → [what it feeds
@@ -206,11 +208,4 @@ export function scourgedFood(a, t) {
   let v = 0;
   for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += Math.max(0, foodNet(TOWN_BUILDINGS.get(s.kind))) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged;
   return v;
-}
-
-// what a town's works yield, for the panel: {food, raw} as shares of its land's feed and of its craft
-export function siteYields(a, t) {
-  const out = {food: 0, raw: 0};
-  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += Math.max(0, foodNet(b)) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
-  return out;
 }

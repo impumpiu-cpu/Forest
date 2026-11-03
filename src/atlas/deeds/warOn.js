@@ -1,6 +1,7 @@
 // War: a realm whose standing with a neighbour has sunk to DIPLOMACY.warAt declares war — when they border (shared land,
 // or towns within the front). Who may: every people but those whose row leaves the deed out (the elves answer a war,
 // they do not start one). The war's first move is the declarer's (march.js).
+import {cap1} from '../../core/util.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {realmLabel} from '../realms.js';
 import {relationsOf} from './realm.js';
@@ -9,7 +10,6 @@ import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 
 const cultOf = realm => WORLD_PEOPLES.get(realm.people)?.warCult || null;
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 export const warOn = {
   want(a, realm, ctx = {}) {

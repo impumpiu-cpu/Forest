@@ -17,7 +17,7 @@
 import {WORLD_PEOPLES, TOWN_LIFE as TL, KIN} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin} from './towns.js';
-import {headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, addGroup, moveHeads, takeHeads, shareOfPeople} from './population.js';
+import {headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
 import {townGone} from './persons.js';
