@@ -27,7 +27,7 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, INDICATORS} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, INDICATORS, rebuildTiers} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
@@ -38,7 +38,7 @@ import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
-import {POTION, POTIONS, FOE_BELTS, potionOf} from '../potions.js';
+import {POTION, POTIONS, FOE_BELTS, potionOf, rebuildPotions} from '../potions.js';
 import {rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
@@ -354,7 +354,7 @@ export const TABLES = [
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (дварфы кучно, эльфы и зеленокожие вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
-  {id: 'polities', label: 'Уклады', group: 'Народы', key: 'id', rows: () => POLITIES.all().map(p => ({...p, lairs: p.lairs ? 'логова' : 'держава народа'})),
+  {id: 'polities', label: 'Уклады', group: 'Народы', key: 'id', rows: () => POLITIES.all().map(p => ({...p, lairs: p.lairs ? 'логова' : 'держава народа'})), target: (r, c) => [POLITIES.get(r.id), c.key],   // (the rows are copies with `lairs` in words: an edit goes to the uklad itself)
     note: 'Уклады держав и логов (data/polities.js): как правят, какие своды правил действуют, где живёт правитель и что бывает, когда он гибнет (atlas/polities.js, atlas/persons.js, atlas/succession.js).',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('rule', 'Правление', 'enum', {values: {council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}}),
@@ -371,7 +371,7 @@ export const TABLES = [
     note: 'Что мир может сказать о городе, когда постройка, рецепт или дело спрашивает (data/requirements.js FACTS; читаются с города в момент проверки — atlas/requirements.js, в таблице их значений нет). Условие сравнивает факт со значением; пороги — в требовании, не в факте: доля гноллов одна, а «гноллов не больше 5 %» — условие того, кто просит.',
     columns: [col('id', 'id'), col('label', 'Факт'), col('type', 'Тип', 'enum', {values: {bool: 'да/нет', num: 'число', enum: 'значение'}}), col('arg', 'О чём', 'text', {nullable: true}), col('scope', 'Где читается'), col('ops', 'Операции'), col('note', 'Примечание')]},
   {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, vecNow: Object.entries(vectorOf(b)).map(([k, v]) => `${VECTORS[k]} ${v.toFixed(2)}`).join(', '), needText: buildingNeedText(b)})),
-    target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
+    after: rebuildTiers, target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
@@ -522,7 +522,7 @@ TABLES.push(
   {id: 'potions', label: 'Зелья', group: 'Вещи', key: 'res',
     note: 'Зелья (data/potions.js): по строке на ступень — простое варит хижина лекаря (в поселении и в походе: только ступени до «Правил зелий» hutTier), усиленное — лаборатория алхимика в городе (из запасов каравана, за плату). Что делает — строка «Состояний» вида «зелье» (действие). Когда пьют сами: wounded — у края смерти, poisoned — яд в крови, fight — перед первым ударом боя, blade — натирают клинок. Отвары (cold, tired, mending, captive) в пояс не идут: их пьют из запасов поселения или каравана («Правила зелий» home), сонный дают пленному, что задумал бежать. Всегда нужен горшок. Лечение — своё гнездо в поясе (до slot), прочие — belt мест.',
     rows: () => POTIONS.all().flatMap(p => p.grades.map((g, k) => ({res: g.res, potion: p.id, label: k ? `${p.label} (усиленное)` : p.label, use: p.use, need: p.need || null, grade: k ? 'усиленное' : 'простое', tier: g.tier, at: g.at, cost: g.cost, effect: g.effect}))),
-    target: (r, c) => { const g = potionOf(r.res).grade; return c.key === 'use' || c.key === 'need' ? [potionOf(r.res).potion, c.key] : [g, c.key]; },
+    target: (r, c) => { const g = potionOf(r.res).grade; return c.key === 'use' || c.key === 'need' ? [potionOf(r.res).potion, c.key] : [g, c.key]; }, after: rebuildPotions,
     columns: [col('res', 'Ресурс'), col('label', 'Зелье', 'text', {edit: false}), col('grade', 'Ступень', 'text', {edit: false}),
       col('use', 'Когда пьют', 'enum', {values: {wounded: 'у края смерти', poisoned: 'яд в крови', fight: 'перед боем', blade: 'на клинок', cold: 'зябнет (из запасов)', tired: 'с ног валится на посту (из запасов)', mending: 'ранен (из запасов)', captive: 'пленному перед побегом', fire: 'жжёт огонь, бой с огнедышащим', dark: 'ночью: на посту и перед боем', throw: 'бросают во врага', mark: 'метка навсегда (из запасов)'}}),
       col('tier', 'Сложность', 'int', {min: 1, max: 4, note: 'ступень навыка (T1–T4); хижина лекаря варит до hutTier'}),
@@ -535,7 +535,7 @@ TABLES.push(
     note: 'Нужда на этом уровне или ниже (exhaustion.low) считается к истощению; какие нужды (needs).'},
   autoTable({id: 'foods', label: 'Еда', group: 'Поселение', note: 'Еда и блюда (data/foods.js): сытость, порча.', rows: () => FOODS.all()}),
   autoTable({id: 'crops', label: 'Посевы', group: 'Поселение', note: 'Посевы полей (data/crops.js).', rows: () => CROPS.all()}),
-  autoTable({id: 'plants', label: 'Растения', group: 'Поселение', note: 'Дикие растения карты (data/plants.js).', rows: () => PLANTS.all()}),
+  autoTable({id: 'plants', label: 'Растения', group: 'Поселение', note: 'Дикие растения карты (data/plants.js). Работа сбора каждой грядки (её время, ноша, навык) — строка таблицы «Работы»: работа собирается из `job` растения при загрузке.', rows: () => PLANTS.all(), skip: ['job']}),
   autoTable({id: 'furniture', label: 'Мебель', group: 'Поселение', note: 'Мебель и её уют (data/furniture.js).', rows: () => FURNITURE.all()}),
   autoTable({id: 'luxury', label: 'Роскошь', group: 'Поселение', note: 'Украшения ювелира (data/luxury.js).', rows: () => LUXURY.all()}),
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),

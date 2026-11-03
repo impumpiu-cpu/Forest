@@ -210,7 +210,7 @@ RECIPES.registerAll([
   {id: 'linen', tier: 2, skill: 'tailoring', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
     want: c => (short(c.owned('linen') + c.owned('furcoat') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.2 : 0)},
   {id: 'pots', at: 'potter', cost: {clay: 2, wood: 1}, work: 300, makes: {resource: 'pots', n: 3},
-    // (and a few for the healer's hut: every potion is poured into a pot — data/potions.js POTION.pot)
+    // (and a few for the healer's hut: every potion is poured into a pot — data/potions.js, every grade's `cost`)
     want: c => (c.stock('pots') < Math.max(Math.min(30, c.food / 5), c.has('healerhut') ? POTION.hutPots : 0) ? 1.6 : 0)},
   {id: 'planks', at: 'sawmill', cost: {wood: 3}, work: 260, makes: {resource: 'planks', n: 2},
     want: c => (c.stock('planks') < 24 ? 1.6 : 0)},

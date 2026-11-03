@@ -24,8 +24,8 @@
 //   grades — [{res, tier, at, cost, effect}]: the resource the potion is in the stock and the belt (data/resources.js
 //            makes one row for each), the step of skill it takes (data/skills.js TIERS), where it is brewed — healerhut
 //            (the settlement's hut and the caravan's: only plain grades of tier ≤ POTION.hutTier; brewed with medicine)
-//            or alchemist (a town's laboratory: the strong grades, with alchemy; campaign/town.js), what it takes (a pot
-//            always: POTION.pot), and the row of «Состояния» it gives
+//            or alchemist (a town's laboratory: the strong grades, with alchemy; campaign/town.js), what it takes (`cost`:
+//            always one pot among it), and the row of «Состояния» it gives
 // A potion that leaves a mark for life (an elixir, later) is not drunk again by one who bears the mark.
 //
 // The belt (agents/potions.js): the healing potion has a slot of its own (a.potions, at most POTION.slot); any other —
@@ -40,8 +40,6 @@ export const POTION = {
   beltSwap: 0.75,  // a carried potion goes back to the stock for one this much more wanted
   beltNow: 3,      // a foe on the map counts this many times one that came before (settlement/potions.js expectedFoes)
   beltFights: 12,  // the caravan expects the foes of its last this many fights (campaign/potions.js)
-  herbs: 2,        // healing herbs a healing potion takes (the recipe)
-  pot: 1,          // pots every potion is poured into (data/resources.js pots: the potter's work)
   keepMakings: 6,  // the caravan keeps this many of each making of a potion; the rest is goods to sell or leave
   keep: {pots: 12, herbs: 10},   // … and of these this many (every potion takes a pot: data/market.js ALCHEMY.pots)
   hutTier: 2,      // the highest step a healer's hut brews: what is harder is the alchemist's
@@ -68,10 +66,10 @@ export const POTION = {
 export const FOE_BELTS = {darkelf: {bladeVenom: 0.5}, orc: {bearBrew: 0.3}, goblin: {fireFlask: 0.12}};
 
 export const POTIONS = new Registry('potion');
-const P = POTION.pot;
+const P = 1;   // (every potion is poured into a pot — data/resources.js pots, the potter's work; what each grade takes is its `cost`, the table «Зелья»)
 POTIONS.registerAll([
   {id: 'heal', label: 'зелье лечения', use: 'wounded', note: 'пьётся само у края смерти', need: {base: 2}, stock: {share: 0.5, of: 'people', want: 0.6},
-    grades: [{res: 'potion', tier: 1, at: 'healerhut', cost: {herbs: POTION.herbs, pots: P}, effect: 'potHeal'},
+    grades: [{res: 'potion', tier: 1, at: 'healerhut', cost: {herbs: 2, pots: P}, effect: 'potHeal'},
              {res: 'potionStrong', tier: 2, at: 'alchemist', cost: {herbs: 3, honey: 1, pots: P}, effect: 'potHealStrong'}]},
   {id: 'antidote', label: 'противоядие', use: 'poisoned', note: 'пьётся, когда яд в крови', need: {base: 0.5, venom: 4}, stock: {share: 0.34, of: 'people', want: 0.45},
     grades: [{res: 'antidote', tier: 1, at: 'healerhut', cost: {herbs: 1, slime: 1, pots: P}, effect: 'potAntidote'},
@@ -118,21 +116,34 @@ POTIONS.registerAll([
 
 // a potion's grade by its resource: {potion, grade, k} (k — 0 plain, 1 strong), or null
 const byRes = new Map();
-for (const p of POTIONS.all()) p.grades.forEach((g, k) => byRes.set(g.res, {potion: p, grade: g, k}));
 export const potionOf = res => byRes.get(res) || null;
 export const isPotion = res => byRes.has(res);
 // every potion resource, the plain healing one first (it fills the slot of its own)
-export const POTION_RES = [...byRes.keys()];
+export const POTION_RES = [];
 // what goes into a belt, in the order it is handed out: potion by potion as the table has them, the strong grade before
 // the plain one; one of a kind in a belt (sameKind)
-export const BELT_ORDER = POTIONS.all().filter(p => !p.home).flatMap(p => p.grades.map(g => g.res).filter(r => r !== 'potion').reverse());
+export const BELT_ORDER = [];
 // the brews of the stock, by their use: the grades, the strong first ({use: [res…]})
-export const HOME_BY_USE = Object.fromEntries(POTIONS.all().filter(p => p.home).map(p => [p.use, p.grades.map(g => g.res).reverse()]));
-export const HOME_RES = Object.values(HOME_BY_USE).flat();
-export const sameKind = (a, b) => potionOf(a)?.potion === potionOf(b)?.potion;
+export const HOME_BY_USE = {};
+export const HOME_RES = [];
 // what a caravan keeps, neither sells nor leaves behind before other goods (campaign/town.js, campaign/baggage.js): every
 // potion, and of what any of them is made of no more than POTION.keepMakings (bones, honey, wax are goods beyond that)
-export const POTION_MAKINGS = new Set(POTIONS.all().flatMap(p => p.grades.flatMap(g => Object.keys(g.cost))).filter(r => !byRes.has(r)));
+export const POTION_MAKINGS = new Set();
+// (all of these made from the rows, and made again after an edit of «Зелья»: a potion's `use`, a grade's `cost`)
+const refill = (list, items) => { list.length = 0; list.push(...items); };
+export function rebuildPotions() {
+  byRes.clear();
+  for (const p of POTIONS.all()) p.grades.forEach((g, k) => byRes.set(g.res, {potion: p, grade: g, k}));
+  refill(POTION_RES, byRes.keys());
+  refill(BELT_ORDER, POTIONS.all().filter(p => !p.home).flatMap(p => p.grades.map(g => g.res).filter(r => r !== 'potion').reverse()));
+  for (const k of Object.keys(HOME_BY_USE)) delete HOME_BY_USE[k];
+  for (const p of POTIONS.all()) if (p.home) HOME_BY_USE[p.use] = p.grades.map(g => g.res).reverse();
+  refill(HOME_RES, Object.values(HOME_BY_USE).flat());
+  POTION_MAKINGS.clear();
+  for (const p of POTIONS.all()) for (const g of p.grades) for (const r of Object.keys(g.cost)) if (!byRes.has(r)) POTION_MAKINGS.add(r);
+}
+rebuildPotions();
+export const sameKind = (a, b) => potionOf(a)?.potion === potionOf(b)?.potion;
 export const potionKeep = (id, n) => (byRes.has(id) ? n : POTION_MAKINGS.has(id) ? Math.min(n, POTION.keep[id] ?? POTION.keepMakings) : 0);
 // the grades a healer's hut brews (in the settlement and the caravan's camp)
 export const hutGrades = () => POTIONS.all().flatMap(p => p.grades.filter(g => g.at === 'healerhut' && g.tier <= POTION.hutTier).map(g => ({potion: p, grade: g})));

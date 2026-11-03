@@ -18,11 +18,13 @@ export function autoColumns(rows, {key = 'id', skip = [], labels = {}, whole = {
     if (!kinds.has(path)) { kinds.set(path, new Set()); order.push(path); }
     kinds.get(path).add(k);
   };
-  // a path that holds a formula (a function) in any row is the code's in all of them
-  const code = new Set();
+  // a path that holds a formula (a function) in any row is the code's in all of them; a value read through from another
+  // table (a getter: the luxury recipes' workshop) is that row's only — the column stays for the rows that hold their own,
+  // and the getter's cell is not written (autoTable target)
+  const code = new Set(), through = new Set();
   for (const r of rows) for (const k of Object.keys(r)) {
     if (drop.has(k)) continue;
-    if (!plain(r, k)) { code.add(k); continue; }
+    if (!plain(r, k)) { through.add(k); continue; }
     const v = r[k];
     if (prim(v) || primList(v)) see(k, v);
     else if (v && typeof v === 'object' && !Array.isArray(v)) {
@@ -30,6 +32,7 @@ export function autoColumns(rows, {key = 'id', skip = [], labels = {}, whole = {
     } else if (typeof v === 'function') code.add(k);
   }
   const wholeCols = Object.entries(whole).filter(([k]) => rows.some(r => r[k] !== undefined)).map(([k, spec]) => col(k, labels[k] || k, spec.type || 'json', spec));
+  for (const k of through) if (!kinds.has(k) && ![...kinds.keys()].some(p => p.startsWith(k + '.'))) code.add(k);   // (read through in every row that has it: no column)
   return [col(key, key), ...order.filter(p => !code.has(p)).map(p => { const ks = kinds.get(p); return col(p, labels[p] || p, ks.size === 1 ? [...ks][0] : 'json'); }), ...wholeCols];
 }
 

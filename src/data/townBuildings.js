@@ -440,10 +440,16 @@ TOWN_BUILDINGS.registerAll([
 // a building of the local map it stands for: always a list (the beast dens stand for the warg den and the spider den)
 for (const b of TOWN_BUILDINGS.all()) if (typeof b.local === 'string') b.local = [b.local];
 // the lines a tier grows from (`upgrades`, step by step): lineHas(built, id) — the town has `id` or a tier grown from it
-const GROWN = new Map();
-for (const b of TOWN_BUILDINGS.all()) if (b.kind === 'tier') for (const id of b.upgrades) (GROWN.has(id) ? GROWN : GROWN.set(id, [])).get(id).push(b.id);
-const grownFrom = id => { const out = [], todo = [...(GROWN.get(id) || [])]; while (todo.length) { const x = todo.pop(); if (out.includes(x)) continue; out.push(x); todo.push(...(GROWN.get(x) || [])); } return out; };
-export const TIERS_OF = Object.fromEntries(TOWN_BUILDINGS.all().map(b => [b.id, grownFrom(b.id)]));
+// (made again after an edit of «Постройки городов»: a row's `upgrades` or `kind` may have changed — data/schema/index.js after)
+export const TIERS_OF = {};
+export function rebuildTiers() {
+  const GROWN = new Map();
+  for (const b of TOWN_BUILDINGS.all()) if (b.kind === 'tier') for (const id of b.upgrades || []) (GROWN.has(id) ? GROWN : GROWN.set(id, [])).get(id).push(b.id);
+  const grownFrom = id => { const out = [], todo = [...(GROWN.get(id) || [])]; while (todo.length) { const x = todo.pop(); if (out.includes(x)) continue; out.push(x); todo.push(...(GROWN.get(x) || [])); } return out; };
+  for (const k of Object.keys(TIERS_OF)) delete TIERS_OF[k];
+  for (const b of TOWN_BUILDINGS.all()) TIERS_OF[b.id] = grownFrom(b.id);
+}
+rebuildTiers();
 export const lineHas = (built, id) => { const has = built instanceof Set ? x => built.has(x) : x => built.includes(x); return has(id) || (TIERS_OF[id] || []).some(has); };
 // the recipes of a building, and what a building or a recipe takes and gives (its own and its recipes')
 export const recipesOf = b => b.recipes || [];
