@@ -15,7 +15,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, CARAVAN_GOLEMS, CAMP_KIT, kitOf} from '../data/transport.js';
 import {golemMetal} from '../atlas/golems.js';
-import {golemOf} from '../data/constructs.js';
+import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
@@ -76,10 +76,9 @@ const offerPrice = (o, st, t = null) => (o.price ?? (o.kind === 'goods' ? RESOUR
 // (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
 // the golem a town with a golem forge sells: the best of its guard golems (one of them goes), else one of its realm's best
 // metal (atlas/golems.js); null — none
-const GOLEM_RANK = ['bronze', 'iron', 'steel', 'mithril'];
 export const townGolem = (a, t) => {
   const guard = t.golems?.guard || [];
-  const m = guard.length ? guard.reduce((b, x) => (GOLEM_RANK.indexOf(x) > GOLEM_RANK.indexOf(b) ? x : b)) : a ? golemMetal(a, t) : null;
+  const m = guard.length ? guard.reduce((b, x) => (GOLEM_METALS.indexOf(x) > GOLEM_METALS.indexOf(b) ? x : b)) : a ? golemMetal(a, t) : null;
   return m && BEASTS[golemOf(m)] ? m : null;
 };
 const golemOffer = (o, t, a) => { if (!o.golem) return o; if (!has(t, o.at)) return null; const m = townGolem(a, t); return m ? {...o, id: golemOf(m), metal: m, price: PRICES.beasts[golemOf(m)]} : null; };

@@ -205,9 +205,9 @@ function campWork(a, K, r) {
     }
   }
   // earnings: hides from the hunt, gold panned from the river's sand by the one with a pan
-  const game = ['deer', 'boar', 'elk', 'aurochs', 'saiga', 'goat'].reduce((s, id) => s + faunaLevel({region: reg}, id), 0);
+  const game = EARN.hideGame.reduce((s, id) => s + faunaLevel({region: reg}, id), 0);
   if (r() < EARN.hide * Math.min(1.5, game)) K.cargo.hide = (K.cargo.hide || 0) + 1;
-  if (reg.placer > 0 && alive(K).some(m => m.gear.hand.includes('pan'))) {
+  if (reg.placer > 0 && alive(K).some(m => m.gear.hand.includes(EARN.panTool))) {
     const g = Math.round(EARN.pan * reg.placer * (0.5 + r()) * 10) / 10;
     K.gold = Math.round((K.gold + g) * 10) / 10; K.stats.panned = (K.stats.panned || 0) + g;
     if (!K.pannedTold || K.day - K.pannedTold > 60) { K.pannedTold = K.day; say(a, K, 'В речном песке блестит золото: лоток не пустует, казна понемногу растёт.', 'find'); }
@@ -252,7 +252,7 @@ export function wantMine(a, K) {
     const v = lvl * (O.tier ? 1 + O.tier : 1);
     if (v > bv) { bv = v; best = {ore: id, level: lvl}; }
   }
-  if (poor && reg.placer > bv && free(K).some(m => m.gear.hand.includes('pan'))) best = {ore: 'placer', level: reg.placer};
+  if (poor && reg.placer > bv && free(K).some(m => m.gear.hand.includes(EARN.panTool))) best = {ore: 'placer', level: reg.placer};
   return best;
 }
 const mineRes = ore => (ore === 'placer' ? 'goldDust' : ORES.get(ore).resource);
@@ -261,7 +261,7 @@ const mineLabel = ore => (ore === 'placer' ? 'золотой песок' : ORES.
 // face's units, as far as the face and the room go
 function autoMine(a, K, r) {
   const ore = K.why.slice(5), reg = cellRegion(a, K.i), lvl = ore === 'placer' ? reg.placer : reg.ores?.[ore] ?? 0, res = mineRes(ore);
-  const diggers = ore === 'placer' ? (free(K).some(m => m.gear.hand.includes('pan')) ? 1 : 0) : free(K).filter(m => (m.special?.S ?? NORM) >= MINE.strength && m.hp >= 0.5).length;
+  const diggers = ore === 'placer' ? (free(K).some(m => m.gear.hand.includes(EARN.panTool)) ? 1 : 0) : free(K).filter(m => (m.special?.S ?? NORM) >= MINE.strength && m.hp >= 0.5).length;
   const room = Math.floor(digRoom(K) / (RESOURCES.get(res).bulk || 1));
   const n = Math.min(room, Math.round(MINE.auto[ore] * lvl * diggers * (0.6 + 0.8 * r()) * (kitOf(K).mine ?? 1)));   // (the dwarves dig more: data/transport.js PEOPLE_KIT)
   if (n > 0) K.cargo[res] = (K.cargo[res] || 0) + n;

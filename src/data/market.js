@@ -146,7 +146,9 @@ export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, 
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
 // the one with a pan (× the cell's gold sand level, data/regions.js placer)
-export const EARN = {hide: 0.3, pan: 0.4};
+export const EARN = {hide: 0.3, pan: 0.4,
+  hideGame: ['deer', 'boar', 'elk', 'aurochs', 'saiga', 'goat'],   // the game a day of camp may skin (data/species.js ids)
+  panTool: 'pan'};   // the gold pan (data/items.js): who has one washes gold sand on a stop
 
 // The smith of a friendly town forges from the caravan's own ore (campaign/town.js smithy): where one of `at`
 // stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`
