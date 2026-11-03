@@ -6,6 +6,7 @@
 //   3. then it stands guard, one for every GOLEMS.per people: a guard golem counts as GOLEMS.men of the town's people in
 //      its might and in its armies (atlas/towns.js might, golemMen).
 // t.golems = {auto: {building id: [metal, …] — one for each unit taken over}, guard: [metal, …], since: the first season}
+import {TOWN_ROLES} from '../data/worldLand.js';
 import {GOLEMS as G, metalBuildings, lineHas, barOf} from '../data/townBuildings.js';
 import {realmBuilt} from './towns.js';
 
@@ -22,7 +23,7 @@ export const takersOf = (t, id) => (t.golems?.auto?.[id] || []).slice(0, t.built
 
 // a season of a town's golem forge: one golem made, remade or set on guard; → a line for the chronicle or null
 export function stepGolems(a, t) {
-  if (!t.built.includes('golemforge')) return null;
+  if (!t.built.includes(TOWN_ROLES.golemForge)) return null;   // (data/worldLand.js)
   const g = t.golems ||= {auto: {}, guard: [], since: null};
   if (g.since == null) { g.since = a.hist?.year ?? 0; return null; }   // the forge is lit: the first golem a season later
   const metal = golemMetal(a, t); if (!metal) return null;
@@ -30,7 +31,7 @@ export function stepGolems(a, t) {
   // metal, makes none this season
   // (of its own metal: a bronze golem of bronze, an iron one of iron — data/townBuildings.js metal goods)
   const bar = barOf(metal);   // (its ingots: data/townBuildings.js METALS)
-  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.[bar] || 0) < G.make.metal) return null;
+  if ((t.work?.[TOWN_ROLES.golemForge] ?? 1) < G.make.work || (t.stock?.[bar] || 0) < G.make.metal) return null;
   const pay = () => { if (t.stock) { t.stock[bar] = Math.round((t.stock[bar] - G.make.metal) * 100) / 100; if (t.stock[bar] <= 0) delete t.stock[bar]; } };
   for (const id of Object.keys(g.auto)) g.auto[id] = takersOf(t, id);   // the takers of units gone are gone with them
   const want = Math.max(1, Math.floor(t.pop / G.per));

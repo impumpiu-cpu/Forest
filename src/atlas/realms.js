@@ -7,11 +7,14 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
+import {ORE_KINDS, TOWN_ROLES} from '../data/worldLand.js';
+import {warsOf} from './common.js';
+import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx, townLabel, townGender} from './towns.js';
-import {meet} from './diplomacy.js';
+import {meet, newWar} from './diplomacy.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
@@ -32,7 +35,7 @@ const near = (a, i, test) => {
 function epithets(a, i, P) {
   const f = a.f, out = [], k2 = scaleOf(a) ** 2;
   // a people that lives off the rock is named by it; the others by water and land
-  if (P.ores) for (const id of ['gold', 'silver', 'gems', 'bronze', 'iron', 'coal']) if (f[`ore_${id}`][i] >= lv(id)[2]) out.push(...EPITHETS.ores[id]);
+  if (P.ores) for (const id of ORE_KINDS.epithets) if (f[`ore_${id}`][i] >= lv(id)[2]) out.push(...EPITHETS.ores[id]);
   if (near(a, i, j => f.ocean[j])) out.push(...EPITHETS.water.coast);
   if (f.flow[i] >= RIVERS.great * k2 || near(a, i, j => f.flow[j] >= RIVERS.great * k2)) out.push(...EPITHETS.water.great);
   else if (f.flow[i] >= RIVERS.river * k2 || near(a, i, j => f.flow[j] >= RIVERS.river * k2)) out.push(...EPITHETS.water.river);
@@ -110,8 +113,8 @@ export function joinRealm(a, t) {
 }
 
 // ── schisms
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const glory = t => t.pop * (1 + townFx(t).prestige);
+const harbored = t => TOWN_ROLES.harbor.some(id => t.built.includes(id));   // (data/worldLand.js)
 
 // the towns of two seats are divided by which seat is nearer
 function divide(a, oldId, newId, seatOld, seatNew) {
@@ -130,7 +133,7 @@ export function breakAway(a, r, seat, rnd, say, why) {
   rel.att = SCHISM.attitude;
   say(`${why} ${townLabel(seat, 0)} ${seat.name} объявил${TIERS[seat.tier].gender[seat.people] === 'f' ? 'а' : TIERS[seat.tier].gender[seat.people] === 'n' ? 'о' : ''} себя столицей новой державы «${realmLabel(a, nr.id)}»` +
     (went ? `; с ${went === 1 ? 'ней ушёл 1 город' : `ней ушли ${went} ${went < 5 ? 'города' : 'городов'}`}.` : '.'));
-  if (old && rnd() < SCHISM.war) { rel.war = {since: a.hist.year, battles: 0, razed: 0}; rel.wars++; say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, nr.id)} не поделили власть: началась война.`); }
+  if (old && rnd() < SCHISM.war) { newWar(a, rel, r.id); say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, nr.id)} не поделили власть: началась война.`); }
   return nr;
 }
 
@@ -140,11 +143,11 @@ export function stepRealms(a, rnd, say) {
   for (const r of a.realms) {
     const seat = capitalOf(a, r.id);
     if (!seat || !seat.alive) continue;
-    const atWar = Object.entries(a.rel || {}).some(([kk, x]) => x.war && kk.split(':').includes(r.id));
+    const atWar = warsOf(a, r.id) > 0;
     for (const t of a.towns) {
       if (!t.alive || t.realm !== r.id || t === seat || t.tier < 2) continue;
       // a harbour town has the sea's trade of its own, and stands further from the seat than its road
-      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (t.built.includes('harbor') && !seat.built.includes('harbor') ? SCHISM.harbor : 0);
+      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (harbored(t) && !harbored(seat) ? SCHISM.harbor : 0);
       if (t.pop >= SCHISM.edge * seat.pop && far >= SCHISM.far) {
         t.contender = (t.contender || 0) + 1;
         if (t.contender === SCHISM.years) say(`${cap1(townLabel(t, 0))} ${t.name} не меньше ${townLabel(seat, 2)} ${seat.name} и стоит далеко от ${townGender(seat) === 'f' ? 'неё' : 'него'}: в державе «${realmLabel(a, r.id)}» зреет раскол.`);

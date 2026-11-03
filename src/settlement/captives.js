@@ -7,8 +7,8 @@
 //     no weapon and no armour (a tool and clothes only), and answers only an attack on itself;
 //   - out of the zone it is turned back to the fire at once.
 //   bindOption(w, a)      — the colonist's choice: a fallen foe to bind (agents/brains/colonist.js)
-//   bindCaptive(w, by, f) — the knots are tied (agents/tasks.js 'bind')
-//   captiveItem(it)       — what a captive may hold (agents/equipment.js outfit)
+//   bindCaptive(w, by, f) — the knots are tied (agents/tasks/social.js 'bind')
+//   captiveItem(it)       — what a captive may hold (agents/outfit.js)
 import {SPECIES} from '../data/species.js';
 import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
 import {CAN_FALL, WOUNDS, GRAVE_TICKS, DEATHBLOW} from '../data/wounds.js';
@@ -33,7 +33,6 @@ import {setStanding} from '../agents/standing.js';
 import {raceFrees} from '../data/slavery.js';
 import {colonyRace} from '../data/buildings.js';
 
-export const isCaptive = a => !!a?.captive;
 export const captives = w => colonists(w).filter(a => a.captive && !a.dead);
 
 // can the colony take one more: bonds in the stock and room for a captive

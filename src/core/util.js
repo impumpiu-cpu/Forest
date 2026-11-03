@@ -1,5 +1,11 @@
 // Small helpers shared by every module.
 
+// the first letter capitalised («войско людей» → «Войско людей»)
+export const cap1 = s => s[0].toUpperCase() + s.slice(1);
+
+// a roll of luck by a data pair [base, span]: base + span × a draw (data/lairs.js TRIBE_RAID.luck, DIPLOMACY.luck, …)
+export const luck = (L, rnd) => L[0] + L[1] * rnd();
+
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export function plural(n, one, few, many) {
@@ -44,3 +50,7 @@ export function perTick(w, key, make) {
 // the distance between two things with x, y (agents, towns, lairs); between two cells of a grid of width a.w by index
 export const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 export const cellDist = (a, i, j) => Math.hypot(i % a.w - j % a.w, ((i / a.w) | 0) - ((j / a.w) | 0));
+// the first letter capitalised («волк» → «Волк»)
+export const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
+// a number between the two ends of a range [lo, hi] by one draw of `rng`
+export const between = (rng, [lo, hi]) => lo + rng() * (hi - lo);

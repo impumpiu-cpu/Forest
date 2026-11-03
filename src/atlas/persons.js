@@ -11,23 +11,33 @@
 //               alive, died?: {year, how, at}, special?, add?, deeds, abilities: [id]}]
 import {SPECIES} from '../data/species.js';
 import {SUCCESSION} from '../data/polities.js';
+import {lifeOf} from './population.js';
+import {townFx} from './towns.js';
 
-export const personOf = (a, id) => (id == null ? null : (a.persons || []).find(p => p.id === id) || null);
+// (by id through an index kept beside the list, never saved: persons are only ever added — newPerson — so the index
+// catches up with the list's new tail; a list replaced, as on loading, gets a new index)
+const INDEX = new WeakMap();
+export function personOf(a, id) {
+  if (id == null || !a.persons) return null;
+  let X = INDEX.get(a.persons);
+  if (!X) INDEX.set(a.persons, (X = {n: 0, by: new Map()}));
+  for (; X.n < a.persons.length; X.n++) { const p = a.persons[X.n]; if (!X.by.has(p.id)) X.by.set(p.id, p); }
+  return X.by.get(id) || null;
+}
 export const livingPersons = a => (a.persons || []).filter(p => p.alive && !p.inCount);   // (one back in the crowd is counted with its town, not as a person)
 export const personLabel = p => (p.title ? `${p.title[0]} ${p.name}` : p.name);
 export const ageOf = (a, p) => (a.hist?.year ?? 0) - p.born;
 
-// how long one of a race lives, for a person's span (data/races.js body: lifeFrom … life)
-const lifeOf = species => { const B = SPECIES.has(species) ? SPECIES.get(species).body || {} : {}; return B.life || B.lifeFrom || 70; };
 const lifeFromOf = species => { const B = SPECIES.has(species) ? SPECIES.get(species).body || {} : {}; return B.lifeFrom ?? B.life ?? 60; };
 
 // a new person: `born` as given, or by an age drawn between SUCCESSION.ageFrom of its race's lifeFrom (a grown one);
-// `dies` as given (the lairs' leaders: data/lairs.js LEADER.life), or at its race's life × SUCCESSION.dies
-export function newPerson(a, {name, g = 'm', species, race = null, title = null, born = null, dies = null, at = null, special = null, add = null, abilities = [], r = null}) {
+// `dies` as given (the lairs' leaders: data/lairs.js LEADER.life), or at its race's life × SUCCESSION.dies — the life of the
+// towns' life tables (atlas/population.js lifeOf) in a town of `health` (its town's TOWN_FX health: the seat it is born at)
+export function newPerson(a, {name, g = 'm', species, race = null, title = null, born = null, dies = null, at = null, special = null, add = null, abilities = [], r = null, health = 0}) {
   const H = a.hist, year = H?.year ?? 0;
   const id = (H.nextPerson = (H.nextPerson || 0) + 1);
   if (born == null) { const [lo, hi] = SUCCESSION.ageFrom; born = year - Math.round(lifeFromOf(species) * (lo + (r ? r() : 1 / 2) * (hi - lo))); }
-  if (dies == null) dies = born + Math.round(lifeOf(species) * SUCCESSION.dies);
+  if (dies == null) dies = born + Math.round(lifeOf(species, health) * SUCCESSION.dies);
   const p = {id, name, g, species, title, born, dies, at, alive: true, deeds: 0, abilities: [...abilities]};
   if (race) p.race = race;
   if (special) p.special = special;
@@ -57,7 +67,7 @@ export function upgradePersons(a) {
     for (const [o, h] of Object.entries(K.court)) {
       if (!h || h.person != null) continue;
       const race = WORLD_PEOPLES_RACE(r.people);
-      const p = newPerson(a, {name: h.name, g: h.f ? 'f' : 'm', species: race, at: seat ? {kind: 'town', id: seat.id} : null});
+      const p = newPerson(a, {name: h.name, g: h.f ? 'f' : 'm', species: race, at: seat ? {kind: 'town', id: seat.id} : null, health: seat?.built ? townFx(seat).health : 0});
       p.extra = true;   // (never named out of a town's count: it goes back into none)
       K.court[o] = {person: p.id, since: h.since ?? H.year, until: h.until ?? H.year};
     }

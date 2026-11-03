@@ -28,10 +28,10 @@ import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
 import {roseOf, townLean} from '../atlas/mind.js';
 import {projectOf, crewDays} from '../atlas/build.js';
+import {LOSS_CAUSES, PARTY_KINDS, PARTY_STATES, MIND_FLAGS, RULES} from '../data/labels.js';
 
-const seasonWord = s => seasonLabel(s);
-const KIND = {raid: 'набег', brood: 'выводок', army: 'войско', leader: 'отряд главаря', dragon: 'дракон', caravan: 'караван'};
-const STATE = {go: 'в пути', arrive: 'на месте', stay: 'стоит', home: 'идёт домой', gone: 'разошёлся', camp: 'на стоянке'};
+// the words of the parties' kinds and states (data/labels.js)
+const kindWord = k => PARTY_KINDS[k]?.label || k, stateWord = s => PARTY_STATES[s] || s;
 const r1 = v => Math.round(v * 10) / 10;
 
 // ── what a click picks: the nearest party within a cell, else the town, the lair whose point is here, the ruin, the cell
@@ -70,7 +70,7 @@ export function whereIs(a, sel, slide = 1) {
 // ── the card
 const row = (k, v) => (v == null || v === '' ? '' : `<div class="ir"><span>${k}</span><b>${v}</b></div>`);
 const sec = (title, body) => (body ? `<section class="isec"><h5>${esc(title)}</h5>${body}</section>` : '');
-const when = t => `${t.year}, ${seasonWord(t.season ?? 0)}`;
+const when = t => `${t.year}, ${seasonLabel(t.season ?? 0)}`;
 
 // the trail of an actor's choices (atlas/actor.js thoughts), newest first
 function thoughtsHtml(actor) {
@@ -88,11 +88,10 @@ function deedsHtml(list) {
 // how it shared its grants and how its towns follow
 const vnum = v => v.toFixed(2).replace('.', ',');
 const vecLine = v => VECTOR_IDS.map(k => `${VECTORS[k]} ${vnum(v?.[k] || 0)}`).join(', ');
-const FLAG_LABELS = {hunger: 'нужда', crowd: 'теснота', threat: 'угроза', short: 'нехватки', hoard: 'казна пуста'};
 function mindHtml(a, R) {
   const M = R.mind;
   if (!M) return '';
-  const flags = Object.entries(M.flags || {}).filter(([, v]) => v >= 0.05).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${FLAG_LABELS[k] || k} ${vnum(v)}`).join(', ');
+  const flags = Object.entries(M.flags || {}).filter(([, v]) => v >= 0.05).sort((p, q) => q[1] - p[1]).map(([k, v]) => `${MIND_FLAGS[k] || k} ${vnum(v)}`).join(', ');
   const roles = {};
   for (const t of realmTowns(a, R.id)) if (t.role) (roles[t.role] ||= []).push(t.name);
   const spent = VECTOR_IDS.filter(k => (M.spent?.[k] || 0) >= 1).map(k => `${VECTORS[k]} ${Math.round(M.spent[k])}`).join(', ');
@@ -114,10 +113,9 @@ function roleLine(t) {
 }
 
 // the races of a town, the larger first («орки 61%, гоблины 24%, гноллы 9%»), the bands of age, the year's losses by cause
-const LOSS_WORDS = {dead: 'от старости', brawl: 'в драках', want: 'от голода и тесноты', war: 'на войне', storm: 'при штурме', siege: 'в осаде', raid: 'в набегах', taken: 'уведено', levy: 'в войско', moved: 'уехало', mingled: 'ушло к соседям', settlers: 'поселенцами', cult: 'ушло в культ', cold: 'в лютую зиму', drought: 'в засуху', dragon: 'от дракона', vampire: 'выпито', expelled: 'выжито', calamity: 'от бедствия', field: 'на сожжённых угодьях', left: 'ушло', scattered: 'разбрелось', drawn: 'в столицу', named: 'ко двору'};
 export const kinLine = (a, t) => Object.entries(townKin(a, t)).filter(([, v]) => v >= 0.005).sort((p, q) => q[1] - p[1]).map(([id, v]) => `${SPECIES.has(id) ? SPECIES.get(id).plural : id} ${Math.round(v * 100)}%`).join(', ');
-export const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
-export const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : '', V.came >= 0.5 ? `пришло с земли ${Math.round(V.came)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && k !== 'came' && v >= 0.5).map(([k, v]) => `${LOSS_WORDS[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
+const agesLine = (a, t) => { const H = headsOf(a, t), n = Math.max(1, t.pop); return `детей ${Math.round(bandSum(H, 0) / n * 100)}%, взрослых ${Math.round(bandSum(H, 1) / n * 100)}%, стариков ${Math.round(bandSum(H, 2) / n * 100)}%`; };
+const lossLine = t => { const V = t.vital; if (!V) return ''; const parts = [V.born >= 0.5 ? `родилось ${Math.round(V.born)}` : '', V.came >= 0.5 ? `пришло с земли ${Math.round(V.came)}` : ''].concat(Object.entries(V).filter(([k, v]) => k !== 'born' && k !== 'came' && v >= 0.5).map(([k, v]) => `${LOSS_CAUSES[k] || k} ${Math.round(v)}`)); return parts.filter(Boolean).join(', '); };
 
 function realmHtml(a, R) {
   if (!R) return '';
@@ -127,7 +125,7 @@ function realmHtml(a, R) {
     const r = relation(a, R.id, o.id), st = stateOf(a, R.id, o.id);
     return `<li class="rel-${st}"><b>${esc(realmLabel(a, o.id))}</b> — ${stateLabel(st)} (${r.att.toFixed(1)})${r.war ? `, война с ${r.war.since} г.${r.war.battles ? `, битв ${r.war.battles}` : ''}` : ''}${r.routes ? `, торговых путей ${r.routes}` : ''}</li>`;
   }).join('');
-  const armies = (a.parties || []).filter(p => p.kind === 'army' && p.owner === R.id && p.state !== 'gone').map(p => { const t = a.towns.find(x => x.id === p.target); return `${Math.round(p.men)} бойцов${t ? ` → ${townLabel(t, 1)} ${t.name}` : ''}, ${STATE[p.state] || p.state}`; }).join('; ');
+  const armies = (a.parties || []).filter(p => p.kind === 'army' && p.owner === R.id && p.state !== 'gone').map(p => { const t = a.towns.find(x => x.id === p.target); return `${Math.round(p.men)} бойцов${t ? ` → ${townLabel(t, 1)} ${t.name}` : ''}, ${stateWord(p.state)}`; }).join('; ');
   const Kd = R.kingdom;
   // the year's ledger of its treasury (atlas/treasury.js fiscOf: the last year closed)
   const L = R.fisc?.last, fisc = L ? row('книга казны', [`подати ${Math.round(L.tax)}`, L.lost >= 1 && `коррупция унесла ${Math.round(L.lost)}`, L.duty >= 1 && `пошлины ${Math.round(L.duty)}`,
@@ -147,7 +145,7 @@ function realmHtml(a, R) {
   const vital = {}; for (const t of towns) for (const [k, v] of Object.entries(t.vital || {})) vital[k] = (vital[k] || 0) + v;
   const losses = lossLine({vital});
   return sec(`Держава: ${realmLabel(a, R.id)}`,
-    row('уклад', `${esc(prof.label)}, ${esc({council: 'совет', chief: 'вождь', personal: 'личная власть', pack: 'стая', solo: 'одиночка'}[prof.rule] || prof.rule)}`) +
+    row('уклад', `${esc(prof.label)}, ${esc(RULES[prof.rule] || prof.rule)}`) +
     row('правитель', throne) +
     row('народ', `${esc(P.label)}, ${esc(alignLabel(R.align || sp.align))}`) +
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +
@@ -208,8 +206,8 @@ function lairHtml(a, l) {
   const leader = ld ? sec(`${ld.title[0]} ${ld.name}`,
     row('кто', `${esc(sp.label)} сильнее своих: ${esc(special)}${ld.add ? ` (+${Object.values(ld.add).join('/')})` : ''}`) +
     row('правит', `с ${ld.born} г., до ~${ld.dies} г.; дел на счету ${ld.deeds}`) +
-    row('отряд', (() => { const p = (a.parties || []).find(x => x.kind === 'leader' && x.owner === l.id && x.state !== 'gone'); return p ? `${esc(deedLabel(p.plan, p.plan))}, ${STATE[p.state]}, ${p.days} дн.` : 'дома'; })())) : '';
-  const parties = (a.parties || []).filter(p => p.owner === l.id && p.kind !== 'leader' && p.state !== 'gone').map(p => `${KIND[p.kind] || p.kind} (${esc(deedLabel(p.plan, p.plan || ''))}), ${STATE[p.state]}, ${p.days} дн.`).join('; ');
+    row('отряд', (() => { const p = (a.parties || []).find(x => x.kind === 'leader' && x.owner === l.id && x.state !== 'gone'); return p ? `${esc(deedLabel(p.plan, p.plan))}, ${stateWord(p.state)}, ${p.days} дн.` : 'дома'; })())) : '';
+  const parties = (a.parties || []).filter(p => p.owner === l.id && p.kind !== 'leader' && p.state !== 'gone').map(p => `${kindWord(p.kind)} (${esc(deedLabel(p.plan, p.plan || ''))}), ${stateWord(p.state)}, ${p.days} дн.`).join('; ');
   const prof = profileOf(l);
   return sec(`${L.label.replace(/^./, c => c.toUpperCase())} «${l.name}»`,
     row('уклад', `${esc(prof.label)}${!ld && L.domain ? ' — без хозяина: мертвецов не поднимают' : !ld && prof.rule !== 'pack' ? ' — без главаря' : ''}`) +
@@ -223,7 +221,7 @@ function lairHtml(a, l) {
     row('данники', vassals || null) +
     row('в полоне', captiveCount(l) || null) +
     row('отряды', parties || null) +
-    (L.dragon ? row('сон', l.sleep > 0 ? `ещё ${l.sleep} ${plural(l.sleep, 'лето', 'лета', 'лет')}` : 'проснулся') : '') +
+    (L.dragon ? row('сон', l.wakes > (a.hist?.year ?? 0) ? `ранен: ещё ${l.wakes - a.hist.year} ${plural(l.wakes - a.hist.year, 'лето', 'лета', 'лет')}` : 'летом чаще спит, иногда вылетает жечь') : '') +
     `<div class="ir"><span>нравы</span></div>${deedsHtml(sp.deeds?.lair)}` +
     `<div class="ir"><span>о чём думало логово</span></div>${thoughtsHtml(l)}`) + leader;
 }
@@ -233,12 +231,12 @@ function partyHtml(a, p) {
   const tgt = p.target != null ? a.towns.find(t => t.id === p.target) : null, from = p.from != null ? a.towns.find(t => t.id === p.from) : null;
   const left = p.path && p.state !== 'stay' ? Math.max(0, p.path.length - p.k) : 0;
   const S = p.siege, siege = S ? `запас еды в городе ${S.stock} дн.${S.starved ? `, умерло от голода ${Math.round(S.starved)}` : ''}, сожжено угодий ${p.burnt || 0}; штурм — когда войско сильнее ${ARMY.assaultAt * 100}% города, через ${ARMY.longest} дн. осады или без припасов` : null;
-  return sec(`${(KIND[p.kind] || p.kind).replace(/^./, c => c.toUpperCase())}: ${p.label}`,
+  return sec(`${kindWord(p.kind).replace(/^./, c => c.toUpperCase())}: ${p.label}`,
     row('дело', p.plan && DEEDS.has(p.plan) ? `${esc(DEEDS.get(p.plan).label)}${p.why ? ` — ${esc(p.why)}` : ''}` : p.kind === 'army' ? `война${p.war ? ` (${esc(p.war)})` : ''}` : null) +
     row('чей', lair ? `${LAIRS.get(lair.kind).label} «${esc(lair.name)}»` : R ? esc(realmLabel(a, R.id)) : null) +
     row('откуда', from ? `${townLabel(from)} ${esc(from.name)}` : null) +
     row('куда', tgt ? `${townLabel(tgt, 1)} ${esc(tgt.name)}` : p.kind === 'brood' ? 'к месту нового логова' : null) +
-    row('состояние', `${STATE[p.state] || p.state}, ${p.days} дн. в пути${left ? `, ещё ~${left} клеток` : ''}${p.state === 'stay' ? `, стоит ${p.stay} дн.` : ''}`) +
+    row('состояние', `${stateWord(p.state)}, ${p.days} дн. в пути${left ? `, ещё ~${left} клеток` : ''}${p.state === 'stay' ? `, стоит ${p.stay} дн.` : ''}`) +
     row('сила', p.men ? `${Math.round(p.men)} бойцов, сила ${r1(p.might)}` : p.might ? r1(p.might) : null) +
     row('припасы', p.supplies != null ? `${Math.max(0, Math.round(p.supplies))} дн.` : null) +
     row('осада', siege) +

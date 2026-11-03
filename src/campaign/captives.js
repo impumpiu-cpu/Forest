@@ -12,7 +12,6 @@ import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
-import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
 import {room, setPlace} from './company.js';
 import {DAY} from '../core/time.js';
@@ -47,7 +46,7 @@ export function takeAuto(a, K, d, r, say) {
     const B = spend(K); if (!B) break;
     const race = races[(r() * races.length) | 0];
     const m = makeMember(K, r, {race, role: 'captive', gear: C.gear, captive: {since: K.day, bonds: B.id, from: d.kind, will: ESCAPE.will.start}});
-    m.hp = 0.3 + r() * 0.3;   // bound where it fell: badly hurt
+    m.hp = C.hp[0] + r() * C.hp[1];   // bound where it fell: badly hurt
     K.members.push(m); got.push(m);
   }
   if (got.length) say(`Упавших врагов перевязали и связали: ${names(got.map(who))}. Пленн${got.length > 1 ? 'ые идут' : 'ый идёт'} с караваном.`, 'people', got.map(m => m.id));
@@ -79,8 +78,6 @@ export function unbind(K, m) {
   if (B?.back) K.cargo[B.resource] = (K.cargo[B.resource] || 0) + B.n;
 }
 
-export const captivesLine = K => { const n = held(K).length; return n ? `${n} ${plural(n, 'пленный', 'пленных', 'пленных')}` : ''; };
-
 // ── stage 2 (docs/CAPTIVES.md; numbers: data/captives.js ESCAPE): the ration, the will, the evening rolls, the
 // night escape, the red alarm of a fight. On the local map the camp plays the alarm itself (settlement/escape.js)
 const holdOf = m => (BONDS.has(m.captive?.bonds) ? BONDS.get(m.captive.bonds).hold : 1);
@@ -99,7 +96,7 @@ export function escaped(a, K, m, text, say) {
   say(text + '.', 'leave', [m.id]); assign(K);
 }
 
-// the evening (campaign/march.js people): the ration, the will, the rolls; a plot is played out the same night
+// the evening (campaign/people.js people): the ration, the will, the rolls; a plot is played out the same night
 export function captivesEvening(a, K, r, say) {
   const hs = held(K); if (!hs.length) { K.captiveCut = false; return; }
   const R = ESCAPE.ration, cut = K.food < alive(K).length * CAMPAIGN.ration * R.cutDays;   // every mouth at a full ration: no flip-flop
@@ -160,7 +157,7 @@ export function captivesInFight(a, K, d, r, say) {
 
 // ── stage 4 (docs/CAPTIVES.md; data/captives.js FREEDOM): a resigned captive with enough service — days beside a
 // master on the local map, a plot told — is freed at the evening, when the caravan has a master to vouch for it:
-// a former slave, role 'former', with the loyalty of one who joined (campaign/march.js people). One who stood in
+// a former slave, role 'former', with the loyalty of one who joined (campaign/people.js people). One who stood in
 // a fight the caravan won is taken in as one of its own at the next evening.
 export function freedomEvening(a, K, say) {
   const vouch = free(K).find(m => m.master && !m.former);

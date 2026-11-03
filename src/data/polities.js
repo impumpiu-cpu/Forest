@@ -13,7 +13,7 @@
 //   title      what the ruler is called, [m, f] (the lairs: data/names.js TITLE by the kind's mind, unless given)
 //   systems    which bodies of rules run for it: court (offices, data/kingdom.js), edicts, treasury (atlas/treasury.js),
 //              towns (atlas/peoples.js: it holds towns), mind (atlas/mind.js: the council's course); a lair runs none and
-//              lives as atlas/lairs.js lives it — `simple: true`
+//              lives as atlas/lairs.js lives it
 //   seat       where its ruler lives: 'capital' — the crowned town; 'lair' — the lair itself
 //   ruler      the ruler as a person (atlas/persons.js):
 //                leads    — it rides with the realm's host (the horde's chief): it may fall in a battle the host loses
@@ -31,6 +31,9 @@
 //                           necromancer lose their master; the beasts of a summoner go back to the wood; golems and
 //                           treants are a place's and stay
 //   lairs      (lair profiles) a test of the lair kind this profile is for (data/lairs.js row)
+//   guard      (lair profiles) who stands with the lair's own band when the caravan storms its seat (campaign/land.js lairGuard):
+//                summons — those its ruler raises for the fight: {band, label, share} — that share of the guard's strength
+//                (the necromancer's dead fight beside his cultists); the ruler itself, at home, stands at the head
 import {Registry} from '../core/registry.js';
 
 export const POLITIES = new Registry('polity');
@@ -49,19 +52,20 @@ POLITIES.registerAll([
     systems: {court: true, edicts: true, treasury: true, towns: true, mind: true},
     ruler: {leads: true, battle: 0.35, storm: 0.7, razed: 1, vacancy: 'contest', split: 0.25, channels: []}},
   // ── the lairs (atlas/lairs.js): micro-polities of the wild, the dead and the rifts
-  {id: 'camp', label: 'племенной стан', labelGen: 'племенного стана', rule: 'chief', seat: 'lair', simple: true, lairs: L => !!L.tribe,
+  {id: 'camp', label: 'племенной стан', labelGen: 'племенного стана', rule: 'chief', seat: 'lair', lairs: L => !!L.tribe,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
-  {id: 'tower', label: 'башня некроманта', labelGen: 'башни некроманта', rule: 'personal', seat: 'lair', simple: true, lairs: L => !!L.domain,
-    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']}},
-  {id: 'rift', label: 'владение демонов', labelGen: 'владения демонов', rule: 'chief', seat: 'lair', simple: true, lairs: L => !!L.fiend,
+  {id: 'tower', label: 'башня некроманта', labelGen: 'башни некроманта', rule: 'personal', seat: 'lair', lairs: L => !!L.domain,
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']},
+    guard: {summons: {band: 'undead', label: 'поднятые мертвецы', share: 0.4}}},
+  {id: 'rift', label: 'владение демонов', labelGen: 'владения демонов', rule: 'chief', seat: 'lair', lairs: L => !!L.fiend,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
-  {id: 'manor', label: 'усадьба вампира', labelGen: 'усадьбы вампира', rule: 'personal', seat: 'lair', simple: true, lairs: L => L.at === 'town',
+  {id: 'manor', label: 'усадьба вампира', labelGen: 'усадьбы вампира', rule: 'personal', seat: 'lair', lairs: L => L.at === 'town',
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
-  {id: 'barrow', label: 'логово мертвецов', labelGen: 'логова мертвецов', rule: 'pack', seat: 'lair', simple: true, lairs: L => !!L.undead,
+  {id: 'barrow', label: 'логово мертвецов', labelGen: 'логова мертвецов', rule: 'pack', seat: 'lair', lairs: L => !!L.undead,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
-  {id: 'dragon', label: 'одинокий дракон', labelGen: 'одинокого дракона', rule: 'solo', seat: 'lair', simple: true, lairs: L => !!L.dragon,
+  {id: 'dragon', label: 'одинокий дракон', labelGen: 'одинокого дракона', rule: 'solo', seat: 'lair', lairs: L => !!L.dragon,
     ruler: {leads: true, battle: 1, storm: 1, razed: 1, vacancy: 'none', channels: []}},
-  {id: 'den', label: 'звериное логово', labelGen: 'звериного логова', rule: 'pack', seat: 'lair', simple: true, lairs: () => true,
+  {id: 'den', label: 'звериное логово', labelGen: 'звериного логова', rule: 'pack', seat: 'lair', lairs: () => true,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
 ]);
 

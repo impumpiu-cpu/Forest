@@ -92,7 +92,8 @@ export function parseSvg(text) {
   for (const m of text.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<(\/?)([\w:-]+)([^>]*?)(\/?)>/g)) {
     const [, close, tag, rest, self] = m;
     if (tag.startsWith('?') || tag === '!DOCTYPE') continue;
-    if (skipDepth) { if (SKIP.has(tag) || tag === 'g') { if (close) skipDepth--; else if (!self) skipDepth++; } continue; }
+    // inside a skipped element: every element opened in it is closed in it (<text><tspan>…</tspan></text>)
+    if (skipDepth) { if (close) skipDepth--; else if (!self) skipDepth++; continue; }
     if (close) { if (tag === 'g' || tag === 'svg' || tag === 'a') stack.pop(); continue; }
     if (SKIP.has(tag)) { if (!self) skipDepth = 1; continue; }
     const a = attrsOf(rest), top = stack[stack.length - 1];
@@ -123,7 +124,8 @@ export function parseSvg(text) {
     const part = {d};
     if (fill) part.f = fill;
     if (st.stroke) { part.s = st.stroke; part.w = r3(st.w); }
-    if (st.o < 1) part.o = r3(st.o * (a['fill-opacity'] != null ? num(a['fill-opacity']) : 1));
+    const o = st.o * (a['fill-opacity'] != null ? num(a['fill-opacity']) : 1);
+    if (o < 1) part.o = r3(o);
     const lod = st.cls.filter(c => LOD.has(c)), flags = st.cls.filter(c => !LOD.has(c));
     if (lod.length) part.lod = lod[lod.length - 1];
     if (flags.length) part.when = [...new Set(flags)];

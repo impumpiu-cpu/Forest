@@ -20,6 +20,7 @@
 // one walk played in full. `local` as the third argument plays every walk in full (slow: minutes).
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small] [local]
 import {realmWorks} from '../src/atlas/towns.js';
+import {LAIRS} from '../src/data/lairs.js';
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive, finished, chronicleText} from '../src/campaign/index.js';
@@ -54,7 +55,7 @@ import {seats} from '../src/campaign/epic.js';
 import {EPIC} from '../src/data/calamities.js';
 import {QUEST} from '../src/data/quest.js';
 import {questTarget, askable} from '../src/campaign/quest.js';
-import {wantMine} from '../src/campaign/march.js';
+import {wantMine} from '../src/campaign/mine.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLocal = process.argv[4] === 'local';
 let ok = true;
@@ -407,6 +408,34 @@ check('караваны обзаводятся обозом и выбирают 
   check('показ: все бои сезона дожидаются экрана, сколько бы дней стоянок ни было', fights > 0 && lost === 0, `боёв ${fights}, вытеснено ${lost}, походов ${walks}`);
   check('лагерь каравана: постройки встают целыми на каждой ночёвке', campSeen > 0 && campOk === campSeen, `ночёвок с лагерем ${campSeen}, целых ${campOk}`);
   check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && brewed > 0 && drunk > 0, `сварено ${brewed}, выпито ${drunk}, походов ${walks}`);
+}
+
+// golems mend at a town's forge of any kind (GOLEM_REPAIR.at), by the field forge, or by a dwarf's hand on the way
+{
+  const {golemMend} = await import('../src/campaign/march.js');
+  const {GOLEM_REPAIR: G} = await import('../src/data/constructs.js');
+  const mk = (people, races) => ({people, members: races.map((race, id) => ({id, race, alive: true, hp: 1}))});
+  const men = mk('humans', ['human', 'human']), dw = mk('humans', ['human', 'dwarf']), hurt = mk('humans', ['dwarf']); hurt.members[0].hp = G.fieldHp / 2;
+  const bound = mk('humans', ['dwarf']); bound.members[0].captive = {since: 0};
+  const r = [golemMend(men, {built: ['golemforge']}, false) === G.day, golemMend(men, {built: ['magmaforge']}, false) === G.day, golemMend(men, {built: ['inn']}, false) === 0,
+    golemMend(men, null, false) === 0, golemMend(dw, null, false) === G.field, golemMend(dw, {built: ['inn']}, false) === G.field, golemMend(hurt, null, true) === 0,
+    golemMend(bound, null, true) === 0, golemMend(mk('dwarves', ['dwarf']), null, true) === G.day];
+  check('големы: чинятся в кузне города (любой из GOLEM_REPAIR.at), у походного горна и руками свободного дварфа в пути', r.every(Boolean), r.map(x => (x ? '+' : '−')).join(''));
+}
+
+// the guard of a lair's seat by its uklad (campaign/land.js lairGuard): a necromancer's cultists with the dead he raises,
+// a tribe's camp its band; the ruler at home at the head at the storm (rulerAtHead)
+{
+  const {lairGuard, rulerAtHead} = await import('../src/campaign/land.js');
+  const A = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const tower = lairGuard(A, 'necromancer', 0, 2), camp = (A.lairs || []).find(l => l.alive && LAIRS.get(l.kind).tribe);
+  const cg = camp ? lairGuard(A, camp.kind, camp.i, 2, camp) : null;
+  const fake = camp ? {...camp, id: -77, leader: {id: 'p1', title: ['вождь'], name: 'Тест', species: 'orc', at: {kind: 'lair', id: -77}}} : null;
+  if (fake) A.lairs.push(fake);
+  const head = fake ? rulerAtHead(A, {...cg, seat: -77}) : null, away = fake ? rulerAtHead(A, {...cg, seat: -77, boss: {name: 'x'}}) : null;
+  check('стража логова по укладу: у башни некроманта — культисты и поднятые им мертвецы, у стана — его банда, правитель дома — во главе',
+    tower.kind === 'cultists' && tower.band === 'cultists' && tower.with?.band === 'undead' && tower.with.share > 0 && !!cg && cg.kind === 'tribe' && !cg.with && head?.person === 'p1' && away.boss.name === 'x',
+    `башня ${tower.kind}+${tower.with?.band}, стан ${cg?.kind}${cg?.band ? ' ' + cg.band : ''}, во главе ${head?.boss?.name || '—'}`);
 }
 
 if (!ok) process.exit(1);

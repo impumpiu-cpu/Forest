@@ -2,6 +2,7 @@
 // edge and a square grid (docs/WORLD.md). One cell of the world will become one local map: a set of
 // probabilities (biomes, rocks, ores, beasts, distances to peoples) for the local generator.
 // The scale (km per cell, cells per world) is still being tuned, so the sizes here are for trying out.
+import {SEASONS} from './seasons.js';
 
 export const ATLAS_SIZES = {
   small:  {w: 128, h: 96,  label: 'Малый',   note: '128 × 96 клеток, быстрый'},
@@ -16,9 +17,10 @@ export const ATLAS_LAND = [
   {share: 0.55, label: 'Суша'},
 ];
 
-// the calendar is shared with the local map (data/seasons.js): 4 seasons of 30 days.
+// the calendar is the local map's (data/seasons.js: its seasons and their length), one truth for both maps.
 // History before the landing will run 50–250 years in steps of one season.
-export const SEASON_DAYS = 30, SEASONS_PER_YEAR = 4, YEAR_DAYS = SEASON_DAYS * SEASONS_PER_YEAR;
+export {SEASON_DAYS, YEAR_DAYS} from './seasons.js';
+export const SEASONS_PER_YEAR = SEASONS.all().length;
 
 export const DEFAULT_ATLAS_CFG = {seed: '1', size: 'medium', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1};
 

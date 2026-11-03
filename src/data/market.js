@@ -4,6 +4,7 @@
 // Prices are in imperial gold, as everywhere; every price and coefficient here comes from data/balance/prices.js
 // (CAMPAIGN), the one place to balance them.
 import {CAMPAIGN} from './balance/prices.js';
+import {POTION} from './potions.js';
 
 // how a town stands to the caravan's realm: own — its own realm; friend — a realm it trades with and is
 // not at war with; anyone else does not let the caravan in. × on what the caravan pays and gets
@@ -140,13 +141,19 @@ export const COMPANY_MAX = 12, JOINED_MAX = 4;
 // next one is not sought for `every` days (the winter excepted); a stay lasts at most `stay` days, or the winter —
 // wintered only where the winter is hard (its mean below `winterBelow`°: the land hardly feeds then). Too poor to stock
 // up for the way, they stay up to `work` days in all hired out for board and pay (the town feeds them, the pay is kept)
+// A caravan out in the last `lateIn` days of the season before the lean one already looks for a town to winter in.
 // For the smith (SMITH): with at least `smithOre` units of ore worth forging and `smithGold` gold, a town with a smith
-// on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days
-export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, work: 20, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
+// on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days. In town they buy the food of
+// `dayFood` days a day, and are `stocked` at that share of what they would carry; a town is not sought whose way costs
+// more than `wayCost` × its straight reach
+export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, lateIn: 20, work: 20, dayFood: 2, wayCost: 1.6, stocked: 0.9, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
 // the one with a pan (× the cell's gold sand level, data/regions.js placer)
-export const EARN = {hide: 0.3, pan: 0.4};
+// (the game counts up to `hideCap`; a day's pan × (panRoll + U(0, 1)))
+export const EARN = {hide: 0.3, pan: 0.4, hideCap: 1.5, panRoll: 0.5,
+  hideGame: ['deer', 'boar', 'elk', 'aurochs', 'saiga', 'goat'],   // the game a day of camp may skin (data/species.js ids)
+  panTool: 'pan'};   // the gold pan (data/items.js): who has one washes gold sand on a stop
 
 // The smith of a friendly town forges from the caravan's own ore (campaign/town.js smithy): where one of `at`
 // stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`
@@ -154,7 +161,7 @@ export const EARN = {hide: 0.3, pan: 0.4};
 // `reserve` — days of food money the caravan keeps after paying the smith
 // a town's laboratory (data/townBuildings.js alchemist) brews the strong potions from the caravan's makings: the
 // potion's price × `fee` for the work; the caravan keeps `pots` pots for its own healer's hut (it sets out with as many)
-export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, pots: 12};
+export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, get pots() { return POTION.keep.pots; }};   // (pots: data/potions.js POTION.keep)
 
 export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
   bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};

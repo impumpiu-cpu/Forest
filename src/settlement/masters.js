@@ -5,14 +5,14 @@
 //   - A master working at the craft has MASTER.places places for learners («ученик мастера»): soft places
 //     every colonist weighs for itself (assistOption), a free one before a captive — a captive takes one
 //     only when no vacancy of its own pulls harder, and only beside a master working inside the camp.
-//   - A learner keeps close to the master (agents/tasks.js 'assist'); while the master works (workRate is
+//   - A learner keeps close to the master (agents/tasks/social.js 'assist'); while the master works (workRate is
 //     read, agents/jobRunners.js), the master works faster by `bonus` per place and the learner practises the
 //     craft; a captive learner earns service (stage 4: the way out of captivity).
 import {MASTERS, MASTER} from '../data/masters.js';
 import {CAPTIVE} from '../data/captives.js';
 import {JOBS} from '../data/jobs.js';
 import {SKILLS} from '../data/skills.js';
-import {COUNCIL_FROM} from './council.js';
+import {COUNCIL} from '../data/colony.js';
 import {colonists} from './query.js';
 import {agentInZone} from './zone.js';
 import {skillOf, practice} from '../agents/skills.js';
@@ -104,7 +104,7 @@ function nameMasters(w) {
 export function stepMasters(w) {
   const S = (w.mastersState ??= {named: -1});
   const day = dayOf(w.tick);
-  if (!w.light && S.named !== day && hourOf(w.tick) >= COUNCIL_FROM && w.council?.lastDay === day) { S.named = day; nameMasters(w); }
+  if (!w.light && S.named !== day && hourOf(w.tick) >= COUNCIL.from && w.council?.lastDay === day) { S.named = day; nameMasters(w); }
   // a captive working the master's craft beside the master at work earns half a learner's service: it learns
   // under the master's eye (the way out of captivity, settlement/freedom.js)
   for (const m of masters(w)) {

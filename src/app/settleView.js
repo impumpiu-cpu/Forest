@@ -17,15 +17,14 @@ import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, i
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {esc, plural} from '../core/util.js';
-import {$} from '../ui/dom.js';
+import {$, seg as segRow, press} from '../ui/dom.js';
 import {dateText} from '../core/clock.js';
 import {mountPace} from '../ui/pace.js';
 import {march, questText} from './campView.js';
 import {questHint} from '../atlas/calamity.js';
+import {CAL_PHASES, FELL_BY, ARTIFACT_AT} from '../data/labels.js';
 
 const TOOLS = [['look', 'Смотреть'], ['people', 'Народ'], ['lair', 'Логово'], ['calamity', 'Бедствие']];
-const PHASE = {waiting: 'ждёт', omens: 'знамения', rise: 'идёт', fallen: 'прошло', gathering: 'собирается'};
-const BY = {dragon: 'дракон', beasts: 'свои стаи', heroes: 'запечатано героями', cleared: 'логово пало', alliance: 'союз держав', caravan: 'караван', none: 'не нашло места'};
 const NOTES = {
   look: 'Наведите на карту, чтобы увидеть клетку.',
   people: 'Щелчок по суше — высадить народ: город встанет на лучшем месте рядом, с ним начнётся держава.',
@@ -37,17 +36,14 @@ export class SettleView extends MapView {
   setup() { this.cfg = {...DEFAULT_ATLAS_CFG}; this.seq = 0; }
 
   build() {
-    this.tool = 'look'; this.people = 'elves'; this.calIn = FREE.calIn[1]; this.layer = 'peoples';
+    this.tool = 'look'; this.people = PLACEABLE.peoples()[0]?.id; this.calIn = FREE.calIn[1]; this.layer = 'peoples';
     this.detail = loadDetail();
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => {
       const key = box.dataset.skey;
       box.innerHTML = ATLAS_OPTS[key].map(([v, l]) => `<button type="button" data-val="${esc(String(v))}" aria-pressed="false">${esc(l)}</button>`).join('');
       box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this[key] = b.dataset.val; this.sync(); this.draw(); });
     });
-    const seg = (id, items, on) => {
-      $(id).innerHTML = items.map(([v, l]) => `<button type="button" data-val="${esc(String(v))}">${esc(l)}</button>`).join('');
-      $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { on(b.dataset.val); this.sync(); } });
-    };
+    const seg = (id, items, on) => segRow(id, items.map(([v, l]) => [v, esc(l)]), null, v => { on(v); this.sync(); }, {toggle: true});
     seg('setTool', TOOLS, v => { this.tool = v; this.note(NOTES[v]); });
     const peoples = PLACEABLE.peoples();
     seg('setPeople', peoples.map(P => [P.id, P.label]), v => { this.people = v; });
@@ -86,7 +82,6 @@ export class SettleView extends MapView {
     const val = {layer: this.layer, ore: this.ore, fauna: this.fauna};
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.skey])))));
     $('setOre').hidden = this.layer !== 'ores'; $('setFauna').hidden = this.layer !== 'fauna';
-    const press = (id, v) => $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(v))));
     press('setTool', this.tool); press('setPeople', this.people); press('setCalIn', this.calIn);
     $('setPeopleRow').hidden = this.tool !== 'people'; $('setLairRow').hidden = this.tool !== 'lair'; $('setCalRow').hidden = this.tool !== 'calamity';
     $('setMap').classList.toggle('hand', this.tool !== 'look');
@@ -178,9 +173,9 @@ export class SettleView extends MapView {
       `<dt>Логова</dt><dd>${lairs.length}${lairs.some(l => l.leader) ? `, главарей ${lairs.filter(l => l.leader).length}` : ''}</dd>` +
       ((a.ruins || []).length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
     const cals = a.calamities || [];
-    $('setCals').innerHTML = cals.length ? `<span class="lbl">Бедствия</span><div class="cal-list">${cals.map(c => `<div><b>${esc(c.label)}</b> — ${PHASE[c.phase] || c.phase}` +
-      (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
-      (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана', capital: 'в столице', lost: 'потерян в пути'}[a.artifact.holder.kind] || '—'}</small>` : '') : '';
+    $('setCals').innerHTML = cals.length ? `<span class="lbl">Бедствия</span><div class="cal-list">${cals.map(c => `<div><b>${esc(c.label)}</b> — ${CAL_PHASES[c.phase] || c.phase}` +
+      (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${FELL_BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
+      (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${ARTIFACT_AT[a.artifact.holder.kind] || '—'}</small>` : '') : '';
     $('setRels').innerHTML = relationsHtml(a);
     // the chronicle only grows: new lines are appended
     const box = $('setChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;

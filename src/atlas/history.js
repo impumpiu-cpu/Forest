@@ -118,7 +118,7 @@ export function stepHistory(a, onDay = null) {
       const hit = [];
       for (const t of a.towns || []) {
         if (!t.alive || Math.abs(((t.x / F.c) | 0) - bx) > r || Math.abs(((t.y / F.c) | 0) - by) > r) continue;
-        const fx = townFx(t), loss = FAUNA.townHarsh * Math.max(0.25, 1 - 0.6 * fx.food - 0.4 * fx.health);
+        const fx = townFx(t), HK = FAUNA.townHarshK, loss = FAUNA.townHarsh * Math.max(HK.floor, 1 - HK.food * fx.food - HK.health * fx.health);
         killShare(a, t, loss, cold ? 'cold' : 'drought'); hit.push(t);
       }
       const dead = hit.length ? `; в ${hit.length === 1 ? `${townLabel(hit[0], 3)} ${hit[0].name}` : `${hit.length} ${plural(hit.length, 'городе', 'городах', 'городах')}`} ${cold ? 'голод и мор' : 'голод'}` : '';

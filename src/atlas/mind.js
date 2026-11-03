@@ -17,13 +17,13 @@
 // The court reads the wind too: its deeds are weighed along their vectors (atlas/court.js).
 //
 // realm.mind = {course, wind, flags, sense, obey, lead, acts, spent: {agg, grow, econ}}; town.role = 'agg' | 'grow' | 'econ'.
+import {warsOf} from './common.js';
 import {MIND, VECTOR_IDS, vectorOf, normVec, leadOf as lead} from '../data/mind.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {townFx, room} from './towns.js';
-import {realmLabelGen} from './realms.js';
+import {realmLabelGen, realmTowns} from './realms.js';
 
-const realmTowns = (a, id) => (a.towns || []).filter(t => t.alive && t.realm === id);
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const r3 = v => Math.round(v * 1000) / 1000;
 const zeroVec = () => Object.fromEntries(VECTOR_IDS.map(k => [k, 0]));
@@ -65,7 +65,7 @@ function sense(a, r, towns) {
   const F = MIND.flags, pop = towns.reduce((s, t) => s + t.pop, 0) || 1;
   const fed = towns.reduce((s, t) => s + fedOf(t) * t.pop, 0) / pop;
   const crowd = towns.reduce((s, t) => s + t.pop / Math.max(1, room(townFx(t))), 0) / towns.length;
-  const war = Object.entries(a.rel || {}).some(([k, x]) => x.war && k.split(':').includes(String(r.id)));
+  const war = warsOf(a, r.id) > 0;
   const threat = war ? 1 : clamp01(towns.reduce((s, t) => s + (t.wants?.threat || 0) * t.pop, 0) / pop);
   const short = new Set(towns.flatMap(t => Object.keys(t.econ?.short || {}))).size;
   const reserve = Math.max(0, r.gold || 0) / (MIND.hoard * pop / 100);   // the treasury against what it would hold

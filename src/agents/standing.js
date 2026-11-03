@@ -3,7 +3,6 @@
 // the faction it stands with, and its record — a.captive (how it was taken and how it bears its bonds), a.former (the
 // time since the bonds came off), a.fugitive (its flight). A fugitive is a captive on the run: its a.captive stays.
 //   setStanding(a, standing, record) — the only way to change it: the brain and the records cannot disagree
-//   standingOf(a)                    — the word back
 // (Other brains — a raider, a led one, a leaver, the livestock — are no standing of the colony's: their code sets them.)
 export const STANDINGS = {
   colonist: {brain: 'colonist', faction: 'colony',    label: 'поселенец'},
@@ -29,13 +28,4 @@ export function setStanding(a, standing, record = null) {
     a.fugitive = record || {since: 0};
   } else { a.captive = null; a.former = null; a.fugitive = null; }
   a.brain = S.brain; a.faction = S.faction;
-}
-
-// the standing a person is in now (of the colony's or the caravan's), or null for any other brain
-export function standingOf(a) {
-  if (a.brain === 'trader' || a.brain === 'guard') return a.brain;
-  if (a.fugitive) return 'fugitive';
-  if (a.captive) return 'captive';
-  if (a.former) return 'former';
-  return a.brain === 'colonist' ? 'colonist' : null;
 }

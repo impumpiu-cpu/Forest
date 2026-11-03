@@ -15,7 +15,7 @@ import {step} from '../sim.js';
 import {PROVIDERS} from '../outside/index.js';
 import {formLinks, formUndeadLinks, promote, trimBand} from '../agents/ranks.js';
 import {RANK_RULES} from '../data/ranks.js';
-import {memberStrength} from '../data/raids.js';
+import {memberStrength} from '../outside/bands.js';
 import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
@@ -23,7 +23,7 @@ import {refreshBody} from '../agents/special.js';
 import {attackerOf, sneakSeen, darkness} from '../agents/combat.js';
 import {wake} from '../agents/attention.js';
 import {sideStrength, expectedStrength} from '../agents/strength.js';
-import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
+import {dress, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {makeGolem} from '../agents/golem.js';
 import {putUp} from '../settlement/buildings.js';
@@ -46,6 +46,7 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {ORES} from '../data/ores.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
 import {FOES, GAME} from '../data/campaign.js';
+import {HERD} from '../data/bubble.js';
 import {faunaLevel} from '../world/region.js';
 import {BEASTS} from '../data/transport.js';
 import {bindWaiting} from '../settlement/captives.js';
@@ -76,7 +77,7 @@ export function campSetup(a, K, ev) {
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     food: K.food, cargo: {...K.cargo},
     met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
-    // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
+    // a stop to dig: the ore the council stopped for (campaign/mine.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
   };
@@ -172,7 +173,7 @@ function stockGame(w, r) {
   for (const sp of Object.keys(GAME)) {
     const flow = GAME_FLOW[sp] || sp; if (!MIGRATIONS.has(flow) || !SPECIES.has(sp)) continue;
     const lvl = faunaLevel(w, sp); if (lvl <= 0) continue;
-    const n = Math.round(CAMP.stop.game * Math.min(2, lvl) * (0.4 + r()) * (GAME[sp] >= 0.8 ? 1 : 1.5));
+    const n = Math.round(CAMP.stop.game * Math.min(CAMP.stop.gameCap, lvl) * (CAMP.stop.roll + r()) * (GAME[sp] >= HERD.big ? 1 : CAMP.stop.smallGame));
     if (n > 0) spawnGroup(w, flow, n, {minDist: 10});
   }
 }
@@ -198,7 +199,7 @@ function spawnFoe(w) {
   const beast = F.beast || map.beast, band = F.band || map.band;
   // the foe is bought by the caravan's strength (campSetup: C.ourMight — everyone who stands in the fight, with all
   // they wear) × the fight's weight (foeWeight), never by the thing's own strength: a caravan in copper is not sent
-  // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)
+  // against a boss bought for a caravan in steel. The heads are rounded up (outside/bands.js fill `up`)
   const t = raidThreat(w), budget = C.ourMight * foeWeight(r, F, S.kind);
   C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record
   // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
@@ -213,7 +214,7 @@ function spawnFoe(w) {
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
-    // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
+    // the band counted out in strength rating (outside/bands.js fill): the budget, rounded up by heads, the bands' caps lifted
     return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}, ...(F.pool && who.band === 'cultists' ? {pool: F.pool} : {})}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
   };
   // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain
@@ -276,7 +277,8 @@ function nearCell(w, d, r) {
   return null;
 }
 
-const foesLeft = w => w.agents.filter(o => w.campaign.foes.includes(o.id) && !o.dead && !o.gone && !o.downed && !o.captive && o.task?.id !== 'leave').length;   // the fallen and the bound are out of it
+// (over the foes themselves, not every creature: the dead and the gone leave w.agents and are out of it here too)
+const foesLeft = w => w.campaign.foeObjs.filter(o => !o.dead && !o.gone && !o.downed && !o.captive && o.task?.id !== 'leave').length;   // the fallen and the bound are out of it
 
 // a tick of the camp
 export function stepCamp(w) {

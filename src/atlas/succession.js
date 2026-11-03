@@ -5,19 +5,19 @@
 // for a new leader to rise (LEADER.heir); a dragon's polity ends with the dragon. A seat burnt and a ruler dead are two
 // different events (atlas/realms.js seatFallen): a dead ruler leaves the towns where they are, and a lost seat leaves the
 // ruler alive if it was elsewhere.
+import {stream} from './common.js';
+import {cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
 import {SUCCESSION} from '../data/polities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
 import {profileOf, officeOf, rulerTitle} from './polities.js';
-import {realmLabel, realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
+import {realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
 import {townLabel, townFx} from './towns.js';
 import {newPerson, moveTo, personLabel, nameOut, hasGrown, personOf} from './persons.js';
-import {mulberry, seedNumber} from '../core/rng.js';
 import {abilitiesFor} from './control.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
-const draw = a => { const r = mulberry(a.succRnd ?? seedNumber(`${a.cfg.seed}:atlas:succession`)); return {r, done: () => { a.succRnd = r.state; }}; };
+const draw = a => stream(a, 'succRnd', 'succession');
 
 // the fall of a person out of what it held: called by personDies, once
 export function rulerFell(a, p, how, say, ctx = {}) {
@@ -63,7 +63,7 @@ export function crownRuler(a, r, rnd, {g = null, name = null} = {}) {
   const used = new Set(Object.values(K.court).filter(Boolean).map(h => personOf(a, h.person)?.name).filter(Boolean));
   const f = g ? g === 'f' : rnd() < COURT.female, nm = name || makeName(race, rnd, {gender: f ? 'f' : 'm', used});
   if (!nm) return null;
-  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r)});
+  const p = newPerson(a, {name: nm, g: f ? 'f' : 'm', species: race, r: rnd, abilities: abilitiesFor(r), health: townFx(cap).health});
   if (cap) { moveTo(p, 'town', cap.id); nameOut(a, p, cap); }
   return p;
 }

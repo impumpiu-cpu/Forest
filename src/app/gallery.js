@@ -15,7 +15,7 @@ import {drawSprite, spriteKeys, spriteBox, MARK, FIGURE, FULL} from '../render/a
 import {drawPawn} from '../render/art/pawn.js';
 import {SHOWCASE} from '../render/art/showcase.js';
 
-const $ = id => document.getElementById(id);
+import {$, seg, press} from '../ui/dom.js';
 const BG = [
   {id: 'grass', label: 'Трава', c: '#6e8b47', d: ['#5f7c3d', '#7d9a52']},
   {id: 'forest', label: 'Лес', c: '#3f5a2e', d: ['#33502a', '#4c6a36']},
@@ -25,10 +25,6 @@ const BG = [
 ];
 let bg = BG[0];
 
-function seg(box, items, cur, on) {
-  box.innerHTML = items.map(d => `<button type="button" data-val="${d.id}" aria-pressed="${d.id === cur}">${d.label}</button>`).join('');
-  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); on(b.dataset.val); });
-}
 function ground(g, w, h) {
   g.fillStyle = bg.c; g.fillRect(0, 0, w, h);
   let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -138,6 +134,6 @@ function render() {
 }
 seg($('gSkin'), SKINS, skin.mode, v => skin.set(v));
 seg($('gBg'), BG, bg.id, v => { bg = BG.find(b => b.id === v); render(); });
-document.addEventListener(SKIN_EVENT, () => $('gSkin').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === skin.mode))));
+document.addEventListener(SKIN_EVENT, () => press('gSkin', skin.mode));
 addEventListener('keydown', e => { if (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey) skin.toggle(); });
 render();

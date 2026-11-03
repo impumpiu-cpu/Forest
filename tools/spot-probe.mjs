@@ -32,7 +32,7 @@ while (true) {
       c.site++;
       if (pe.K[faunaCell(a, i)] < TL.foundLand) { c.noLandSite++; continue; }
       c.land++;
-      const near = a.towns.find(o => o.alive && Math.hypot(o.x - x, o.y - y) < sp * (o.people !== who ? pe.P.folk?.near ?? 1 : 1));   // as farFromTowns (atlas/peoples.js)
+      const near = a.towns.find(o => o.alive && Math.hypot(o.x - x, o.y - y) < sp * (o.people !== who ? pe.P.strangers?.near ?? 1 : 1));   // as farFromTowns (atlas/peoples.js)
       if (!near) c.free++; else c.blockBy[near.people] = (c.blockBy[near.people] || 0) + 1;
     }
     c.bestSite = Math.round(c.bestSite * 100) / 100;

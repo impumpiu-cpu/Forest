@@ -141,9 +141,12 @@ export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5,
 //   keep:       the share of a lair's captives alive a year later (the rest die, are eaten, or are raised)
 //   realm:      a realm's raid for captives (the orcs): the town's chance a year (as DIPLOMACY.raidChance is for a raid), the
 //               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
+//               tribe — on a wild tribe's camp (the greenskins, captives.js): `heads` — the camp's people at full strength,
+//               `hit` — the share of them a won raid carries off (the camp the weaker by as many; `grow` of them are slaves);
+//               these raids are not held to DIPLOMACY.raidsPerYear (they are counted in realm.raids.camps)
 //   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
 //               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
-export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 20, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
+export const CAPTIVE_RAID = {minPop: 20, chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 130, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [
@@ -158,7 +161,6 @@ export const GENDER_INDEX = {m: 0, f: 1, n: 2, pl: 3};
 
 // lairs this old (years) become «ancient» — once, with a line in the chronicle; an ancient lair may raise a leader
 export const LAIR_AGE = {ancient: 30};
-export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says it; what the game reads is LAIR_AGE
 
 // Leaders of the old lairs (atlas/leaders.js, docs/WORLD.md «Главари логов»). An ancient lair (any kind but a dragon's,
 // a vampire's manor and a calamity's boss's) may raise a named leader: a creature of its kind grown past its kind's
@@ -184,7 +186,7 @@ export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says 
 export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'], add: [2, 5], cap: 30, life: [20, 50],
   think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, luck: [0.6, 0.8], reach: 1.5,
   subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, wiped: 0.12, beatenCost: 0.75, beastRaid: 0.35,
-  expand: {from: 0.6, crowd: 1.5, cost: 0.8},
+  expand: {from: 0.6, crowd: 1.5, cost: 0.8, tries: 60},
   // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
   camp: {p: 1.6, strength: 1.3}};
 // what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)

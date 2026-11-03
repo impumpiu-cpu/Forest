@@ -8,7 +8,7 @@ import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {BEHAVIOURS} from '../src/atlas/parties.js';
 import {townFx, room, townKin, realmBuilt, unitsMax, lineFull, slotsUsed, slotsOf, placeHas, canBuild, chooseBuilding} from '../src/atlas/towns.js';
 import {TOWN_BUILDINGS, lineHas, slotKind, goodPrice} from '../src/data/townBuildings.js';
-import {WORLD_PEOPLES, KIN, placeNeed} from '../src/data/peoples.js';
+import {WORLD_PEOPLES, placeNeed} from '../src/data/peoples.js';
 import {roadAccess} from '../src/atlas/roads.js';
 import {settleSpot} from '../src/atlas/peoples.js';
 import {leanOf} from '../src/atlas/mind.js';
@@ -91,7 +91,6 @@ function yearRow() {
 // what stops a building in a town: the first check of canBuild (atlas/towns.js) that fails
 function stopOf(t, b, inRealm) {
   if (b.peoples && !b.peoples.includes(t.people)) return 'народ';
-  if (b.kin && !((townKin(a, t)?.[b.kin] ?? 0) >= KIN.least)) return 'вид';
   if (b.requires && !b.requires.every(id => lineHas(inRealm, id))) return 'нужна в державе: ' + b.requires.filter(id => !lineHas(inRealm, id)).map(id => TOWN_BUILDINGS.get(id).name).join(', ');
   if (b.requiresAny && !b.requiresAny.some(id => lineHas(inRealm, id))) return 'нужна в державе одна из: ' + b.requiresAny.map(id => TOWN_BUILDINGS.get(id).name).join(', ');
   if (b.here && !b.here.some(id => (id === b.id ? t.built.includes(id) : lineHas(t.built, id)))) return 'нужна в городе: ' + b.here.map(id => TOWN_BUILDINGS.get(id).name).join(' / ');

@@ -28,6 +28,8 @@ export function agentById(w, id) {
   if (id == null) return null;
   return cached(w, 'lk.id', ags => { const m = new Map(); for (const a of ags) if (!m.has(a.id)) m.set(a.id, a); return m; }).get(id) || null;
 }
+// is this creature on the map's list (as w.agents.includes(o), through the index: ids are unique)
+export const onMap = (w, o) => !!o && agentById(w, o.id) === o;
 // the living one with this id — what most brains mean by «byId»
 export const liveById = (w, id) => { const a = agentById(w, id); return a && !a.dead ? a : null; };
 
@@ -55,6 +57,10 @@ export function ofSpeciesList(w, species, keep) {
 // checks each candidate is still at it, and of several returns the first in w.agents, as the old
 // walk over the whole list did — the answer is the same, tick for tick.
 const ATTACK = new Set(['maul', 'fight']);
+// a task that is an attack on someone: a beast's maul or a fighter's fight, with its target
+export const isAttack = t => !!t?.target && ATTACK.has(t.id);
+// is `o` of the side of `a`: its own faction, or the colony for the colony's allies (a called beast, a golem)
+export const ours = (a, o) => o.faction === a.faction || (a.faction === 'allies' && o.faction === 'colony');
 const attacks = w => cached(w, 'lk.attack', ags => {
   const by = new Map(), pos = new Map();
   ags.forEach((o, k) => {

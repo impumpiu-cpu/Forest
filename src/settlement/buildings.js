@@ -1,6 +1,5 @@
 // Construction: picking a lot, laying a site, finishing it, losing it to fire.
 import {BUILDINGS, colonyPeople} from '../data/buildings.js';
-import {RESOURCES} from '../data/resources.js';
 import {T, OPEN} from '../data/terrain.js';
 import {log} from '../core/log.js';
 import {walkable, isCampArea} from '../world/grid.js';
@@ -12,11 +11,12 @@ import {think} from '../agents/mind.js';
 import {ambientTemp, DAY, HOUR} from '../core/time.js';
 import {plowField} from './farming.js';
 import {takeKind} from './kinds.js';
+import {STORE} from '../data/colony.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : d.gender === 'n' ? 'о' : '');
 
 // can the colony pay for it and still keep the fire going? Wood for a few cold nights is never spent on building
-export const fuelReserve = w => (ambientTemp(w, w.tick - (w.tick % DAY) + 3 * HOUR) < 6 ? 10 : 4);
+export const fuelReserve = w => (ambientTemp(w, w.tick - (w.tick % DAY) + STORE.fuelHour * HOUR) < STORE.coldBelow ? STORE.fuelCold : STORE.fuelMild);   // (data/colony.js STORE)
 export function canAfford(w, cost) {
   return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v + (r === 'wood' ? fuelReserve(w) : 0));
 }
@@ -174,4 +174,3 @@ export function burnBuilding(w, id) {
   log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`, 'build', 'alert');
 }
 
-export const resLabel = id => RESOURCES.get(id).label;

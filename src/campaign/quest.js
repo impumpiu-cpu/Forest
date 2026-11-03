@@ -24,11 +24,12 @@ import {LAIRS} from '../data/lairs.js';
 import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {BUBBLE} from '../data/bubble.js';
-import {REALM_BANDS} from '../data/seam.js';
-import {lairFoe} from './land.js';
-import {bubbleOf} from './bubble.js';
+import {YEAR_DAYS} from '../data/seasons.js';
+import {lairFoe, lairGuard, rulerAtHead} from './land.js';
+import {bubbleOf, cellAt} from './bubble.js';
+import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
-import {cellDist} from '../core/util.js';
+import {cellDist, weighted} from '../core/util.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -38,11 +39,6 @@ const dist = cellDist;   // (core/util.js)
 const NEUT = {'её': 'его', 'Её': 'Его', 'она лежит': 'оно лежит', 'отбита': 'отбито', 'найдена': 'найдено', 'досталась': 'досталось'};
 const gx = (Q, f, m) => (Q.g === 'm' ? m : Q.g === 'n' ? NEUT[f] ?? m : f);
 const pick = (r, list) => list[(r() * list.length) | 0];
-function weighted(r, list) {   // [[item, weight]]
-  const tot = list.reduce((s, e) => s + e[1], 0); let x = r() * tot;
-  for (const [it, wt] of list) { x -= wt; if (x <= 0) return it; }
-  return list.at(-1)?.[0] ?? null;
-}
 
 // ── the land the caravan can walk from home: a mask, and the cells it may stop on
 export function reachable(a, K) {
@@ -92,12 +88,12 @@ function places(a, K, mask) {
 // who guards a place, and how strong: stronger the further from home
 function guardOf(a, K, p, crown = false) {
   const G = QUEST.guard, diag = Math.hypot(a.w, a.h), s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, p.i) / diag) * (crown ? G.crown : 1));
-  const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null, L = l && LAIRS.get(l.kind);
+  const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null;
   if (p.kind === 'town') return null;
   if (p.kind === 'dragon') return {kind: 'lair', strength: s, label: `выводок дракона — ${p.label}`, beast: 'drake'};
   if (p.kind === 'barrow') return {kind: 'undead', strength: s, label: 'мертвецы древнего кургана', band: 'undead'};
   if (p.kind === 'ruin') return {kind: 'bandits', strength: s, label: `разбойники, засевшие ${p.town != null ? 'на пепелище' : 'в развалинах'}`, band: 'bandits'};
-  return {kind: L?.undead ? 'undead' : L?.tribe ? 'tribe' : 'lair', strength: s, label: p.label, ...(l ? lairFoe(l.kind) : {})};
+  return {...(l ? lairGuard(a, l.kind, p.i, s, l) : {kind: 'lair', strength: s}), label: p.label};   // its band, its ruler's summoned (campaign/land.js)
 }
 
 // the crown's story, by where it lies (g — the gender of its name: «она сгинула», «он сгинул»)
@@ -152,7 +148,7 @@ export function makeQuest(a, K, rnd) {
     for (const p of fit) { const [x, y] = xy(a, p.i), v = Math.hypot(x - px, y - py) / QUEST.clueKinds[p.kind]; if (v < bv) { bv = v; best = p; } }
     // no place of history near: a cairn in the wilds keeps the clue
     // (on a small island: the walkable cell nearest to the point that no other place of the quest holds)
-    if (!best || bv > len * 0.5) {
+    if (!best || bv > len * QUEST.cairn) {
       let i = -1, id = Infinity;
       for (const c of cells) { if (usedI.has(c) || c === home) continue; const [x, y] = xy(a, c), v = Math.hypot(x - px, y - py); if (v < id) { id = v; i = c; } }
       best = i >= 0 ? {kind: 'cairn', label: `каменная пирамида ${biomeAt(a, i)?.where || ''}`.trim(), at: i, i} : fit[0];
@@ -183,7 +179,6 @@ export const questIntro = (a, K) => {
 };
 
 // ── the target: where the council sends the caravan now (K.goal)
-const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 export function questTarget(a, K, rnd, say = null) {
   const Q = K.quest; if (!Q) return K.goal;
   const g = target(a, K, rnd);
@@ -217,7 +212,7 @@ function target(a, K, rnd) {
     const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms').sort((p, q) => p.rest - q.rest)[0];
     if (back) { back.rest = 0; return target(a, K, rnd); }
   }
-  return null;   // nothing known: the council looks for rumours in a town (campaign/march.js)
+  return null;   // nothing known: the council looks for rumours in a town (campaign/march.js evening, campaign/visit.js findTown)
 }
 const distTo = (a, K, c) => Math.hypot(c.area ? c.area.x - K.x : xy(a, c.i)[0] - K.x, c.area ? c.area.y - K.y : xy(a, c.i)[1] - K.y);
 // a cell of an area to search: its centre first, then a new cell each time one is reached
@@ -263,9 +258,10 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
   const C = Q.crown, here = [...Q.clues.filter(c => !c.found && c.seen), ...(C.state !== 'carried' && (C.seen || C.exact) ? [C] : [])].find(p => p.i === K.i && !(p.rest > K.day));   // (a place left for a while is not stormed meanwhile)
   if (!here) return false;
   if (here.guard) {
-    const ms = K.members.filter(m => m.alive), hp = ms.reduce((s, m) => s + m.hp, 0) / Math.max(1, ms.length);
+    // (the company's health: the free only — a captive's wounds hold no storm back, as nowhere else: campaign/captives.js)
+    const fs = free(K), hp = fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
-    if (ms.filter(m => !m.captive).length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
+    if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
     // beaten back once, the council does not send the same company against the same guards: it comes back stronger
     // than the one that lost (QUEST.stronger) — or, not grown so in time, leaves the place for a while
     if (here.lost && might < here.lost.might * QUEST.stronger) {
@@ -274,7 +270,7 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     }
     K.stats.storms = (K.stats.storms || 0) + 1;
     const sk = here === C ? 'stormsLair' : here.kind === 'grave' ? 'stormsGrave' : null; if (sk) K.stats[sk] = (K.stats[sk] || 0) + 1;
-    const win = fight(here.guard);
+    const win = fight(rulerAtHead(a, here.guard));   // (its lair's ruler, at home, at its head: campaign/land.js)
     if (!win) {
       Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day};
       if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`);   // beaten back again and again: leave it for a while, look elsewhere
@@ -314,7 +310,7 @@ function takeCrown(a, K, say) {
   const Q = K.quest, C = Q.crown, m = bearer(K);
   const again = C.state === 'taken';
   C.state = 'carried'; C.carrier = m?.id ?? null; C.seen = false; C.exact = false;
-  K.phase = 'back'; K.goal = K.home; Q.next = K.day + 3; Q.carriedFrom = K.day;
+  K.phase = 'back'; K.goal = K.home; Q.next = K.day + QUEST.pursuit.first; Q.carriedFrom = K.day;
   if (Q.epic && !again) { epicTaken(a, K, m?.name || 'караван'); say(`${C.label[0].toUpperCase()}${C.label.slice(1)} взято штурмом: ${C.guard?.boss?.name || 'босс'} пал${(C.guard?.boss?.g ?? a.calamities?.find(c => c.id === Q.calamity)?.boss?.g) === 'f' ? 'а' : ''}. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой! Весть летит быстрее каравана, и враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null); return; }
   say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null);
 }
@@ -334,11 +330,11 @@ export function afterFight(a, K, d, win, say) {
   if (win && next) { C.carrier = next.id; say(`${Q.name} не ${gx(Q, 'досталась', 'достался')} врагам: ${gx(Q, 'её', 'его')} подобрал${next.gender === 'f' ? 'а' : ''} ${next.name}.`, 'crown'); return; }
   if (!next) return;   // nobody left to care
   // taken: the foe's camp a few cells off
-  const mask = reachMask(a, K), [x, y] = [K.x, K.y], ang = ((K.day * 7919) % 360) / 57.3, r = 3 * scaleOf(a);
-  const i = foot(a, mask, cellAt(a, x + Math.cos(ang) * r, y + Math.sin(ang) * r), 4);
+  const mask = reachMask(a, K), [x, y] = [K.x, K.y], ang = ((K.day * 7919) % 360) / 57.3, r = QUEST.taken.at * scaleOf(a);
+  const i = foot(a, mask, cellAt(a, x + Math.cos(ang) * r, y + Math.sin(ang) * r), QUEST.taken.foot);
   C.state = 'taken'; C.carrier = null; C.at = i >= 0 ? i : K.i; C.i = C.at; C.exact = true; C.seen = true; C.area = null;   // the old circle no longer holds it
   const who = (d.label || FOES[d.kind].label).replace(/^погоня: /, '');
-  C.guard = {...d, label: who, strength: Math.min(QUEST.guard.max, (d.strength ?? 1) * 1.15)}; C.label = `стан врагов (${who})`;
+  C.guard = {...d, label: who, strength: Math.min(QUEST.guard.max, (d.strength ?? 1) * QUEST.taken.grow)}; C.label = `стан врагов (${who})`;
   K.phase = 'out'; K.path = null;
   say(`${Q.name} ${gx(Q, 'досталась', 'достался')} врагам (${who}): ${gx(Q, 'её', 'его')} унесли и встали станом неподалёку. ${gx(Q, 'Её', 'Его')} придётся отбить.`, 'crown', true);
 }
@@ -374,7 +370,7 @@ export function pursuit(a, K, rnd, say) {
   const P = QUEST.pursuit;
   if (bubbleOf(K).things.filter(t => t.pursuit).length >= P.at) { Q.next = K.day + P.full; return; }   // enough on its trail already
   Q.next = K.day + Math.round(P.every * (P.jitter[0] + P.jitter[1] * rnd()));
-  const years = (K.day - (Q.carriedFrom ?? K.day)) / 120, strength = Math.min(P.max, P.base + P.perYear * years);
+  const years = (K.day - (Q.carriedFrom ?? K.day)) / YEAR_DAYS, strength = Math.min(P.max, P.base + P.perYear * years);
   // who: an army of a realm that is no friend, else a tribe of the nearest living lair, else outlaws
   const enemy = (a.realms || []).filter(r => r.id !== K.realm && (atWar(a, K.realm, r.id) || !trades(a, K.realm, r.id)))
     .map(r => ({r, d: Math.min(...(a.towns || []).filter(t => t.alive && t.realm === r.id).map(t => Math.hypot(t.x - K.x, t.y - K.y)))})).filter(e => Number.isFinite(e.d)).sort((p, q) => p.d - q.d)[0];
@@ -390,7 +386,7 @@ export function pursuit(a, K, rnd, say) {
     const i = cellAt(a, x, y); if (!a.f.land?.[i] || a.f.ocean[i]) continue;
     B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, strength, pursuit: true, ...thing});
     K.stats.pursuers = (K.stats.pursuers || 0) + 1;
-    if (K.stats.pursuers === 1 || rnd() < 0.3) say(`За караваном снарядили погоню: ${thing.label.replace('погоня: ', '')}.`, 'sight');
+    if (K.stats.pursuers === 1 || rnd() < P.told) say(`За караваном снарядили погоню: ${thing.label.replace('погоня: ', '')}.`, 'sight');
     return;
   }
 }

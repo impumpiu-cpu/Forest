@@ -19,7 +19,8 @@
 //   not even considered until the colony has one, and it goes into the building (it is in `cost` too).
 // `furnish: true` — a solid building that takes up to FURNISH_MAX pieces of furniture from the stock
 //   (data/furniture.js); what they add up to is its standing (settlement/life.js). Huts, fields, pits
-//   and fences take none.
+//   and fences take none. `furnishText` — what the standing does there, for its card (ui/cards.js); a station's is
+//   the speed of its work, any other's the look of the settlement.
 // `pen: n` — a fenced pen for n places of tame animals (settlement/herd.js).
 // `captureOnly: true` — never built by the council (it can only be captured, later).
 // `walkTo: true` — people walk to it for something other than crafting (a flow field 'station:<id>').
@@ -31,9 +32,10 @@ import {WORLD_PEOPLES} from './peoples.js';
 import {T as TERR} from './terrain.js';
 const ROCK = TERR.ROCK;
 
-// free places in the pens (settlement/herd.js has the same; this table cannot import it)
-const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 * penK(w) : 0), 0)
-  - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
+// the herd's own reckonings (settlement/herd.js: isTameable, penRoom — the free places in the pens), handed over by it
+// at load — it imports this table, so this table cannot import it
+let HERD_REF = null;
+export const useHerd = ref => { HERD_REF = ref; };
 
 export const BUILDINGS = new Registry('building');
 // a race line that keeps big herds (data/relations.js `rel`): its colony's pen holds × this (the greenskins' pens)
@@ -84,7 +86,7 @@ BUILDINGS.registerAll([
       [c.crowded ? 0.8 : 0, 'в лагере тесно'], [c.count('hut') === 0 ? 0.3 : 0, 'хочет крышу над головой']]},
 
   // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
-  {id: 'house', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
+  {id: 'house', furnishRank: 0, furnishText: 'сон здесь лучше для настроения', name: 'Изба', nameAcc: 'избу', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
     heat: {to: 26, add: 4.5, fuel: 0.0004}, furnish: true,
     available: w => !dwarven(w) || !rockNear(w),   // the dwarves dig a home into the rock instead, where there is rock
     effect: 'Тёплый дом из тёса под камышовой кровлей, стены обмазаны глиной: 4 места, зимой тепло на малых дровах. Лагерь примет на 4 жителей больше.',
@@ -193,7 +195,7 @@ BUILDINGS.registerAll([
   {id: 'palisade', name: 'Частокол', gender: 'm', cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true, color: '#6f5a3c', mark: 'Ч', needs: 'quarry',
     effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.',
     effects: {mul: {defense: 0.6, loot: 0.5}},
-    available: w => colonyRace(w) !== 'elf' && !dwarven(w),   // the elves grow a thorn hedge instead, the dwarves raise a stone wall
+    // (who raises it — the humans and the greenskins; the elves grow a thorn hedge, the dwarves a stone wall — is its `races`)
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
@@ -214,7 +216,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.fishLakes ? 0.15 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, 'любит рыбачить'], [a.mem.walkFish * 0.8, 'далеко носить рыбу'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
-  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
+  {id: 'crafthut', furnishRank: 4, name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, луки, пращи, удочки, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
@@ -274,7 +276,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.season === 'autumn' ? 0.9 : c.season === 'summer' ? 0.5 : 0.2, c.season === 'autumn' ? 'зима на носу, надо запасаться' : 'хочет запасов на зиму'],
       [c.spoiled * 0.05, 'еда портится'], [a.mem.hunger * 0.6, 'помнит голод'], [(a.prefs.preserve - 1) * 1.4, 'любит заготовки']]},
 
-  {id: 'hearth', name: 'Очаг', gender: 'm', cost: {stone: 8, wood: 6}, furnish: true, work: 140, max: 1, wooden: false, color: '#c4703a', mark: 'Оч', station: true, benches: 1, needs: 'quarry',
+  {id: 'hearth', furnishRank: 3, name: 'Очаг', gender: 'm', cost: {stone: 8, wood: 6}, furnish: true, work: 140, max: 1, wooden: false, color: '#c4703a', mark: 'Оч', station: true, benches: 1, needs: 'quarry',
     effect: 'Здесь варят похлёбку из двух припасов: она сытнее, чем они порознь, и горячая еда поднимает настроение. Похлёбка не хранится.',
     effects: {},
     wish: 'хочет горячей еды',
@@ -284,7 +286,7 @@ BUILDINGS.registerAll([
   // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
   // close by themselves; herbs make the treatment work fully (settlement/healing.js); a station too — the healing
   // potion is brewed here (data/recipes.js `potion`)
-  {id: 'healerhut', portable: true, station: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
+  {id: 'healerhut', furnishRank: 2, portable: true, station: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
     effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы и варит из них зелья лечения.',
     effects: {}, beds: 3,
     wish: 'хочет, чтобы раненых было где лечить',
@@ -297,20 +299,19 @@ BUILDINGS.registerAll([
     wish: 'хочет беречь снаряжение',
     motive: (a, c) => [[a.mem.broken * 1.3, 'снаряжение ломается'], [Math.max(0, c.broken - 1) * 0.2, 'снаряжение ломается слишком часто']]},
 
-  // ── herding: a fenced pen for tamed goats and mules (settlement/herd.js)
+  // ── herding: a fenced pen for tamed animals (settlement/herd.js)
   {id: 'pen', name: 'Загон', gender: 'm', cost: {wood: 14, rope: 2}, work: 160, max: 2, wooden: true, color: '#9a8a5a', mark: 'Зг',
     lot: [4, 4], pen: 6,
-    effect: 'Изгородь на 6 мест: козе нужно одно, мулу два. Скотник приручает диких коз и мулов охапкой сена, доит коз, стрижёт шерсть. При нехватке припасов взрослый излишек идёт на мясо, пара остаётся для разведения; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
+    effect: 'Изгородь на 6 мест: козе и овце нужно одно, мулу, лошади и верблюду два, туру три. Скотник приручает дикий скот охапкой сена, доит, стрижёт шерсть. При нехватке припасов взрослый излишек идёт на мясо, пара каждого разводимого вида остаётся для разведения; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
     effects: {},
-    // the first when there are wild goats or mules about; a second only when the first is full
-    available: w => (w.buildings.some(b => b.key === 'pen') ? penRoom(w) < 2
-      : w.agents.some(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null)),
+    // the first when there are wild animals about that a herder could tame; a second only when the first is full
+    available: w => (w.buildings.some(b => b.key === 'pen') ? HERD_REF.penRoom(w) < 2 : w.agents.some(HERD_REF.isTameable)),
     wish: 'хочет держать скот',
-    motive: (a, c) => [[c.wildHerd && !c.count('pen') ? 0.45 : 0, 'по округе бродят дикие козы'], [c.herdFull ? 0.6 : 0, 'в загоне тесно'],
+    motive: (a, c) => [[c.wildHerd && !c.count('pen') ? 0.45 : 0, 'по округе бродит дикий скот'], [c.herdFull ? 0.6 : 0, 'в загоне тесно'],
       ...(c.count('pen') ? [] : [[a.mem.hunger * 0.5, 'скот кормит и в голодный год'], [a.mem.cold * 0.3, 'из шерсти выйдет тёплая одежда'], [(a.prefs.herd - 1) * 1.5, 'любит возиться со скотиной']])]},
 
   // ── the shrine: a carved idol under a little roof, the graves beside it (settlement/life.js)
-  {id: 'shrine', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
+  {id: 'shrine', furnishRank: 1, furnishText: 'молитва утешает сильнее', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
     furnish: true, walkTo: true,
     effect: 'Резной идол под навесом и погост рядом. Тот, кому тяжело на душе, приходит сюда помолиться; умерших здесь хоронят с обрядом, и скорбь отпускает живых вдвое быстрее.',
     effects: {},

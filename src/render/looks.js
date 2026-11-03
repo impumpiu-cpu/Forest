@@ -1,5 +1,6 @@
 import {ITEMS} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
+import {TRADE} from '../data/trade.js';
 
 // How creatures are drawn. A species names its look in data/species.js (look.shape);
 // a new shape is one more painter here.
@@ -122,7 +123,7 @@ export const LOOKS = {
   // red cord at the neck, a kid is smaller
   goat(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;
-    if (a.tame && a.age < 20) r *= 0.7;
+    if (young(a)) r *= 0.7;
     ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
     ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(0, 0, r * 1.1, r * 0.72, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -138,7 +139,7 @@ export const LOOKS = {
   // filled to how much of its load is left
   mule(ctx, a, px, py, r, color) {
     if (a.owner != null) {
-      const cap = 20, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
+      const cap = TRADE.crates * TRADE.crate, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
       for (const side of [-1, 1]) {
         const x = px + side * (r + s * 0.55) - s / 2, y = py - s / 2;
         ctx.fillStyle = '#3b2a17'; ctx.fillRect(x, y, s, s);
@@ -240,7 +241,7 @@ export const LOOKS = {
   // horse: a long body with a neck up and a mane; a tame one wears a halter
   horse(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;
-    if (a.tame && a.age < 30) r *= 0.7;
+    if (young(a)) r *= 0.7;
     ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
     ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -254,7 +255,7 @@ export const LOOKS = {
   // bull: a heavy dark body, a broad head and two pale horns; reddish when it charges
   bull(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;
-    if (a.tame && a.age < 40) r *= 0.7;
+    if (young(a)) r *= 0.7;
     ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
     ctx.fillStyle = a.task?.mule ? '#7a3a2a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.ellipse(0, 0, r * 1.35, r * 0.85, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -280,7 +281,7 @@ export const LOOKS = {
   // camel: a tall sandy body with one hump and a long neck; the tame one wears a halter
   camel(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;
-    if (a.tame && a.age < 40) r *= 0.7;
+    if (young(a)) r *= 0.7;
     ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
     ctx.fillStyle = a.task?.mule ? '#a0683a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -303,7 +304,7 @@ export const LOOKS = {
   // sheep: a round woolly body on a small dark head; sheared, it is thinner
   sheep(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;
-    if (a.tame && a.age < 20) r *= 0.7;
+    if (young(a)) r *= 0.7;
     const woolly = a.wool == null || a.wool > 0.5;
     ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
     ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
@@ -314,6 +315,9 @@ export const LOOKS = {
     ctx.restore();
   },
 };
+
+// a tame beast not grown yet (its species' tame.grownDays, settlement/herd.js) is drawn smaller
+function young(a) { return !!a.tame && a.age < (SPECIES.get(a.species)?.tame?.grownDays || 0); }
 
 function shade(hex, k) {
   const n = parseInt(hex.slice(1), 16);

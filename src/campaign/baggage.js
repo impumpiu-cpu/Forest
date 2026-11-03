@@ -7,7 +7,7 @@
 //
 // K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, pulled}];  K.buildings = [key] — the camp
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
-import {inLine} from '../data/campaign.js';
+import {inLine, CAMPAIGN} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {gearDef} from '../agents/equipment.js';
 import {BONDS} from '../data/captives.js';
@@ -104,8 +104,10 @@ export function overflow(K) {
 }
 
 // ── pace: × on a walking human of average Agility, as slow as the slowest who walks
-const beastPace = b => (SPECIES.get(b.kind).speed / humanSpeed()) * (0.6 + 0.4 * clamp(b.hp / 0.6, 0, 1));
-const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * (0.55 + 0.45 * clamp(m.hp / 0.6, 0, 1));
+// the pace kept by health (data/campaign.js CAMPAIGN.hurtPace)
+const hurtPace = (P, hp) => P.base + P.hurt * clamp(hp / P.at, 0, 1);
+const beastPace = b => (SPECIES.get(b.kind).speed / humanSpeed()) * hurtPace(CAMPAIGN.hurtPace.beast, b.hp);
+const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp);
 export function slowest(K) {
   const ms = alive(K); if (!ms.length) return 0;
   const byId = new Map(K.beasts.map(b => [b.id, b]));

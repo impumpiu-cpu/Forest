@@ -16,15 +16,19 @@ export const CAMPAIGN = {
   ration: 1,
   // food found a day per person, × the land's richness (campaign/land.js): on the march only what is
   // picked by the way, in a camp the whole day goes to hunting, fishing and gathering
-  forage: {march: 0.4, camp: 1.6, spread: 0.6},
+  forage: {march: 0.4, camp: 1.6, spread: 0.6,
+    // a cell's richness (campaign/land.js richness): `game` × the game (at most `gameCap`) + `plants` × the plants + `fish` by
+    // a lake or a river, at most `max`; the plants — the biomes' fertility (`fert` for a biome not in the table) × (soil[0] +
+    // soil[1] × the cell's fertility, `soilAt` where the world has none)
+    land: {game: 0.45, gameCap: 2, plants: 0.55, fish: 0.25, max: 1.6, fert: 0.5, soil: [0.5, 0.5], soilAt: 0.6}},
   // the season's × on what the land gives; in hard frost (a winter day's mean below −5°) × `frost` more
-  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7},
+  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7, frostBelow: -5},
   // hunger: a day fed below `starveAt` of the need is a hungry day; hungry, the caravan walks at `slow`
   // and nobody heals; after `wasteAfter` hungry days in a row everyone loses `waste` health a day
   // the chronicle tells of a new hunger only `again` days after the last told, of its end after `over` days of it
   hunger: {starveAt: 0.5, slow: 0.5, wasteAfter: 12, waste: 0.025, tell: {again: 20, over: 4}},
   // health a day: on the march, in a camp
-  heal: {march: 0.05, camp: 0.1},
+  heal: {march: 0.05, camp: 0.1, ride: 1.5},   // ride: × on the march for one in the saddle
   // the evening council stops the march: to forage when the food left lasts less than `foodDays` and the
   // land can feed them (richness ≥ `foodLand`); to heal when the core's mean health is below `hp` or one
   // of them is below `badly`; not where the night is dangerous (`danger`), unless they already starve;
@@ -32,7 +36,8 @@ export const CAMPAIGN = {
   // are `full` (a food camp: that share of what they can carry, at most `stock` days of food) or the core
   // is `healed` (a camp of the wounded). Fed and in a quiet place, every `think` days the council looks
   // whether to stop to build (a cart, a wagon, a building for it) or to tame (data/transport.js)
-  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85, stock: 12, think: 10},
+  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85, stock: 12, think: 10,
+    wooded: 0.3, basketTrees: 0.1, basket: 0.5},   // trees enough to build and gather bark (`wooded`), to weave a basket (`basketTrees`) and its chance a day
   // in frost the march is slower (winter, the day's mean below 0°)
   frost: 0.7,
   // the speed a day on open meadow, cells of a 192-high world (as the world's parties on foot, data/parties.js)
@@ -42,7 +47,8 @@ export const CAMPAIGN = {
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
   might: {fighter: 0.7, knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06,
-    golem: {bronze: 2, iron: 2.8, steel: 3.6, mithril: 5}},   // a golem of the caravan (data/transport.js), as so many knights, × its health
+    golem: {bronze: 2, iron: 2.8, steel: 3.6, mithril: 5},
+    hurt: [0.3, 0.7]},   // the share of its might one keeps: hurt[0] + hurt[1] × its health   // a golem of the caravan (data/transport.js), as so many knights, × its health
   // a night: what finds the camp comes out of the bubble (campaign/bubble.js); a stray nobody saw coming is
   // × `friendly` near a town of friends
   night: {friendly: 0.3},
@@ -56,7 +62,11 @@ export const CAMPAIGN = {
   fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02, wounded: 0.05},   // wounded: health lost in a fight that counts as a wound in its record (campaign/stats.js)
   // a morning after a quiet night: a little food is found with `food`; something of worth only where it has a
   // reason to lie (FINDS below)
-  morning: {food: 0.22, foodN: [1, 3]},
+  morning: {food: 0.22, foodN: [1, 3], rich: 0.2, richCap: 1.2, tell: 0.25},   // the chance × min(richCap, the land's richness + rich); told with `tell`
+  // the chronicle tells again of a brew in the healer's hut, of gold panned, only `again` days after the last told
+  told: {again: 60},
+  // the pace of one who walks or a beast, by its health: base + hurt × min(1, health / at)
+  hurtPace: {foot: {base: 0.55, hurt: 0.45, at: 0.6}, beast: {base: 0.6, hurt: 0.4, at: 0.6}},
   // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share
   // of the world's diagonal away from the capital; when none can be walked to, the ring widens to `wide`
   goal: {near: 0.22, far: 0.4, wide: [0.06, 0.6]},

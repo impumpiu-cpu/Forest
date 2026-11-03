@@ -28,7 +28,3 @@ export const PALETTE = {
 // the metal a material is drawn in (data/items.js `material`)
 export const METAL = {bronze: '#c89048', copper: '#c87a48', iron: '#9aa3ab', steel: '#d4dbe2', mithril: '#9fe0ff', silver: '#e4e8ec',
   gold: '#e3c14a', bone: '#ece2c8', wood: '#a5794a', stone: '#a7a39a', flint: '#6f6c66', obsidian: '#3a3440'};
-
-// the hair of a race when the table gives none (data/races.js has only the skin): by race id
-export const HAIR = {human: '#6b4528', halfling: '#8a5a2b', giant: '#4a3a2a', elf: '#e9d27a', darkelf: '#eceaf2', dwarf: '#b5652a',
-  orc: '#2f3a20', goblin: '#3a3020', ogre: '#3e2e1e', troll: '#4f6a3a', gnoll: '#5e4630'};

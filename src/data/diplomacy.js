@@ -30,10 +30,11 @@
 export const DIPLOMACY = {
   drift: 0.2, pressure: 1.2, trade: 0.1, tradeMax: 0.35, tradeCeil: 2.5, raid: 0.8, warAt: -3.2, weariness: 0.5, peaceAt: -1.8, longest: 12, afterPeace: -1.2,
   compete: {war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02},
-  mingle: 0.012, mingleMax: 0.3, folkSeen: 0.1,   // (folkSeen: the share of a town's people of strangers the chronicle tells of)
+  mingle: 0.012, mingleMax: 0.3, strangersSeen: 0.1,   // (strangersSeen: the share of a town's people of strangers the chronicle tells of)
   front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,
   raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, raidTake: 0.3, repelled: 0.1, barrows: 3,
   warLoss: {work: [0.25, 0.4]},
+  luck: [0.6, 0.8],   // a battle's and a siege's luck on both sides: × luck[0] + luck[1] × a roll (atlas/diplomacy.js fight, the storm)
   states: [
     {id: 'friends', from: 2, label: 'дружба'},
     {id: 'peace', from: -0.5, label: 'мир'},

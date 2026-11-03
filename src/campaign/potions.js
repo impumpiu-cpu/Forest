@@ -10,7 +10,7 @@
 import {kitOf} from '../data/transport.js';
 import {inLine} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
-import {POTION, POTIONS, POTION_RES, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
+import {POTION, POTIONS, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
 import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
 import {gearDef} from '../agents/equipment.js';

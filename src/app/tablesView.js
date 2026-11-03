@@ -8,8 +8,9 @@ import {setCell, resetCell, resetTable, resetAll, isEdited, originalOf, editList
 import {storeEdits, editsJSON, loadEditsText, BOOT_PROBLEMS} from '../ui/tableEdits.js';
 import {esc} from '../core/util.js';
 import {editText, parseText} from '../ui/cellEdit.js';
+import {offerPlain} from '../ui/store.js';
 
-const $ = id => document.getElementById(id);
+import {$} from '../ui/dom.js';
 const STORE = 'forest.app.table';
 const GROUPS_STORE = 'forest.app.tableGroups';   // the groups of the list left open
 
@@ -51,11 +52,8 @@ const sortKey = (c, v, text) => (typeof v === 'number' ? v : v == null || text =
 // raw value for the files: numbers and words as they are, the rest as JSON (functions as their code)
 const raw = v => (v == null ? '' : typeof v === 'function' ? fnText(v) : typeof v === 'object' ? JSON.stringify(v) : v === Infinity ? 'Infinity' : v);
 
-function download(name, text, type) {
-  const url = URL.createObjectURL(new Blob([text], {type}));
-  const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+// a file to the viewer (ui/store.js: on claude.ai through its `downloads`)
+const download = (name, text, type) => offerPlain(name, text, type).catch(e => alert(`Файл не сохранён: ${e.message}`));
 
 export class TablesView {
   constructor() {

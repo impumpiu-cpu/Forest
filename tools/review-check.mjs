@@ -167,7 +167,7 @@ const put = (w, sp, fac, x, kit = []) => { const a = createAgent(w, sp, fac, x, 
   const {execFile} = await import('node:child_process');
   const root = new URL('../src/', import.meta.url).pathname;
   const ENTRIES = ['sim.js', 'data/schema/index.js', 'campaign/index.js', 'atlas/generate.js', 'world/save.js', 'outside/index.js', 'app/main.js',
-    'agents/tactics.js', 'agents/lifecycle.js', 'agents/tasks.js', 'agents/jobRunners.js', 'agents/combat.js', 'agents/potions.js', 'agents/squad.js',
+    'agents/tactics.js', 'agents/lifecycle.js', 'agents/tasks.js', 'agents/tasks/raid.js', 'agents/tasks/social.js', 'agents/tasks/camp.js', 'agents/jobRunners.js', 'agents/combat.js', 'agents/potions.js', 'agents/squad.js',
     'settlement/potions.js', 'settlement/escape.js', 'campaign/potions.js', 'campaign/camp.js', 'campaign/captives.js', 'data/potions.js', 'data/raids.js'];
   const BROWSER = /(document|window|localStorage|requestAnimationFrame|HTMLElement) is not defined/;
   const run = f => new Promise(res => execFile(process.execPath, ['-e', `import(${JSON.stringify(root + f)}).then(() => {}, e => { console.error(e.message); process.exit(1); })`], (err, out, errOut) => {

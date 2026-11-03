@@ -1,14 +1,13 @@
 // Layer 2: navigation. One Dijkstra distance map per NAVMAPS entry; agents walk downhill.
 // Maps rebuild on a round-robin schedule (sparser on big worlds) and when marked dirty.
-import {NAVMAPS} from '../data/navmaps.js';
+import {NAVMAPS, NAV} from '../data/navmaps.js';
 import {BY_CODE, WALKABLE} from '../data/terrain.js';
 import {DX, DY} from '../world/grid.js';
 import {airTemp} from '../world/heat.js';
 import {SNOW} from '../world/weather.js';
 
 export const FAR = 1e9;
-// rebuild pacing, in ticks (multiplied by `every` on big maps); a navmap may override minGap/period
-const MIN_GAP = 24, PERIOD = 600, REFRESH_BURNING = 24;
+// rebuild pacing, in ticks (multiplied by `every` on big maps): data/navmaps.js NAV; a navmap may override minGap/period
 
 export class Navigation {
   constructor(world) {
@@ -25,7 +24,7 @@ export class Navigation {
     this.heapD = new Float64Array(n * 9);
     this.costTick = -1; this.costHazard = null;
     // bigger maps rebuild each field less often, so a tick stays cheap
-    this.every = Math.max(1, Math.round(n / 12288));
+    this.every = Math.max(1, Math.round(n / NAV.cellsPerStep));
   }
 
   get(id) { return this.dist[id]; }
@@ -35,21 +34,21 @@ export class Navigation {
   computeCost(hazard) {
     // several maps may be rebuilt in one tick (sites, prey, fire…): the cost is the same for the same hazard
     if (this.costTick === this.w.tick && this.costHazard === hazard) return;
-    if (Math.abs((this.w.snow || 0) - (this.costSnow || 0)) > 0.1) { this.costSnow = this.w.snow || 0; for (const id of this.order) this.dirtySet.add(id); }
+    if (Math.abs((this.w.snow || 0) - (this.costSnow || 0)) > NAV.snowRebuild) { this.costSnow = this.w.snow || 0; for (const id of this.order) this.dirtySet.add(id); }
     this.costTick = this.w.tick; this.costHazard = hazard;
-    const g = this.w.grid, cost = this.cost, amb = airTemp(this.w), snow = 1 + SNOW.cost * (this.w.snow || 0);
+    const g = this.w.grid, cost = this.cost, amb = airTemp(this.w), snow = 1 + SNOW.cost * (this.w.snow || 0), N = NAV;
     for (let i = 0; i < this.w.n; i++) {
       const t = g.terr[i];
       if (!WALKABLE[t]) { cost[i] = -1; continue; }
-      let c = BY_CODE[t].pathCost * (BY_CODE[t].kind === 'water' ? 1 : snow) + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
-      if (amb + g.heat[i] > 45) c += (amb + g.heat[i] - 45) * 0.3 * hazard;
+      let c = BY_CODE[t].pathCost * (BY_CODE[t].kind === 'water' ? 1 : snow) + (g.fire[i] * N.fire + g.smoke[i] * N.smoke) * hazard;
+      if (amb + g.heat[i] > N.hotFrom) c += (amb + g.heat[i] - N.hotFrom) * N.hot * hazard;
       cost[i] = c;
     }
   }
 
   build(id) {
     const def = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
-    const dist = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+    const dist = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD, diag = NAV.diagonal;
     this.computeCost(def.hazard ?? 1);
     const ctx = def.prepare ? def.prepare(w) : null;
     dist.fill(FAR); closed.fill(0);
@@ -66,7 +65,7 @@ export class Navigation {
       for (let q = 0; q < 8; q++) {
         const nx = x + DX[q], ny = y + DY[q]; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const j = ny * W + nx; let c = cost[j]; if (c < 0) continue;
-        if (q >= 4) { if (cost[y * W + nx] < 0 || cost[ny * W + x] < 0) continue; c *= 1.414; }
+        if (q >= 4) { if (cost[y * W + nx] < 0 || cost[ny * W + x] < 0) continue; c *= diag; }
         const nd = d + c; if (nd < dist[j]) { dist[j] = nd; push(j, dist[j]); }   // push what was stored: the map is Float32, the heap Float64
       }
     }
@@ -93,7 +92,7 @@ export class Navigation {
       if (d.urgent) { if ((dirty || d.active(w)) && t - this.last[d.id] >= 2 * k) this.build(d.id); continue; }
       // a map nobody can use now waits, dirty or not; it is rebuilt as soon as it is needed again
       if (d.active && !d.active(w)) continue;
-      const due = (dirty ? d.minGap ?? MIN_GAP : burning ? REFRESH_BURNING : d.period ?? PERIOD) * k;
+      const due = (dirty ? d.minGap ?? NAV.minGap : burning ? NAV.burning : d.period ?? NAV.period) * k;
       const over = (t - this.last[d.id]) / due;
       if (over >= bestOver) { best = d.id; bestOver = over; }
     }

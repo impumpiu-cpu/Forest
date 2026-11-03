@@ -1,13 +1,13 @@
 // Subdue and rival: the lairs near a leader's own (LEADER.subdue.reach territories) that have no leader, no lord and no
 // boss — a rival kind (the lair kind's `rivals`) is gone to war on, any other is brought under the hand: a vassal pays
 // tribute every year. Both are settled by might on arrival: the stronger wins; a beaten leader may fall.
+import {cap1} from '../../core/util.js';
 import {LAIRS, LEADER} from '../../data/lairs.js';
 import {SPECIES} from '../../data/species.js';
 import {power, R, wherePhrase} from '../lairs.js';
 import {leaderFalls, leaderName} from '../leaders.js';
 import {dist} from './shared.js';
 
-const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the lairs a leader may go to, nearest first, split into rivals and the meek
 function neighbours(a, l, L) {

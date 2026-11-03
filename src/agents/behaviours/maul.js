@@ -12,11 +12,12 @@ import {huntOf, endHunt} from '../carcass.js';
 import {endTask} from '../lifecycle.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {think} from '../mind.js';
+import {onMap} from '../lookup.js';
 import {dist, packOf, paramsOf, boldness, nearest, company, startMaul, toTheKill, busyHunting} from '../hunting.js';
 import {PROWL, NECHIST} from '../../data/behaviour.js';
 import {kickStep} from './standGround.js';
 
-const gone = (w, v) => !v || v.dead || v.downed || !w.agents.includes(v);
+const gone = (w, v) => !v || v.dead || v.downed || !onMap(w, v);
 
 export const maul = {
   want(w, a, {sp, night}) {

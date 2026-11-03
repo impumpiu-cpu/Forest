@@ -31,6 +31,7 @@ import {takeKind, giveKind, kindsOf} from './kinds.js';
 import {FAMILIES, mayMake, mayWield, useOf} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {degreeOf, degreeValue} from '../data/checks.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // stock resources that are a family's total (wood → 'wood', stone → 'stone')
 const FAMILY_RES = Object.fromEntries(Object.entries(FAMILIES).filter(([, F]) => F.resource).map(([f, F]) => [F.resource, f]));
@@ -83,7 +84,7 @@ function makeCraftContext(w) {
   for (const a of col) for (const it of allItems(a)) count(it);
   for (const it of w.armory) count(it);
   const owned = id => counts[id] || 0;
-  // silver blades: silvered iron and cast silver (agents/equipment.js def() carries the flag)
+  // silver blades: silvered iron and cast silver (agents/itemDefs.js def() carries the flag)
   let silvered = 0;
   for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
   for (const it of w.armory) if (def(it).silver) silvered++;
@@ -98,7 +99,7 @@ function makeCraftContext(w) {
     fishing: w.lakes.some(fishable),
     food: foodTotal(w),
     season: season(w).id, drying: season(w).drying,
-    stockpile: {spring: 0.7, summer: 1, autumn: 1.6, winter: 1}[season(w).id] ?? 1,
+    stockpile: season(w).stockpile ?? 1,
     stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
     fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return furnaceHeat(w, 2); },
@@ -118,6 +119,7 @@ export function recipesAt(station) {
   return byStation[station] || [];
 }
 let melee = null;
+onEdit(() => { byStation = null; melee = null; });   // a recipe's station, an item's slot and blow are table cells
 const MELEE = () => melee || (melee = ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged));
 
 // someone alive in the colony can take this recipe. A T1 recipe anyone can; otherwise the living are looked

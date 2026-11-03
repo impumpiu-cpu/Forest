@@ -92,6 +92,8 @@ export const GETTING = {
   // the council camps on purpose to tame when such beasts are common enough here and the caravan lacks them,
   // at most once in `tameEvery` days
   tameLand: 0.8, tameEvery: 30,
+  // the land's level counts up to `tameCap`; a beast tamed or bought comes at `hp` health
+  tameCap: 1.6, hp: 0.8,
   // a basket woven in camp from bast and willow (a day's work, wooded or grassy land): +2 cells on its maker's back
   basket: {cells: 2, days: 1},
   // after a won fight with those who keep beasts: the chance a beast is taken from them

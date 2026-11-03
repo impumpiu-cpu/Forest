@@ -46,5 +46,10 @@ export const QUEST = {
   // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
   // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
   // the edge of the bubble and go home after a fight, won or lost
-  pursuit: {every: 45, jitter: [0.7, 0.6], full: 3, army: 0.6, at: 2, base: 0.9, perYear: 0.3, max: 2.6},
+  // the first `first` days after the crown is taken; a band sent after it told with `told` (the first one always)
+  pursuit: {every: 45, jitter: [0.7, 0.6], full: 3, army: 0.6, at: 2, base: 0.9, perYear: 0.3, max: 2.6, first: 3, told: 0.3},
+  // the crown taken by the foe: its camp `at` cells off (a walkable cell within `foot` of there), its guard × `grow` of the foe
+  taken: {at: 3, foot: 4, grow: 1.15},
+  // a clue with no place of history within `cairn` × the way of its point lies in a cairn in the wilds
+  cairn: 0.5,
 };

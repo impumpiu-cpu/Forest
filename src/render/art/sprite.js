@@ -66,24 +66,16 @@ export function drawSprite(ctx, key, x, y, scale, o = {}) {
   return true;
 }
 
-// Draw `key` fitted into a box w × h (CSS pixels) with its top-left at (x, y), keeping its proportions, centred.
-export function fitSprite(ctx, key, x, y, w, h, o = {}) {
-  const b = SPRITES[key]?.box;
-  if (!b) return false;
-  const s = Math.min(w / b[2], h / b[3]);
-  return drawSprite(ctx, key, x + (w - b[2] * s) / 2, y + (h - b[3] * s) / 2, s, o);
-}
-
 // ── the cache: a little canvas per look and size; `paint(g)` draws it in CSS pixels at the device's resolution
-let makeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-export function setCanvasMaker(fn) { makeCanvas = fn; }   // the gallery tools draw without a document
+const makeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const cache = new Map();
 const LIMIT = 6000;
 export function cached(key, w, h, paint) {
   const dpr = globalThis.devicePixelRatio || 1, k = key + '@' + dpr;
   let c = cache.get(k);
-  if (c) return c;
-  if (cache.size >= LIMIT) cache.clear();
+  if (c) { cache.delete(k); cache.set(k, c); return c; }   // (used again: the newest — the oldest go first)
+  // full: the eighth least lately used go, not the whole cache (a zoom would else paint every bitmap again in one frame)
+  if (cache.size >= LIMIT) { let n = LIMIT >> 3; for (const key of cache.keys()) { cache.delete(key); if (--n <= 0) break; } }
   c = makeCanvas(Math.max(1, Math.ceil(w * dpr)), Math.max(1, Math.ceil(h * dpr)));
   const g = c.getContext('2d');
   g.scale(dpr, dpr);
@@ -92,5 +84,3 @@ export function cached(key, w, h, paint) {
   cache.set(k, c);
   return c;
 }
-export function clearArtCache() { cache.clear(); paths.clear(); }
-export const cacheSize = () => cache.size;

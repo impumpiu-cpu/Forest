@@ -1,14 +1,13 @@
 // The colonist's smaller behaviours (docs/BEHAVIOUR.md «Люди»), each an offer the old decide() made, with its weight:
 // idle, the council, the evening trade, the healer's hut, a prayer, a gloomy spell, a nechist's spell held, fighting a
 // fire, the night watch, the alarm (muster at the fire, keeping out of harm's way), going along with a lone gatherer,
-// helping the wounded, binding a fallen foe, learning beside a master. Each offers a task of agents/tasks.js and reads
+// helping the wounded, binding a fallen foe, learning beside a master. Each offers a task of agents/tasks/social.js and reads
 // the settlement's systems that know the answer. Reads: nothing of its own.
-import {nightness} from '../../core/time.js';
 import {SPECIES} from '../../data/species.js';
 import {councilDue} from '../../settlement/council.js';
 import {tradeOpen} from '../../settlement/trade.js';
-import {hurt, HEAL, freeBed} from '../../settlement/healing.js';
-import {has, raidAlarm} from '../../settlement/query.js';
+import {hurt, HEAL, freeBed, hasHut} from '../../settlement/healing.js';
+import {raidAlarm} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {maxHp, hpShare} from '../agent.js';
 import {attackerOf, darkness} from '../combat.js';
@@ -30,7 +29,7 @@ export const trade = {want(w) { return tradeOpen(w) ? [[{id: 'trade'}, COLONIST.
 
 // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
 export const treat = {want(w, a) {
-  if ((hurt(a) || (on(a, 'treat') && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut') && freeBed(w, a)) return [[{id: 'treat'}, (1 - a.hp / maxHp(a)) * COLONIST.want.treat[0] + COLONIST.want.treat[1], () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]];
+  if ((hurt(a) || (on(a, 'treat') && a.hp < maxHp(a) * HEAL.until)) && hasHut(w) && freeBed(w, a)) return [[{id: 'treat'}, (1 - a.hp / maxHp(a)) * COLONIST.want.treat[0] + COLONIST.want.treat[1], () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]];
   return null;
 }};
 
@@ -62,7 +61,7 @@ export const defend = {want(w, a) {
   const stand = brave * hpShare(a) > COLONIST.standHp || agentInZone(w, a);
   return [stand ? [{id: 'fight', target: hunter, reflex: true}, ROSTER.attacked, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ROSTER.attacked, () => `напал ${who}: бежать к своим`]];
 }, pick(w, a, t) {   // (taken up: a wolf's attack remembered once — the palisade and the watchtower read it, data/buildings.js)
-  const hunter = attackerOf(w, a); if (hunter?.species === 'wolf') a.mem.wolf += COLONIST.memWolf;
+  const hunter = attackerOf(w, a); if (hunter && SPECIES.get(hunter.species).remembers === 'wolf') a.mem.wolf += COLONIST.memWolf;
 }};
 
 // the night watch (settlement/board.js): the council's rule — one place, taken by whoever wants it

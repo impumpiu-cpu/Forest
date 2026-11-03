@@ -6,7 +6,7 @@
 //   kin:      the races a town of this people holds (atlas/population.js; docs/WORLD.md «Расы и народы»): {race: {base}} —
 //             every town holds them all, each × base × (KIN.any + the race's `home` of the town's biome, data/races.js); the
 //             shares drift by each race's births and deaths, and the land pulls them back a little (KIN.pull). A building or a
-//             recipe of a race's own asks for its share (data/townBuildings.js `kin`; data/requirements.js). The first race
+//             recipe of a race's own asks for its share (a recipe's `req` 'kin:<race>', data/townBuildings.js; data/requirements.js). The first race
 //             is the people's own (`race`); the others are its lesser kin — the humans' halflings and giants, the horde's goblins,
 //             gnolls, trolls and ogres. Folk of other peoples that settle in a town (atlas/demography.js migrate, atlas/diplomacy.js
 //             mingling) join its composition as their own race
@@ -112,7 +112,7 @@ WORLD_PEOPLES.registerAll([
     // strangers (atlas/diplomacy.js): the dwarves love only dwarves — a town of theirs takes in folk of other peoples at
     // × `take` of the usual pace, and pushes them out by `expel` of its people a year; on shared land they press the others
     // × `push` harder (atlas/peoples.js)
-    folk: {take: 0.25, expel: 0.03, push: 1.5},
+    strangers: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
     flows: {ore_iron: 1.5, ore_bronze: 1.5, ore_silver: 1.5, ore_gold: 1.5, ore_mithril: 1.5, stone: 1.5, gems: 1.5, bar_bronze: 1.25, bar_iron: 1.25, bar_steel: 1.25, bar_silver: 1.25, bar_gold: 1.25, bar_mithril: 1.25, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
@@ -144,10 +144,10 @@ WORLD_PEOPLES.registerAll([
     // weights of the caravan's core they always were: data/campaign.js RETINUE)
     kin: {human: {base: 6}, halfling: {base: 1}, giant: {base: 0.5}},
     // the middling people: no gift of their own, but every road leads to them — they take in strangers × `take` faster and
-    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `folk`);
+    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `strangers`);
     // they settle among the others: on shared land another people pushes them off only × (1 − `mix`), and their town may stand
     // within `near` × their spacing of another people's town — by the elves' coast, under the dwarves' hills (atlas/peoples.js)
-    folk: {take: 1.5, mix: 0.5, near: 0.7},
+    strangers: {take: 1.5, mix: 0.5, near: 0.7},
     trade: 1.25, breed: 1.3,   // many children: the middling people spread faster than the elder ones
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast', free: 0.7},   // an empty shore: not the elves' coast (atlas/peoples.js arrive)
     get home() { return raceHome('human'); },
@@ -335,7 +335,7 @@ export const ELDER_YEARS = [
 //              that a year, no oftener than every `every` years; at most `max` new towns a year a people; `near` — how much
 //              nearness counts for the settlers' spot (× its share of the reach)
 //   migration: a town of another realm is `abroad` as dear; people move up to moveReach × spacing away; a town over its room
-//              sends `overflow` of the surplus away a season;  abandon — a town of fewer people is left (atlas/demography.js)
+//              sends `overflow` of the surplus away a season; moveLeast — fewer movers than this a season stay home;  abandon — a town of fewer people is left (atlas/demography.js)
 //   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
 //              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
 //              (1 + its food − what armies took + trade × its trade)
@@ -345,7 +345,7 @@ export const ELDER_YEARS = [
 //   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) — born of its
 //              people, and over the target dying off; no roll and no floor (people are not made out of nothing)
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], apart: {own: 0.25, others: 0.25}, siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
-  foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
+  foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, moveLeast: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.22, prestige: 0.6, minTarget: 60,
   // age and death (atlas/demography.js lifeYear, atlas/population.js; each race's adult, lifeFrom, life, fertility, brawled — the

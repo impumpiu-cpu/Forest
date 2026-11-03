@@ -17,15 +17,14 @@
 // line and the panel show the places, who took them and why.
 import {JOBS, huntable} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {colonists, foodTotal, openSites, jobUnlocked, favourites, has, count} from './query.js';
+import {colonists, foodTotal, openSites, jobUnlocked, favourites} from './query.js';
 import {waiting} from './healing.js';
 import {stationHasWork} from './crafting.js';
 import {goalNeed} from './council.js';
-import {campFuel} from './stock.js';
 import {RESOURCES} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
-import {skillOf, jobAccess, canDoAction} from '../agents/skills.js';
-import {dayOf} from '../core/time.js';
+import {skillOf, jobAccess} from '../agents/skills.js';
+import {dayOf, DAY} from '../core/time.js';
 import {season, snowy} from '../data/seasons.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
@@ -36,8 +35,8 @@ import {PLAN} from '../data/colony.js';
 export {PLAN};   // (data/colony.js)
 // how much firewood the colony burns in a day: the campfire through the night, every hearth all day
 function dailyBurn(w) {
-  let f = 0.004 * 600;   // the campfire, about half the day
-  for (const b of w.buildings) { const H = b.done && BUILDINGS.get(b.key).heat; if (H) f += H.fuel * 1200; }
+  let f = 0.004 * DAY / 2;   // the campfire (world/fields.js: 0.004 a tick), about half the day
+  for (const b of w.buildings) { const H = b.done && BUILDINGS.get(b.key).heat; if (H) f += H.fuel * DAY; }
   return f;
 }
 const fuelStock = w => RESOURCES.filter(r => r.tags.includes('fuel')).reduce((s, r) => s + (w.stock[r.id] || 0) * (r.heat || 1), 0);
@@ -51,7 +50,7 @@ export function needs(w) {
   const out = {};
   const burn = dailyBurn(w), fuelDays = fuelStock(w) / Math.max(0.1, burn);
   const S = season(w), foodDays = ctx.food / Math.max(PLAN.rationFloor, pop * PLAN.ration);
-  const wantFoodDays = S.id === 'autumn' ? PLAN.foodDaysAutumn : PLAN.foodDays;
+  const wantFoodDays = S.stockUp ? PLAN.foodDaysAutumn : PLAN.foodDays;
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job)) continue;
     // someone must be able to do it at all
@@ -76,13 +75,9 @@ export function needs(w) {
 
 // how many hands a job can use at once (Infinity: as many as come)
 function crewCap(w, job) {
-  if (job.crew) return job.crew(w);
+  if (job.crew) return job.crew(w, job);   // (data/jobs.js `crew`)
   if (job.runner === 'craft') return job.stations.reduce((s, st) => s + w.buildings.filter(b => b.key === st && b.done).reduce((n, b) => n + (BUILDINGS.get(st).benches || 1), 0), 0);
-  if (job.runner === 'build') return Math.min(4, openSites(w).length * 2);
-  if (job.id === 'hunt') return Math.max(1, Math.min(3, Math.ceil(huntable(w, job).length / 3)));
-  if (job.id === 'fish') return Math.max(1, Math.min(3, w.lakes.filter(l => l.cap > 0 && l.fish >= 1).length));
-  if (['heal', 'herd', 'bury'].includes(job.id)) return 1;
-  if (job.id === 'farm') return Math.min(3, count(w, 'field'));
+  if (job.runner === 'build') return Math.min(PLAN.buildCrew.most, openSites(w).length * PLAN.buildCrew.perSite);
   return Infinity;
 }
 

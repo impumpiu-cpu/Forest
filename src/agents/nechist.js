@@ -8,20 +8,22 @@ import {walkable, inBounds} from '../world/grid.js';
 import {agentInZone} from '../settlement/zone.js';
 import {liveById} from './lookup.js';
 import {NECHIST} from '../data/behaviour.js';
-import {dist} from '../core/util.js';
+import {dist, cap} from '../core/util.js';
 
 export {dist} from '../core/util.js';   // (one for all: core/util.js)
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const code = id => TERRAIN.get(id).code;
 
 // is cell i the spirit's home ground: deep wood, open grass, or dry land right at the water
+// (NECHIST.homes: the terrains of each home ground)
 export function isHome(w, i, home) {
   if (!walkable(w, i)) return false;
-  if (home === 'forest') return w.grid.terr[i] === code('forest');
-  if (home === 'grass') return w.grid.terr[i] === code('grass');
-  if (home === 'shore') {
+  const H = NECHIST.homes[home];
+  if (!H) return true;
+  if (H.on && !H.on.some(id => w.grid.terr[i] === code(id))) return false;
+  if (H.by) {
     const x = i % w.w, y = (i / w.w) | 0;
-    return N4.some(([dx, dy]) => inBounds(w, x + dx, y + dy) && w.grid.terr[(y + dy) * w.w + x + dx] === code('water'));
+    return N4.some(([dx, dy]) => inBounds(w, x + dx, y + dy) && H.by.some(id => w.grid.terr[(y + dy) * w.w + x + dx] === code(id)));
   }
   return true;
 }
@@ -49,4 +51,4 @@ export const awake = (S, night) => !S.night || night > NECHIST.nightFrom;
 
 export const lonely = (w, v, r) => !w.agents.some(o => o !== v && !o.dead && o.faction === 'colony' && dist(o, v) < r);   // scan: spirits only, one or two per map
 export const spellbound = a => ['fight', 'flee', 'treat', 'astray', 'lured', 'runHome', 'muster'].includes(a.task?.id) || a.sleeping;
-export const Label = sp => sp.label[0].toUpperCase() + sp.label.slice(1);
+export const Label = sp => cap(sp.label);

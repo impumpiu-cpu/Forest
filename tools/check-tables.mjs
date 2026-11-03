@@ -188,3 +188,17 @@ console.log('ok   правка таблиц: значения доходят д�
   if (bad.length) { console.log('Защита правки:\n  ' + bad.join('\n  ')); process.exit(1); }
   console.log(`ok   защита правки: ${refused.length} недопустимых правок отклонены (пустое там, где нужно число, коды сохранений, ссылки в никуда, списки не той формы, вторая точка правки одного объекта)`);
 }
+
+// docs/TABLES.md «Все таблицы»: the list of every table by group, made from the schema; a table added or renamed without the
+// list fails here. `node tools/check-tables.mjs --docs` writes the list anew.
+{
+  const {readFileSync, writeFileSync} = await import('node:fs');
+  const file = new URL('../docs/TABLES.md', import.meta.url), FROM = '<!-- tables:begin -->', TO = '<!-- tables:end -->';
+  const list = GROUPS.map(g => `**${g}** — ${TABLES.filter(t => t.group === g).map(t => `«${t.label}» \`${t.id}\``).join(', ')}.`).join('\n\n');
+  const doc = readFileSync(file, 'utf8'), a = doc.indexOf(FROM), b = doc.indexOf(TO);
+  if (a < 0 || b < a) { console.log('docs/TABLES.md: нет раздела «Все таблицы» (метки tables:begin / tables:end)'); process.exit(1); }
+  const fresh = `${doc.slice(0, a + FROM.length)}\n${list}\n${doc.slice(b)}`;
+  if (process.argv.includes('--docs')) { writeFileSync(file, fresh); console.log(`ok   docs/TABLES.md: список таблиц записан (${TABLES.length})`); }
+  else if (fresh !== doc) { console.log('docs/TABLES.md «Все таблицы» не сходится со схемой: node tools/check-tables.mjs --docs'); process.exit(1); }
+  else console.log(`ok   docs/TABLES.md: все ${TABLES.length} таблиц в списке «Все таблицы»`);
+}

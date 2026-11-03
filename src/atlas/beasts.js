@@ -3,6 +3,7 @@
 // caught and broken to war, while there are fewer than one for every WAR_BEASTS.per people. Its worth (health × blow ×
 // WAR_BEASTS.men) stands as so many of the town's people in its might (atlas/towns.js might) and its armies.
 // t.warBeasts = {list: {species: n}, men}
+import {TOWN_ROLES} from '../data/worldLand.js';
 import {WAR_BEASTS as WB} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {faunaCell} from './fauna.js';
@@ -13,7 +14,7 @@ export const beastWorth = sp => (sp.hp || 1) * (sp.attack?.power || 1) * WB.men;
 // a season of a town's pits: → the species caught, or null
 export function stepWarBeasts(a, t) {
   const denOf = id => id.split(':')[0];   // (a den is a recipe of its building: data/peoples.js WAR_BEASTS)
-  if (!t.built.includes('fightpits') && !Object.keys(WB.dens).some(id => t.built.includes(denOf(id)))) return null;
+  if (!t.built.includes(TOWN_ROLES.pits) && !Object.keys(WB.dens).some(id => t.built.includes(denOf(id)))) return null;
   const B = t.warBeasts ||= {list: {}, men: 0};
   const total = {...B.list};
   for (const p of a.parties || []) if (p.kind === 'army' && p.from === t.id && p.state !== 'gone' && !p.returned)
@@ -24,7 +25,7 @@ export function stepWarBeasts(a, t) {
   const dens = Object.entries(WB.dens).filter(([id, d]) => t.built.includes(denOf(id)) && (t.work?.[id] ?? 0) >= WB.work && (a.hist?.step || 0) % d.every === 0)
     .sort(([, p], [, q]) => (total[p.species] || 0) - (total[q.species] || 0));
   if (dens.length) return keep(dens[0][1].species);
-  if (!t.built.includes('fightpits') || !a.fauna) return null;
+  if (!t.built.includes(TOWN_ROLES.pits) || !a.fauna) return null;
   const j = faunaCell(a, t.i);
   let best = null, bv = 0;
   for (const s of a.fauna.list) {

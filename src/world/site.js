@@ -21,6 +21,7 @@
 //                 runs it from the one to the other along the low ground, and a road crosses it by a ford
 // The menu's three sliders (water, forest, rock) are read here and nowhere else: they scale what
 // the region's biomes ask for, so «many lakes» on a steppe still makes a drier land than a valley.
+import {LAND_BIOMES} from '../data/worldLand.js';
 import {SIZES, CLIMATES, START} from '../data/presets.js';
 import {BIOMES} from '../data/biomes.js';
 import {rollRegion} from './region.js';
@@ -29,7 +30,6 @@ import {mulberry, seedNumber} from '../core/rng.js';
 
 // what the sliders mean: a base share for water and rock, a factor for forest
 const WATER = [0.07, 0.12, 0.2], ROCK = [0.08, 0.13, 0.2], TREES = [0.75, 1, 1.25];
-const MOUNTAIN = ['foothills', 'highlands', 'underground', 'volcano'];
 
 // The polygon's site: the region rolled from the seed, gates rolled by its road and river, a preset
 // climate. A game on a cell of the world map carries the cell's plan in its settings (`cfg.cell`,
@@ -48,7 +48,7 @@ export function siteFromRegion(cfg, region, extra = {}) {
   const biomes = {};
   for (const [id, v] of Object.entries(region.biomes)) if (BIOMES.has(id) && v > 0) biomes[id] = v;
   const share = id => biomes[id] || 0;
-  const mountains = MOUNTAIN.reduce((s, id) => s + share(id), 0);
+  const mountains = LAND_BIOMES.mountain.reduce((s, id) => s + share(id), 0);
   // open water: the slider's base, more where the region has lakes; rock: more where it has mountains
   const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share('water')), 0.02, 0.45);
   const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);

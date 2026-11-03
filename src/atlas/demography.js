@@ -14,10 +14,10 @@
 //   a town left with fewer than TOWN_LIFE.abandon people is left: they go to the nearest town of their realm;
 //   the captives of a lair gone go home (freeCaptives); an army whose town fell comes back to the nearest town of its realm
 //   (atlas/army.js); the crowned seat draws people from its realm's towns (drawTo), it does not make them.
-import {WORLD_PEOPLES, TOWN_LIFE as TL, KIN} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin} from './towns.js';
-import {headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, addGroup, moveHeads, takeHeads, shareOfPeople} from './population.js';
+import {lifeOf, headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
 import {townGone} from './persons.js';
@@ -33,11 +33,6 @@ import {DIPLOMACY} from '../data/diplomacy.js';
 // town drift: the goblins breed and die fast, the trolls and the ogres slowly; and the land pulls them back a little
 // (KIN.pull). → the year's vital signs: {born, dead, brawl, want, …the losses booked by cause during the year}
 const bodyOf = id => (SPECIES.has(id) ? SPECIES.get(id).body || {} : {});
-// how long a race lives in a town of this health (its lifeFrom … life, the health a soft lift)
-export function lifeOf(race, health = 0) {
-  const B = bodyOf(race), hi = B.life || 70, lo = B.lifeFrom ?? hi, lift = 1 - Math.exp(-Math.max(0, health) / TL.age.health);
-  return lo + (hi - lo) * lift;
-}
 // the base of death, the children, the sick and the unlucky: high in a poor land, low where the town is healthy
 const baseOf = health => { const [hi, lo] = TL.age.base; return lo + (hi - lo) * Math.exp(-Math.max(0, health) / TL.age.health); };
 // the share of a race of this age that dies of age this year
@@ -122,7 +117,7 @@ export function migrate(a) {
     const best = Math.max(...to.map(x => x[1]));
     let go = s.over * TL.overflow + rate * s.t.pop * (1 - s.A / best);
     go = Math.min(go, Math.max(0, s.t.pop - TL.minTarget));
-    if (go <= 0.5) continue;
+    if (go <= TL.moveLeast) continue;   // (fewer than this a season do not set out: TOWN_LIFE.moveLeast)
     const W = to.reduce((sum, [d, A]) => sum + A * d.free, 0);
     let left = go;
     for (const [d, A] of to) {

@@ -5,7 +5,9 @@
 import {SPECIES} from '../../data/species.js';
 import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {drawSprite, hasSprite, cached, MARK, FIGURE, FULL} from './sprite.js';
-import {LAIR_BASE} from './coverage.js';
+import {LAIRS as LAIR_ART, SITES, PORT_LINES, PORT_IDS, HIDDEN_WALLS} from '../../data/looks.js';
+import {TOWN_BUILDINGS} from '../../data/townBuildings.js';
+import {byId} from '../index.js';
 import {drawPawn, headOf} from './pawn.js';
 import {LAIRS} from '../../data/lairs.js';
 import {drawBeast} from './beasts.js';
@@ -26,11 +28,15 @@ export function place(px, key, x, y, D, S, o = {}, lift = 0.1) {
 }
 
 // ── towns
-const WALLS = {palisade: 'walls', earthwall: 'walls', stonewall: 'stone', bronzewall: 'stone', ironwall: 'stone', steelwall: 'stone', mithrilwall: 'stone'};
-const PORTS = new Set(['harbor', 'pier', 'riverpier']);
+// what a town's buildings show in its picture (data/townBuildings.js): walls — any of the line «wall» but the unseen
+// (data/looks.js HIDDEN_WALLS), of stone — one that takes stone; a port — data/looks.js PORT_LINES and PORT_IDS
 function townFlags(t) {
   const f = new Set();
-  for (const id of t.built || []) { const w = WALLS[id]; if (w) { f.add('walls'); if (w === 'stone') f.add('stone'); } if (PORTS.has(id)) f.add('port'); }
+  for (const id of t.built || []) {
+    const b = TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id) : null; if (!b) continue;
+    if (b.line === 'wall' && !HIDDEN_WALLS.has(id)) { f.add('walls'); if (b.in?.stone) f.add('stone'); }
+    if (PORT_LINES.has(b.line) || PORT_IDS.has(id)) f.add('port');
+  }
   return f;
 }
 export function town(px, t, x, y, s, k, S, {color}) {
@@ -50,7 +56,7 @@ export function ruin(px, ru, x, y, r, k, S) {
 
 // ── parties: a banner, and in front of it a few pawns of who marches (their race, their beasts) when there is room
 function mainRace(a, p) {
-  const t = p.from != null ? a.towns?.find(o => o.id === p.from) : null;
+  const t = p.from != null ? byId(a).town.get(p.from) : null;
   const kin = t?.kin;
   if (kin && typeof kin === 'object') { let best = null, n = -1; for (const [r, v] of Object.entries(kin)) if (v > n && SPECIES.has(r)) { best = r; n = v; } if (best) return best; }
   return WORLD_PEOPLES.has(p.people) ? WORLD_PEOPLES.get(p.people).race : 'human';
@@ -78,7 +84,7 @@ export function party(px, p, x, y, r, k, S, a, dir) {
     troop(px, [race, race, race], x, y, D, S, c, beast && SPECIES.has(beast) ? beast : null);
     return true;
   }
-  const lair = p.owner != null ? a.lairs?.find(l => l.id === p.owner) : null;
+  const lair = p.owner != null ? byId(a).lair.get(p.owner) : null;
   const LK = lair && LAIRS.has(lair.kind) ? LAIRS.get(lair.kind) : null, sp = LK?.species && SPECIES.has(LK.species) ? SPECIES.get(LK.species) : null;
   if (p.kind === 'leader') { place(px, 'parties/leader', x, y, D * 0.8, S, {}, 0.2); if (sp) troop(px, [sp.id], x, y, D, S, c); return true; }
   if (p.kind === 'raid' || p.kind === 'brood' || p.kind === 'dragon') {
@@ -101,7 +107,7 @@ export function caravan(px, K, x, y, r, k, S, a, col) {
 
 // ── lairs: the base of its kind (a nest, a cave, a camp, a barrow…), the head or the beast of its owner on it
 export function lair(px, l, L, x, y, sz, k, S, a, ring) {
-  const base = `lairs/${LAIR_BASE[L.id] || L.id}`;
+  const base = `lairs/${LAIR_ART[L.id] || L.id}`;
   if (!hasSprite(base)) return false;
   const D = sz * 2.4 * (0.75 + 0.4 * (l.strength ?? 0.5)), c = rgb(L.color);
   if (!l.alive) return place(px, 'map/ruin', x, y, D * 0.8, S, {colors: {faction: '#5a5050'}, alpha: 0.7});
@@ -128,12 +134,9 @@ export const leader = (px, l, x, y, sz, k, S) => place(px, 'parties/leader', x, 
 export const sanctuary = (px, x, y, sz, k, S) => place(px, 'map/sanctuary', x, y, sz * 2.4, S);
 export const grave = (px, g, x, y, sz, k, S) => place(px, 'map/grave', x, y, sz * 1.9, S);
 
-// the works of the towns (atlas/sites.js) by kind
-const SITE = {field: 'field', ploughland: 'field', garden: 'field', gatherer: 'grove', grove: 'grove', forestry: 'grove', woodcut: 'wood', sawmill: 'wood',
-  charpit: 'wood', lodge: 'lodge', fishhut: 'fish', pier: 'fish', mineshaft: 'mine', deepmine: 'mine', placer: 'mine', props: 'mine', quarry: 'quarry',
-  saltworks: 'salt', mushrooms: 'mushrooms', pen: 'pasture', pasture: 'pasture'};
+// the works of the towns (atlas/sites.js) by kind: data/looks.js SITES
 export function site(px, s, b, x, y, r, k, S, a, close) {
-  const key = `map/site-${SITE[b.id] || b.id}`;
+  const key = `map/site-${SITES[b.id] || b.id}`;
   if (!place(px, key, x, y, r * 1.7, S, {alpha: 0.85}, 0.05)) return false;
   if (close) { px.textBaseline = 'alphabetic'; px.fillStyle = 'rgba(240,235,220,0.9)'; px.font = `${Math.max(0.25, 0.3 * k)}px "PT Sans", sans-serif`; px.textAlign = 'center'; px.fillText(b.name, x, y + r * 1.8 + 0.35 * k); }
   return true;

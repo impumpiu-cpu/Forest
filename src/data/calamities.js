@@ -36,9 +36,9 @@ export const CALAMITIES = [
   {id: 'giantking', label: 'восстание великанов', lair: 'giants', boss: 'giant', title: ['Король великанов', 'Короля великанов'], g: 'm', eras: ['wild', 'elder', 'young'],
     names: BOSS.giantking, retinue: ['ogres', 'giants'],
     rise: '{boss} поднял становища великанов {where} и встал станом «{lair}»: огры и великаны идут под его знаменем.'},
-  {id: 'goblinking', label: 'орда гоблинского царя', lair: 'goblins', boss: 'goblin', title: ['Гоблинский царь', 'Гоблинского царя'], g: 'm', eras: ['wild', 'elder', 'young'],
+  {id: 'goblinking', label: 'полчище гоблинского царя', lair: 'goblins', boss: 'goblin', title: ['Гоблинский царь', 'Гоблинского царя'], g: 'm', eras: ['wild', 'elder', 'young'],
     names: BOSS.goblinking, retinue: ['goblins', 'goblins', 'ogres'],
-    rise: '{boss} собрал норы {where} в одну орду — «{lair}»: гоблины сотнями выходят на поверхность.'},
+    rise: '{boss} собрал норы {where} в одно полчище — «{lair}»: гоблины сотнями выходят на поверхность.'},
 ];
 
 // the omens before a calamity rises, one a year or so (drawn without repeats)
@@ -118,7 +118,7 @@ export const CAL = {
 //   peace:    years of peace after the boss fell before the alliance falls apart, [lo, hi]; then every pair's attitude
 //             goes back `back` of the way to what it was before, and a member that sent no army is held `shirk` worse
 export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3, levy: 0.08, minMen: 12, wait: 60,
-  boss: 8, retinue: 8, loss: {won: 0.25, beaten: 0.6}, retry: 5, peace: [5, 15], back: 0.7, shirk: 1};
+  boss: 8, retinue: 8, loss: {won: 0.25, beaten: 0.6}, luck: [0.6, 0.8], retry: 5, peace: [5, 15], back: 0.7, shirk: 1};
 
 // The epic campaign (campaign/epic.js; docs/WORLD.md): the clues are the graves of the three
 // bosses, the goal is the lair of the fourth, where the artifact went and its servants gather; the omens of the fourth

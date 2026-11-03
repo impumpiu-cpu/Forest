@@ -41,12 +41,12 @@ export const TRADE = {
   setOut: [4, 6], leaveHour: 7, tradeUntil: 23, maxStay: 2,   // days, in case it never gets to trade
   maxComing: 36,   // hours on the road from the map edge (usually 10–14): a caravan that has not reached the camp by then turns back
   guards: 2, mules: [1, 3], crates: 2, crate: 10, load: [0.5, 1],
-  purse: PT.purse, ask: PT.ask, bid: PT.bid,   // data/balance/prices.js
+  get purse() { return PT.purse; }, get ask() { return PT.ask; }, get bid() { return PT.bid; },   // data/balance/prices.js (read there, never copied: «Цены: правила»)
   // the colony's negotiator (settlement/trade.js terms): Charisma × (1 + barter skill) against the trader's;
   // the contest a / (a + b) moves both prices by up to ±haggle in the colony's favour or against it,
   // once for the whole visit. With the best terms buying costs 1.1 and selling brings 0.8 of the worth:
   // there is always a margin, so nothing can be sold and bought back at a profit.
-  haggle: PT.haggle, traderC: 6, traderBarter: 0.5,
+  get haggle() { return PT.haggle; }, traderC: 6, traderBarter: 0.5,
   practicePerLine: 15, practiceMax: 120,   // barter practice for the negotiator: per line of the deal, at most
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
   wants: {salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6},   // bought whenever the trader has it, up to this much in stock
@@ -54,7 +54,7 @@ export const TRADE = {
   // silver blades: the colony buys them up to this share of its people once something that fears silver
   // has come; before that one at most, and only when it costs no more than `silverSpare` of the gold in hand
   silverShare: 0.5, silverSpare: 0.3,
-  mithrilPurse: PT.mithrilPurse,   // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
+  get mithrilPurse() { return PT.mithrilPurse; },   // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
 
   WARES: [
     {w: 40, food: true, n: [3, 8]},
@@ -75,7 +75,7 @@ export const TRADE = {
 
   // the guards' kit: imperial iron armour, a finer sword and shield
   guardKit: [{type: 'sword', q: 1}, {type: 'shield', q: 1}, {type: 'chainmail', q: 0}],
-  guardHp: 1.4,
+  guardHp: 1.4, guardBravery: 1.5, guardAim: 0.5,   // the guards' body: × health, bravery, the ranged skill
 
   traderNames: [['Аврелий', 'm'], ['Флавий', 'm'], ['Марциан', 'm'], ['Луций', 'm'], ['Гай', 'm'], ['Публий', 'm'], ['Корнелия', 'f'], ['Ливия', 'f']],
   guardNames: [['Квинт', 'm'], ['Сервий', 'm'], ['Децим', 'm'], ['Тит', 'm'], ['Секст', 'm'], ['Маний', 'm']],

@@ -9,7 +9,7 @@ import {attack, behindRock} from '../combat.js';
 import {kill} from '../agent.js';
 import {huntOf, huntAim, startHunt, endHunt} from '../carcass.js';
 import {endTask} from '../lifecycle.js';
-import {liveById} from '../lookup.js';
+import {liveById, onMap} from '../lookup.js';
 import {dist, packOf, paramsOf, bestPrey, ignoreFor, toTheKill, busyHunting} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
 
@@ -45,7 +45,7 @@ export const chase = {
   },
   step(w, a, t) {
     const P = paramsOf(a), C = PROWL.chase, prey = t.target, h = huntOf(w, a), pack = packOf(w, a);
-    if (!h || !prey || prey.dead || !w.agents.includes(prey)) { endTask(w, a); return; }
+    if (!h || !prey || prey.dead || !onMap(w, prey)) { endTask(w, a); return; }
     const [tx, ty, sprint] = huntAim(w, a, h, prey);
     // the lead itself is not getting anywhere (water or rocks in between): the pack gives this one up for half a day
     if (h.roles[a.id] === 'lead') {

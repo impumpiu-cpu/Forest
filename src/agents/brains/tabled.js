@@ -56,7 +56,7 @@ function offers(w, a, ctx, lanes, from) {
 }
 
 // an alarm whose every answer is on a pause (the foe out of reach): one of the colony drops its work and keeps by the
-// fire (the task «reserve», agents/tasks.js: over by itself once the alarm is) — it neither works on nor stands lost;
+// fire (the task «reserve», agents/tasks/camp.js: over by itself once the alarm is) — it neither works on nor stands lost;
 // another brain keeps what it does
 function holdUnderAlarm(w, a) {
   if (a.faction !== 'colony' || a.task?.id === 'reserve') return false;

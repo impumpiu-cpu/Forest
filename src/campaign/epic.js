@@ -22,8 +22,8 @@ import {wherePhrase} from '../atlas/lairs.js';
 import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {reachable, foot, circle} from './quest.js';
-import {lairFoe} from './land.js';
-import {bubbleOf} from './bubble.js';
+import {lairGuard} from './land.js';
+import {bubbleOf, cellAt} from './bubble.js';
 import {QUEST} from '../data/quest.js';
 import {plural, cellDist} from '../core/util.js';
 
@@ -33,7 +33,6 @@ const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
 const dist = cellDist;   // (core/util.js)
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
-const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 
 // the seats where a fourth may gather: prepared once for the world, far from each other, the graves and the towns
 export function seats(a) {
@@ -52,14 +51,11 @@ export function seats(a) {
   return (a.seats = out);
 }
 
-// who guards a place of the old calamities: the band of its lair's kind; strength by the distance from home
+// who guards a place of the old calamities: the band of its lair's kind and its ruler's summoned, as any lair's seat
+// (campaign/land.js lairGuard); strength by the distance from home
 function guardFor(a, K, lairKind, i, x = 1) {
-  const L = LAIRS.get(lairKind), G = EPIC.guard, diag = Math.hypot(a.w, a.h);
-  const s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, i) / diag) * x);
-  // (the demons have no band of their own on the local map: they come as the dead do)
-  const kind = L?.undead || L?.fiend ? 'undead' : L?.tribe ? 'tribe' : 'lair';
-  const who = L?.fiend ? {band: 'undead'} : lairFoe(lairKind);
-  return {kind, strength: s, ...who};
+  const G = EPIC.guard, diag = Math.hypot(a.w, a.h);
+  return lairGuard(a, lairKind, i, Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, i) / diag) * x));
 }
 const grown = (r, M) => Object.fromEntries(['S', 'E', 'A'].map(id => [id, Math.round(between(r, M.add))]));
 
@@ -74,7 +70,6 @@ export function makeEpicQuest(a, K, rnd) {
   if (!cells.length || !hint) return null;
   // a fourth (or a calamity of the hand) still alive from a caravan before (lost, or out of its years): the new caravan goes after the same
   let old = a.calamities.find(c => (c.era === 'after' || c.quest) && c.phase !== 'fallen');
-  const diag = Math.hypot(a.w, a.h);
   // the seat: the farthest the caravan can walk to, at least EPIC.far of the diagonal if any is
   const S = seats(a).map(i => ({i, at: foot(a, mask, i, 4)})).filter(s => s.at >= 0).sort((p, q) => dist(a, K.home, q.at) - dist(a, K.home, p.at));
   const seat = S[0] || {i: cells.reduce((b, c) => (dist(a, K.home, c) > dist(a, K.home, b) ? c : b), K.home)};
@@ -192,7 +187,6 @@ function darken(a, K, Q, c4, step, say) {
     const line = `Слуги ${c4.boss.title[1].toLowerCase()} ${c4.boss.name} рыщут по всему краю${t ? ` и сожгли окраины ${townLabel(t, 2)} ${t.name}` : ''}: все ближние логова вышли на след каравана.`;
     say(line, 'quest', false); tellWorld(a, line, c4);
   }
-  void K;
 }
 
 // ── the storm of the lair won: the boss is dead, the artifact is the caravan's (campaign/quest.js takeCrown)
