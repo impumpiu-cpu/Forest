@@ -33,7 +33,7 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
 {
   const H = WORLD_PEOPLES.get('humans'), D = WORLD_PEOPLES.get('dwarves');
   check('люди принимают чужих в полтора раза охотнее и теплеют от торговли; толпа чужих растит преступность; дварфы чужих почти не берут',
-    H.folk.take > 1 && H.trade > 1 && RUINS.get('crime').grows.folk > 0 && D.folk.take < 1 && D.folk.expel > 0 && D.folk.push > 1);
+    H.strangers.take > 1 && H.trade > 1 && RUINS.get('crime').grows.strangers > 0 && D.strangers.take < 1 && D.strangers.expel > 0 && D.strangers.push > 1);
 }
 // the ploughland: the humans plough instead of the field — poorer land (`arable`), half as much again; the field's upgrades,
 // the apiary and the brewery take it as a field
@@ -55,9 +55,9 @@ const game = (seed = 'humans') => { const w = newGame({...DEFAULT_CFG, seed, siz
   const t = a.towns.find(x => x.alive && x.people === 'dwarves'), tb = b.towns.find(x => x.id === t.id);
   for (const x of [t, tb]) { addHeads(a, x, 'human', x.pop / 4, 1); }   // a fifth of each are humans now (atlas/population.js)
   const lines = []; stepDiplomacy(a, mulberry(1), s => lines.push(s), () => 0);
-  const ex = WORLD_PEOPLES.get('dwarves').folk.expel; WORLD_PEOPLES.get('dwarves').folk.expel = 0;
+  const ex = WORLD_PEOPLES.get('dwarves').strangers.expel; WORLD_PEOPLES.get('dwarves').strangers.expel = 0;
   stepDiplomacy(b, mulberry(1), () => {}, () => 0);
-  WORLD_PEOPLES.get('dwarves').folk.expel = ex;
+  WORLD_PEOPLES.get('dwarves').strangers.expel = ex;
   const now = shareOfPeople(a, t, 'humans'), kept = shareOfPeople(b, tb, 'humans');
   // (expel of the town's people leave: the share of strangers falls to (was − expel) / (1 − expel), the town being that much smaller)
   check('дварфы выживают чужаков из своих городов', now < kept && Math.abs(now - (kept - ex) / (1 - ex)) < 1e-3, `люди ${0.2} → ${now.toFixed(3)}, без выселения ${kept.toFixed(3)}`);

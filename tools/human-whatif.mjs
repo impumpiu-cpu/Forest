@@ -4,7 +4,7 @@
 // `node tools/human-whatif.mjs [seed] [case]` → JSON on stdout. Cases:
 //   base; breed1 (breed 1.3 → 1); from100 (settlers from 100, keep 60, 20 leave); space9 (spacing 11 → 9);
 //   reach35 (settlers' reach 2.5 → 3.5); food13 (the Humans' raw food × 1.3, as the ploughland gave); tools2 (their tools
-//   × 2 out); near1 (they no longer settle among others: folk.near 0.7 → 1, mix 0.5 → 0); old (they live 75…100, not
+//   × 2 out); near1 (they no longer settle among others: strangers.near 0.7 → 1, mix 0.5 → 0); old (they live 75…100, not
 //   60…80); nocult (the Greenskins' cult of war off); fort (every Human building's defence doubled)
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
@@ -23,7 +23,7 @@ const CASES = {
   reach35: () => { P.settlers = {...P.settlers, reach: 3.5}; },
   food13: () => { P.flows = {...P.flows, raw: 1.3 * (P.flows?.raw || 1)}; },
   tools2: () => { P.flows = {...P.flows, tools: 2 * (P.flows?.tools || 1)}; },
-  near1: () => { P.folk = {...P.folk, near: 1, mix: 0}; },
+  near1: () => { P.strangers = {...P.strangers, near: 1, mix: 0}; },
   old: () => { const R = RACES.find(r => r.id === 'human'); R.body = {...R.body, lifeFrom: 75, life: 100}; },
   nocult: () => { const O = WORLD_PEOPLES.get('orcs'); O.warCult = {...O.warCult, chance: 0}; },
   fort: () => { for (const b of TOWN_BUILDINGS.all()) if (b.fx?.defence && (!b.peoples || b.peoples.includes(who))) b.fxBy = {...b.fxBy, [who]: {...b.fxBy?.[who], defence: (b.fxBy?.[who]?.defence || 0) + b.fx.defence}}; },

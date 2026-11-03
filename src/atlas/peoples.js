@@ -103,8 +103,8 @@ function siteScore(a, P, i) {
     S.fert * f.fert[i] + S.trees * f.trees[i] + S.ores * Math.min(1.5, oreWealth(a, i)) + S.steep * (1 - f.flat[i]);
 }
 
-// (a people that settles among others — data/peoples.js folk.near, the humans — sits closer to another people's town than to its own)
-const farFromTowns = (a, x, y, d, pe = null) => !a.towns.some(t => t.alive && Math.hypot(t.x - x, t.y - y) < d * (pe && t.people !== pe.id ? pe.P.folk?.near ?? 1 : 1));
+// (a people that settles among others — data/peoples.js strangers.near, the humans — sits closer to another people's town than to its own)
+const farFromTowns = (a, x, y, d, pe = null) => !a.towns.some(t => t.alive && Math.hypot(t.x - x, t.y - y) < d * (pe && t.people !== pe.id ? pe.P.strangers?.near ?? 1 : 1));
 
 // whether a coarse cell and its ring (3c × 3c around its middle) have any room for a town at all:
 // a town closer to the middle than `spacing` minus the window's half-diagonal covers every cell in it
@@ -348,7 +348,7 @@ export function stepPeoples(a, rnd, say) {
   // every people sees the others as they were at the start of the year, whatever the order
   const was = a.peoples.map(pe => Float32Array.from(pe.u));
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
-  const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)] * (WORLD_PEOPLES.get(o.id).folk?.push ?? 1) * (1 - (pe.P.folk?.mix ?? 0)))));   // (the dwarves press strangers off their land harder: data/peoples.js folk.push; the humans live among others: folk.mix)
+  const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)] * (WORLD_PEOPLES.get(o.id).strangers?.push ?? 1) * (1 - (pe.P.strangers?.mix ?? 0)))));   // (the dwarves press strangers off their land harder: data/peoples.js folk.push; the humans live among others: folk.mix)
   for (const [pi, pe] of a.peoples.entries()) {
     const {P, K, u, mob} = pe, hold = holdField(a, pe);
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
