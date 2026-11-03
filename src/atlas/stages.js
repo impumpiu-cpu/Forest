@@ -88,6 +88,7 @@ ATLAS_STAGES.registerAll([
     run(a, rnd) {
       const r = ores(a, rnd);
       const pl = placer(a), lv = ORE_GENESIS.get('placer').levels;
+      delete a.hydro;   // (the drainage order of the rivers: the gold sand was its last use)
       r.placer = 0; for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv[2]) r.placer++;
       const top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
       return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';

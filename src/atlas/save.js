@@ -27,8 +27,10 @@ export const WORLD_FORMAT = 1;
 const FORMATS = [1];
 
 // world keys rebuilt on first use rather than saved: the scratch of A* on land and at sea, the
-// buffers of the rot; `ms` (how long each stage took) belongs to this machine and this run
-const SCRATCH = new Set(['roadScratch', 'seaScratch', 'rotBuf', 'ms']);
+// buffers of the rot; `ms` (how long each stage took) belongs to this machine and this run; the caches of the land that
+// does not change — the roads' base costs by people (atlas/roads.js), the cells' place answers (atlas/sites.js) — are
+// worked out again from the land and the tables of this run (a world opened under other table edits takes them as they are now)
+const SCRATCH = new Set(['roadScratch', 'seaScratch', 'rotBuf', 'ms', 'roadBase', 'needCache']);
 const HIST_LIVE = new Set(['rnd']);
 
 function externals() {
@@ -60,7 +62,7 @@ export function saveAtlas(a, name, kind = WORLD_KIND) {
   if (kind === LAND_KIND && (!landDone(a) || a.hist)) throw new Error('Землёй сохраняется только суша без истории.');
   const tree = encode(a, {
     externals: externals(),
-    skip: (path, k) => (path === 'world' && SCRATCH.has(k)) || (path === 'world.hist' && HIST_LIVE.has(k)),
+    skip: (path, k) => (path === 'world' && SCRATCH.has(k)) || (path === 'world.hist' && HIST_LIVE.has(k)) || (path === 'world.fauna' && k === 'buf'),   // (fauna.buf: a season's buffers, atlas/fauna.js)
   });
   return {kind, format: WORLD_FORMAT, version: VERSION, savedAt: Date.now(), meta: worldMeta(a, name, kind), histRnd: a.hist ? a.hist.rnd.state : null, tree};
 }
