@@ -11,6 +11,8 @@ import {refreshBody} from '../agents/special.js';
 import {colonists, has} from './query.js';
 import {log} from '../core/log.js';
 
+// the dens of WAR_DENS: every row that raises a beast, in its order
+const dens = () => Object.entries(D).filter(([, R]) => R && typeof R === 'object' && R.beast);
 const warBeasts = w => w.agents.filter(a => !a.dead && a.faction === 'allies' && a.warBeast);
 const room = w => warBeasts(w).length < 1 + Math.floor(colonists(w).filter(a => !a.dead && !a.captive).length / D.per);
 function enlist(w, a, post) {
@@ -29,9 +31,9 @@ export function raise(w, key) {
 }
 export function stepWarBeasts(w) {
   if (w.tick % DAY !== 8 * HOUR) return;
-  if (has(w, 'spiderden')) w.stock.rope = (w.stock.rope || 0) + D.spiderden.silk;
+  for (const [key, R] of dens()) if (R.silk && has(w, key)) w.stock.rope = (w.stock.rope || 0) + R.silk;   // (the spider den spins rope)
   if (!seasonStarts(w, w.tick)) return;
-  for (const key of ['wargden', 'spiderden']) raise(w, key);
+  for (const [key] of dens()) raise(w, key);
 }
 // a beast or a monster beaten near the camp (agents/combat.js, at its last blow): broken to war in the pits → true
 export function breakToWar(w, by, t) {
