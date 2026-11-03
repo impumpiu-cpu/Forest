@@ -5,7 +5,7 @@
 // Offers the shared `maul` task in the `kick` mode (the step is here, agents/behaviours/maul.js reaches it) and
 // `bolt`. Reads: mule {kickRange, charge, chargeHit, chargeFrom, grudge, giveUp, fleeBelow}.
 import {SPECIES} from '../../data/species.js';
-import {approach, bolt as run, sprintMul} from '../movement.js';
+import {approach, sprintMul} from '../movement.js';
 import {damage} from '../combat.js';
 import {maxHp} from '../agent.js';
 import {nearAgents} from '../spatial.js';

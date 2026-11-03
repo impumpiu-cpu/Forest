@@ -17,7 +17,7 @@
 // line and the panel show the places, who took them and why.
 import {JOBS, huntable} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {colonists, foodTotal, openSites, jobUnlocked, favourites, has, count} from './query.js';
+import {colonists, foodTotal, openSites, jobUnlocked, favourites} from './query.js';
 import {waiting} from './healing.js';
 import {stationHasWork} from './crafting.js';
 import {goalNeed} from './council.js';

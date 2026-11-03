@@ -3,7 +3,6 @@
 // fire, the night watch, the alarm (muster at the fire, keeping out of harm's way), going along with a lone gatherer,
 // helping the wounded, binding a fallen foe, learning beside a master. Each offers a task of agents/tasks.js and reads
 // the settlement's systems that know the answer. Reads: nothing of its own.
-import {nightness} from '../../core/time.js';
 import {SPECIES} from '../../data/species.js';
 import {councilDue} from '../../settlement/council.js';
 import {tradeOpen} from '../../settlement/trade.js';

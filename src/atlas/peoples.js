@@ -16,7 +16,7 @@ import {ORE_KINDS, LAND_BIOMES, TOWN_ROLES} from '../data/worldLand.js';
 import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {takeHeads, sync, foundHeads} from './population.js';
-import {townFx, room, might, townLabel, upgradeOf} from './towns.js';
+import {townFx, room, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
 import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';

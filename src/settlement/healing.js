@@ -6,7 +6,7 @@
 import {maxHp} from '../agents/agent.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {cellOf} from '../world/grid.js';
-import {colonists} from './query.js';
+import {has, colonists} from './query.js';
 import {perTick} from '../core/util.js';
 import {freeSlot} from './reserve.js';
 import {HEAL} from '../data/colony.js';

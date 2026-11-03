@@ -14,7 +14,7 @@ import {maxHp} from './agent.js';
 import {log} from '../core/log.js';
 import {POTION, POTION_RES, HOME_BY_USE, BELT_ORDER, potionOf} from '../data/potions.js';
 import {NIGHT, hasSense} from '../data/tongues.js';
-import {CONDITIONS, hasMark, effectsOf} from '../data/conditions.js';
+import {CONDITIONS, hasMark} from '../data/conditions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
 import {nightness} from '../core/time.js';
 import {darkness} from './combat.js';

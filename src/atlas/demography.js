@@ -14,7 +14,7 @@
 //   a town left with fewer than TOWN_LIFE.abandon people is left: they go to the nearest town of their realm;
 //   the captives of a lair gone go home (freeCaptives); an army whose town fell comes back to the nearest town of its realm
 //   (atlas/army.js); the crowned seat draws people from its realm's towns (drawTo), it does not make them.
-import {WORLD_PEOPLES, TOWN_LIFE as TL, KIN} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin} from './towns.js';
 import {headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';

@@ -17,7 +17,7 @@ import {skin} from './skin.js';
 import {ART} from './art/index.js';
 import {Camera} from './camera.js';
 import {ORE_BY_CODE} from '../data/ores.js';
-import {season, seasonTint, snowy} from '../data/seasons.js';
+import {seasonTint, snowy} from '../data/seasons.js';
 import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 

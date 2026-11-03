@@ -27,7 +27,7 @@ import {homeComfort, prayed} from '../settlement/life.js';
 import {squadOf, noteHome, SQUAD} from './squad.js';
 import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER} from '../settlement/together.js';
 import {agentInZone} from '../settlement/zone.js';
-import {heatTo, coolTo, tempAt} from '../world/heat.js';
+import {coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
 import {PRAYER} from '../data/colony.js';
 import {liveById, onMap} from './lookup.js';
