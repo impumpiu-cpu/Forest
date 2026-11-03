@@ -122,7 +122,7 @@ export function migrate(a) {
     const best = Math.max(...to.map(x => x[1]));
     let go = s.over * TL.overflow + rate * s.t.pop * (1 - s.A / best);
     go = Math.min(go, Math.max(0, s.t.pop - TL.minTarget));
-    if (go <= 0.5) continue;
+    if (go <= TL.moveLeast) continue;   // (fewer than this a season do not set out: TOWN_LIFE.moveLeast)
     const W = to.reduce((sum, [d, A]) => sum + A * d.free, 0);
     let left = go;
     for (const [d, A] of to) {

@@ -42,6 +42,7 @@ import {ARMY} from '../data/parties.js';
 import {townEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const FOODS = new Set(['food', 'raw', 'brush']);   // (raw food too: it is cooked where it is made, not traded; brushwood is burnt where it is gathered; stores keep and are traded)
 const r2 = v => Math.round(v * 100) / 100;
@@ -57,7 +58,17 @@ const fromStore = t => { const o = {}; for (const [g, v] of Object.entries(t.sto
 export const roomOf = (t, g) => Math.max(M.least, ((t.econ?.made[g] || 0) + (t.econ?.dem[g] || 0)) * M.store);
 // what a town keeps of a good for its works (a season of what they take), and for its people's basic needs
 const keepOf = (t, g) => (t.econ?.dem[g] || 0) / S * M.keep;
-const safetyOf = (t, g) => (goodsFor(t.people, M.needs.basic, t.pop * (peopleOf(t.people)?.needs ?? 1))[g] || 0) * M.safety;
+// (the basket of the safety is asked for every good of every link each season: kept per town while its people, its size and the
+// table it is made of stay the same; an edit of the tables clears it)
+let safeKept = new WeakMap();
+onEdit(() => { safeKept = new WeakMap(); });
+const safeBasket = t => {
+  const k = t.pop * (peopleOf(t.people)?.needs ?? 1), N = M.needs.basic, s = safeKept.get(t);
+  if (s && s.k === k && s.people === t.people && s.N === N) return s.v;
+  const v = goodsFor(t.people, N, k); safeKept.set(t, {k, people: t.people, N, v});
+  return v;
+};
+const safetyOf = (t, g) => (safeBasket(t)[g] || 0) * M.safety;
 // what of it the town would let go: to its own people (over what its works keep), to others (over the people's safety too)
 const forPeople = (t, g) => Math.max(0, (t.stock[g] || 0) - keepOf(t, g));
 const forOthers = (t, g) => Math.max(0, (t.stock[g] || 0) - keepOf(t, g) - safetyOf(t, g));

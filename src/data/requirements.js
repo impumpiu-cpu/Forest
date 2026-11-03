@@ -57,7 +57,23 @@ export const ANY = (...list) => ({any: list.flat()});
 
 // ── the old short fields of a building's row as a requirement (data/townBuildings.js): what canBuild always asked
 import {KIN} from './peoples.js';
-export function needsOf(b) {
+import {onEdit} from './schema/layer.js';
+// The council asks every building of the catalogue for every town each season (atlas/towns.js chooseBuilding): the trees are
+// made once per row and kept while the fields they are made of stay the same objects. A table edit clears them all
+// (data/schema/layer.js onEdit); a check that writes a field by hand gives the row a new value, and the kept tree is not
+// the row's any more — it is made again (`of`: what the tree was made of, compared by identity; KIN.least with them).
+let kept = new WeakMap();
+onEdit(() => { kept = new WeakMap(); });
+const keptOf = (x, slot, of, make) => {
+  let e = kept.get(x); if (!e) kept.set(x, e = {});
+  const k = e[slot];
+  of.push(KIN.least);
+  if (k && k.of.length === of.length && of.every((v, i) => k.of[i] === v)) return k.v;
+  const v = make(x); e[slot] = {v, of};
+  return v;
+};
+export const needsOf = b => keptOf(b, 'needs', [b.peoples, b.kin, b.requires, b.requiresAny, b.here, b.capital, b.pop, b.needs, b.needsAny, b.need, b.id], makeNeeds);
+function makeNeeds(b) {
   const out = [];
   if (b.peoples) out.push(C('people', 'in', b.peoples));
   if (b.kin) out.push(C('kinShare', b.kin, '>=', KIN.least));   // (the old threshold, kept by the old requirement until it is tuned by hand)
@@ -73,7 +89,8 @@ export function needsOf(b) {
   return out.length ? ALL(out) : null;
 }
 // the step a building asks for, by the town's people (`tierBy`: a step of its own for a people — the dwarves' stone walls)
-export const tierNeed = (b, people) => C('tier', '>=', b.tierBy?.[people] ?? b.tier ?? 0);
+export const tierNeed = (b, people) => { const v = b.tierBy?.[people] ?? b.tier ?? 0; return TIER_NEED[v] || C('tier', '>=', v); };
+const TIER_NEED = [0, 1, 2].map(v => Object.freeze({fact: 'tier', op: '>=', value: v}));   // (the three steps: one condition each, shared)
 // the lit indicators of a town as a source of facts (atlas/economy.js townLights: `people:x`, `kin:x`, `stock:g`, the
 // buildings' opens): for a check with nothing but the lights at hand
 export const litFacts = lit => ({get(fact, arg) {
@@ -86,11 +103,11 @@ export const litFacts = lit => ({get(fact, arg) {
 // the stages are apart (docs/WORLD.md «Требования»): what a building asks to be BUILT is `need` (with its short fields, needsOf);
 // what it asks to WORK is `req` and `workNeed` — a threshold of the building's rise is never copied into its running. A recipe
 // only runs: its `req` and its `need` are its work
-export const workNeeds = (x, recipe = false) => { const r = reqNeeds(x.req), w = recipe ? x.need : x.workNeed; return w ? ALL([r, w].filter(Boolean)) : r; };
+export const workNeeds = (x, recipe = false) => keptOf(x, recipe ? 'work1' : 'work0', [x.req, recipe ? x.need : x.workNeed], y => { const r = reqNeeds(y.req), w = recipe ? y.need : y.workNeed; return w ? ALL([r, w].filter(Boolean)) : r; });
 // a recipe's `req` (or a building's: the steelworks while iron ingots are in the store) as a requirement: an indicator lit,
 // 'kin:x' — the race's share, 'people:x' — the people, 'stock:g' — the good in the store; 'a|b' — either
-export function reqNeeds(req) {
-  if (!req?.length) return null;
+export const reqNeeds = req => (req?.length ? keptOf(req, 'req', [...req], makeReq) : null);
+function makeReq(req) {
   const one = x => {
     const [k, v] = x.split(':');
     if (k === 'kin') return C('kinShare', v, '>=', KIN.least);

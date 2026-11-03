@@ -335,7 +335,7 @@ export const ELDER_YEARS = [
 //              that a year, no oftener than every `every` years; at most `max` new towns a year a people; `near` — how much
 //              nearness counts for the settlers' spot (× its share of the reach)
 //   migration: a town of another realm is `abroad` as dear; people move up to moveReach × spacing away; a town over its room
-//              sends `overflow` of the surplus away a season;  abandon — a town of fewer people is left (atlas/demography.js)
+//              sends `overflow` of the surplus away a season; moveLeast — fewer movers than this a season stay home;  abandon — a town of fewer people is left (atlas/demography.js)
 //   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
 //              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
 //              (1 + its food − what armies took + trade × its trade)
@@ -345,7 +345,7 @@ export const ELDER_YEARS = [
 //   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) — born of its
 //              people, and over the target dying off; no roll and no floor (people are not made out of nothing)
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], apart: {own: 0.25, others: 0.25}, siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
-  foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, abandon: 10,
+  foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, moveLeast: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.22, prestige: 0.6, minTarget: 60,
   // age and death (atlas/demography.js lifeYear, atlas/population.js; each race's adult, lifeFrom, life, fertility, brawled — the
