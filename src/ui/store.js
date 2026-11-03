@@ -43,10 +43,13 @@ const LAT = {а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 
 export const latinTitle = s => fileTitle([...String(s).toLowerCase()].map(c => LAT[c] ?? c).join(''));
 export const fileTitle = s => String(s).replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'forest';
 
+// the viewer's `downloads` capability on claude.ai, or null elsewhere
+const downloads = async () => (typeof window !== 'undefined' && window.claude?.use ? window.claude.use('downloads').catch(() => null) : null);
+
 // On claude.ai the page cannot download by itself: the viewer's `downloads` capability offers the
 // file (only plain .json is allowed there). Elsewhere a gzip file is downloaded directly.
 export async function offerFile(base, text) {
-  const host = typeof window !== 'undefined' && window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+  const host = await downloads();
   if (host) {
     try { await host.save({filename: base + '.json', data: text}); return 'saved'; }
     catch (e) { if (e?.code === 'declined') return 'declined'; throw new Error(e?.message || 'сохранение файла недоступно'); }
@@ -62,7 +65,7 @@ export async function offerFile(base, text) {
 
 // a text file (a chronicle): plain .txt, or on claude.ai the viewer's `downloads` (.json with the text in it)
 export async function offerText(base, text) {
-  const host = typeof window !== 'undefined' && window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+  const host = await downloads();
   if (host) {
     try { await host.save({filename: base + '.json', data: JSON.stringify({title: base, text})}); return 'saved'; }
     catch (e) { if (e?.code === 'declined') return 'declined'; throw new Error(e?.message || 'сохранение файла недоступно'); }
@@ -70,6 +73,23 @@ export async function offerText(base, text) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
   a.download = base + '.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  return 'saved';
+}
+
+// a file as it is (a table's .csv or .json, the table edits): on claude.ai through the viewer's `downloads` (only .json
+// goes there: another kind is saved inside a .json as {title, text}), elsewhere downloaded under its own name
+export async function offerPlain(name, text, type = 'application/json') {
+  const host = await downloads();
+  if (host) {
+    const json = name.endsWith('.json');
+    try { await host.save({filename: json ? name : name + '.json', data: json ? text : JSON.stringify({title: name, text})}); return 'saved'; }
+    catch (e) { if (e?.code === 'declined') return 'declined'; throw new Error(e?.message || 'сохранение файла недоступно'); }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type}));
+  a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   return 'saved';
