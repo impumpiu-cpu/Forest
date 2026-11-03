@@ -199,14 +199,15 @@ export class LandView extends MapView {
     $('landPlateReset').disabled = busy || !this.maker.shape.plates[p.id];
   }
 
-  cellAt(e) {
+  // the point under the cursor in cells, [x, y] (floats), or null off the map (MapView.cellAt is the cell's index)
+  cellXY(e) {
     const a = this.atlas, cv = $(this.ids.map), r = cv.getBoundingClientRect();
     const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
     return fx < 0 || fy < 0 || fx >= a.w || fy >= a.h ? null : [fx, fy];
   }
   clickAt(e) {
     const a = this.atlas; if (!a || !a.f.plate || !this.cam || this.tool !== 'plate') return;
-    const c = this.cellAt(e); if (!c) return;
+    const c = this.cellXY(e); if (!c) return;
     this.selectPlate(a.f.plate[Math.floor(c[1]) * a.w + Math.floor(c[0])]);
   }
   // ── the brush: the maker shows a stroke at once on the relief and works the chain out again when it ends
@@ -219,7 +220,7 @@ export class LandView extends MapView {
   }
   paintMove(e) {
     if (!this.stroking) return;
-    const c = this.cellAt(e); if (!c) return;
+    const c = this.cellXY(e); if (!c) return;
     const st = this.maker.stroke(c[0], c[1], this.radius, this.tool === 'raise'); if (!st) return;
     // only the dab's box is painted again
     const R = Math.ceil(st.r * 2.2);
@@ -256,7 +257,7 @@ export class LandView extends MapView {
   }
   hover(e) {
     super.hover(e);
-    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellAt(e) : null; if (!this.stroking) this.draw(); }
+    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellXY(e) : null; if (!this.stroking) this.draw(); }
   }
 
   renderSide() {
