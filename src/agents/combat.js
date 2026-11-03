@@ -175,7 +175,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
-  const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
+  // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
+  const rb = bsp.remembers, rt = tsp.remembers;
+  const memKey = rb === 'wolf' || rt === 'wolf' ? 'wolf' : rb === 'mule' || rt === 'mule' ? 'mule' : rb || rt || 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)

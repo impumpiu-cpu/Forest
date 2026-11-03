@@ -6,7 +6,6 @@ import {isHostile} from '../../data/factions.js';
 import {nearAgents} from '../spatial.js';
 import {isAttack, ours} from '../lookup.js';   // (the caller's side: a colony's called beasts stand with the colony)
 
-const WANT = {fight: 3, leave: 1};
 
 export const summoned = {
   want(w, a) {
@@ -21,9 +20,9 @@ export const summoned = {
     if (foe) {
       S.last = w.tick;
       const task = a.task?.id === 'fight' && a.task.target === foe ? a.task : {id: 'fight', target: foe};
-      return [[task, WANT.fight, () => `бьётся на стороне призвавшего: ${foe.name}`]];
+      return [[task, SUMMON.want.fight, () => `бьётся на стороне призвавшего: ${foe.name}`]];
     }
-    if (w.tick - S.last > SUMMON.quiet) return [[a.task?.id === 'leave' ? a.task : {id: 'leave'}, WANT.leave, () => 'бой кончился: уходит в лес']];
+    if (w.tick - S.last > SUMMON.quiet) return [[a.task?.id === 'leave' ? a.task : {id: 'leave'}, SUMMON.want.leave, () => 'бой кончился: уходит в лес']];
     return null;
   },
 };

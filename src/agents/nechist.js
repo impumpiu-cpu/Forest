@@ -15,13 +15,15 @@ const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const code = id => TERRAIN.get(id).code;
 
 // is cell i the spirit's home ground: deep wood, open grass, or dry land right at the water
+// (NECHIST.homes: the terrains of each home ground)
 export function isHome(w, i, home) {
   if (!walkable(w, i)) return false;
-  if (home === 'forest') return w.grid.terr[i] === code('forest');
-  if (home === 'grass') return w.grid.terr[i] === code('grass');
-  if (home === 'shore') {
+  const H = NECHIST.homes[home];
+  if (!H) return true;
+  if (H.on && !H.on.some(id => w.grid.terr[i] === code(id))) return false;
+  if (H.by) {
     const x = i % w.w, y = (i / w.w) | 0;
-    return N4.some(([dx, dy]) => inBounds(w, x + dx, y + dy) && w.grid.terr[(y + dy) * w.w + x + dx] === code('water'));
+    return N4.some(([dx, dy]) => inBounds(w, x + dx, y + dy) && H.by.some(id => w.grid.terr[(y + dy) * w.w + x + dx] === code(id)));
   }
   return true;
 }

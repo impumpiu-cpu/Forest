@@ -83,12 +83,13 @@ export function createSquad(w, group) {
   if (tipped) delete w.scouted[band.id];
   if (goal === 'kill') { const v = pickVictim(w); if (v) { target = v.who.id; why = v.why; } else goal = 'loot'; }
   if (goal === 'burn') { const bs = wooden(w); if (bs.length) target = bs[Math.floor(w.rngs.outside() * bs.length)].id; else goal = 'loot'; }
-  // the leader: the necromancer or the vampire if there is one, otherwise the strongest who is no beast
+  // the leader: one who leads its own (species `bandHead`: the necromancer, the vampire) if there is one, otherwise the
+  // strongest who is no beast
   const people = group.filter(a => !a.warBeast);
-  const leader = group.find(a => a.species === 'necromancer' || a.species === 'vampire') || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
+  const leader = group.find(a => !!SPECIES.get(a.species).bandHead) || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
   // an unnamed leader gets a title
-  if (leader.name === 'Налётчик') leader.name = 'Атаман';
-  else if (kind === 'living' && group.length > 1 && leader.species !== 'necromancer' && !leader.warBeast && leader.name === cap(SPECIES.get(leader.species).label)) leader.name += '-вожак';
+  if (band.pawn && leader.name === band.pawn) leader.name = cap(band.ranks?.boss || leader.name);
+  else if (kind === 'living' && group.length > 1 && SPECIES.get(leader.species).bandHead !== 'dead' && !leader.warBeast && leader.name === cap(SPECIES.get(leader.species).label)) leader.name += '-вожак';
   const sq = sqs[id] = {id, band: band.id, kind, goal, target, why, members: group.map(a => a.id), leader: leader.id, size: group.length,
     fallen: 0, home: 0, morale: 1, state: 'march', reason: null, started: w.tick, lit: null, watched: null, rearUntil: null,
     power0: group.reduce((s, a) => s + strength(a), 0)};

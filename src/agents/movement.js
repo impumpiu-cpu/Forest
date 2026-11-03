@@ -1,6 +1,7 @@
 // Moving through the world: straight steps, walking down a flow field, escaping heat.
 import {SPECIES, fearHeat, fearsFire} from '../data/species.js';
 import {BY_CODE} from '../data/terrain.js';
+import {NAVMAPS} from '../data/navmaps.js';
 import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
@@ -48,11 +49,8 @@ export function sameLand(w, a, j) {
   return c[cellOf(w, a)] >= FAR || c[j] < FAR;
 }
 
-// where a flow field leads, in words (for the colonist's card)
-const FIELD_NAMES = {camp: 'к лагерю', trees: 'к лесу', berries: 'к ягодам', prey: 'по следу дичи', edge: 'к краю карты',
-  zone: 'в поселение', sites: 'к стройке', safe: 'прочь от огня', warm: 'к теплу', healer: 'к лекарю', shore: 'к берегу',
-  fire: 'к пожару', rockface: 'к скалам', ore: 'к руде', fieldwork: 'в поле'};
-const fieldName = id => FIELD_NAMES[id] || (id.startsWith('station:') ? 'к мастерской' : id.startsWith('plant') ? 'к зарослям' : 'по тропе');
+// where a flow field leads, in words (for the colonist's card): the map's own `label` (data/navmaps.js)
+const fieldName = id => (NAVMAPS.has(id) && NAVMAPS.get(id).label) || 'по тропе';
 
 // step toward the neighbour with the smallest distance; returns 'arrived' | 'moving' | 'stuck' | 'none'
 export function follow(w, a, mapId, mul = 1) {

@@ -105,7 +105,7 @@ import {FACTIONS} from '../factions.js';
 import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
-import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS} from '../roles.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS, SUMMON, RIDE} from '../roles.js';
 import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
@@ -551,8 +551,8 @@ TABLES.push(
     rows: () => Object.entries(ROLE_MIX).map(([k, v]) => ({_id: k, ...v})), target: (r, c) => [ROLE_MIX[r._id], c.key],
     columns: [col('_id', 'Вид', 'ref', {ref: SPECIES}), ...COMBAT_ROLES.all().map(R => col(R.id, R.label, 'num', {min: 0, nullable: true, note: R.note})),
       col('best', 'Лучший металл', 'int', {min: 0, max: 4}), col('fixed', 'Свой набор', 'ids', {ref: ITEMS, nullable: true})]},
-  {id: 'roleRules', label: 'Роли: броня и металл', group: 'Существа', ...grp({armour: ARMOUR, tiers: ROLE_TIERS}),
-    note: 'Классы брони — формы с весами (форма, которой нет на этой ступени, выпадает: чешуя и кольчуга начинаются с бронзы). Металл: ступень k открыта с уровня банды from[k], каждая вещь берёт её с шансом ramp на уровень сверх него, не больше share; не выше «Лучшего металла» вида.'},
+  {id: 'roleRules', label: 'Роли: броня и металл', group: 'Существа', ...grp({armour: ARMOUR, tiers: ROLE_TIERS, summon: SUMMON, ride: RIDE}),
+    note: 'Классы брони — формы с весами (форма, которой нет на этой ступени, выпадает: чешуя и кольчуга начинаются с бронзы). Металл: ступень k открыта с уровня банды from[k], каждая вещь берёт её с шансом ramp на уровень сверх него, не больше share; не выше «Лучшего металла» вида. Призыв лесных зверей эльфами (data/roles.js SUMMON), всадник и его зверь (RIDE).'},
   {id: 'rankRules', label: 'Ранги и звенья', group: 'Существа', ...grp({ranks: RANK_RULES}),
     note: 'Пешка → офицер → босс (data/ranks.js). Банда из least и больше разумных бойцов с вещами делится на звенья по size голов; сильнейший в звене — офицер: метка «офицер» в «Состояниях» (здоровье, стоит до смерти), вещи на quality ступеней качества лучше. Пока офицер стоит, его звено не бежит, пока здоровье выше hurt, и держит дух банды (rally × доля звеньев с офицером); павший офицер сразу отнимает loss × долю своего звена. camp — в бою на стоянке похода, settlement — в набегах на поселение. Названия рангов — у банды («Отряды налётчиков», ranks).'},
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),

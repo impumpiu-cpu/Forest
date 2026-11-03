@@ -36,8 +36,7 @@ export function moodLabel(a, m) {
 // what the colonist wants right now, most pressing first
 export function wishes(w, a, councilWish) {
   const out = [];
-  const say = {food: 'поесть', rest: 'выспаться', warmth: 'согреться'};
-  for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say[id] || NEEDS.get(id).label);
+  for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(NEEDS.get(id).wish || NEEDS.get(id).label);
   const hands = handItems(a).map(itemDef);
   if (a.equip) {
     if (!hands.some(d => d.melee || d.ranged)) out.push('оружие в руки');

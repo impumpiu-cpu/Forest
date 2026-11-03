@@ -170,8 +170,10 @@ RAID_BANDS.registerAll([
   {id: 'bandits', label: 'разбойники «Серых волков»', kind: 'sentient',
     goals: (w, g) => [['loot', 3], ['kill', feud(w)], ['burn', 0.6 * torches(w)], ['scout', scouting(w, g)]],
     links: [['line', 2], ['wall', 1], ['raid', 1]], ranks: {officer: 'десятник', boss: 'атаман'},
+    // pawn: the name its members come under (no name of their own); its leader takes the title `ranks.boss` (agents/squad.js)
+    pawn: 'Налётчик',
     chance: {weight: 3},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = 'Налётчик'; }})),
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = RAID_BANDS.get('bandits').pawn; }})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
   {id: 'orcs', label: 'ватага зеленокожих', kind: 'sentient',

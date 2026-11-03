@@ -18,11 +18,6 @@ import {thornedBy} from './movement.js';
 import {THORNS} from '../data/buildings.js';
 import {roleRow} from '../data/roles.js';
 
-const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
-
-// remembered hardships use the need's `memory` key once the level drops below `remember`
-const REMEMBER_BELOW = {food: 0.3, rest: 0.25, warmth: 0.4};
-
 // Lasting effects on any creature, whatever its brain: venom from a bite (agents/combat.js) hurts every
 // tick until it wears off; a spider's web only slows (agents/movement.js) and is dropped once it is over.
 // Called once a tick for every agent from sim.js; the undead never get venom in the first place.
@@ -77,8 +72,9 @@ export function stepBody(w, a) {
     const n = NEEDS.get(id);
     a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T)));
     if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) { a.hp -= n.harm * (n.element ? resistTo(sp, n.element) : 1); starving = n.cause; }
-    if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 0.004;
-    if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
+    // remembered hardships and the diary (data/needs.js memory, rememberBelow; thought, thoughtBelow)
+    if (n.memory && a.needs[id] < (n.rememberBelow ?? 0.3)) a.mem[n.memory] += 0.004;
+    if (a.diary && a.needs[id] < (n.thoughtBelow ?? 0.15)) think(w, a, n.thought);
   }
   heatHarm(a, sp, T, 'colonist', w);
   stepExhaustion(a);

@@ -29,6 +29,7 @@ import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER}
 import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
+import {PRAYER} from '../data/colony.js';
 import {liveById, onMap} from './lookup.js';
 import {flagLead, raidOnBoard} from '../settlement/board.js';
 import {wake} from './attention.js';
@@ -244,15 +245,17 @@ TASKS.registerAll([
   }},
 
   // a prayer at the shrine, once a day for someone in low spirits
-  {id: 'pray', label: t => (t.at ? 'молится у святилища' : 'идёт к святилищу'), map: 'station:shrine', step(w, a, task) {
-    if (!has(w, 'shrine')) { fail(w, a, 'святилища нет'); return; }
+  // (the building prayed at: data/colony.js PRAYER)
+  {id: 'pray', label: t => (t.at ? 'молится у святилища' : 'идёт к святилищу'), get map() { return 'station:' + PRAYER.at; }, step(w, a, task) {
+    const map = 'station:' + PRAYER.at;
+    if (!has(w, PRAYER.at)) { fail(w, a, 'святилища нет'); return; }
     if (!task.at) {
-      const r = follow(w, a, 'station:shrine');
+      const r = follow(w, a, map);
       if (r === 'arrived') task.at = w.tick;
-      else if (r === 'none' && !w.nav.dirtySet.has('station:shrine')) { w.nav.dirty('station:shrine'); fail(w, a, 'к святилищу нет пути', 'impossible'); a.think = 30; }
+      else if (r === 'none' && !w.nav.dirtySet.has(map)) { w.nav.dirty(map); fail(w, a, 'к святилищу нет пути', 'impossible'); a.think = 30; }
       return;
     }
-    if (w.tick - task.at > 60) { prayed(w, a); done(w, a); }
+    if (w.tick - task.at > PRAYER.ticks) { prayed(w, a); done(w, a); }
   }},
 
   // raiders

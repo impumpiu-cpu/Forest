@@ -28,7 +28,7 @@ import {agentById, liveById} from './lookup.js';
 import {liveMembers} from './group.js';
 import {CARCASS} from '../data/behaviour.js';
 import {PACK} from '../data/behaviour.js';
-import {dist} from '../core/util.js';
+import {dist, cap} from '../core/util.js';
 
 export {CARCASS};   // (data/behaviour.js)
 export {PACK};   // (data/behaviour.js)
@@ -49,13 +49,13 @@ export const share = c => (c.food0 ? c.food / c.food0 : 0);
 // the nearest carcass with food left that `a` can smell
 export function smellCarcass(w, a, r = CARCASS.smell) {
   let best = null, bd = r;
-  for (const c of w.carcasses || []) { if (c.food < 0.05) continue; const d = dist(a, c); if (d < bd) { bd = d; best = c; } }
+  for (const c of w.carcasses || []) { if (c.food < CARCASS.least) continue; const d = dist(a, c); if (d < bd) { bd = d; best = c; } }
   return best;
 }
 
 // one tick of eating: returns false when there is nothing (more) to eat here
 export function eat(w, a, c, rate) {
-  if (!c || c.food < 0.05) return false;
+  if (!c || c.food < CARCASS.least) return false;
   const bite = Math.min(c.food, rate, 1 - a.needs.food);
   if (bite <= 0) return false;
   c.food -= bite; a.needs.food += bite;
@@ -65,31 +65,32 @@ export function eat(w, a, c, rate) {
 // once a tick (sim.js): carcasses rot; an old one in the dark may raise an upyr
 export function stepCarcasses(w) {
   const cs = w.carcasses; if (!cs?.length) return;
-  if (w.tick % 60) return;
+  const C = CARCASS;
+  if (w.tick % C.every) return;
   const night = nightness(w);
   for (const c of cs) {
     const age = w.tick - c.t;
     // rot eats into it too, slowly at first
-    if (age > CARCASS.rotFrom) c.food = Math.max(0, c.food - c.food0 * 0.01);
-    const big = (SPECIES.get(c.species).hp || 0) >= CARCASS.upyrFrom && share(c) >= CARCASS.upyrLeft;
-    // checked every 60 ticks; about a third of the day is this dark, so the chance is spread over those checks
-    if (age > CARCASS.rotFrom && big && !c.risen && night > 0.7 && w.rngs.wild() < CARCASS.upyr * 60 / (DAY * 0.3) && SPECIES.has('upyr')) {
+    if (age > C.rotFrom) c.food = Math.max(0, c.food - c.food0 * C.rot);
+    const big = (SPECIES.get(c.species).hp || 0) >= C.upyrFrom && share(c) >= C.upyrLeft;
+    // checked every `every` ticks; about `darkShare` of the day is this dark, so the chance is spread over those checks
+    if (age > C.rotFrom && big && !c.risen && night > C.darkFrom && w.rngs.wild() < C.upyr * C.every / (DAY * C.darkShare) && SPECIES.has(C.rises)) {
       c.risen = true;
-      const u = createAgent(w, 'upyr', 'raiders', c.x, c.y);
-      u.brain = 'raider'; u.band = 'upyrs'; u.name = 'Упырь';
+      const u = createAgent(w, C.rises, 'raiders', c.x, c.y);
+      u.brain = 'raider'; u.band = C.risesBand; u.name = cap(SPECIES.get(C.rises).label);
       log(w, `Над неубранной тушей (${SPECIES.get(c.species).label}) поднялся упырь: гниль своё взяла.`, 'danger', 'notice');
       if (w.behave) w.behave.hunts.upyr = (w.behave.hunts.upyr || 0) + 1;
     }
   }
   // gone when eaten clean (nothing left for a hunter either) or rotted away
-  w.carcasses = cs.filter(c => w.tick - c.t < CARCASS.life && (c.food >= 0.05 || (Object.keys(c.yields).length > 0 && w.tick - c.t < CARCASS.rotFrom)));
+  w.carcasses = cs.filter(c => w.tick - c.t < C.life && (c.food >= C.least || (Object.keys(c.yields).length > 0 && w.tick - c.t < CARCASS.rotFrom)));
 }
 
 // a hunter takes what is left: the yields scaled by what the beasts have not eaten yet
 export function butcher(w, c) {
-  const k = Math.max(0.2, share(c)), got = {};
-  for (const [r, n] of Object.entries(c.yields)) { const v = Math.round(n * (r === 'meat' ? k : 1)); if (v > 0) got[r] = v; }
-  if (got.hide && CARCASS.sinew) got.sinew = Math.round(got.hide * CARCASS.sinew);   // sinew comes away with the hide
+  const C = CARCASS, k = Math.max(C.butcherLeast, share(c)), got = {};
+  for (const [r, n] of Object.entries(c.yields)) { const v = Math.round(n * (r === C.eaten ? k : 1)); if (v > 0) got[r] = v; }
+  if (got[C.sinewFrom] && C.sinew) got.sinew = Math.round(got[C.sinewFrom] * C.sinew);   // sinew comes away with the hide
   w.carcasses = w.carcasses.filter(x => x !== c);
   return got;
 }

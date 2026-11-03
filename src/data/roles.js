@@ -231,5 +231,6 @@ export const roleRow = a => (a?.fightRole && COMBAT_ROLES.has(a.fightRole) ? COM
 // rider lies `fall` ticks stunned
 export const RIDE = {hitMount: 0.6, fall: 30, aside: 0.3, least: 0.05};   // (the loosed mount stands `aside` cells off, with at least `least` health)
 
-export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25}};
+export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25},
+  want: {fight: 3, leave: 1}};   // what a called beast's two offers are worth (agents/behaviours/summoned.js)
 

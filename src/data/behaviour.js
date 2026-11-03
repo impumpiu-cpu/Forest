@@ -98,6 +98,14 @@ export const CARCASS = {
   takeAt: 1.4,         // a hunter takes what is left from this close
   scare: 4,            // feeders this close to a hunter either give way or turn on him
   sinew: 1,            // sinew a hunter cuts out with each hide he takes (a bowstring for the elves)
+  rises: 'upyr', risesBand: 'upyrs',   // what rises from a carcass left to rot (a species, the raid band it walks in: data/raids.js)
+  every: 60,           // carcasses are looked at every this many ticks
+  rot: 0.01,           // the rot eats this share of the first food at each look
+  darkFrom: 0.7, darkShare: 0.3,   // it rises only this dark; about this share of the day is that dark
+  eaten: 'meat',       // the yield the beasts eat out of it: a hunter gets it by the share left (the rest of the yields whole)
+  sinewFrom: 'hide',   // the yield the sinew comes away with
+  least: 0.05,         // food left below this: eaten clean
+  butcherLeast: 0.2,   // a hunter gets at least this share of what the beasts eat
 };
 
 export const PACK = {
@@ -118,6 +126,8 @@ export const WILD_HERD = {
   straggler: 6,       // farther than this from the herd's middle: a straggler (wolves like it)
   nerve: [0.6, 1.4],  // how skittish, rolled once per beast: low — bolts first
   relay: 10,          // a calm beast follows the bolting ones after this × its nerve
+  // for a herd species whose row leaves them out: the terrain of its pasture, what it flees from, how far it looks
+  pasture: ['grass'], fleeFrom: ['people', 'wolf'], alertR: 6,
 };
 
 // the beasts of the meadows (agents/behaviours/: bolt, rest, graze): how far they run, how they pick a patch
@@ -192,6 +202,9 @@ export const PEN = {
 
 // the nechist beyond its species' `spirit` block (agents/nechist.js; agents/behaviours/vanish.js, fightBack.js, lurk.js, lure.js, astray.js)
 export const NECHIST = {
+  // the home grounds a spirit names (spirit.home): the terrains that are home (`on`), or dry land next to one of them (`by`,
+  // four sides); a home not named here is anywhere it can walk
+  homes: {forest: {on: ['forest']}, grass: {on: ['grass']}, shore: {by: ['water']}},
   homeTries: 600,      // cells looked at for a home cell to come back to
   grudge: 200,         // remembers who hurt it this long…
   giveUp: 12,          // …while they are this close

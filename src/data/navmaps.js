@@ -42,63 +42,64 @@ const onDemand = id => w => inUse(w).has(id);
 // the warmth of the body grows only above this temperature (data/needs.js warmth)
 export const WARM_AT = 18;
 
+// label: where the map leads, in words (the colonist's card: agents/movement.js follow)
 NAVMAPS.registerAll([
-  {id: 'camp', seed: (w, i) => w.camp.set.has(i)},
+  {id: 'camp', label: 'к лагерю', seed: (w, i) => w.camp.set.has(i)},
   // where to get warm: the camp fire and every finished lived-in building whose hearth really warms
   // the room (warmth grows only above 18°, data/needs.js; a drafty hut in a hard frost stays at 10–13°)
-  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heat).flatMap(b => b.cells).filter(i => tempAt(w, i) > WARM_AT)),
+  {id: 'warm', label: 'к теплу', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heat).flatMap(b => b.cells).filter(i => tempAt(w, i) > WARM_AT)),
     seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)},
-  {id: 'edge', seed: (w, i) => { const x = i % w.w, y = (i / w.w) | 0; return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1; }},
+  {id: 'edge', label: 'к краю карты', seed: (w, i) => { const x = i % w.w, y = (i / w.w) | 0; return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1; }},
   // bushes ripen almost every tick somewhere: the map follows them only while someone picks, and at most every 40 ticks
-  {id: 'berries', minGap: 40, active: w => inUse(w).has('berries'), seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0},
-  {id: 'trees', minGap: 40, active: w => inUse(w).has('trees'), seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0},
-  {id: 'rockface', active: w => has(w, 'quarry') && inUse(w).has('rockface'),
+  {id: 'berries', label: 'к ягодам', minGap: 40, active: w => inUse(w).has('berries'), seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0},
+  {id: 'trees', label: 'к лесу', minGap: 40, active: w => inUse(w).has('trees'), seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0},
+  {id: 'rockface', label: 'к скалам', active: w => has(w, 'quarry') && inUse(w).has('rockface'),
     seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && nextToRock(w, i)},
-  {id: 'sites', minGap: 4, active: w => openSites(w).length > 0,
+  {id: 'sites', label: 'к стройке', minGap: 4, active: w => openSites(w).length > 0,
     prepare: w => new Set(openSites(w).flatMap(b => b.cells)),
     seed: (w, i, cells) => cells.has(i)},
   // the rock face where the ore the colony is short of can be dug
-  {id: 'ore', period: 240, active: w => (has(w, 'mineshaft') || (w.light && w.campDig?.size > 0)) && inUse(w).has('ore'),
+  {id: 'ore', label: 'к руде', period: 240, active: w => (has(w, 'mineshaft') || (w.light && w.campDig?.size > 0)) && inUse(w).has('ore'),
     prepare: w => wantedOre(w),
     seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0},
   // shore of lakes that still have fish
-  {id: 'shore', active: w => inUse(w).has('shore'),
+  {id: 'shore', label: 'к берегу', active: w => inUse(w).has('shore'),
     seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)},
   // the game hunters are after right now (data/jobs.js huntable: their usual prey, else the risky
   // kind, else in hunger the last resort; never a wild goat kept for taming). Only while a hunter is out.
   // Predators do not use it: each walks to a prey of its own kind (agents/behaviours/roam.js).
-  {id: 'prey', period: 20, minGap: 10, active: w => w.agents.some(a => a.task?.job === 'hunt'),
+  {id: 'prey', label: 'по следу дичи', period: 20, minGap: 10, active: w => w.agents.some(a => a.task?.job === 'hunt'),
     prepare: w => new Set(HUNTABLE(w, JOBS_REF.get('hunt')).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},
   // field plots that need sowing or reaping
-  {id: 'fieldwork', period: 120, active: w => fields(w).length > 0 && inUse(w).has('fieldwork'),
+  {id: 'fieldwork', label: 'в поле', period: 120, active: w => fields(w).length > 0 && inUse(w).has('fieldwork'),
     prepare: w => new Set(fields(w).flatMap(b => b.plots.filter(p => needsWork(w, p)).map(p => p.i))),
     seed: (w, i, cells) => cells.has(i)},
   // the settlement zone: where people run when something hunts them
-  {id: 'zone', seed: (w, i) => inZone(w, i)},
+  {id: 'zone', label: 'в поселение', seed: (w, i) => inZone(w, i)},
   // only fires that threaten the camp are worth fighting
-  {id: 'fire', period: 12, minGap: 4, active: w => w.stats.fireCount > 0,
+  {id: 'fire', label: 'к пожару', period: 12, minGap: 4, active: w => w.stats.fireCount > 0,
     seed: (w, i) => w.grid.fire[i] > 0.05 && ((i % w.w) - w.camp.x) ** 2 + (((i / w.w) | 0) - w.camp.y) ** 2 < 400},
   // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
-  {id: 'safe', active: w => w.stats.fireCount > 0, hazard: 25, urgent: true,
+  {id: 'safe', label: 'прочь от огня', active: w => w.stats.fireCount > 0, hazard: 25, urgent: true,
     seed: (w, i) => w.grid.heat[i] < 14 && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6},
 ]);
 
 // one map per wild plant (data/plants.js): its ripe beds
 for (const p of PLANTS.all()) {
   const key = plantLayer(p.id);
-  NAVMAPS.register({id: key, period: 300, active: w => (!p.seasons || p.seasons.includes(season(w).id)) && inUse(w).has(key),
+  NAVMAPS.register({id: key, label: 'к зарослям', period: 300, active: w => (!p.seasons || p.seasons.includes(season(w).id)) && inUse(w).has(key),
     seed: (w, i) => w.grid[key]?.[i] >= p.ripe && w.grid.fire[i] === 0});
 }
 
 // the healer's hut: where the wounded lie and the healer works
-NAVMAPS.register({id: 'healer', active: w => has(w, 'healerhut') && inUse(w).has('healer'),
+NAVMAPS.register({id: 'healer', label: 'к лекарю', active: w => has(w, 'healerhut') && inUse(w).has('healer'),
   prepare: w => new Set(w.buildings.filter(x => x.key === 'healerhut' && x.done).flatMap(x => x.cells)),
   seed: (w, i, cells) => cells.has(i)});
 
 // one map per crafting station (and per building people walk to for other reasons, `walkTo`): its finished building cells
 for (const b of BUILDINGS.filter(d => d.station || d.walkTo)) {
-  NAVMAPS.register({id: 'station:' + b.id, active: w => has(w, b.id) && inUse(w).has('station:' + b.id),
+  NAVMAPS.register({id: 'station:' + b.id, label: 'к мастерской', active: w => has(w, b.id) && inUse(w).has('station:' + b.id),
     prepare: w => new Set(w.buildings.filter(x => x.key === b.id && x.done).flatMap(x => x.cells)),
     seed: (w, i, cells) => cells.has(i)});
 }

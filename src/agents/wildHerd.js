@@ -68,7 +68,7 @@ export function stragglerOf(w, a) {
 
 // pick a pasture around (x, y) for a herd: of a few candidate patches the lushest not hard against the edge
 function pasture(w, lead, sp, far) {
-  const ok = grazeCodes(sp.grazes?.terrain || ['grass']), reach = far ? 30 : 8;
+  const ok = grazeCodes(sp.grazes?.terrain || HERD.pasture), reach = far ? 30 : 8;
   let best = null, bv = -Infinity;
   for (let k = 0; k < 12; k++) {
     const x = lead.x + (w.rngs.wild() * 2 - 1) * reach, y = lead.y + (w.rngs.wild() * 2 - 1) * reach;
@@ -110,8 +110,8 @@ export function stepHerds(w) {
       if (s) { H.spot = s; H.spotV = (H.spotV || 0) + 1; }
     }
     // the lookouts: a few members, in turn, look round for everyone
-    const r = (sp.flee?.radius || sp.herd.alert || 6);
-    const from = sp.flee?.from || ['people', 'wolf'];
+    const r = (sp.flee?.radius || sp.herd.alert || HERD.alertR);
+    const from = sp.flee?.from || HERD.fleeFrom;
     for (const L of nextLookouts(H, ms, HERD.lookouts)) {
       const seen = threatsNear(w, L, r * (L.nerve ? 1.2 / L.nerve : 1), from);
       if (!seen.length) continue;

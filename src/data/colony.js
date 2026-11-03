@@ -28,6 +28,9 @@ export const LIFE = {
   prayGap: DAY,               // one prayer a day is enough
 };
 
+// a prayer (agents/tasks.js pray): the building prayed at, how long it takes (ticks)
+export const PRAYER = {at: 'shrine', ticks: 60};
+
 export const HEAL = {
   seekBelow: 0.75,  // a colonist this hurt (share of health) goes to the healer's hut…
   until: 0.97,      // …and stays until healed this far
