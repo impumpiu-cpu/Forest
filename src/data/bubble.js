@@ -22,7 +22,10 @@ export const BUBBLE = {
   // walked + `clue` × the clues found); small parties by day — of a cell's dangers, with `chance` × that, at
   // `strength` × of the danger's own, wandering
   grow: {way: 0.6, clue: 0.25},
-  small: {chance: 0.03, strength: [0.5, 0.8]},
+  small: {chance: 0.03, strength: [0.5, 0.8], lure: 4},   // lure: × the cell's hostile chance (at most 1) a small party is sent with
+  // a thing about its own business wanders `step` × its half-day step; one that keeps to the road takes a more worn cell
+  // of the eight around with `road` each, and goes `toRoad` of the way to it
+  wander: {step: 0.6, road: 0.6, toRoad: 0.5},
   // a people that walks quietly is noticed only this near (× sense): the forest folk, frail in a fight, keep out of one
   quiet: {elves: 0.6},
   // the old field's chance of a night visitor nobody saw coming (a lone beast, a thief)
@@ -31,14 +34,14 @@ export const BUBBLE = {
   guideLoses: 0.25,
   // a pursuer the scouts see and that is stronger than `evadeAt` × the caravan: they muddle the trail and slip
   // away with `evade` (more with a guide: + `guideEvade`); it loses them for `lost` days
-  evadeAt: 0.9, evade: 0.4, guideEvade: 0.25, lost: 4,
+  evadeAt: 0.9, evade: 0.4, guideEvade: 0.25, lost: 4, evadeTold: 0.5,   // (an escape told with `evadeTold`)
   // a thing that fought the caravan and won leaves it alone for these days
   sated: 12,
   // the council does not camp with a hunting thing this near (× `sense`); the scouts tell of a thing whose might
   // is above `strong` × the caravan's (and of any of the world's parties)
   wary: 0.8, strong: 0.8,
   // a world party (raid, army, brood): its might over the foes' units, within these bounds
-  partyMight: {per: 1 / 3, min: 0.7, max: 3},
+  partyMight: {per: 1 / 3, min: 0.7, max: 3, unknown: 3},   // (`unknown` — the might of a party that has none)
 };
 
 // what the things are. foe — the fight it brings (data/campaign.js FOES); hunts — goes for the caravan when it
@@ -60,6 +63,9 @@ export const THINGS = {
 export const AMBUSH = {surprise: 0.85};
 
 // the merchants' train on the road: how much it carries and its prices (× a town's: data/market.js)
-export const TRAIN = {chance: 0.12, food: [15, 40], get buy() { return CAMPAIGN.train.buy; }, get sell() { return CAMPAIGN.train.sell; }};   // buy, sell: data/balance/prices.js
+// a road cell sends one where its traffic is above `roadAt`; the caravan buys at most `days` days of food of it
+export const TRAIN = {chance: 0.12, food: [15, 40], roadAt: 0.2, days: 10, get buy() { return CAMPAIGN.train.buy; }, get sell() { return CAMPAIGN.train.sell; }};   // buy, sell: data/balance/prices.js
 // a herd: its chance where game lives (× the cell's game), and the food a hunt of it gives
-export const HERD = {chance: 0.08, food: [4, 10]};
+// a herd is of the big game (data/campaign.js GAME weight `big` and more), its chance × the game's level at most `levelCap`;
+// the hunt's food × min(cap, the company / `party`)
+export const HERD = {chance: 0.08, food: [4, 10], big: 0.8, levelCap: 1.5, party: 6, cap: 1.5};

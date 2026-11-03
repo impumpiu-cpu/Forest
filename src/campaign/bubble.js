@@ -54,7 +54,7 @@ function friendlyNear(a, K, i) {
 function herdOf(a, i) {
   const reg = cellRegion(a, i), w = {region: reg};
   let best = null, bv = 0;
-  for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= 0.8) { const v = faunaLevel(w, id); if (v > bv) { bv = v; best = id; } }
+  for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= HERD.big) { const v = faunaLevel(w, id); if (v > bv) { bv = v; best = id; } }
   return best ? {id: best, level: bv} : null;
 }
 
@@ -79,11 +79,11 @@ function spawn(a, K, guided) {
     for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
     const S = BUBBLE.small, hostile = ds.filter(dg => THINGS[dg.kind]?.mood === 'hostile');
-    if (hostile.length && r() < S.chance * Math.min(1, hostile.reduce((v, dg) => v + dg.p, 0) * 4) * k) { add(thing(hostile[(r() * hostile.length) | 0], S.strength[0] + r() * (S.strength[1] - S.strength[0]), true)); K.stats.small = (K.stats.small || 0) + 1; }
+    if (hostile.length && r() < S.chance * Math.min(1, hostile.reduce((v, dg) => v + dg.p, 0) * S.lure) * k) { add(thing(hostile[(r() * hostile.length) | 0], S.strength[0] + r() * (S.strength[1] - S.strength[0]), true)); K.stats.small = (K.stats.small || 0) + 1; }
     const road = roadAccess(a, i);
-    if (road > 0.2 && r() < TRAIN.chance * road) add({kind: 'trader', strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0]))});
+    if (road > TRAIN.roadAt && r() < TRAIN.chance * road) add({kind: 'trader', strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0]))});
     const herd = herdOf(a, i);
-    if (herd && r() < HERD.chance * Math.min(1.5, herd.level)) add({kind: 'herd', strength: 0, label: `стадо: ${SPECIES.get(herd.id).plural}`, game: herd.id});
+    if (herd && r() < HERD.chance * Math.min(HERD.levelCap, herd.level)) add({kind: 'herd', strength: 0, label: `стадо: ${SPECIES.get(herd.id).plural}`, game: herd.id});
   }
 }
 
@@ -101,12 +101,12 @@ function move(a, K, r, guided) {
       if (guided && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;   // the guide leads them off the trail
       else { const k = Math.min(1, step / Math.max(1e-6, d)); nx += (K.x - t.x) * k; ny += (K.y - t.y) * k; }
     } else {
-      const ang = r() * Math.PI * 2; nx += Math.cos(ang) * step * 0.6; ny += Math.sin(ang) * step * 0.6;
+      const ang = r() * Math.PI * 2; nx += Math.cos(ang) * step * BUBBLE.wander.step; ny += Math.sin(ang) * step * BUBBLE.wander.step;
       if (T.road && a.f.road) {   // keep to the road: of the eight cells around, step towards the most worn
         const x0 = Math.floor(t.x), y0 = Math.floor(t.y);
         let best = -1, bv = a.f.road[t.i] || 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = cellAt(a, x0 + dx, y0 + dy); if ((a.f.road[j] || 0) > bv && land(a, j) && r() < 0.6) { bv = a.f.road[j]; best = j; } }
-        if (best >= 0) { nx = t.x + ((best % a.w) + 0.5 - t.x) * 0.5; ny = t.y + (((best / a.w) | 0) + 0.5 - t.y) * 0.5; }
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const j = cellAt(a, x0 + dx, y0 + dy); if ((a.f.road[j] || 0) > bv && land(a, j) && r() < BUBBLE.wander.road) { bv = a.f.road[j]; best = j; } }
+        if (best >= 0) { const f = BUBBLE.wander.toRoad; nx = t.x + ((best % a.w) + 0.5 - t.x) * f; ny = t.y + (((best / a.w) | 0) + 0.5 - t.y) * f; }
       }
     }
     const j = cellAt(a, nx, ny);
@@ -137,7 +137,7 @@ export function worldThings(a, K) {
     }
     if (!kind) continue;
     out.push({id: `p${p.id}`, party: p.id, kind, ...who, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,
-      strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))});
+      strength: Math.min(P.max, Math.max(P.min, (p.might || P.unknown) * P.per))});
   }
   return out;
 }

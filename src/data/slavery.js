@@ -41,7 +41,7 @@ export const SLAVE = {
   // `chance` a year; against a realm it is war (the standing falls by `att`). A win brings `home` of the freed to the town
   // as free people; a loss costs the town `loss` of its people
   liberate: {reach: 1.5, chance: 0.6, att: 2, home: 0.8, loss: 0.08, least: 3},
-  sell: {will: 0.6, foodDays: 3, service: 1},
+  sell: {will: 0.6, foodDays: 3, service: 1, attFloor: -5},   // attFloor: a frowned-on sale lowers the realm's standing no further
   buy: {offer: 0.35, trader: 0.3, want: 2, mark: 1.3, will: 0.45, races: ['human', 'orc', 'goblin', 'gnoll', 'halfling']},
   upset: {former: -0.15, joined: -0.05, hired: -0.04, fear: 0.1},
 };

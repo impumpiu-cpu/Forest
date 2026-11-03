@@ -54,7 +54,7 @@ function deal(a, K, t, st, L, r, parts) {
     K.gold = gold(K.gold + fromTown(t, p)); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);
     // where it is frowned on, the town's realm thinks less of the caravan's
-    if (L.law === 'frowned' && t.realm && K.realm && t.realm !== K.realm) { const rel = relation(a, K.realm, t.realm); if (rel) rel.att = Math.max(-5, rel.att + L.att); }
+    if (L.law === 'frowned' && t.realm && K.realm && t.realm !== K.realm) { const rel = relation(a, K.realm, t.realm); if (rel) rel.att = Math.max(SLAVE.sell.attFloor, rel.att + L.att); }
     upset(K);
   }
   if (parts.length) assign(K);

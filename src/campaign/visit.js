@@ -50,7 +50,7 @@ export function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach
     fallback ||= {t, way};
     if (!direct) return {t, way};
     const on = route(a, t.i, K.goal, K.people, wh);
-    if (way.cost > R * 1.6) continue;   // the cells' price: roads cheaper, mountains dearer than the straight line
+    if (way.cost > R * VISIT.wayCost) continue;   // the cells' price: roads cheaper, mountains dearer than the straight line
     if (on && on.cost < direct.cost && way.cost + on.cost <= direct.cost * (1 + detour) + VISIT.slack) return {t, way};
   }
   return urgent ? fallback : null;
@@ -78,7 +78,7 @@ export function enterTown(a, K, t) {
 // an evening in town: stay (the winter through, or till healed and stocked), or go on, spending the earnings
 export function townEvening(a, K, seasonId) {
   const t = a.towns.find(x => x.id === K.inTown.id), st = standing(a, K, t), ms = alive(K);
-  const stocked = K.food >= 0.9 * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
+  const stocked = K.food >= VISIT.stocked * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
   const healed = free(K).every(m => m.hp >= CAMPAIGN.camp.healed);   // (nobody waits in town for a captive to heal)
   const wintering = K.inTown.why === 'winter' && (SEASONS.get(seasonId).lean || SEASONS.get(seasonId).stockUp);
   if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;

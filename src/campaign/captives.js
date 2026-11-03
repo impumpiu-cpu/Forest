@@ -46,7 +46,7 @@ export function takeAuto(a, K, d, r, say) {
     const B = spend(K); if (!B) break;
     const race = races[(r() * races.length) | 0];
     const m = makeMember(K, r, {race, role: 'captive', gear: C.gear, captive: {since: K.day, bonds: B.id, from: d.kind, will: ESCAPE.will.start}});
-    m.hp = 0.3 + r() * 0.3;   // bound where it fell: badly hurt
+    m.hp = C.hp[0] + r() * C.hp[1];   // bound where it fell: badly hurt
     K.members.push(m); got.push(m);
   }
   if (got.length) say(`Упавших врагов перевязали и связали: ${names(got.map(who))}. Пленн${got.length > 1 ? 'ые идут' : 'ый идёт'} с караваном.`, 'people', got.map(m => m.id));

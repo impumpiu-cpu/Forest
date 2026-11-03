@@ -46,6 +46,7 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {ORES} from '../data/ores.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
 import {FOES, GAME} from '../data/campaign.js';
+import {HERD} from '../data/bubble.js';
 import {faunaLevel} from '../world/region.js';
 import {BEASTS} from '../data/transport.js';
 import {bindWaiting} from '../settlement/captives.js';
@@ -172,7 +173,7 @@ function stockGame(w, r) {
   for (const sp of Object.keys(GAME)) {
     const flow = GAME_FLOW[sp] || sp; if (!MIGRATIONS.has(flow) || !SPECIES.has(sp)) continue;
     const lvl = faunaLevel(w, sp); if (lvl <= 0) continue;
-    const n = Math.round(CAMP.stop.game * Math.min(2, lvl) * (0.4 + r()) * (GAME[sp] >= 0.8 ? 1 : 1.5));
+    const n = Math.round(CAMP.stop.game * Math.min(CAMP.stop.gameCap, lvl) * (CAMP.stop.roll + r()) * (GAME[sp] >= HERD.big ? 1 : CAMP.stop.smallGame));
     if (n > 0) spawnGroup(w, flow, n, {minDist: 10});
   }
 }

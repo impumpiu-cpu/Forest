@@ -41,19 +41,22 @@ import {onEdit} from '../data/schema/layer.js';
 // Game by the beasts that live there (as the local map would have them), plants by the soil and biomes
 export function richness(a, i) {
   if (!a.f.land?.[i] || a.f.ocean[i]) return 0;
-  const reg = cellRegion(a, i), w = {region: reg};
+  const reg = cellRegion(a, i), w = {region: reg}, L = CAMPAIGN.forage.land;
   let game = 0;
   for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id)) game += faunaLevel(w, id) * k;
-  const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0) * (0.5 + 0.5 * (a.f.fert?.[i] ?? 0.6));
-  const water = a.f.flow && a.f.lake ? (a.f.lake[i] >= 0 || reg.river > 0 ? 0.25 : 0) : 0;   // fish
-  return clamp(0.45 * Math.min(2, game) + 0.55 * plants + water, 0, 1.6);
+  const plants = plantsOf(reg) * (L.soil[0] + L.soil[1] * (a.f.fert?.[i] ?? L.soilAt));
+  const water = a.f.flow && a.f.lake ? (a.f.lake[i] >= 0 || reg.river > 0 ? L.fish : 0) : 0;   // fish
+  return clamp(L.game * Math.min(L.gameCap, game) + L.plants * plants + water, 0, L.max);
 }
+
+// the plants of a cell's region: its biomes' fertility
+const plantsOf = reg => Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : CAMPAIGN.forage.land.fert), 0);
 
 // whether beasts find grass in a cell: plants enough (soil and biomes) and no hard frost
 export function pasture(a, i, seasonId) {
   if (!a.f.land?.[i] || a.f.ocean[i]) return false;
   const reg = cellRegion(a, i);
-  const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0);
+  const plants = plantsOf(reg);
   const frost = !!SEASONS.get(seasonId).lean && a.f.temp[i] - a.f.trange[i] / 2 < CAMPAIGN.seasonFood.frostBelow;
   return plants >= FODDER.graze && !frost;
 }
