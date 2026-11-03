@@ -431,7 +431,7 @@ export const TABLES = [
     target: (r, c) => [TOWN_GOODS.get(r.id), c.key],
     note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда, сырая еда и заготовки — в человеко-годах: прокорм одного жителя на год.',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('feeds', 'Кормит как', 'enum', {values: {ready: 'готовая еда', raw: 'сырьё кухни', herd: 'мясо головы'}, nullable: true}), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
+      col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('feeds', 'Кормит как', 'enum', {values: {ready: 'готовая еда', raw: 'сырьё кухни', herd: 'мясо головы'}, nullable: true}), col('local', 'На месте', 'bool', {note: 'не лежит на складе и не продаётся: готовая и сырая еда идут по сети людьми, хворост сжигают, где собрали (atlas/treasury.js)'}), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
       col('raw', 'Сырое', 'bool', {note: 'сырую еду не едят (кроме народов с «Ест сырым»): её варят кухни, заготавливает двор, сбраживает пивоварня'}),
       col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
     ]},
