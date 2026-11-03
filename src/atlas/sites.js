@@ -14,6 +14,7 @@
 //
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
+import {linkKey} from './common.js';
 import {SITES, NET} from '../data/sites.js';
 import {killHeads} from './population.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -131,7 +132,6 @@ export const siteAt = (a, i) => (a.siteAt && a.siteAt[i] ? a.sites[a.siteAt[i] -
 export const townSites = (a, t) => (t.sites || []).map(id => a.sites[id - 1]).filter(s => s.alive);
 
 // ── the net of supply
-const linkKey = (p, q) => Math.min(p.id, q.id) * 100000 + Math.max(p.id, q.id);
 
 // a year of the net: the links are renewed, the surplus of each town flows to the lacking towns
 // it is linked with, the links thicken or waste by the flow. `feeds` maps town id → [what it feeds

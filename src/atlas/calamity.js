@@ -12,7 +12,7 @@
 //   i, lair, town, boss: {species, name, title, g, special}, omens: [indices left], fell: {year, by}}]
 // a.graves = [{calamity, i, year, era, boss, epitaph}]
 // The calamities draw from their own stream (seed:atlas:calamity), kept by its position in a.calRnd.
-import {mulberry, seedNumber} from '../core/rng.js';
+import {stream, between} from './common.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {LAIRS, TRIBE_RAID} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
@@ -28,17 +28,13 @@ import {epitaph} from './chronicle.js';
 import {plural, cellDist} from '../core/util.js';
 import {scaleOf} from './tectonics.js';
 
-const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
 const xy = (a, i) => [i % a.w, (i / a.w) | 0];
 const dist = cellDist;   // (core/util.js)
 const land = (a, i) => !!a.f.land?.[i] && !a.f.ocean[i];
 
 // the calamities' stream, kept by its position in the world
-function draw(a) {
-  const r = mulberry(a.calRnd ?? seedNumber(`${a.cfg.seed}:atlas:calamity`));
-  return {r, done: () => { a.calRnd = r.state; }};
-}
+const draw = a => stream(a, 'calRnd', 'calamity');
 
 // a line of the chronicle of calamities (atlas/history.js say, with its topic)
 // a word by gender: masculine, feminine, neuter

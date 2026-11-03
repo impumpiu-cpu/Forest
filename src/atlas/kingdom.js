@@ -9,6 +9,7 @@
 // event; its term running out (`until`) only sends it off the office. The throne after a ruler's death goes by the realm's
 // profile (data/polities.js, atlas/succession.js): a kingdom's court mourns `mourn` years and fills it again; a horde fights
 // What it does back to the world: data/kingdom.js FEEDBACK — schismFactor (atlas/realms.js), t.realmFx (growth, might).
+import {warsOf} from './common.js';
 import {cap1} from '../core/util.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK} from '../data/kingdom.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -66,7 +67,7 @@ export const upkeepOf = towns => towns.reduce((s, t) => s + [...new Set(t.built)
 // a realm's might: the might of its towns (atlas/towns.js might) — for tribute
 const mightOfRealm = a => { const m = new Map(); for (const t of a.towns || []) if (t.alive && t.realm != null) m.set(t.realm, (m.get(t.realm) || 0) + might(t, townFx(t))); return id => m.get(id) || 0; };
 
-const atWarAny = (a, realm) => Object.entries(a.rel || {}).some(([k, x]) => x.war && k.split(':').includes(String(realm.id)));
+const atWarAny = (a, realm) => warsOf(a, realm.id) > 0;
 
 // each season: every living realm keeps its war host out of its treasury — garrisons, its armies' pay, food and kit
 // (atlas/treasury.js realmKeep)
@@ -140,7 +141,7 @@ export function stepKingdom(a, say) {
     realmSpend(realm, towns, war, a);   // grants to build, by the council's wind (atlas/treasury.js, atlas/mind.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
-    const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
+    const wars = warsOf(a, realm.id), raided = towns.filter(t => t.raided === year).length;
     const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + strangersOf(a, t).strangers, 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     src.court = courtUnpaid;   // the court unpaid: decay
     const RP = WORLD_PEOPLES.get(realm.people), bureau = RP?.bureau ?? 1;   // (corruption × the people's bureaucracy; any ruin × its `ruinGrow`)

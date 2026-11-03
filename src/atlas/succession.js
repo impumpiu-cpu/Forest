@@ -5,6 +5,7 @@
 // for a new leader to rise (LEADER.heir); a dragon's polity ends with the dragon. A seat burnt and a ruler dead are two
 // different events (atlas/realms.js seatFallen): a dead ruler leaves the towns where they are, and a lost seat leaves the
 // ruler alive if it was elsewhere.
+import {stream} from './common.js';
 import {cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
 import {SUCCESSION} from '../data/polities.js';
@@ -14,10 +15,9 @@ import {profileOf, officeOf, rulerTitle} from './polities.js';
 import {realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
 import {townLabel, townFx} from './towns.js';
 import {newPerson, moveTo, personLabel, nameOut, hasGrown, personOf} from './persons.js';
-import {mulberry, seedNumber} from '../core/rng.js';
 import {abilitiesFor} from './control.js';
 
-const draw = a => { const r = mulberry(a.succRnd ?? seedNumber(`${a.cfg.seed}:atlas:succession`)); return {r, done: () => { a.succRnd = r.state; }}; };
+const draw = a => stream(a, 'succRnd', 'succession');
 
 // the fall of a person out of what it held: called by personDies, once
 export function rulerFell(a, p, how, say, ctx = {}) {

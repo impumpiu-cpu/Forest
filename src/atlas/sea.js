@@ -6,6 +6,7 @@
 // (atlas/realms.js: a harbour counts as distance for a schism). A lighthouse sends ships further.
 //
 // Field (a.f): sea — the wear of each water cell (0 none; SEA.levels: a lane, a sea road).
+import {linkKey} from './common.js';
 import {Heap, DIRS8} from './heap.js';
 import {SEA} from '../data/roads.js';
 import {townFx} from './towns.js';
@@ -67,7 +68,7 @@ export function sailLanes(a) {
     const near = ports.filter(([o]) => o !== t && trades(a, t.realm, o.realm))
       .map(([o, qo]) => [o, qo, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, , d]) => d <= reach).sort((p, q) => p[2] - q[2]).slice(0, SEA.links);
     for (const [o, qo] of near) {
-      const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);
+      const key = linkKey(t, o);
       if (done.has(key)) continue;
       done.add(key);
       const path = sail(a, qt, qo, scratch);
@@ -81,7 +82,7 @@ export function sailLanes(a) {
 }
 
 // are two harbour towns joined by a sailed lane (for the realms' trade routes)
-export const laneBetween = (a, t, o) => !!a.lanes && a.lanes.has(Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id));
+export const laneBetween = (a, t, o) => !!a.lanes && a.lanes.has(linkKey(t, o));
 // how well a town is on the sea: 0 … 1 (a sailed lane at its quay)
 export function seaAccess(a, t) {
   if (!a.f.sea || !hasHarbor(t)) return 0;

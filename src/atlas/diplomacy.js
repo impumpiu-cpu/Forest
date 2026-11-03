@@ -6,7 +6,8 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
-import {cap1} from '../core/util.js';
+import {relKey} from './common.js';
+import {cap1, luck} from '../core/util.js';
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
 import {killShare, killHeads, takeHeads, addGroup, moveHeads, shareOfPeople, strangersOf} from './population.js';
 import {TOWN_LIFE as TL} from '../data/peoples.js';
@@ -72,7 +73,7 @@ function driftRealms(a) {
   }
 }
 
-const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
+const key = relKey;
 const label = id => WORLD_PEOPLES.get(id).label;
 
 // p and q are realm ids throughout
@@ -143,7 +144,7 @@ function battlefield(a, lose, win) {
   return best;
 }
 
-export const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
+export const fight = (t, rnd) => might(t, townFx(t)) * luck(D.luck, rnd);
 
 // ── armies (data/parties.js ARMY). A realm at war musters an army at its town nearest the enemy:
 // a levy of the town's people with the town's arms; it marches to the enemy's town and lays siege.
@@ -225,7 +226,7 @@ BEHAVIOURS.army = {
     const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
     if (!ready) return;
     const r = a.rel[p.war]; if (r?.war) r.war.battles++;
-    const we = p.might * (0.6 + 0.8 * rnd()), they = town * (0.6 + 0.8 * rnd());
+    const we = p.might * luck(D.luck, rnd), they = town * luck(D.luck, rnd);
     const hunger = S.starved > 0 ? `, в ${townLabel(t, 3)} умерло от голода ${Math.round(S.starved)}` : '', burnt = p.burnt ? `, сожжено угодий: ${p.burnt}` : '';
     barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
     if (we > they) {

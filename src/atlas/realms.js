@@ -7,6 +7,7 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
+import {warsOf} from './common.js';
 import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -140,7 +141,7 @@ export function stepRealms(a, rnd, say) {
   for (const r of a.realms) {
     const seat = capitalOf(a, r.id);
     if (!seat || !seat.alive) continue;
-    const atWar = Object.entries(a.rel || {}).some(([kk, x]) => x.war && kk.split(':').includes(r.id));
+    const atWar = warsOf(a, r.id) > 0;
     for (const t of a.towns) {
       if (!t.alive || t.realm !== r.id || t === seat || t.tier < 2) continue;
       // a harbour town has the sea's trade of its own, and stands further from the seat than its road
