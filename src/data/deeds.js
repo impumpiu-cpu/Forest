@@ -33,7 +33,9 @@ DEEDS.registerAll([
   {id: 'rival', label: 'война с соперником', band: 'routine', party: 'leader', requires: [],
     note: 'главарь: война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет. (Драка соперников, чьи владения соприкасаются, — система логов, не дело: atlas/lairs.js)'},
   {id: 'strike', label: 'вылет дракона', band: 'routine', party: 'dragon', requires: [],
-    note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
+    note: 'дракон: летом, с весом DRAGON.strike против сна (rest), летит на город в досягаемости — тем вероятнее, чем город людней (pick), — жжёт угодья и жителей, если город его не отогнал, и летит домой'},
+  {id: 'sleep', label: 'сон дракона', band: 'routine', party: null, requires: [],
+    note: 'дракон: летом спит — с весом DRAGON.rest, так что в большинстве лет; раненый (бедствие, CAL.dragon.sleep) только спит'},
   {id: 'captives', label: 'набег за пленными', band: 'routine', party: 'raid | null', requires: [],
     note: 'набег за пленными (CAPTIVE_RAID): логово разумных — как набег, но город теряет жителей в полон, а не в могилы, и они живут при логове (lair.captives; караван, разбивший его людей, освобождает их); держава (зеленокожие) — набег города с воинами, пленные растят город'},
   // ── the realm's (atlas/court.js; the relations' body: atlas/diplomacy.js; the numbers: data/diplomacy.js DIPLOMACY, data/parties.js ARMY, data/peoples.js TOWN_WAR)
@@ -67,7 +69,7 @@ export const DEED_WAYS = {
   wardens: ['makePeace', 'march', 'clearLair', 'scout'],
   // the dwarves: a people of the plough and the sword who free their kin from bondage
   liberators: ['makePeace', 'warOn', 'march', 'clearLair', 'liberate', 'scout'],
-  dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
+  dragon: ['expand', 'sleep', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
   vampire: ['expand'],
 };
 

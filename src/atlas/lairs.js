@@ -492,7 +492,6 @@ BEHAVIOURS.brood = {
 };
 BEHAVIOURS.dragon = {
   arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l) DOES.strike.arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
-  home(a, p, rnd) { const l = byOwner(a, p); if (l) DOES.strike.home(a, p, l, rnd); },
 };
 
 // ── the hidden lairs of the wild (data/lairs.js WILD)
