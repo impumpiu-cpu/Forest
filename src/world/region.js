@@ -1,15 +1,15 @@
 // The outpost's region (data/regions.js), rolled once from the world seed on its own random stream,
 // so it does not change the rest of a world made from the same seed. Every system asks it through
 // the helpers here: an ore, a beast or a wild bed the region does not have simply is not there.
+import {ORE_KINDS} from '../data/worldLand.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {REGIONS, LEVELS, REGION_SHIFT, LEGACY_REGION} from '../data/regions.js';
 import {RARITY, FAUNA_FLOOR} from '../data/biomes.js';
 import {SPECIES} from '../data/species.js';
 
 // mithril and magma never appear where the kind of land has none; everything else may
-const RARE = new Set(['mithril']);
 const shift = (rnd, v, key) => {
-  if (rnd() >= REGION_SHIFT || (v === 0 && RARE.has(key))) return v;
+  if (rnd() >= REGION_SHIFT || (v === 0 && ORE_KINDS.rare.includes(key))) return v;
   const k = LEVELS.indexOf(v), up = rnd() < 0.5;
   return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k + (up ? 1 : -1)))] ?? v;
 };

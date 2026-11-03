@@ -6,6 +6,7 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {TOWN_ROLES} from '../data/worldLand.js';
 import {relKey} from './common.js';
 import {cap1, luck} from '../core/util.js';
 import {plunder, plunderWords, lootSeat, driveOff} from './treasury.js';
@@ -292,7 +293,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (trades(a, p, q)) {
       for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && ((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) || laneBetween(a, t, o))) {
-        routes += t.built.includes('mint') || o.built.includes('mint') || t.built.includes('tradepost') || o.built.includes('tradepost') ? 2 : 1;   // coin and a trading post carry further than barter
+        routes += TOWN_ROLES.coinRoutes.some(id => t.built.includes(id) || o.built.includes(id)) ? 2 : 1;   // coin and a trading post carry further than barter
         // folk of each settle in the other's town (of another people; kin need no settling): the route is remembered, the
         // moving is done once for the town over all its routes (below)
         if (!kin) for (const [x, from] of [[t, o], [o, t]]) (mingling.get(x) || mingling.set(x, []).get(x)).push(from);

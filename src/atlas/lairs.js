@@ -12,6 +12,8 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
+import {PLURAL_INSTR} from '../data/names.js';
+import {LAND_BIOMES, LAIR_GROUND as LG, ROCK_CAVES, TOWN_ROLES} from '../data/worldLand.js';
 import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX, NECRO} from '../data/lairs.js';
 import {killShare, strangersOf} from './population.js';
 import {CAL} from '../data/calamities.js';
@@ -45,24 +47,24 @@ export function groundFits(a, L, i) {
   // manor is the exception, placed by spawnLairs in a town on purpose, not through here)
   if (townAt(a, i) || (a.siteAt && a.siteAt[i])) return false;
   if (L.ground === 'home') return homeAt(a, L, i) >= TRIBE_HOME && (!L.needsAny || L.needsAny.some(g => groundKind(a, g, i)));
-  if (L.ground === 'rot') return !!a.rot && a.rot[faunaCell(a, i)] >= L.rotAt && (L.at === 'barrows' ? (a.f.barrows?.[i] || 0) >= 0.25 : L.at === 'ruins' ? !!ruinNear(a, i) : true);
-  if (L.ground === 'rift') return a.f.volc[i] > 0.6 || (!!a.f.bnd && a.f.bnd[i] > 0 && (a.f.elev[i] - a.sea) / (1 - a.sea) > 0.3);
+  if (L.ground === 'rot') return !!a.rot && a.rot[faunaCell(a, i)] >= L.rotAt && (L.at === 'barrows' ? (a.f.barrows?.[i] || 0) >= LG.barrows : L.at === 'ruins' ? !!ruinNear(a, i) : true);
+  if (L.ground === 'rift') return a.f.volc[i] > LG.rift.volc || (!!a.f.bnd && a.f.bnd[i] > 0 && (a.f.elev[i] - a.sea) / (1 - a.sea) > LG.rift.rel);
   return groundKind(a, L.ground, i);
 }
 function groundKind(a, ground, i) {
   const b = biomeAt(a, i).id, rock = ROCK_BY_CODE[a.f.rock[i]]?.id;
   switch (ground) {
-    case 'heights': return rel(a, i) > 0.35 && a.f.flat[i] < 0.6 && b !== 'ice';
-    case 'volcano': return a.f.volc[i] > 0.4 || b === 'volcano';
-    case 'caves': return rock === 'limestone' || rock === 'basalt';
-    case 'deep': return ['forest', 'jungle', 'swamp', 'taiga'].includes(b) && a.f.trees[i] > 0.5;
-    case 'open': return ['tundra', 'taiga', 'steppe', 'meadow'].includes(b);
+    case 'heights': return rel(a, i) > LG.heights.rel && a.f.flat[i] < LG.heights.flat && b !== 'ice';
+    case 'volcano': return a.f.volc[i] > LG.volcano || b === 'volcano';
+    case 'caves': return (ROCK_CAVES[rock] || 0) > 0;
+    case 'deep': return LAND_BIOMES.deep.includes(b) && a.f.trees[i] > LG.deepTrees;
+    case 'open': return LAND_BIOMES.open.includes(b);
   }
   return false;
 }
 
-// a burnt town within three cells
-const ruinNear = (a, i) => (a.ruins || []).find(r => Math.abs(r.x - i % a.w) <= 3 && Math.abs(r.y - ((i / a.w) | 0)) <= 3) || null;
+// a burnt town within LAIR_GROUND.ruins cells
+const ruinNear = (a, i) => (a.ruins || []).find(r => Math.abs(r.x - i % a.w) <= LG.ruins && Math.abs(r.y - ((i / a.w) | 0)) <= LG.ruins) || null;
 // how good a cell is for the lair's species: its carrying capacity there (a tribe: its race's home;
 // the dead: the rot)
 const goodness = (a, L, i) => (L.fiend || L.dragon ? 0.5 : L.undead ? a.rot[faunaCell(a, i)] : L.tribe ? homeAt(a, L, i) : a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)]);
@@ -231,7 +233,7 @@ export function seedRot(a, rnd) {
   const n = ROT.ancient[0] + Math.floor(rnd() * (ROT.ancient[1] - ROT.ancient[0] + 1)), spots = [];
   for (let t = 0; t < 400 && spots.length < n; t++) {
     const i = (rnd() * a.n) | 0, b = biomeAt(a, i)?.id;
-    if (a.f.ocean[i] || a.f.lake[i] >= 0 || !['steppe', 'meadow', 'tundra', 'shrubland', 'savanna', 'foothills'].includes(b)) continue;
+    if (a.f.ocean[i] || a.f.lake[i] >= 0 || !LAND_BIOMES.barrowLand.includes(b)) continue;
     if (spots.some(q => Math.hypot(q % a.w - i % a.w, ((q / a.w) | 0) - ((i / a.w) | 0)) < 25 * k)) continue;
     spots.push(i); barrows(a, i, Math.max(2, Math.round(3 * k)), ROT.ancientGraves);
   }
@@ -247,7 +249,7 @@ export function stepRot(a) {
   ward.fill(0);
   for (const t of a.towns || []) {
     if (!t.alive) continue;
-    const w = (t.built.includes('magetower') ? ROT.wardMage : 0) + (t.built.includes('fallentemple') ? ROT.wardTemple : 0);
+    let w = 0; for (const [id, k] of Object.entries(TOWN_ROLES.rotWard)) if (t.built.includes(id)) w += ROT[k];
     if (!w) continue;
     const j = cell[t.i], x0 = j % F.W, y0 = (j / F.W) | 0;
     for (let y = Math.max(0, y0 - 1); y <= Math.min(F.H - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(F.W - 1, x0 + 1); x++) ward[y * F.W + x] = Math.max(ward[y * F.W + x], w);
@@ -437,7 +439,7 @@ export function raidBand(a, lair, L, rnd) {
 
 // ── a raid at a town (the deeds raid and captives: atlas/deeds/). The town stands with its might × luck (a mage tower's
 // wards turn the dead); the camp comes with its strength × its kind's power × its might × the raid's company × luck
-export const townStands = (target, L, rnd) => might(target, townFx(target)) * (TRIBE_RAID.luck[0] + TRIBE_RAID.luck[1] * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);
+export const townStands = (target, L, rnd) => might(target, townFx(target)) * (TRIBE_RAID.luck[0] + TRIBE_RAID.luck[1] * rnd()) * (L.undead && TOWN_ROLES.deadWard.some(id => target.built.includes(id)) ? ROT.wardMight : 1);
 export const campMight = (lair, L, k, rnd) => lair.strength * power(L.species) * (L.might || 1) * TRIBE_RAID.might * k * (TRIBE_RAID.luck[0] + TRIBE_RAID.luck[1] * rnd()) * (lair.boss != null ? CAL.boss.might : 1);
 // the raid strikes: won — `win(fx)` does what the raid came for and says it; beaten — the camp thins, the town tells
 // of it (a raid struck where the camp stands is counted once a year instead, atlas/history.js); either way a hidden
@@ -571,8 +573,7 @@ export const acc = L => L.labelAcc || L.label;
 // how many captives a lair holds, in words («люди 3, дварфы 1») — for the chronicle and the readout
 export const captiveCount = l => Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} ${n}`).join(', ');
 // «with the griffins» — the instrumental plural for the few owners
-const INSTR = {griffin: 'грифонами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};
-const whomInstr = sp => INSTR[sp.id] || sp.plural;
+const whomInstr = sp => PLURAL_INSTR[sp.id] || sp.plural;   // (data/names.js)
 
 // the living lair whose territory holds a cell, if any
 export function lairAt(a, i) {

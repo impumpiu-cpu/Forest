@@ -6,6 +6,7 @@
 // (atlas/realms.js: a harbour counts as distance for a schism). A lighthouse sends ships further.
 //
 // Field (a.f): sea — the wear of each water cell (0 none; SEA.levels: a lane, a sea road).
+import {TOWN_ROLES} from '../data/worldLand.js';
 import {linkKey} from './common.js';
 import {Heap, DIRS8} from './heap.js';
 import {SEA} from '../data/roads.js';
@@ -15,7 +16,7 @@ import {scaleOf} from './tectonics.js';
 import {TOWN_FLOW} from '../data/townBuildings.js';
 import {faunaCell} from './fauna.js';
 
-export const hasHarbor = t => t.alive && t.built.includes('harbor');
+export const hasHarbor = t => t.alive && TOWN_ROLES.harbor.some(id => t.built.includes(id));   // (data/worldLand.js)
 export const seaLevelOf = v => { let lv = -1; SEA.levels.forEach((L, k) => { if (v >= L.wear) lv = k; }); return lv; };
 
 // the water cell beside a harbour town the ships leave from
@@ -64,7 +65,7 @@ export function sailLanes(a) {
   const done = new Set(), fresh = [];
   a.lanes ||= new Set();
   for (const [t, qt] of ports) {
-    const reach = SEA.reach * k * (t.built.includes('lighthouse') ? SEA.lighthouse : 1);
+    const reach = SEA.reach * k * (TOWN_ROLES.seaReach.some(id => t.built.includes(id)) ? SEA.lighthouse : 1);
     const near = ports.filter(([o]) => o !== t && trades(a, t.realm, o.realm))
       .map(([o, qo]) => [o, qo, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, , d]) => d <= reach).sort((p, q) => p[2] - q[2]).slice(0, SEA.links);
     for (const [o, qo] of near) {

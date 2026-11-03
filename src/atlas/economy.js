@@ -27,6 +27,7 @@
 //               (its hands: a tier's, however many recipes) by what the store holds of what each takes; a recipe gone dark gives its
 //               share to the others
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
+import {ORE_KINDS} from '../data/worldLand.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf} from '../data/townBuildings.js';
 import {workNeeds} from '../data/requirements.js';
 import {meets} from '../core/requirements.js';
@@ -82,7 +83,7 @@ export function digOf(a, t, b) {
     w[k] = m * SL.k[k];
   }
   const sum = Object.values(w).reduce((s, v) => s + v, 0);
-  const out = Object.fromEntries(b.dig.ores.map(k => [ORE_GOODS[k], b.dig.n * (sum > 0 ? w[k] / sum : k === 'iron' ? 1 : 0)]).filter(([, v]) => v > 0));
+  const out = Object.fromEntries(b.dig.ores.map(k => [ORE_GOODS[k], b.dig.n * (sum > 0 ? w[k] / sum : k === ORE_KINDS.mineFallback ? 1 : 0)]).filter(([, v]) => v > 0));
   const coal = b.dig.coal ? b.dig.coal * Math.max(0, Math.min(1, f?.ore_coal?.[i] || 0)) : 0;
   if (coal > 0) out.fuel = coal;
   return out;

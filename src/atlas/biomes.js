@@ -19,6 +19,7 @@
 //
 // Fields (a.f): biome (Uint8, index into BIOME_LIST + 1; 0 — ocean), soil (index into SOIL_LIST + 1),
 // fert (0..1), trees (0..1), burnt (times a cell burnt).
+import {ROCK_CAVES, LAND_BIOMES} from '../data/worldLand.js';
 import {BIOMES, KOPPEN} from '../data/biomes.js';
 import {SOILS, ROCK_FERT, ALLUVIAL_FROM} from '../data/soils.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
@@ -81,7 +82,7 @@ export function soils(a) {
   for (let i = 0; i < n; i++) {
     const b = biomeAt(a, i); if (!b) continue;
     let s;
-    if (f.alluvium[i] >= ALLUVIAL_FROM && b.id !== 'water' && b.id !== 'ice') s = SOIL_LIST[alluvial];
+    if (f.alluvium[i] >= ALLUVIAL_FROM && !LAND_BIOMES.barren.includes(b.id)) s = SOIL_LIST[alluvial];
     else s = (byBiome[b.id] || []).find(x => !x.rain || (f.rain[i] >= x.rain[0] && f.rain[i] < x.rain[1])) || SOILS.get('none');
     soil[i] = SOIL_LIST.indexOf(s) + 1;
     fert[i] = s.fert > 0 ? clamp01(s.fert + (ROCK_FERT[ROCK_BY_CODE[f.rock[i]]?.id] || 0)) : 0;
@@ -154,7 +155,7 @@ export function cellBiomes(a, i, r = 2) {
     const wooded = b.trees > 0.6 ? clamp01(f.trees[j] / b.trees) : 1;
     add(b.id, wt * wooded);
     if (wooded < 1) add('meadow', wt * (1 - wooded));
-    const rock = ROCK_BY_CODE[f.rock[j]]?.id, cave = rock === 'limestone' ? 0.15 : rock === 'basalt' ? 0.08 : 0;
+    const cave = ROCK_CAVES[ROCK_BY_CODE[f.rock[j]]?.id] || 0;   // (data/worldLand.js)
     if (cave) add('underground', wt * cave);
     // the old graves of battles (atlas/diplomacy.js)
     if (f.barrows && f.barrows[j] > 0) add('barrows', wt * 0.5 * f.barrows[j]);

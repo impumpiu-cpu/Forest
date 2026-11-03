@@ -1,4 +1,5 @@
 // World generation. makeTerrain is pure (the menu preview uses it too); createWorld builds the full state.
+import {LAND_BIOMES} from '../data/worldLand.js';
 import {newBehaviour} from '../settlement/behaviour.js';
 import {mulberry, seedNumber, newStreams} from '../core/rng.js';
 import {clamp} from '../core/util.js';
@@ -78,7 +79,7 @@ export function makeTerrain(input) {
   }
   // the biomes, highland first (they take the highest land), then from the driest to the wettest
   const order = paintOrder(site);
-  const mountain = order.filter(([b]) => b.kind === 'altitude' || b.id === 'underground' || b.id === 'volcano');
+  const mountain = order.filter(([b]) => LAND_BIOMES.mountain.includes(b.id));   // (data/worldLand.js)
   // the «water» biome is the open water already laid out, the painter skips it
   const lowland = order.filter(([b]) => b.kind !== 'water' && !mountain.some(([m]) => m === b));
   const total = order.reduce((s, [, v]) => s + v, 0) || 1;

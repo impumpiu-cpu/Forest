@@ -7,6 +7,7 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
+import {ORE_KINDS, TOWN_ROLES} from '../data/worldLand.js';
 import {warsOf} from './common.js';
 import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/peoples.js';
@@ -34,7 +35,7 @@ const near = (a, i, test) => {
 function epithets(a, i, P) {
   const f = a.f, out = [], k2 = scaleOf(a) ** 2;
   // a people that lives off the rock is named by it; the others by water and land
-  if (P.ores) for (const id of ['gold', 'silver', 'gems', 'bronze', 'iron', 'coal']) if (f[`ore_${id}`][i] >= lv(id)[2]) out.push(...EPITHETS.ores[id]);
+  if (P.ores) for (const id of ORE_KINDS.epithets) if (f[`ore_${id}`][i] >= lv(id)[2]) out.push(...EPITHETS.ores[id]);
   if (near(a, i, j => f.ocean[j])) out.push(...EPITHETS.water.coast);
   if (f.flow[i] >= RIVERS.great * k2 || near(a, i, j => f.flow[j] >= RIVERS.great * k2)) out.push(...EPITHETS.water.great);
   else if (f.flow[i] >= RIVERS.river * k2 || near(a, i, j => f.flow[j] >= RIVERS.river * k2)) out.push(...EPITHETS.water.river);
@@ -113,6 +114,7 @@ export function joinRealm(a, t) {
 
 // ── schisms
 const glory = t => t.pop * (1 + townFx(t).prestige);
+const harbored = t => TOWN_ROLES.harbor.some(id => t.built.includes(id));   // (data/worldLand.js)
 
 // the towns of two seats are divided by which seat is nearer
 function divide(a, oldId, newId, seatOld, seatNew) {
@@ -145,7 +147,7 @@ export function stepRealms(a, rnd, say) {
     for (const t of a.towns) {
       if (!t.alive || t.realm !== r.id || t === seat || t.tier < 2) continue;
       // a harbour town has the sea's trade of its own, and stands further from the seat than its road
-      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (t.built.includes('harbor') && !seat.built.includes('harbor') ? SCHISM.harbor : 0);
+      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (harbored(t) && !harbored(seat) ? SCHISM.harbor : 0);
       if (t.pop >= SCHISM.edge * seat.pop && far >= SCHISM.far) {
         t.contender = (t.contender || 0) + 1;
         if (t.contender === SCHISM.years) say(`${cap1(townLabel(t, 0))} ${t.name} не меньше ${townLabel(seat, 2)} ${seat.name} и стоит далеко от ${townGender(seat) === 'f' ? 'неё' : 'него'}: в державе «${realmLabel(a, r.id)}» зреет раскол.`);
