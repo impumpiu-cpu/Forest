@@ -40,6 +40,7 @@ export const STREAMS = {
   birth:   'рождение существ: характер, SPECIAL, вещи',
   alarm:   'тревога: кто из спящих услышал крик',
   hits:    'куда пришёлся удар (data/anatomy.js): отдельно, чтобы место не сдвигало остальной бой',
+  leans:   'склонности при рождении (data/leans.js): отдельно, чтобы не сдвигать остальное рождение',
 };
 export function newStreams(seed) {
   return Object.fromEntries(Object.keys(STREAMS).map(k => [k, mulberry(seedNumber(`${seed}/${k}`))]));

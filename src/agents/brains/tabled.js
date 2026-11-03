@@ -36,7 +36,9 @@ import {stepBody, heatHarm} from '../body.js';
 import {kill, maxHp} from '../agent.js';
 import {syncTask, skipped, taskKey} from '../lifecycle.js';
 import {noteThink} from '../attention.js';
-import {maskOf, localId} from '../../data/commands.js';
+import {maskOf, localId, leansOn} from '../../data/commands.js';
+import {LEANS} from '../../data/leans.js';
+import {onEdit} from '../../data/schema/layer.js';
 import {tracing, noteDecision, r3} from '../../core/decide.js';
 
 const key = t => (t ? taskKey(t) : '');
@@ -56,7 +58,8 @@ function offers(w, a, ctx, lanes, from) {
       const off = ctx.off?.has(localId(d.id));   // (the run's profile: data/commands.js)
       if (off && !a.task) continue;
       const o = ACTS[d.id].want(w, a, ctx); if (a.dead) return null;   // (killed while asked — a rat caught at the stores: nothing more)
-      if (o) for (const x of o) { if (off && key(x[0]) !== cur) continue; any = true; if (key(x[0]) !== cur && !x[0].reflex && skipped(w, a, x[0])) continue; (opts ||= []).push([x[0], x[1], x[2], d, x[3]]); }   // [task, score, why, behaviour, what else the offer carried]
+      const L = ctx.leans && LEAN_LINKS.get(d.id);   // (the creature's leanings that weigh on this command: data/leans.js)
+      if (o) for (const x of o) { if (off && key(x[0]) !== cur) continue; any = true; if (key(x[0]) !== cur && !x[0].reflex && skipped(w, a, x[0])) continue; (opts ||= []).push([x[0], L ? x[1] + leanBonus(a, L, x[0], cur) : x[1], x[2], d, x[3]]); }   // [task, score, why, behaviour, what else the offer carried]
     }
     if (opts) return [band, opts];
     if (any && ALARMS.includes(band)) alarmed = true;
@@ -72,6 +75,23 @@ function holdUnderAlarm(w, a) {
   a.switchWhy = 'тревога: к врагу не подойти';   // (the work under way is closed as interrupted: lifecycle.js syncTask)
   a.task = {id: 'reserve'}; syncTask(w, a);
   return true;
+}
+
+// the leanings' links by behaviour id (data/leans.js LEANS.links), made again after an edit of the tables
+let LEAN_LINKS = null;
+const LOCAL = localId('');
+const leanLinks = () => { const m = new Map(); for (const l of LEANS.links) { const id = l.cmd.startsWith(LOCAL) ? l.cmd.slice(LOCAL.length) : null; if (id) (m.get(id) || m.set(id, []).get(id)).push(l); } return m; };
+LEAN_LINKS = leanLinks();
+onEdit(() => { LEAN_LINKS = leanLinks(); });
+// what a creature's leanings add to an offer: each link k × (axis − 0.5) × 2, the sum within ±LEANS.cap; a leaning of 0.5 adds 0
+export function leanBonus(a, links, t, cur) {
+  let b = 0;
+  for (const l of links) {
+    if (l.kept && key(t) !== cur) continue;
+    if (l.jobs && !(t.id === 'job' && l.jobs.includes(t.job))) continue;
+    b += l.k * ((a.leans[l.axis] ?? LEANS.roll.mid) - LEANS.roll.mid) * 2;
+  }
+  return Math.max(-LEANS.cap, Math.min(LEANS.cap, b));
 }
 
 const keepOf = (w, a, d, t) => { const k = ACTS[d.id].keep; return typeof k === 'function' ? k(w, a, t) : d.keep || 0; };
@@ -141,7 +161,7 @@ export function tabledStep(w, a, brain) {
   const sp = SPECIES.get(a.species), list = brain.behaviours;
   const T = (brain.body || beastBody)(w, a);
   if (a.dead) return;
-  const ctx = {sp, list, brain, T, night: nightness(w), off: maskOf(w.cfg)};
+  const ctx = {sp, list, brain, T, night: nightness(w), off: maskOf(w.cfg), leans: a.leans && leansOn(w.cfg) ? a.leans : null};
   // what the behaviours do every tick whatever the task (an aura, a veil, a body's own healing, the gear swap at the camp)
   for (const id of list) ACTS[id].always?.(w, a, ctx);
   if (a.dead) return;

@@ -39,7 +39,7 @@ export function pickFirst(cmds, ask, allowed = () => true) {
 
 // the council's way, as a court's (atlas/actor.js): the commands lane by lane (`bands`, the upper first), each lane's allowed
 // commands all asked in the old order, the first lane with anything on offer drawn from by weight; the lanes below it are not
-// asked. `ask(cmd)` → an option {score, …} or null. → {option, band, opts, asked: [commands asked]}
+// asked. `ask(cmd, opts)` → an option {score, …} or null (`opts` — what its lane offered so far). → {option, band, opts, asked}
 export function pickLanes(cmds, ask, r, {allowed = () => true, bands = ['reflex', 'red', 'yellow', 'routine']} = {}) {
   const asked = [];
   for (const band of bands) {
@@ -47,7 +47,7 @@ export function pickLanes(cmds, ask, r, {allowed = () => true, bands = ['reflex'
     for (const c of cmds) {
       if (c.band !== band || !allowed(c)) continue;
       asked.push(c);
-      const o = ask(c);
+      const o = ask(c, opts);
       if (o && o.score > 0) opts.push(o);
     }
     if (opts.length) return {option: pickDraw(opts, r), band, opts, asked};

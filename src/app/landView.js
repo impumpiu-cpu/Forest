@@ -24,6 +24,7 @@ import {seedNumber} from '../core/rng.js';
 import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
 import {STAGE_ERAS} from '../data/labels.js';
+import {PROFILES} from '../data/commands.js';
 
 const STORE = 'forest.land';
 const LAYERS = ATLAS_OPTS.layer.filter(([id]) => !['fauna', 'wild', 'rot', 'peoples', 'realms'].includes(id));
@@ -36,7 +37,7 @@ const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 const signed = v => (v > 0 ? `+${v}` : `${v}`);
 
 export class LandView extends MapView {
-  setup() { this.cfg = this.load(); this.maker = null; }
+  setup() { this.cfg = this.load(); this.cfg.profile ??= 'full'; this.maker = null; }
 
   load() {
     try { const raw = localStorage.getItem(STORE); if (raw) { const c = {...DEFAULT_ATLAS_CFG, ...JSON.parse(raw)}; delete c.shape; return c; } } catch (e) { /* storage unavailable */ }
@@ -129,6 +130,7 @@ export class LandView extends MapView {
     });
     $('landSizeNote').textContent = ATLAS_SIZES[this.cfg.size].note;
     $('landHemiNote').textContent = HEMISPHERES[this.cfg.hemisphere].note;
+    $('landProfileNote').textContent = PROFILES.has(this.cfg.profile) ? PROFILES.get(this.cfg.profile).note : '';
     $('landOre').hidden = this.layer !== 'ores';
     $('landTool').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === this.tool)));
     const brush = this.tool === 'raise' || this.tool === 'lower';

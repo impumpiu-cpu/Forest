@@ -46,6 +46,7 @@ import {stockHtml} from './cards.js';
 import {WALK_PHASES} from '../data/labels.js';
 import {campLocal, WATCH} from './campLocal.js';
 import {campStats} from './campStats.js';
+import {PROFILES, commandOf} from '../data/commands.js';
 const phaseWord = p => WALK_PHASES[p]?.label || p;
 const itemShort = id => gearDef(id)?.short ?? id;
 
@@ -104,6 +105,9 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     // a new epic world (cfg.epic: three eras of 75–150 years), made here and put into the library
     this.epicSize = 'medium';
     seg('campEpicSize', EPIC_SIZES, this.epicSize, v => { this.epicSize = v; });
+    // which commands the world's minds may choose (data/commands.js PROFILES), as in the world's own settings
+    this.epicProfile = 'full';
+    seg('campEpicProfile', PROFILES.all().map(p => [p.id, p.label]), this.epicProfile, v => { this.epicProfile = v; });
     $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6));
     $('campEpicDice').addEventListener('click', () => { if (!this.making) $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6)); });
     $('campEpicGo').addEventListener('click', () => (this.making ? this.stopEpic() : this.makeEpic()));
@@ -137,7 +141,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   makeEpic() {
     this.halt(); this.seq = (this.seq || 0) + 1;   // a library world still loading is not shown over this one
     const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
-    const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true});
+    const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, profile: this.epicProfile});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0;
     this.making = true; $('campEpicGo').textContent = 'Остановить';
@@ -438,6 +442,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.frame();
     $('campStatus').innerHTML = `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
+      (K.council ? `<dt>Совет</dt><dd class="nb" title="${esc(K.council.opts.map(o => `${commandOf(o.id)?.label || o.id} ${o.w}`).join(' · '))}">${esc(commandOf(K.council.pick)?.label || K.council.pick)} — жребий из ${K.council.opts.length}, день ${K.council.day}</dd>` : '') +
       (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
         return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${Q.found} из ${Q.clues.length}${K.stats.storms ? ` · штурмов ${K.stats.storms}` : ''}</dd>`; })() : '') +
       `<dt>Еда</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (K.food / need).toFixed(1) : 0} дн.</dd>` +

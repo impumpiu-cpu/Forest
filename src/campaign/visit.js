@@ -17,15 +17,16 @@ import {standing, townName, townLine, trade, hire, companion, rationPrice} from 
 import {free} from './captives.js';
 import {termsOf} from './road.js';
 import {alive, say, pace} from './march.js';
-import {pointCommands, allowed} from '../data/commands.js';
-import {pickFirst, tracing, noteDecision} from '../core/decide.js';
+import {pointCommands, allowed, leansOn} from '../data/commands.js';
+import {pickLanes, tracing, noteDecision, r3} from '../core/decide.js';
+import {COUNCIL} from '../data/campaign.js';
 
 const SEASON_LIST = SEASONS.all();
 
 // ── towns on the way (campaign/town.js): why the council would turn to one, and which one
 const freezing = (a, i) => a.f.temp[i] - a.f.trange[i] / 2 < VISIT.winterBelow;
 // The decision point `caravan.visit` of the contract (core/decide.js, data/commands.js): the commands `caravan.visit.<why>`
-// asked in the old order, the first that wants a town taken (policy `first`). → the reason, or ''
+// that want a town, lane by lane, drawn from by weight (data/campaign.js COUNCIL: as a realm's court). → the reason, or ''
 const VISIT_ASK = {
   winter: (a, K, Sn) => (Sn.lean || (Sn.stockUp && a.hist && K.day % SEASON_DAYS >= VISIT.lateIn)) && freezing(a, K.i) && K.winterYear !== a.hist.year,
   // (the rest wait while the caravan is just out of a town: on to the goal first)
@@ -34,19 +35,43 @@ const VISIT_ASK = {
   // ore for the smith (data/market.js SMITH): enough for a piece; a town with a smith is looked for further than a shop
   smith: (a, K) => K.day >= (K.nextVisit ?? 0) && smithOre(K) >= VISIT.smithOre && K.gold >= VISIT.smithGold && !(K.smithTried > K.day),
   shop: (a, K) => K.day >= (K.nextVisit ?? 0) && K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every,
+  goOn: () => true,   // (asked last of its lane: offered only beside something else — data/campaign.js COUNCIL)
 };
 const VISIT_CMD = 'caravan.visit.';
+// the way on: drawn, it means no town and no camp
+export const isGoOn = id => id.endsWith('.goOn');
 export function wantVisit(a, K, seasonId) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
   const Sn = SEASONS.get(seasonId), cmds = pointCommands('caravan.visit');
-  const {option, asked} = pickFirst(cmds, c => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) ? c : null), c => allowed(a.cfg, c.id));
-  if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, asked, option?.id ?? null);
-  return option ? option.id.slice(VISIT_CMD.length) : '';
+  const {r, done} = draw(K, 'council');
+  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a.cfg, c.id)});
+  done();
+  if (got.option && isGoOn(got.option.id)) { readout(K, got); if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, got); return ''; }
+  readout(K, got);
+  if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, got);
+  return got.option ? got.option.id.slice(VISIT_CMD.length) : '';
 }
-// a choice of the caravan, for the trace (core/decide.js): the commands asked in the old order, the one taken, those not asked
-export function noteCaravan(a, K, point, cmds, asked, pick) {
-  noteDecision({point, who: `caravan:${K.capital}`, at: K.day, band: 'routine', policy: 'first',
-    opts: asked.map(c => ({cmd: c.id, key: c.id, score: c.id === pick ? 1 : 0})), pick, unasked: cmds.filter(c => !asked.includes(c)).map(c => c.id)});
+// the caravan's mission profile (data/campaign.js COUNCIL.mission): its people's, or 0.5 on every axis — for a people not listed
+// and in a run without leanings (data/commands.js leansOn)
+export function missionOf(a, K) {
+  const M = COUNCIL.mission, mid = Object.fromEntries(Object.keys(M.axes).map(k => [k, M.mid]));
+  return leansOn(a?.cfg) ? {...mid, ...(M.people[K.people] || {})} : mid;
+}
+// the weight of a council's command for this caravan: COUNCIL.want × its mission
+export function councilWeight(a, K, id) {
+  const M = COUNCIL.mission, v = missionOf(a, K), L = M.leans[id] || {};
+  const lean = Object.entries(L).reduce((s, [k, x]) => s + x * ((v[k] ?? M.mid) - M.mid) * 2, 0);
+  return (COUNCIL.want[id] ?? 1) * Math.max(0, 1 + M.k * lean);
+}
+// the council's last real choice, for the caravan's panel (ui/campaignView.js): a lane of two or more drawn from
+export function readout(K, got) {
+  if (got.option && got.opts.length > 1) K.council = {day: K.day, pick: got.option.id, opts: got.opts.map(o => ({id: o.id, w: r3(o.score)}))};
+}
+// a choice of the caravan, for the trace (core/decide.js): the lane drawn from with its weights, the one taken, the commands
+// not asked (the lanes below)
+export function noteCaravan(a, K, point, cmds, got) {
+  noteDecision({point, who: `caravan:${K.capital}`, at: K.day, band: got.band || 'routine', policy: 'draw',
+    opts: got.opts.map(o => ({cmd: o.id, key: o.id, score: r3(o.score)})), pick: got.option?.id ?? null, unasked: cmds.filter(c => !got.asked.includes(c)).map(c => c.id)});
 }
 // a friendly town that can be reached: one on the way to the goal — ahead of the caravan (nearer the goal
 // than it is) and not much of a detour; when `urgent` (the winter, the badly wounded) and there is none

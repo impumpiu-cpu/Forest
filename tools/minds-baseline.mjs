@@ -23,6 +23,14 @@ const only = (args.find(x => x.startsWith('--only=')) || '').slice(7);
 const bare = (k, v) => (k === 'savedAt' || k === 'saved' ? undefined : v);
 const fnv = s => { let h = 2166136261; for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); };
 const out = {};
+// world/save.js worldHash, of the save without the leanings (data/leans.js) and their stream: what the game was before them
+function neutralHash(w) {
+  const sv = saveWorld(w), drop = (k, v) => (k === 'leans' || k === 'profile' ? undefined : v);   // (and the run's profile in its settings)
+  const s = JSON.stringify(sv.tree, drop) + JSON.stringify(sv.rngs, drop);
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 2246822519); }
+  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
+}
 const t0 = Date.now(), lap = what => console.log(`  ${what}: ${((Date.now() - t0) / 1000).toFixed(1)} с`);
 
 // the settlement: three seeds, four days, everything that comes to a settlement turned up
@@ -31,6 +39,11 @@ if (!only || only === 'settlement') {
     const w = newGame({...DEFAULT_CFG, seed, raids: 'often', wildlife: 'many', predators: 'many'});
     for (let t = 0; t < 4 * DAY && !w.over; t++) step(w);
     out[`settlement:${seed}`] = {hash: worldHash(w), save: fnv(JSON.stringify(saveWorld(w), bare)), tick: w.tick};
+    // the same run without the leanings' weight (the profile «без влияния склонностей»), its fingerprint without the leanings
+    // themselves: the game as it was before them — compared with the fingerprint the baseline kept from before (`neutral`)
+    const n = newGame({...DEFAULT_CFG, seed, raids: 'often', wildlife: 'many', predators: 'many', profile: 'noLeans'});
+    for (let t = 0; t < 4 * DAY && !n.over; t++) step(n);
+    out[`settlement:${seed}`].neutral = neutralHash(n);
   }
   lap('поселение');
 }
@@ -71,9 +84,9 @@ if (write) {
   const ref = JSON.parse(readFileSync(FILE, 'utf8'));
   let bad = 0;
   for (const [k, v] of Object.entries(out)) {
-    const r = ref[k], diff = r ? Object.keys(v).filter(f => r[f] !== v[f]) : ['нет в эталоне'];
+    const r = ref[k], want = f => (f === 'neutral' && r && r.neutral == null ? r.hash : r?.[f]), diff = r ? Object.keys(v).filter(f => want(f) !== v[f]) : ['нет в эталоне'];
     if (diff.length) bad++;
-    console.log(`${diff.length ? 'FAIL' : 'ok  '} ${k}${diff.length ? ': ' + diff.map(f => `${f} ${r?.[f]} → ${v[f]}`).join(', ') : ''}`);
+    console.log(`${diff.length ? 'FAIL' : 'ok  '} ${k}${diff.length ? ': ' + diff.map(f => `${f} ${want(f)} → ${v[f]}`).join(', ') : ''}`);
   }
   if (bad) process.exit(1);
 }

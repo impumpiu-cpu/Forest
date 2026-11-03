@@ -48,6 +48,7 @@ import {CATEGORIES} from '../data/townBuildings.js';
 import {RIVER_KINDS, PARTY_KINDS} from '../data/labels.js';
 import {MapOverlays} from './atlasOverlays.js';
 import {faunaCellOf} from './atlasLayers.js';
+import {PROFILES} from '../data/commands.js';
 
 const OPTS = {
   size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
@@ -61,6 +62,8 @@ const OPTS = {
   fauna: [...SPECIES.filter(sp => sp.habitat), ...[...new Set(LAIRS.filter(L => L.tribe).map(L => L.species))].map(id => SPECIES.get(id))].map(sp => [sp.id, sp.plural]),
   layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['rot', 'Гниль'], ['peoples', 'Народы'], ['realms', 'Державы'], ['will', 'Воля державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
+  // which commands the world's minds may choose (data/commands.js PROFILES; table «Профили команд»)
+  profile: PROFILES.all().map(p => [p.id, p.label]),
 };
 // what is drawn over the cells on each layer of the map (once, not a list a frame)
 const OVER = {

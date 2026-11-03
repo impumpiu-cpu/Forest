@@ -50,9 +50,9 @@ import {morningFind} from './finds.js';
 import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
 import {LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
-import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCaravan} from './visit.js';
+import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCaravan, councilWeight, readout, isGoOn} from './visit.js';
 import {pointCommands, allowed} from '../data/commands.js';
-import {pickFirst, tracing} from '../core/decide.js';
+import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 
@@ -278,7 +278,7 @@ function wantBuild(a, K) {
 }
 
 
-// the asks of the camp's commands (`caravan.camp.<id>`, data/commands.js), in the old order → {cmd, why, …} or null.
+// the asks of the camp's commands (`caravan.camp.<id>`, data/commands.js) → {cmd, why, …} or null.
 // `x` — what the evening knows: the food a day takes, the land's richness, the free's mean health, the badly wounded,
 // a quiet place (the land's dangers low), a calm one (also nothing hunting them near); `x.ask` — what the asks share
 const CAMP_CMD = 'caravan.camp.';
@@ -288,8 +288,7 @@ const restless = (K, x) => !K.hungry && !x.quiet && K.path && K.k < K.path.lengt
 const thinks = (K, x) => (x.ask.thinks ??= !K.hungry && x.calm && K.food >= x.need * x.C.foodDays && K.day >= (K.nextThink ?? 0) && ((K.nextThink = K.day + x.C.think), true));
 const CAMP_ASK = {
   food: (a, K, x) => (K.food < x.need * x.C.foodDays && x.rich >= x.C.foodLand && !restless(K, x) ? {cmd: 'food', why: 'food'} : null),
-  // (food first: where food is short and the land feeds them, the wounded wait for the hunt — the old order)
-  heal: (a, K, x) => (!(K.food < x.need * x.C.foodDays && x.rich >= x.C.foodLand) && (x.core < x.C.hp || x.badly) && !restless(K, x) ? {cmd: 'heal', why: 'heal'} : null),
+  heal: (a, K, x) => ((x.core < x.C.hp || x.badly) && !restless(K, x) ? {cmd: 'heal', why: 'heal'} : null),
   // to build: the wheels, when they would go the way, else a building the camp lacks
   build: (a, K, x) => { if (!thinks(K, x)) return null; const B = wantBuild(a, K); return B ? {cmd: 'build', why: 'build', build: B} : null; },
   // to tame the beasts that graze here
@@ -304,6 +303,7 @@ const CAMP_ASK = {
     const m = wantMine(a, K);
     return m ? {cmd: 'mine', why: 'mine:' + m.ore} : null;
   },
+  goOn: (a, K, x, opts) => (opts.length ? {cmd: 'goOn', why: ''} : null),   // (beside something else only: data/campaign.js COUNCIL)
 };
 
 function homecoming(a, K, ms) {
@@ -381,12 +381,16 @@ function evening(a, K) {
   else {
     // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
     const badly = fs.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i, K) <= C.danger, calm = quiet && !huntersNear(a, K);
-    // the decision point `caravan.camp` (core/decide.js, data/commands.js): the commands asked in the old order, the first
-    // that wants a camp taken (policy `first`)
+    // the decision point `caravan.camp` (core/decide.js, data/commands.js): the commands that want a camp, lane by lane (the
+    // camps of need — food, the wounded — before the ones of choice), drawn from by weight (data/campaign.js COUNCIL)
     const cmds = pointCommands('caravan.camp');
     const x = {need, rich, core, badly, quiet, calm, C, ask: {}};   // (one for the evening: the asks share it)
-    const {option, asked} = pickFirst(cmds, c => CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x), c => allowed(a.cfg, c.id));
-    if (tracing()) noteCaravan(a, K, 'caravan.camp', cmds, asked, option ? CAMP_CMD + option.cmd : null);
+    const {r, done} = draw(K, 'council');
+    const got = pickLanes(cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a.cfg, c.id)});
+    done();
+    readout(K, got);
+    if (tracing()) noteCaravan(a, K, 'caravan.camp', cmds, got);
+    const option = got.option && !isGoOn(got.option.id) ? got.option : null;   // (the way on drawn: no camp)
     let why = option ? option.why : '';
     if (option?.build) K.build = option.build;
     if (option?.cmd === 'tame') K.tamedAt = K.day;

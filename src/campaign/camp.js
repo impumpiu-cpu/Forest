@@ -122,7 +122,7 @@ export function openCamp(S) {
     ag.member = m.id; ag.place = m.role; ag.fightPref = m.fight || null; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;   // (ag.place: its place in the company, docs/BEHAVIOUR.md «Словарь»)
     ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.values) ag.values = [...m.values];
     const L = m.local;
-    if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}});
+    if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}, ...(L.leans ? {leans: {...L.leans}} : {})});
     else {
       for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) ag.skill[id] = Math.max(ag.skill[id] || 0, v);
       for (const tok of m.gear.hand) { const id = gearType(tok); if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill); }   // (a bought or forged piece is a word with marks: «ironaxe@dwarf»)
@@ -341,7 +341,7 @@ export function campOutcome(w) {
     // a fallen one still senseless when the camp ends: the others bind the wound (agents/wounds.js dress) — a grave wound
     // and the trauma it fell with, barely alive
     const wasDown = !!ag.downed; if (wasDown) bindFallen(w, ag);
-    const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
+    const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
     return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
@@ -370,7 +370,7 @@ export function campOutcome(w) {
     name: o.name, gender: o.gender, race: o.species, people: o.people || null, person: o.person || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
     hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, wounds: (o.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), from: S.foe?.kind || null, will: o.captive.will,
     gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(gearToken))].filter(id => !!gearDef(id)), body: (b => (b ? gearToken(b) : 'clothes'))(allItems(o).find(it => itemOf(it).slot === 'body'))},
-    local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
+    local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill, leans: o.leans}))}));
   const plundered = w.stats.lastSteal >= C.start;
   const lost = members.filter(m => !m.alive).length, stolen = beasts.filter(b => b.stolen).length;
   // the camp: a building that burnt is lost; the vehicles: a cart may be broken where the foe looted the stores
