@@ -36,9 +36,9 @@ export const CALAMITIES = [
   {id: 'giantking', label: 'восстание великанов', lair: 'giants', boss: 'giant', title: ['Король великанов', 'Короля великанов'], g: 'm', eras: ['wild', 'elder', 'young'],
     names: BOSS.giantking, retinue: ['ogres', 'giants'],
     rise: '{boss} поднял становища великанов {where} и встал станом «{lair}»: огры и великаны идут под его знаменем.'},
-  {id: 'goblinking', label: 'орда гоблинского царя', lair: 'goblins', boss: 'goblin', title: ['Гоблинский царь', 'Гоблинского царя'], g: 'm', eras: ['wild', 'elder', 'young'],
+  {id: 'goblinking', label: 'полчище гоблинского царя', lair: 'goblins', boss: 'goblin', title: ['Гоблинский царь', 'Гоблинского царя'], g: 'm', eras: ['wild', 'elder', 'young'],
     names: BOSS.goblinking, retinue: ['goblins', 'goblins', 'ogres'],
-    rise: '{boss} собрал норы {where} в одну орду — «{lair}»: гоблины сотнями выходят на поверхность.'},
+    rise: '{boss} собрал норы {where} в одно полчище — «{lair}»: гоблины сотнями выходят на поверхность.'},
 ];
 
 // the omens before a calamity rises, one a year or so (drawn without repeats)
