@@ -19,6 +19,11 @@
 //   tint:    [r, g, b, k] — colour mixed into grass and forest on the world layer (snow overrides it)
 //   dress:   how much people value warm clothing over armour (×)
 //   frost:   when the season begins, wild bushes keep only this share of their berries (the first frost)
+//   lean:    the lean season: no taming or breeding in the pen, the herd milks less and is culled to the hay (settlement/herd.js),
+//            the caravan freezes, winters in towns and finds no grass in a hard frost (campaign/march.js, land.js)
+//   stockUp: the season before the lean one: the colony keeps more food ahead (settlement/plan.js), tames only with the
+//            hay in (settlement/herd.js); a caravan late in it looks for a town to winter in (campaign/march.js)
+//   shear:   the herd's fleece is sheared;  stockpile: × how much the workshops want stores made (data/recipes.js ctx)
 import {Registry} from '../core/registry.js';
 import {perTick} from '../core/util.js';
 
@@ -35,16 +40,16 @@ export const SEASONS = new Registry('season');
 
 SEASONS.registerAll([
   {id: 'spring', label: 'Весна', next: 'лето', dress: 1, grow: 1, wither: 0, garden: 1, jobs: {},
-    hares: 1.2, hunger: 1, spoil: 0.9, rain: 1.4, ignite: 15, drying: true, tint: [120, 170, 90, 0.08],
+    hares: 1.2, hunger: 1, spoil: 0.9, rain: 1.4, ignite: 15, drying: true, shear: true, stockpile: 0.7, tint: [120, 170, 90, 0.08],
     note: 'Тает снег, луга оживают, звери возвращаются.'},
   {id: 'summer', label: 'Лето', next: 'осень', dress: 0.5, grow: 1.4, wither: 0, garden: 1.3, jobs: {},
-    hares: 1, hunger: 1, spoil: 1.4, rain: 0.8, ignite: -8, drying: true, tint: [0, 0, 0, 0],
+    hares: 1, hunger: 1, spoil: 1.4, rain: 0.8, ignite: -8, drying: true, shear: true, stockpile: 1, tint: [0, 0, 0, 0],
     note: 'Жарко: ягоды зреют быстро, но и еда портится быстрее. Лес легко загорается.'},
   {id: 'autumn', label: 'Осень', next: 'зима', dress: 1.5, grow: 0.5, wither: 0, garden: 0.6, jobs: {},
-    hares: 0.8, hunger: 1.1, spoil: 0.8, rain: 1.3, ignite: 5, drying: true, tint: [208, 178, 70, 0.3],
+    hares: 0.8, hunger: 1.1, spoil: 0.8, rain: 1.3, ignite: 5, drying: true, stockUp: true, stockpile: 1.6, tint: [208, 178, 70, 0.3],
     note: 'Пора заготовок: сушить, солить, запасать дрова. Зима близко.'},
   {id: 'winter', label: 'Зима', next: 'весна', dress: 3, grow: 0.4, wither: 0.04, garden: 0.4, jobs: {fish: 0.5, gather: 0.6, chop: 0.85},
-    hares: 0.35, hunger: 1.35, spoil: 0.25, rain: 0.9, ignite: 40, drying: false, frost: 0.15, tint: [190, 176, 120, 0.3],
+    hares: 0.35, hunger: 1.35, spoil: 0.25, rain: 0.9, ignite: 40, drying: false, frost: 0.15, lean: true, stockpile: 1, tint: [190, 176, 120, 0.3],
     note: 'Мороз: ничего не растёт, рыба ловится вдвое хуже, волки голодны. Живут запасами и костром. Где зима тёплая, это просто скудная пора.'},
 ]);
 

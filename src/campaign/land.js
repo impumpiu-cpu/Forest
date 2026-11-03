@@ -34,6 +34,7 @@ import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {NIGHT, WILD_FOES} from '../data/campaign.js';
 import {MIGRATIONS} from '../data/migrations.js';
+import {SEASONS} from '../data/seasons.js';
 import {onEdit} from '../data/schema/layer.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
@@ -53,15 +54,15 @@ export function pasture(a, i, seasonId) {
   if (!a.f.land?.[i] || a.f.ocean[i]) return false;
   const reg = cellRegion(a, i);
   const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0);
-  const frost = seasonId === 'winter' && a.f.temp[i] - a.f.trange[i] / 2 < -5;
+  const frost = !!SEASONS.get(seasonId).lean && a.f.temp[i] - a.f.trange[i] / 2 < CAMPAIGN.seasonFood.frostBelow;
   return plants >= FODDER.graze && !frost;
 }
 
 // the season's × on food: the calendar's, less in frost (the winter half of the year below zero)
 export function seasonFood(a, i, seasonId) {
   const k = CAMPAIGN.seasonFood[seasonId] ?? 1;
-  const cold = a.f.temp[i] - (seasonId === 'winter' ? a.f.trange[i] / 2 : 0);
-  return cold < -5 ? k * CAMPAIGN.seasonFood.frost : k;
+  const cold = a.f.temp[i] - (SEASONS.get(seasonId).lean ? a.f.trange[i] / 2 : 0);
+  return cold < CAMPAIGN.seasonFood.frostBelow ? k * CAMPAIGN.seasonFood.frost : k;
 }
 
 // who a lair sends on the local map (campaign/camp.js): its band (data/seam.js LAIR_BANDS) or its beast

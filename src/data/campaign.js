@@ -18,7 +18,7 @@ export const CAMPAIGN = {
   // picked by the way, in a camp the whole day goes to hunting, fishing and gathering
   forage: {march: 0.4, camp: 1.6, spread: 0.6},
   // the season's × on what the land gives; in hard frost (a winter day's mean below −5°) × `frost` more
-  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7},
+  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7, frostBelow: -5},
   // hunger: a day fed below `starveAt` of the need is a hungry day; hungry, the caravan walks at `slow`
   // and nobody heals; after `wasteAfter` hungry days in a row everyone loses `waste` health a day
   // the chronicle tells of a new hunger only `again` days after the last told, of its end after `over` days of it

@@ -99,7 +99,7 @@ function makeCraftContext(w) {
     fishing: w.lakes.some(fishable),
     food: foodTotal(w),
     season: season(w).id, drying: season(w).drying,
-    stockpile: {spring: 0.7, summer: 1, autumn: 1.6, winter: 1}[season(w).id] ?? 1,
+    stockpile: season(w).stockpile ?? 1,
     stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
     fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return furnaceHeat(w, 2); },

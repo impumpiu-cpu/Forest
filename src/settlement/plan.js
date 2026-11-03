@@ -50,7 +50,7 @@ export function needs(w) {
   const out = {};
   const burn = dailyBurn(w), fuelDays = fuelStock(w) / Math.max(0.1, burn);
   const S = season(w), foodDays = ctx.food / Math.max(PLAN.rationFloor, pop * PLAN.ration);
-  const wantFoodDays = S.id === 'autumn' ? PLAN.foodDaysAutumn : PLAN.foodDays;
+  const wantFoodDays = S.stockUp ? PLAN.foodDaysAutumn : PLAN.foodDays;
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job)) continue;
     // someone must be able to do it at all

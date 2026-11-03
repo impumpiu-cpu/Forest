@@ -112,7 +112,7 @@ const hurtMight = hp => 0.3 + 0.7 * hp;
 export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0)
   + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
-export const frosty = (a, K, seasonId) => seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
+export const frosty = (a, K, seasonId) => !!SEASONS.get(seasonId).lean && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
 // cells a day: as the slowest who walks (campaign/baggage.js), slower hungry and in frost
 export function pace(a, K, seasonId) {
   let v = CAMPAIGN.speed * scaleOf(a) * slowest(K) * (guided(K) ? HIRES.guide.pace : 1);
@@ -313,7 +313,8 @@ function wantBuild(a, K) {
 const freezing = (a, i) => a.f.temp[i] - a.f.trange[i] / 2 < VISIT.winterBelow;
 function wantVisit(a, K, seasonId) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
-  if ((seasonId === 'winter' || (seasonId === 'autumn' && a.hist && K.day % 30 >= 20)) && freezing(a, K.i) && K.winterYear !== a.hist.year) return 'winter';
+  const Sn = SEASONS.get(seasonId);
+  if ((Sn.lean || (Sn.stockUp && a.hist && K.day % SEASON_DAYS >= VISIT.lateIn)) && freezing(a, K.i) && K.winterYear !== a.hist.year) return 'winter';
   if (K.day < (K.nextVisit ?? 0)) return '';   // just out of a town: on to the goal first
   if (K.food < need * Math.max(C.foodDays, VISIT.foodAt)) return 'food';   // (looked for while there is food to reach it)
   if (free(K).some(m => m.hp < C.badly)) return 'heal';   // a captive's wounds turn no caravan aside (campaign/captives.js)
@@ -368,7 +369,7 @@ function townEvening(a, K, seasonId) {
   const t = a.towns.find(x => x.id === K.inTown.id), st = standing(a, K, t), ms = alive(K);
   const stocked = K.food >= 0.9 * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
   const healed = free(K).every(m => m.hp >= CAMPAIGN.camp.healed);   // (nobody waits in town for a captive to heal)
-  const wintering = K.inTown.why === 'winter' && (seasonId === 'winter' || seasonId === 'autumn');
+  const wintering = K.inTown.why === 'winter' && (SEASONS.get(seasonId).lean || SEASONS.get(seasonId).stockUp);
   if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;
   // too poor to stock up for the way: they hire out for board and pay (the town feeds them, the pay is kept) a while
   const short = Math.max(0, Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays) - K.food) * (st ? rationPrice(t, st, termsOf(a, K, t).buy) : Infinity);
