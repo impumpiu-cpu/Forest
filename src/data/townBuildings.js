@@ -98,12 +98,13 @@ export const CATEGORIES = {
 // resources (only for the smelter), ingots processed ones (for the forge, the luxury workshop, the mint); five metal streams —
 // bronze, iron and steel, silver, gold, mithril — each its own ore and its own ingots. Fuel is one good of charges (coal of the
 // charcoal burners and of the mines, the herds' dung); logs burn too, a charge a log, and the brushwood the people gather by hand
-// (`brush`: not kept, not traded).
+// (`brush`: not kept, not traded). `feeds` — how a good counts as food for the town's choice (foodNet): 'ready' as it is, 'raw' at
+// what a kitchen makes of it, 'herd' as the meat a head gives at the slaughterhouse; none — not food.
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
-  {id: 'food', label: 'готовая еда', unit: 'чел.-год', get price() { return CAMPAIGN.ration * 365; }},
-  {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд, мука — всё одно: на кухню, в заготовки, в брагу; вид сырья — индикатор'},
-  {id: 'stores', label: 'заготовки', unit: 'чел.-год', price: 150, note: 'вяленое, солёное, копчёное: не портится'},
+  {id: 'food', label: 'готовая еда', unit: 'чел.-год', feeds: 'ready', get price() { return CAMPAIGN.ration * 365; }},
+  {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, feeds: 'raw', get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд, мука — всё одно: на кухню, в заготовки, в брагу; вид сырья — индикатор'},
+  {id: 'stores', label: 'заготовки', unit: 'чел.-год', feeds: 'ready', price: 150, note: 'вяленое, солёное, копчёное: не портится'},
   {id: 'drink', label: 'брага', unit: 'шт.', res: 'braga', soft: true, note: 'одна брага из любого сбраживаемого сырья'},
   {id: 'salt', label: 'соль', unit: 'шт.', res: 'salt', soft: true, note: 'мягкое сырьё засолки'},
   {id: 'wood', label: 'древесина', unit: 'шт.', res: 'wood'},
@@ -129,7 +130,7 @@ TOWN_GOODS.registerAll([
   {id: 'arms', label: 'оружие', unit: 'шт.', price: 6, soft: true},
   {id: 'armor', label: 'броня', unit: 'шт.', price: 15, soft: true},
   {id: 'lux', label: 'роскошь', unit: 'шт.', price: 10, soft: true},
-  {id: 'beasts', label: 'скот', unit: 'голов', get price() { return CAMPAIGN.beasts.mule; }},
+  {id: 'beasts', label: 'скот', unit: 'голов', feeds: 'herd', get price() { return CAMPAIGN.beasts.mule; }},
   {id: 'hide', label: 'шкуры', unit: 'шт.', res: 'hide'},
   {id: 'leather', label: 'кожа', unit: 'шт.', res: 'leather'},
   {id: 'bone', label: 'кость', unit: 'шт.', res: 'bone'},
@@ -492,7 +493,9 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 // food a building gives net: ready food and stores, raw food at what a kitchen makes of it (TOWN_FLOW.rawFood) — what it gives
 // over what it takes; of its recipes, the best one that may run (`lit`: the town's indicators; none — the first that asks for
 // nothing of the people or the kind)
-const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + (g === 'food' || g === 'stores' ? v : g === 'raw' ? v * TOWN_FLOW.rawFood : g === 'beasts' ? v * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0), 0);
+// (TOWN_GOODS `feeds`: 'ready' — as it is, 'raw' — at TOWN_FLOW.rawFood, 'herd' — a head as TOWN_FLOW.herd.food of raw meat)
+const feedsOf = (g, v) => { const F = TOWN_GOODS.has(g) ? TOWN_GOODS.get(g).feeds : null; return F === 'ready' ? v : F === 'raw' ? v * TOWN_FLOW.rawFood : F === 'herd' ? v * TOWN_FLOW.herd.food * TOWN_FLOW.rawFood : 0; };
+const FOOD_GOODS = io => Object.entries(io || {}).reduce((s, [g, v]) => s + feedsOf(g, v), 0);
 // (wf — × what a people's work of this kind gives of a good: data/peoples.js workFlows, the greenskins' hunt)
 const scaled = (io, wf) => (wf ? Object.fromEntries(Object.entries(io || {}).map(([g, v]) => [g, v * (wf[g] ?? 1)])) : io);
 const ioFood = (x, wf) => FOOD_GOODS(scaled(x.out, wf)) - FOOD_GOODS(x.in);

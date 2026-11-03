@@ -193,7 +193,7 @@ BUILDINGS.registerAll([
   {id: 'palisade', name: 'Частокол', gender: 'm', cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true, color: '#6f5a3c', mark: 'Ч', needs: 'quarry',
     effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.',
     effects: {mul: {defense: 0.6, loot: 0.5}},
-    available: w => colonyRace(w) !== 'elf' && !dwarven(w),   // the elves grow a thorn hedge instead, the dwarves raise a stone wall
+    // (who raises it — the humans and the greenskins; the elves grow a thorn hedge, the dwarves a stone wall — is its `races`)
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
