@@ -152,3 +152,9 @@ export const PRECIOUS = {
   fameVein: 6,          // added to the raid threat by the rumour of gold…
   fameMithril: 4,       // …and of mithril
 };
+
+// What a player may do to the world (src/commands.js): a fire set to a 3×3 patch, a short downpour
+export const COMMAND = {
+  ignite: {fuel: 0.05, fire: 0.6, heat: 300},   // cells with more fuel than this catch, at this fire and heat
+  rain: {r: 7, cool: 2, smoke: 0.3},             // within this radius: fire out, cooled to the air less this, smoke × this
+};

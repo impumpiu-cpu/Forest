@@ -370,3 +370,43 @@ export const BODY = {
 
 // The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish
 export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4};
+
+// Moving (agents/movement.js): what makes a cell dangerous to stand in, how a beast runs, how one walks round an obstacle
+export const MOVE = {
+  danger: {fire: 400, smoke: 6},   // a cell's danger: its heat + fire × this + smoke × this
+  escapePace: 1.35,                // running from heat
+  room: 6,                         // open space counted up to this far from the edge of the map
+  bolt: {dirs: 16, step: 1.5, far: 8, room: 0.9, keep: 6},   // directions tried, how far each looks, threats counted to `far`, the edge's weight, ticks a choice is kept
+  guard: {moved: 0.6, gap: 3, drift: 2, stuck: 40},   // approach(): no progress of `moved` for `stuck` ticks at one target — unreachable
+  path: {drift: 3, every: 40, budget: 6000, perCell: 6, skip: 6, reach: 0.3},   // a path re-planned when the target drifts or every so many ticks; the search's budget
+  stamina: {tired: 0.15, recover: 0.002},   // below `tired` a sprint is a walk; walking gives back `recover` a tick
+};
+
+// The job runners (agents/jobRunners.js): work, the hunt, the herder, the burial
+export const RUNNER = {
+  skill: 0.7, mood: 0.1,         // a tick of work × (1 + skill × this) × (1 + mood × this)
+  resumeFor: 1200,               // a picking or a felling broken off is gone back to within this many ticks
+  far: 25, farMemory: 0.003,     // a gatherer this far from the field remembers the long way
+  eat: {full: 0.95, food: 0.4},  // eating out of the hands: up to this full, this × nutrition a unit
+  mill: {chance: 0.02, step: 0.2},   // the healer with nobody to tend shifts about
+  herd: {calmAt: 8, near: 12, respot: 150, giveUp: 1500, reach: 1.3, kick: 0.12, shy: -20, calmPace: 0.75},
+  hunt: {smell: 20, meat: 0.75, retarget: 40, retargetFar: 9, look: 80, giveUp: 900, range: 0.85, creep: 9, creepPace: 0.55,
+    stalk: 10, oneMore: 20, carry: 8, spook: 40, missMemory: 0.05, giveUpMemory: 0.2, bolt: 0.6, calm: 300},
+  think: {gather: 20, build: 10, craft: 20, heal: 20, herd: 30, herdFar: 40, kicked: 10, bury: 30, buryFar: 60, hunt: 30},
+  buryReach: 0.9, buryAt: 0.6, buryPace: 0.8,
+  buildWear: 0.05,               // a builder's tool wears this much a tick of work
+};
+
+// The shared tasks (agents/tasks.js): milling about the camp, the fight, fire, the camp's gatherings
+export const TASK = {
+  mill: {respot: 0.02, pace: 0.5, sleep: 1.2, idle: [4, 2.5], sulk: [5, 4], haunt: [4, 3], muster: [3, 2.2], musterPace: 1.2, scout: 1.5},   // [near the camp, radius]
+  council: {ring: 1.6},
+  flee: {cool: 16, fire: 3},            // out of the fire once the heat underfoot is below this and no flame this close
+  fight: {lost: 60, lostPace: 0.9, shootFrom: 1.4, shootRange: 0.9, stand: 0.9, closePace: 1.1, shootPace: 1.0, catchPace: 1.2},
+  douse: {near: 1.7, reach: 2, r2: 2.9, cool: 6, coolTo: 60, think: 10},
+  torch: {near: 14},                    // a torch-bearer heads for the camp till this close by path
+  trade: {at: 2.4, ring: [1.2, 1.2]},
+  astray: {step: 3, pace: 0.6},
+  runPace: 1.3,                          // running home to the settlement
+  think: {pray: 30, treat: 30},
+};

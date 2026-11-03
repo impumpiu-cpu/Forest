@@ -35,8 +35,9 @@ import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
 import {liveById, ofSpeciesList, noteAttacker, onMap} from './lookup.js';
 import {apprenticeBonus} from '../settlement/masters.js';
+import {RUNNER} from '../data/behaviour.js';
 
-const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
+const jitter = (w, a) => { const s = RUNNER.mill.step; a.x += (w.rngs.colony() - 0.5) * s; a.y += (w.rngs.colony() - 0.5) * s; };
 
 // How fast a tick of work goes: skilled hands work faster, the right tool helps. Only a speed: reading
 // it teaches nothing. Practice (agents/skills.js) is added where the work is really done.
@@ -44,7 +45,7 @@ const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.co
 export function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
   if (a.master) a.master.workedAt = w.tick;   // a master at work: the learners beside it learn (settlement/masters.js)
   // a good mood helps a little, a bad one slows down (±10%); learners beside a master speed it up
-  return (1 + apprenticeBonus(w, a, jobId)) * (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * (SPECIES.get(a.species).jobPace?.[jobId] ?? 1) * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  return (1 + apprenticeBonus(w, a, jobId)) * (1 + RUNNER.skill * skillOf(a, skillId)) * a.mods.work * (SPECIES.get(a.species).jobPace?.[jobId] ?? 1) * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + RUNNER.mood * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
@@ -75,7 +76,7 @@ export const carriedFood = a => Object.entries(a.carry?.res || {}).reduce((s, [r
 export function eatCarried(a) {
   let fed = 0;
   for (const r of Object.keys(a.carry?.res || {}).filter(r => FOODS.has(r)).sort((x, y) => FOODS.get(y).nutrition - FOODS.get(x).nutrition)) {
-    while (a.needs.food + fed < 0.95 && unload(a, r, 1)) fed += 0.4 * FOODS.get(r).nutrition;
+    while (a.needs.food + fed < RUNNER.eat.full && unload(a, r, 1)) fed += RUNNER.eat.food * FOODS.get(r).nutrition;
   }
   a.needs.food = Math.min(1, a.needs.food + fed);
   return fed;
@@ -94,7 +95,6 @@ function haulHome(w, a) {
 }
 
 // interrupted half-way through a picking or a felling: remember where and how far it got (for a day)
-const RESUME_FOR = 1200;
 const keepProgress = (w, a, t, outcome) => { if (outcome === 'interrupted' && t.work > 0) a.resume = {job: t.job, cell: cellOf(w, a), work: t.work, t: w.tick}; };
 RUNNER_EXIT.harvest = keepProgress;
 RUNNER_EXIT.farm = keepProgress;
@@ -110,7 +110,7 @@ export const RUNNERS = {
       if (!job.valid(w, i)) { w.nav.dirty(job.nav); task.work = 0; return; }
       // back at the bush or tree left half-done: the work done there is not lost
       const back = a.resume;
-      if (back && back.job === task.job && back.cell === i && w.tick - back.t < RESUME_FOR) { task.work = Math.max(task.work || 0, back.work); }
+      if (back && back.job === task.job && back.cell === i && w.tick - back.t < RUNNER.resumeFor) { task.work = Math.max(task.work || 0, back.work); }
       if (back) a.resume = null;
       const skill = task.job === 'heal' ? job.gatherSkill : job.skill;
       task.work = (task.work || 0) + workRate(w, a, job.id, skill);
@@ -123,16 +123,16 @@ export const RUNNERS = {
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (w.nav.dirtySet.has(job.nav)) return;   // the map is being rebuilt for this job: wait a tick
-      if (a.carry?.n) task.full = true; else { fail(w, a, 'собирать нечего: всё выбрано или не дойти'); a.think = 20; }   // nothing left to gather: bring home what there is
+      if (a.carry?.n) task.full = true; else { fail(w, a, 'собирать нечего: всё выбрано или не дойти'); a.think = RUNNER.think.gather; }   // nothing left to gather: bring home what there is
     }
-    if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > 25) a.mem[job.memory] += 0.003; }
+    if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > RUNNER.far) a.mem[job.memory] += RUNNER.farMemory; }
   },
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); practice(a, 'construction'); toolWear(w, a, 'build', 0.05); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); practice(a, 'construction'); toolWear(w, a, 'build', RUNNER.buildWear); return; }
     const r = follow(w, a, 'sites');
-    if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); if (r === 'none') fail(w, a, 'к стройке нет пути', 'impossible'); else done(w, a); a.think = 10; }   // arrived and nothing left: finished by others, nothing lost
+    if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); if (r === 'none') fail(w, a, 'к стройке нет пути', 'impossible'); else done(w, a); a.think = RUNNER.think.build; }   // arrived and nothing left: finished by others, nothing lost
   },
 
   // work the current order at a station building (crafthut, tannery…)
@@ -143,7 +143,7 @@ export const RUNNERS = {
       const open = job.stations.filter(s => stationHasWork(w, s, a));
       task.station = open.sort((x, y) => stationPriority(w, y, a) - stationPriority(w, x, a))[0];
     }
-    if (!task.station) { fail(w, a, 'заказов нет или все верстаки заняты'); a.think = 20; return; }
+    if (!task.station) { fail(w, a, 'заказов нет или все верстаки заняты'); a.think = RUNNER.think.craft; return; }
     // a bench of its own from the start, kept while walking there (nobody else heads for it meanwhile)
     const st = w.buildings.find(x => x.key === task.station && x.done), bench = st && freeBench(w, st, a);
     if (!bench || !reserve(w, bench, a)) { task.station = null; return; }
@@ -157,8 +157,8 @@ export const RUNNERS = {
       // the order's recipe decides which skill the work uses and trains (data/skills.js recipeSkill)
       const r = b && b.done ? workAt(w, b, rec => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
       if (r) practice(a, recipeSkill(r));
-      else { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = 20; }
-    } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); fail(w, a, 'к мастерской нет пути', 'impossible'); a.think = 20; }
+      else { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = RUNNER.think.craft; }
+    } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); fail(w, a, 'к мастерской нет пути', 'impossible'); a.think = RUNNER.think.craft; }
   },
 
   // field work: walk to a plot that needs it, sow it (a seed from the stock) or reap it and carry the crop home
@@ -178,7 +178,7 @@ export const RUNNERS = {
     } else if (r === 'none') {
       if (w.nav.dirtySet.has(job.nav)) return;
       if (a.carry?.n) { task.more = false; return; }
-      fail(w, a, 'в поле пока нечего делать'); a.think = 20;
+      fail(w, a, 'в поле пока нечего делать'); a.think = RUNNER.think.gather;
     }
   },
 
@@ -191,8 +191,8 @@ export const RUNNERS = {
       if (r === 'arrived' || healerHutCell(w, a)) {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(hutOf(w)));
         if (given) { a.stats.healed = (a.stats.healed || 0) + given; practice(a, 'medicine'); }   // only a wound really tended teaches
-        else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);   // the patients are still on their way
-      } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = 20; }
+        else if (!patients(w).length && w.rngs.colony() < RUNNER.mill.chance) jitter(w, a);   // the patients are still on their way
+      } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = RUNNER.think.heal; }
       return;
     }
     RUNNERS.harvest(w, a, task);
@@ -210,19 +210,19 @@ export const RUNNERS = {
       let bd = Infinity;
       for (const o of chores(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
       if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a) || !canTame(a, o)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
-      if (!b) { if (a.carry?.n) { task.more = false; return; } fail(w, a, 'некого приручать или доить'); a.think = 30; return; }
+      if (!b) { if (a.carry?.n) { task.more = false; return; } fail(w, a, 'некого приручать или доить'); a.think = RUNNER.think.herd; return; }
       task.beast = b.id; task.work = 0; task.since = w.tick;
     }
-    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    const d = Math.hypot(b.x - a.x, b.y - a.y), HR = RUNNER.herd;
     reserve(w, 'beast:' + b.id, a);   // this animal is mine while I am after it
-    if (!b.tame) { task.tame = b.id; task.calm = d < 8; }
-    if (d > 1.3) {
+    if (!b.tame) { task.tame = b.id; task.calm = d < HR.calmAt; }
+    if (d > HR.reach) {
       // far off: walk to where the beast was a while ago (a path is planned once, not after every step it takes)
-      if (!task.spot || d < 12 || w.tick - task.spotAt > 150) { task.spot = d < 12 ? null : [b.x, b.y]; task.spotAt = w.tick; }
+      if (!task.spot || d < HR.near || w.tick - task.spotAt > HR.respot) { task.spot = d < HR.near ? null : [b.x, b.y]; task.spotAt = w.tick; }
       const [tx, ty] = task.spot || [b.x, b.y];
-      if (approach(w, a, tx, ty, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) {
+      if (approach(w, a, tx, ty, task.calm ? HR.calmPace : 1) === null || w.tick - task.since > HR.giveUp) {
         if (!b.tame) b.unreachable = w.tick;   // across water or rock: leave it for a while
-        task.beast = null; fail(w, a, 'к зверю не подойти', 'impossible'); a.think = 40;
+        task.beast = null; fail(w, a, 'к зверю не подойти', 'impossible'); a.think = RUNNER.think.herdFar;
       }
       return;
     }
@@ -245,8 +245,8 @@ export const RUNNERS = {
     if (r === 'failed') {
       const T = SPECIES.get(b.species).tame;
       // a mule kicks out once and the herder backs off; a goat shies, and the herder tries again
-      if (T.kicks) { b.flash = 4; damage(w, b, a, 0.12 * SPECIES.get(b.species).attack.power); think(w, a, 'kicked'); task.beast = null; a.think = 10; fail(w, a, 'зверь лягнул, пришлось отступить'); return; }
-      task.work = -20;   // a goat shies off a step; the herder waits a moment and holds out the hay again
+      if (T.kicks) { b.flash = 4; damage(w, b, a, RUNNER.herd.kick * SPECIES.get(b.species).attack.power); think(w, a, 'kicked'); task.beast = null; a.think = RUNNER.think.kicked; fail(w, a, 'зверь лягнул, пришлось отступить'); return; }
+      task.work = RUNNER.herd.shy;   // a goat shies off a step; the herder waits a moment and holds out the hay again
       return;
     }
     task.beast = null; task.calm = false; task.tame = null; release(w, 'beast:' + b.id, a);
@@ -258,17 +258,17 @@ export const RUNNERS = {
   bury(w, a, task) {
     const job = JOBS.get(task.job);
     let c = task.corpse != null ? (w.corpses || []).find(x => x.id === task.corpse) : null;
-    if (!c) { c = freeCorpse(w, a); if (!c) { fail(w, a, 'тело уже несут другие'); a.think = 30; return; } task.corpse = c.id; task.carrying = false; }
+    if (!c) { c = freeCorpse(w, a); if (!c) { fail(w, a, 'тело уже несут другие'); a.think = RUNNER.think.bury; return; } task.corpse = c.id; task.carrying = false; }
     reserve(w, 'corpse:' + c.id, a);   // my burden: nobody else comes for this body
     if (!task.carrying) {
       const r = approach(w, a, c.x, c.y);
-      if (r === null) { release(w, 'corpse:' + c.id, a); fail(w, a, 'к телу не подойти', 'impossible'); a.think = 60; return; }
-      if (Math.hypot(c.x - a.x, c.y - a.y) < 0.9) { task.carrying = true; task.spot = graveSpot(w); }
+      if (r === null) { release(w, 'corpse:' + c.id, a); fail(w, a, 'к телу не подойти', 'impossible'); a.think = RUNNER.think.buryFar; return; }
+      if (Math.hypot(c.x - a.x, c.y - a.y) < RUNNER.buryReach) { task.carrying = true; task.spot = graveSpot(w); }
       return;
     }
     c.x = a.x; c.y = a.y;   // the body goes where it is carried
     const [sx, sy] = task.spot;
-    if (Math.hypot(sx - a.x, sy - a.y) > 0.6) { if (approach(w, a, sx, sy, 0.8) === null) { task.spot = graveSpot(w); } return; }
+    if (Math.hypot(sx - a.x, sy - a.y) > RUNNER.buryAt) { if (approach(w, a, sx, sy, RUNNER.buryPace) === null) { task.spot = graveSpot(w); } return; }
     task.work = (task.work || 0) + workRate(w, a, job.id);
     practice(a, job.skill);
     if (task.work < job.time) return;
@@ -278,23 +278,23 @@ export const RUNNERS = {
   // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound
   // sends the animal running
   hunt(w, a, task) {
-    const job = JOBS.get(task.job);
+    const job = JOBS.get(task.job), H = RUNNER.hunt;
     // carrying game: head home, unless there is room for another animal close by
     if (a.carry && !task.oneMore) { a.stalking = false; haulHome(w, a); return; }
     // a carcass close by (agents/carcass.js) is meat for the taking, no arrows needed: beasts at it give way
     // or turn on the hunter
     if (!a.carry && job.id === 'hunt') {
       // worth the walk only with meat still on it (bones and hide come along)
-      const c = task.c != null ? carcassById(w, task.c) : smellCarcass(w, a, 20);
-      if (c && (c.yields.meat || 0) * share(c) >= 0.75) {
+      const c = task.c != null ? carcassById(w, task.c) : smellCarcass(w, a, H.smell);
+      if (c && (c.yields.meat || 0) * share(c) >= H.meat) {
         task.c = c.id;
         const d = Math.hypot(c.x - a.x, c.y - a.y);
         if (d < CARCASS.scare) {
           for (const o of w.agents) {   // scan: a hunter beside a carcass only
             if (o.dead || o.task?.id !== 'feed' || o.task.c !== c.id || Math.hypot(o.x - a.x, o.y - a.y) > CARCASS.scare) continue;
             const P = SPECIES.get(o.species).predator;
-            if (P && boldness(o, P) > 0.6) { o.task = {id: 'maul', target: a}; noteAttacker(w, o); }   // a starving beast will not give up its meal
-            else { o.task = {id: 'bolt', mode: 'from', from: [a], sprint: P?.sprint ?? 1, drain: P?.stamina ?? 0}; o.calmUntil = w.tick + 300; wake(o, 'охотник у туши', 'охотник у туши'); }   // gives way: runs from the hunter (agents/behaviours/bolt.js)
+            if (P && boldness(o, P) > H.bolt) { o.task = {id: 'maul', target: a}; noteAttacker(w, o); }   // a starving beast will not give up its meal
+            else { o.task = {id: 'bolt', mode: 'from', from: [a], sprint: P?.sprint ?? 1, drain: P?.stamina ?? 0}; o.calmUntil = w.tick + H.calm; wake(o, 'охотник у туши', 'охотник у туши'); }   // gives way: runs from the hunter (agents/behaviours/bolt.js)
             task.scared = true;
           }
         }
@@ -314,23 +314,23 @@ export const RUNNERS = {
     task.age = (task.age || 0) + 1;
     let prey = task.prey;
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
-    if (!prey || prey.dead || !onMap(w, prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
-      prey = null; let bd = 80 * 80;
+    if (!prey || prey.dead || !onMap(w, prey) || (task.age % H.retarget === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > H.retargetFar)) {
+      prey = null; let bd = H.look * H.look;
       for (const o of huntable(w, job, a)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
-      if (!prey) { fail(w, a, 'дичи не видно'); a.think = 30; a.stalking = false; return; }
+      if (!prey) { fail(w, a, 'дичи не видно'); a.think = RUNNER.think.hunt; a.stalking = false; return; }
     }
-    if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; fail(w, a, 'дичь ушла, устал гоняться'); return; }
+    if (task.age > H.giveUp) { a.mem.chase += H.giveUpMemory; a.stalking = false; fail(w, a, 'дичь ушла, устал гоняться'); return; }
     const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = (a.gear.ranged.range + w.mods.add.huntRange) * darkness(w, a);   // (by night a shot reaches as far as one sees: agents/combat.js shoot)
-    a.stalking = d < 10;
+    a.stalking = d < H.stalk;
     // in range but a rock in the way: no shot from here, find a spot to shoot from (approach goes around)
-    const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);
+    const open = d <= range * H.range && lineOfFire(w, a.x, a.y, prey.x, prey.y);
     if (!open) {
       // far away: walk the prey flow field around lakes and rocks; close: creep straight at it
-      if (d > 9) {
+      if (d > H.creep) {
         const r = follow(w, a, job.nav);
         if (r !== 'moving') { w.nav.dirty(job.nav); approach(w, a, prey.x, prey.y); }   // the field is stale: the prey has moved on
-      } else if (approach(w, a, prey.x, prey.y, 0.55) === null) { task.prey = null; }   // across the water: look for another
+      } else if (approach(w, a, prey.x, prey.y, H.creepPace) === null) { task.prey = null; }   // across the water: look for another
       return;
     }
     // the shot itself teaches shooting (agents/combat.js); bringing the game down teaches the hunt
@@ -344,11 +344,11 @@ export const RUNNERS = {
       for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
       const rare = trophyText(prey.trophy);
       if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, 'добыл', 'добыла')} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, 'wildlife');
-      const near = ofSpeciesList(w, job.prey).some(o => !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
-      task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
+      const near = ofSpeciesList(w, job.prey).some(o => !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < H.oneMore);
+      task.oneMore = a.carry.n < H.carry && near; task.prey = null; task.age = 0;
     } else if (res === 'miss' || res === 'hit') {
-      prey.spooked = 40; wake(prey, 'выстрел', 'выстрел');   // the shot whistles past or wounds: the hare bolts
-      if (res === 'miss') a.mem.chase += 0.05;
+      prey.spooked = H.spook; wake(prey, 'выстрел', 'выстрел');   // the shot whistles past or wounds: the hare bolts
+      if (res === 'miss') a.mem.chase += H.missMemory;
     }
   },
 };

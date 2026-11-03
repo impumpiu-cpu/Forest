@@ -503,7 +503,7 @@ TABLES.push(
   // Поселение
   {id: 'colonyRules', label: 'Жизнь поселения', group: 'Поселение', note: 'Отношения, жизнь, лечение, стада, угроза, план дня, горн, доска работ и дозор, общие дела, золотые жилы (data/colony.js); караваны торговцев (data/trade.js TRADE).',
     ...grp({...kindsOf(COLONY), trade: COLONY_TRADE})},
-  {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца, сон и тепло у огня (REST), поджог и тушение (KINDLE), выбор снаряжения (GEAR), вред от жара (HEAT) (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
+  {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца, сон и тепло у огня (REST), поджог и тушение (KINDLE), выбор снаряжения (GEAR), вред от жара (HEAT), когда поселенец думает снова (ATTENTION), пауза отказанного дела (LIFECYCLE), тело и дневник (BODY, MIND), ходьба и бег (MOVE), работы (RUNNER), общие дела (TASK) (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
     ...grp({...kindsOf(BEHAVIOUR), arrivals: ARRIVALS})},
   {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка, рост ягод, огородов, кустов и леса (GROWTH) локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES); цена пути через огонь, дым и жар и частота перестройки карт путей (data/navmaps.js NAV).',
     ...grp({...kindsOf(NATURE), kindLand: KIND_LAND, kindGroves: KIND_GROVES, nav: NAV_RULES})},
