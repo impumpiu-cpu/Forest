@@ -31,9 +31,8 @@ export const innateOf = sp => [...(sp.innate || [])];
 // a label like «лесной эльф»
 export const raceLabel = sp => sp.label;
 
-// keys that add up rather than multiply
 // the keys that add rather than multiply (data/mods.js CREATURE_MODS `how`)
-export const ADD = ADD_MODS;
+const ADD = ADD_MODS;
 
 function mod(m, k, v) { m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v; }
 

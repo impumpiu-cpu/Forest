@@ -15,12 +15,13 @@ import {log} from '../core/log.js';
 import {POTION, POTION_RES, HOME_BY_USE, BELT_ORDER, potionOf} from '../data/potions.js';
 import {NIGHT, hasSense} from '../data/tongues.js';
 import {CONDITIONS, hasMark, effectsOf} from '../data/conditions.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {nightness} from '../core/time.js';
 import {darkness} from './combat.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 import {FRENZY} from '../data/roles.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const able = a => !a.dead && !a.downed && !a.captive && a.hp > 0;
 // a blade in hand to rub a poison on: a weapon of blows, not a bow struck with
@@ -83,7 +84,7 @@ const atWork = (w, a, res) => (a.effects || []).some(e => e.id === potionOf(res)
 const forUse = (w, a, use) => (a.belt || []).find(res => potionOf(res)?.potion.use === use && fits(a, res) && !atWork(w, a, res)) || null;
 // what goes on the blade against this foe: a silver oil against what fears silver, a poison against the living rest
 function forBlade(a, t) {
-  const sp = t ? SPECIES.get(t.species) : null, fears = !!sp?.weakTo?.includes('silver');
+  const sp = t ? SPECIES.get(t.species) : null, fears = fearsSilver(sp);
   return (a.belt || []).find(res => {
     const P = potionOf(res); if (P?.potion.use !== 'blade' || !fits(a, res)) return false;
     const row = CONDITIONS.get(P.grade.effect);
@@ -140,7 +141,7 @@ export function threatOf(counts) {
   let n = 0; const T = {venom: 0, silver: 0, breath: 0, undead: 0, living: 0};
   for (const [id, k] of Object.entries(counts || {})) {
     if (!SPECIES.has(id) || !(k > 0)) continue;
-    const sp = SPECIES.get(id), silver = !!sp.weakTo?.includes('silver'); n += k;
+    const sp = SPECIES.get(id), silver = fearsSilver(sp); n += k;
     if (sp.venom) T.venom += k; if (silver) T.silver += k; if (sp.breath) T.breath += k; if (sp.undead) T.undead += k;
     if (!sp.undead && !silver) T.living += k;
   }
@@ -196,6 +197,7 @@ export function rebelt(a, species, have, take, give, fitsIt, threat) {
 
 // the use of the potion whose drink gave this effect (for the effects at work)
 let effectUse = null;
+onEdit(() => { effectUse = null; });   // an edit of the potions (data/schema/layer.js) makes the map again
 export const useOfEffect = id => (effectUse ||= new Map(POTION_RES.map(res => [potionOf(res).grade.effect, potionOf(res).potion.use]))).get(id) || null;
 
 // the potions at work run out (agents/body.js stepEffects, once a tick): the body is rebuilt when one with mods ends

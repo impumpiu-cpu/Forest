@@ -50,7 +50,7 @@ MIGRATIONS.registerAll([
     accept: (w, n) => (MIGRATIONS.get('settlers').blocked(w) ? 0 : n),
     members: (w, rng, n) => Array.from({length: n}, () => ({species: settlerSpecies(w, rng)})),
     message: (w, group) => (group[0].species === 'human' ? `К лагерю пришла новая душа: <b>${group[0].name}</b>.`
-      : `К лагерю ${group[0].gender === 'f' ? 'пришла' : 'пришёл'} <b>${group[0].name}</b> (${raceLabel(SPECIES.get(group[0].species), group[0])}). Просится в поселение.`)},
+      : `К лагерю ${group[0].gender === 'f' ? 'пришла' : 'пришёл'} <b>${group[0].name}</b> (${raceLabel(SPECIES.get(group[0].species))}). Просится в поселение.`)},
 
   // hares stay only while the meadows can feed more of them
   {id: 'hares', species: 'hare', faction: 'wild', minDist: 20, topic: 'wildlife',

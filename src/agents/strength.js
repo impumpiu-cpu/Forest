@@ -11,7 +11,7 @@
 import {STRENGTH} from '../data/balance/creatures.js';
 import {COMBAT} from '../data/balance/combat.js';
 import {CRIT} from '../data/wounds.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {STATS} from '../data/special.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
@@ -23,11 +23,10 @@ import {meanPlaceDamage} from '../data/anatomy.js';
 import {refreshBody} from './special.js';
 import {onEdit} from '../data/schema/layer.js';
 
-const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
-
 // a piercing weapon (quality `piercing`) against the armour of the average foe (COMBAT.armourSeen): × what more of it goes through
 const pierceGain = q => { const p = traitOf(q, 'piercing'), A = COMBAT.armourSeen; return p ? (1 - A * (1 - p)) / (1 - A) : 1; };
 export function strengthParts(a, {now = false} = {}) {
+  const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;   // (read now: an edit of the table reaches it)
   const sp = SPECIES.get(a.species), g = a.gear || recalcGear(a), m = a.mods || {};
   // a critical blow × CRIT.mul, more for a vicious weapon (data/balance/combat.js WEAPON_QUALITIES)
   const pc = critChance(a), crit = 1 + pc * (CRIT.mul + traitOf(g.melee.q, 'vicious') - 1), critShot = 1 + pc * (CRIT.mul + traitOf(g.ranged?.q, 'vicious') - 1);
@@ -57,7 +56,7 @@ export function strengthParts(a, {now = false} = {}) {
   let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => (1 - STRENGTH.shotShare) * blockAgainst(g, k) + STRENGTH.shotShare * blockAgainst(g, k, false))) * (1 - (m.dodge || 0)));
   staying /= mean(k => resistOf(sp, k, true));
   staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
-  if (sp.weakTo?.includes('silver')) staying /= COMBAT.silver.plain;   // against plain weapons
+  if (fearsSilver(sp)) staying /= COMBAT.silver.plain;   // against plain weapons
   if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
   return {offence, staying, raw: offence * staying};
 }
@@ -76,7 +75,7 @@ export function referenceRaw() {
   return (refRaw = strengthParts(a).raw);
 }
 
-export const ratingOf = (raw, species, alpha = STRENGTH.alpha) => STRENGTH.base * (raw / referenceRaw()) ** alpha * (SPECIES.get(species).ks ?? 1);
+const ratingOf = (raw, species, alpha = STRENGTH.alpha) => STRENGTH.base * (raw / referenceRaw()) ** alpha * (SPECIES.get(species).ks ?? 1);
 // a rider is worth its mount too (agents/mount.js): a trained beast of its kind, at the share of health it has left
 const mountWorth = m => (m?.hp > 0 ? expectedStrength(m.species, {key: 'mount', prepare: b => { b.marks = ['trained']; refreshBody(b); }}) * Math.min(1, m.hp / (m.max || m.hp)) : 0);
 export const strengthOf = (a, opt) => ratingOf(strengthParts(a, opt).raw, a.species) + mountWorth(a.mount);

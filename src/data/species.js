@@ -31,6 +31,8 @@ export const SPECIES = new Registry('species');
 
 // a hunter of the pack: has the `predator` block (data/behaviour.js WAYS.predator reads it)
 export const isPredator = sp => !!sp.predator;
+// silver bites it (`weakTo`, the tag «Боится серебра»)
+export const fearsSilver = sp => !!sp?.weakTo?.includes('silver');
 // the brain a creature of this species is born with: its own (a race names none: the faction's — colonist, raider, caravan),
 // or the tabled one for every row that lists its behaviours (agents/brains/tabled.js, docs/BEHAVIOUR.md)
 export const brainOf = (sp, fa) => sp.brain || (sp.behaviours ? 'tabled' : fa?.brain);
@@ -62,7 +64,9 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', sylvan: true, kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  // remembers: the key of a colonist's memory of a fight with one of these (a.mem; the council's motives read it,
+  // data/buildings.js); a fight with anyone else is remembered as 'raid' (agents/combat.js)
+  {id: 'wolf', remembers: 'wolf', sylvan: true, kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
@@ -130,7 +134,7 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
+  {id: 'mule', remembers: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
     habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     yields: {meat: 9, hide: 3, bone: 4},

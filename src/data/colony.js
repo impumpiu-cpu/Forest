@@ -28,6 +28,9 @@ export const LIFE = {
   prayGap: DAY,               // one prayer a day is enough
 };
 
+// a prayer (agents/tasks.js pray): the building prayed at, how long it takes (ticks)
+export const PRAYER = {at: 'shrine', ticks: 60};
+
 export const HEAL = {
   seekBelow: 0.75,  // a colonist this hurt (share of health) goes to the healer's hut…
   until: 0.97,      // …and stays until healed this far
@@ -148,4 +151,10 @@ export const PRECIOUS = {
   veinCells: [2, 4],    // rock cells that turn into gold quartz
   fameVein: 6,          // added to the raid threat by the rumour of gold…
   fameMithril: 4,       // …and of mithril
+};
+
+// What a player may do to the world (src/commands.js): a fire set to a 3×3 patch, a short downpour
+export const COMMAND = {
+  ignite: {fuel: 0.05, fire: 0.6, heat: 300},   // cells with more fuel than this catch, at this fire and heat
+  rain: {r: 7, cool: 2, smoke: 0.3},             // within this radius: fire out, cooled to the air less this, smoke × this
 };

@@ -18,7 +18,7 @@ import {isHostile} from '../data/factions.js';
 import {nearAgents} from './spatial.js';
 import {canSee, aggressor, darkness} from './combat.js';
 import {hpShare} from './agent.js';
-import {firstAttacker} from './lookup.js';
+import {firstAttacker, isAttack} from './lookup.js';
 import {liveMembers} from './group.js';
 import {handItems, def} from './equipment.js';
 import {traitOf} from '../data/balance/combat.js';
@@ -45,7 +45,7 @@ export const caravanSide = w => {
 };
 
 // the foes this one can see within r, nearest first (the fallen and the bound are out of it)
-export function foesNear(w, a, r) {
+function foesNear(w, a, r) {
   r *= darkness(w, a);   // (the night hides what is further off, as for the plain search: agents/combat.js nearestHostile)
   const out = [];
   for (const o of nearAgents(w, a.x, a.y, r)) {
@@ -55,8 +55,10 @@ export function foesNear(w, a, r) {
   }
   return out.sort((p, q) => dist(a, p) - dist(a, q));
 }
-const fighting = o => (o.task?.id === 'fight' || o.task?.id === 'maul') && o.task.target;   // (as agents/combat.js stanceOf reads it)
-const shoots = o => !!o.fightRole && COMBAT_ROLES.has(o.fightRole) && COMBAT_ROLES.get(o.fightRole).squad === 'shooter';
+const fighting = o => isAttack(o.task);   // (as agents/combat.js stanceOf reads it)
+const roleOf = o => (o.fightRole && COMBAT_ROLES.has(o.fightRole) ? COMBAT_ROLES.get(o.fightRole) : null);
+const shoots = o => roleOf(o)?.squad === 'shooter';
+const heals = o => roleOf(o)?.tactic === 'heal';
 // a soft target for a cutthroat: one who shoots, one who tends the wounded, one already bleeding, one busy with another
 const soft = o => !!o.gear?.ranged || o.task?.id === 'aid' || o.task?.id === 'treat' || o.task?.id === 'bind' || o.task?.id === 'mend' || hpShare(o) < TACTICS.wounded;
 
@@ -80,7 +82,7 @@ export function roleTactic(w, a, side, radius) {
   const R = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole) : null;
   if (!R) return null;
   const mind = mindOf(a), T = TACTICS;
-  const foes = foesNear(w, a, radius); if (!foes.length && R.id !== 'healer') return null;
+  const foes = foesNear(w, a, radius); if (!foes.length && R.tactic !== 'heal') return null;
   const near = foes[0] || null;
   const heldByUs = o => fighting(o) && side.has(o.task.target);
 
@@ -95,34 +97,34 @@ export function roleTactic(w, a, side, radius) {
     return null;
   }
 
-  switch (R.id) {
-    // the shield-bearer: whoever is on the side's shooters and healers first (sentient), else the nearest
-    case 'knight':   // (the knight holds the line as the shield-bearer does)
-    case 'shield': {
+  // the role's way of fighting (data/roles.js `tactic`)
+  switch (R.tactic) {
+    // the shield-bearer (and the knight, who holds the line as it does): whoever is on the side's shooters and healers
+    // first (sentient), else the nearest
+    case 'guard': {
       if (mind === 'sentient') {
         for (const m of side.all()) {
-          if (m === a || !(shoots(m) || m.fightRole === 'healer')) continue;
+          if (m === a || !(shoots(m) || heals(m))) continue;
           const on = firstAttacker(w, m, o => o.task.id === 'fight' || o.task.id === 'maul');
           if (on && dist(a, on) < T.guard && canSee(w, a, on)) return fightTask(w, a, on);
         }
       }
       return null;
     }
-    // the spearman: from the second rank, on the one a shield-bearer of the side already holds
-    case 'spearman': {
+    // the spearman: from the second rank, on the one a shield-bearer of the side (`holdsLine`) already holds
+    case 'second': {
       if (mind === 'mindless') return null;
-      const held = foes.find(o => heldByUs(o) && o.task.target.fightRole === 'shield') || (mind === 'sentient' ? foes.find(heldByUs) : null);
+      const held = foes.find(o => heldByUs(o) && !!roleOf(o.task.target)?.holdsLine) || (mind === 'sentient' ? foes.find(heldByUs) : null);
       return held && dist(a, held) < T.guard ? fightTask(w, a, held) : null;
     }
     // the cleaver (and the dwarven hammer-smith): breaks into whoever is held by another of the side (sentient), else the nearest
-    case 'smith':
-    case 'cleaver': {
+    case 'breaker': {
       if (mind !== 'sentient') return null;
       const held = foes.find(heldByUs);
       return held && dist(a, held) < T.guard ? fightTask(w, a, held) : null;
     }
     // the cutthroat: creeps up while nobody fights it; the soft and the busy first, from the side
-    case 'cutthroat': {
+    case 'sneak': {
       if (mind === 'mindless') return null;
       a.sneaking = !foes.some(o => o.task?.target === a) && dist(a, near) > T.sneakUntil;
       const pick = (mind === 'sentient' ? foes.find(soft) : null) || foes.find(o => fighting(o) && o.task.target !== a) || null;
@@ -130,13 +132,13 @@ export function roleTactic(w, a, side, radius) {
     }
     // the catcher: nets one another of the side already holds (sentient), the nearest otherwise; once it is down the
     // band's `capture` (the colony's `bind`) ties it up
-    case 'catcher': {
+    case 'net': {
       if (mind === 'mindless') return null;
       const held = mind === 'sentient' ? foes.find(o => heldByUs(o) && !(o.webbed && w.tick < o.webbed.until)) : null;
       return held ? fightTask(w, a, held) : null;
     }
     // the healer: to the fallen of the side first, then a potion to the badly hurt; out of the way of the foe meanwhile
-    case 'healer': {
+    case 'heal': {
       if (mind === 'mindless') return null;
       if (a.task?.id === 'mend' && a.task.who != null) return a.task;
       // (one it could not reach is on a pause of its own — agents/lifecycle.js taskKey 'mend:<who>', read here as it is
@@ -149,7 +151,7 @@ export function roleTactic(w, a, side, radius) {
         if (hurt) return {id: 'mend', who: hurt.id, potion: true};
       }
       // a blade at it: behind its own, if any of the side stands near to take the blow; alone, it fights with the staff
-      const press = pressing(w, a, foes), cover = press && side.all().some(m => m !== a && m.fightRole !== 'healer' && dist(a, m) < T.guard);
+      const press = pressing(w, a, foes), cover = press && side.all().some(m => m !== a && !heals(m) && dist(a, m) < T.guard);
       if (cover) return kite(w, a, press);
       return null;
     }
@@ -170,22 +172,22 @@ export function kitRole(a, pref = a.fightPref) {
     const held = new Set(handItems(a).flatMap(it => [def(it).form, def(it).id]));
     if (COMBAT_ROLES.get(pref).hands.some(([fs]) => fs.every(f => held.has(f)))) return pref;
   }
-  if (a.master?.skill === 'medicine') return 'healer';
+  // the roles by their `kit` (data/roles.js), in its order: the first whose every condition holds
   const hs = handItems(a).map(def), form = f => hs.some(d => d.form === f);
-  if (hs.some(d => traitOf(d.qualities, 'ensnare'))) return 'catcher';
-  if (form('bow') || form('crossbow')) return 'archer';
-  if (form('sling') || form('javelin')) return 'skirmisher';   // (a hatchet is thrown too, but it is a cutthroat's)
   // the roles of a race's own (data/roles.js ROLE_MIX: the dwarves' forge-master, hammer-smith and berserker)
   const own = r => (mixOf(a.species)[r] || 0) > 0;
-  if (form('spitfire') && own('forgemaster')) return 'forgemaster';
-  // a knight of the caravan in heavy armour with a shield is a knight of the line (the humans: data/roles.js knight)
   const body = a.equip.body ? def(a.equip.body) : null;
-  if ((a.place === 'knight' || a.place === 'fighter') && form('shield') && body && ARMOUR.heavy.some(([f]) => f === body.form) && own('knight')) return 'knight';
-  if ((form('warhammer') || form('maul')) && own('smith')) return 'smith';
-  if (a.gear?.offhand && !(a.gear.armor > 0) && own('berserker')) return 'berserker';
-  if (form('shield')) return 'shield';
-  if (a.gear?.offhand && a.place !== 'knight' && a.place !== 'fighter') return 'cutthroat';
-  if (form('spear')) return 'spearman';
-  if (hs.some(d => d.melee)) return 'cleaver';
+  const fits = (R, K) => (!K.skill || a.master?.skill === K.skill)
+    && (!K.quality || hs.some(d => traitOf(d.qualities, K.quality)))
+    && (!K.forms || K.forms.some(form))
+    && (!K.own || own(R.id))
+    && (!K.places || K.places.includes(a.place))
+    && (!K.notPlaces || !K.notPlaces.includes(a.place))
+    && (!K.heavyBody || (!!body && ARMOUR.heavy.some(([f]) => f === body.form)))
+    && (!K.offhand || !!a.gear?.offhand)
+    && (!K.noArmour || !(a.gear?.armor > 0))
+    && (!K.melee || hs.some(d => d.melee));
+  const roles = COMBAT_ROLES.filter(R => R.kit).sort((p, q) => p.kit.order - q.kit.order);
+  for (const R of roles) if (fits(R, R.kit)) return R.id;
   return null;
 }

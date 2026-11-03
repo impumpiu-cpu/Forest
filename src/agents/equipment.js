@@ -9,7 +9,7 @@ import {hourOf} from '../core/time.js';
 import {COUNCIL_TO} from '../settlement/council.js';
 import {JOBS} from '../data/jobs.js';
 import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {think} from './mind.js';
@@ -76,7 +76,7 @@ function woodenDef(d, inst) {
 const isWooden = d => !!MATERIALS[d.material]?.class.includes('wood');
 // what a piece is made of, as the races' rules know it (data/kinds.js): its wood, or its metal's resource
 // (a wooden piece whose wood nobody wrote down — the first kit, a trader's — counts as the commonest wood, data/kinds.js KIND_LAND)
-export const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d && isWooden(d) ? KIND_LAND.wood : d ? MATERIALS[d.material]?.resource : null) || null; };
+const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d && isWooden(d) ? KIND_LAND.wood : d ? MATERIALS[d.material]?.resource : null) || null; };
 // a piece «dirty» to its bearer: of a material its race does not get or make (data/kinds.js 'nomake') — it was made by others
 export const dirtyFor = (a, inst) => useOf(a.species, memberOf(inst)) === 'nomake';
 // may one of this race carry a piece (a gear word, data/kinds.js): not of a material it will not touch, not a form it will
@@ -112,7 +112,7 @@ export function def(inst) {
   return n;
 }
 // a thrown weapon comes as a full bundle (quality `thrown`: its throws are its `ammo`)
-export const throwsOf = d => traitOf(d.qualities, 'thrown');
+const throwsOf = d => traitOf(d.qualities, 'thrown');
 // a burning thing to throw, in hand or behind the back (a torch: qualities `burn` and `thrown`, throws left) → {item, range}, or null
 export function throwTorch(a) {
   for (const it of a.equip ? [...handItems(a), a.equip.back].filter(Boolean) : []) {
@@ -159,8 +159,11 @@ export function itemPrice(type, q = 0, silver = false, mark = null, of = null, m
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
 // the colony has met such a creature (w.chronicle.silverFoes, settlement/migration.js), nothing before
-export const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && SPECIES.get(o.species).weakTo?.includes('silver'));
-const silverWorth = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);
+const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && fearsSilver(SPECIES.get(o.species)));
+// (worked out once per outfit() — the search weighs many loadouts, and nothing on the map changes meanwhile)
+let silverNow = null, inOutfit = false;
+const silverOf = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);
+const silverWorth = w => (!inOutfit ? silverOf(w) : (silverNow ??= silverOf(w)));
 export const emptySlots = () => Object.fromEntries(SLOTS.map(s => [s.id, null]));
 
 export function handItems(a) {
@@ -170,7 +173,7 @@ export function handItems(a) {
 export const allItems = a => (a.equip ? [...handItems(a), a.equip.body, a.equip.back].filter(Boolean) : []);
 
 // does a ranged weapon in hand have what it needs to shoot?
-export function rangedAmmo(a, d) {
+function rangedAmmo(a, d) {
   if (!d.ranged.ammo) return Infinity;
   const back = a.equip.back;
   return back && def(back).holds?.ammo === d.ranged.ammo ? back.ammo || 0 : 0;
@@ -379,8 +382,10 @@ export function outfit(w, a) {
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
   const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)) && mayWield(a.species, def(it).form));
-  const best = bestLoadout(w, a, pool);
-  if (best && best.score > currentScore(w, a) + GEAR.swap) {
+  let best, now;
+  inOutfit = true; silverNow = null;
+  try { best = bestLoadout(w, a, pool); now = currentScore(w, a); } finally { inOutfit = false; silverNow = null; }
+  if (best && best.score > now + GEAR.swap) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
     const gained = [...keep].filter(it => !own.includes(it)).map(it => def(it).short);
     if (gained.length) think(w, a, 'newGear', {items: gained.join(', ')});

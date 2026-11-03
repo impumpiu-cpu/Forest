@@ -2,7 +2,7 @@
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {maxHp} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
@@ -22,7 +22,7 @@ import {taintBy} from './afflictions.js';
 import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
 import {NORM} from '../data/special.js';
 
-import {firstAttacker} from './lookup.js';
+import {firstAttacker, isAttack} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
@@ -175,7 +175,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
-  const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
+  // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
+  const rb = bsp.remembers, rt = tsp.remembers;
+  const memKey = rb === 'wolf' || rt === 'wolf' ? 'wolf' : rb === 'mule' || rt === 'mule' ? 'mule' : rb || rt || 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)
@@ -187,10 +189,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
 // (a shot too, when the bow itself bites as silver: the sacred tree in its master's hands, data/kinds.js);
 // a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
-export const SILVER = COMBAT.silver;
 const silverFactor = (t, item, by = null) => {
   const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver) || (!!item && silverCoat(by));   // (a silver oil on the blade: agents/potions.js)
-  const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
+  const fear = fearsSilver(sp) ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
   return silvered ? fear * resistTo(sp, 'silver') : fear;
 };
 
@@ -249,14 +250,12 @@ export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 // one melee blow; nothing happens (false) unless the target is alive, seen, within reach and not behind rock
 // The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + COMBAT.meleeSkill × skill),
 // so a creature without it hits as before.
-const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 // Where an armed blow comes from (COMBAT.flank, back): 'back' — the target does not know of the striker (asleep, or out
 // of any fight and not hurt lately), 'flank' — it is fighting someone else, otherwise 'front'. A beast's bite is
 // always 'front' (a pack's tactics are its own: agents/carcass.js)
-const busy = t => (t.task?.id === 'fight' || t.task?.id === 'maul') && t.task.target;
 export function stanceOf(w, a, t) {
   if (!a.gear?.melee?.item) return 'front';
-  const fighting = busy(t);
+  const fighting = isAttack(t.task);
   if (fighting) return t.task.target === a ? 'front' : 'flank';
   if (t.sleeping || !(t.hurtBy && w.tick - t.hurtBy.tick < COMBAT.back.aware)) return 'back';
   return 'front';
@@ -265,6 +264,7 @@ export function stanceOf(w, a, t) {
 export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance === 'back' ? COMBAT.back.dmg : COMBAT.flank.dmg) - 1) * (1 + traitOf(q, 'backstab')));
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
+  const BLOW = COMBAT.blow;   // (read at the blow: an edit of the table reaches it)
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
   if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
@@ -318,6 +318,7 @@ function coverFor(w, a, t) {
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
   const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
+  const SHOT = COMBAT.shot, HIT = COMBAT.hit;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;

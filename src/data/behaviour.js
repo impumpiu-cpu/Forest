@@ -1,6 +1,6 @@
 // Creature behaviour tuning moved out of the logic (docs/SETTLEMENT.md): squads, carcasses and packs, wild herds,
 // trophies, vermin. The logic files import these; the tables (data/schema/index.js) show and edit them.
-import {DAY} from '../core/time.js';
+import {DAY, HOUR} from '../core/time.js';
 
 // The behaviours of the tabled brain (agents/behaviours/, docs/BEHAVIOUR.md) as ready lists a species row
 // copies (`behaviours: [...WAYS.grazer]`): the order is the order of the choice. A beast of the meadows runs,
@@ -98,6 +98,14 @@ export const CARCASS = {
   takeAt: 1.4,         // a hunter takes what is left from this close
   scare: 4,            // feeders this close to a hunter either give way or turn on him
   sinew: 1,            // sinew a hunter cuts out with each hide he takes (a bowstring for the elves)
+  rises: 'upyr', risesBand: 'upyrs',   // what rises from a carcass left to rot (a species, the raid band it walks in: data/raids.js)
+  every: 60,           // carcasses are looked at every this many ticks
+  rot: 0.01,           // the rot eats this share of the first food at each look
+  darkFrom: 0.7, darkShare: 0.3,   // it rises only this dark; about this share of the day is that dark
+  eaten: 'meat',       // the yield the beasts eat out of it: a hunter gets it by the share left (the rest of the yields whole)
+  sinewFrom: 'hide',   // the yield the sinew comes away with
+  least: 0.05,         // food left below this: eaten clean
+  butcherLeast: 0.2,   // a hunter gets at least this share of what the beasts eat
 };
 
 export const PACK = {
@@ -118,6 +126,8 @@ export const WILD_HERD = {
   straggler: 6,       // farther than this from the herd's middle: a straggler (wolves like it)
   nerve: [0.6, 1.4],  // how skittish, rolled once per beast: low — bolts first
   relay: 10,          // a calm beast follows the bolting ones after this × its nerve
+  // for a herd species whose row leaves them out: the terrain of its pasture, what it flees from, how far it looks
+  pasture: ['grass'], fleeFrom: ['people', 'wolf'], alertR: 6,
 };
 
 // the beasts of the meadows (agents/behaviours/: bolt, rest, graze): how far they run, how they pick a patch
@@ -192,6 +202,9 @@ export const PEN = {
 
 // the nechist beyond its species' `spirit` block (agents/nechist.js; agents/behaviours/vanish.js, fightBack.js, lurk.js, lure.js, astray.js)
 export const NECHIST = {
+  // the home grounds a spirit names (spirit.home): the terrains that are home (`on`), or dry land next to one of them (`by`,
+  // four sides); a home not named here is anywhere it can walk
+  homes: {forest: {on: ['forest']}, grass: {on: ['grass']}, shore: {by: ['water']}},
   homeTries: 600,      // cells looked at for a home cell to come back to
   grudge: 200,         // remembers who hurt it this long…
   giveUp: 12,          // …while they are this close
@@ -331,4 +344,69 @@ export const HEAT = {
   raider: {perDegree: 0.00005, max: 0.006},
   undead: {perDegree: 0.0001, max: 0.012},
   caravan: {perDegree: 0.00005, max: 0.006},
+};
+
+// When a colonist thinks again (agents/attention.js): the heartbeat by what it is doing (ticks), the bands a need or the
+// health falls past to be an event, how dark is «night» for the whole colony's wake-up
+export const ATTENTION = {
+  heart: {job: 4 * HOUR, idle: HOUR, reserve: 15, muster: 30, other: 2 * HOUR},
+  needBands: [0.6, 0.4, 0.25, 0.12],
+  hpBands: [0.6, 0.35, 0.3],
+  night: 0.6,
+};
+
+// How a task ends (agents/lifecycle.js): one that ended blocked or impossible is not taken again for this many ticks
+export const LIFECYCLE = {skip: {blocked: 120, impossible: 600}};
+
+// The colony's body (agents/body.js stepBody): what is remembered, the diary, healing at rest
+export const BODY = {
+  remember: 0.004,   // a hardship remembered this much a tick while a need is below its rememberBelow (data/needs.js)
+  comfy: 0.4,        // every need above this: the body mends…
+  mend: 0.0003,      // …this share of full health a tick (× the body's regen)
+  mendBelow: 45,     // …while the heat underfoot is below this (°C)
+  regenStop: 30,     // a troll's regeneration stops in heat above this
+  fireDeath: 60,     // one dying in heat above this died of the fire («пожара»), else of its wounds
+};
+
+// The inner life (agents/mind.js): the diary's length, how unmet needs weigh on the mood, when a need becomes a wish
+export const MIND = {diary: 60, needLow: 0.3, needWeight: 0.8, wishBelow: 0.4};
+
+// Moving (agents/movement.js): what makes a cell dangerous to stand in, how a beast runs, how one walks round an obstacle
+export const MOVE = {
+  danger: {fire: 400, smoke: 6},   // a cell's danger: its heat + fire × this + smoke × this
+  escapePace: 1.35,                // running from heat
+  room: 6,                         // open space counted up to this far from the edge of the map
+  bolt: {dirs: 16, step: 1.5, far: 8, room: 0.9, keep: 6},   // directions tried, how far each looks, threats counted to `far`, the edge's weight, ticks a choice is kept
+  guard: {moved: 0.6, gap: 3, drift: 2, stuck: 40},   // approach(): no progress of `moved` for `stuck` ticks at one target — unreachable
+  path: {drift: 3, every: 40, budget: 6000, perCell: 6, skip: 6, reach: 0.3},   // a path re-planned when the target drifts or every so many ticks; the search's budget
+  stamina: {tired: 0.15, recover: 0.002},   // below `tired` a sprint is a walk; walking gives back `recover` a tick
+};
+
+// The job runners (agents/jobRunners.js): work, the hunt, the herder, the burial
+export const RUNNER = {
+  skill: 0.7, mood: 0.1,         // a tick of work × (1 + skill × this) × (1 + mood × this)
+  resumeFor: 1200,               // a picking or a felling broken off is gone back to within this many ticks
+  far: 25, farMemory: 0.003,     // a gatherer this far from the field remembers the long way
+  eat: {full: 0.95, food: 0.4},  // eating out of the hands: up to this full, this × nutrition a unit
+  mill: {chance: 0.02, step: 0.2},   // the healer with nobody to tend shifts about
+  herd: {calmAt: 8, near: 12, respot: 150, giveUp: 1500, reach: 1.3, kick: 0.12, shy: -20, calmPace: 0.75},
+  hunt: {smell: 20, meat: 0.75, retarget: 40, retargetFar: 9, look: 80, giveUp: 900, range: 0.85, creep: 9, creepPace: 0.55,
+    stalk: 10, oneMore: 20, carry: 8, spook: 40, missMemory: 0.05, giveUpMemory: 0.2, bolt: 0.6, calm: 300},
+  think: {gather: 20, build: 10, craft: 20, heal: 20, herd: 30, herdFar: 40, kicked: 10, bury: 30, buryFar: 60, hunt: 30},
+  buryReach: 0.9, buryAt: 0.6, buryPace: 0.8,
+  buildWear: 0.05,               // a builder's tool wears this much a tick of work
+};
+
+// The shared tasks (agents/tasks.js): milling about the camp, the fight, fire, the camp's gatherings
+export const TASK = {
+  mill: {respot: 0.02, pace: 0.5, sleep: 1.2, idle: [4, 2.5], sulk: [5, 4], haunt: [4, 3], muster: [3, 2.2], musterPace: 1.2, scout: 1.5},   // [near the camp, radius]
+  council: {ring: 1.6},
+  flee: {cool: 16, fire: 3},            // out of the fire once the heat underfoot is below this and no flame this close
+  fight: {lost: 60, lostPace: 0.9, shootFrom: 1.4, shootRange: 0.9, stand: 0.9, closePace: 1.1, shootPace: 1.0, catchPace: 1.2},
+  douse: {near: 1.7, reach: 2, r2: 2.9, cool: 6, coolTo: 60, think: 10},
+  torch: {near: 14},                    // a torch-bearer heads for the camp till this close by path
+  trade: {at: 2.4, ring: [1.2, 1.2]},
+  astray: {step: 3, pace: 0.6},
+  runPace: 1.3,                          // running home to the settlement
+  think: {pray: 30, treat: 30},
 };

@@ -33,24 +33,31 @@ import {onEdit} from './schema/layer.js';
 import {mayWield, mayUse, KIND_LAND} from './kinds.js';
 import {MATERIALS} from './balance/materials.js';
 
+// tactic — how the role fights beyond the nearest foe (agents/tactics.js roleTactic): guard (whoever is on the side's
+//   shooters and healers), second (from behind the one a shield-bearer holds: `holdsLine`), breaker (into whoever another
+//   holds), sneak (creeps, the soft first), net (one already held), heal (the fallen, then a potion); none — the nearest
+// kit — when a caravan's member fights in this role by what it holds (agents/tactics.js kitRole): the roles are tried by
+//   `order`, the first whose every condition holds is taken — skill (a master of it), quality (a piece in hand has it),
+//   forms (a piece in hand of one of them), own (its race takes the role: ROLE_MIX), places / notPlaces (its place in the
+//   company), heavyBody (heavy armour on), offhand (a weapon in the other hand), noArmour, melee (any weapon of blows)
 export const COMBAT_ROLES = new Registry('combat role');
 
 COMBAT_ROLES.registerAll([
   // ── the line
-  {id: 'shield', group: 'линия', label: 'щитоносец', note: 'идёт первым, держит удар, закрывает щитом соседа от стрел',
+  {id: 'shield', tactic: 'guard', holdsLine: true, kit: {order: 9, forms: ['shield']}, group: 'линия', label: 'щитоносец', note: 'идёт первым, держит удар, закрывает щитом соседа от стрел',
     hands: [[['spear', 'shield'], 3], [['axe', 'shield'], 2], [['club', 'shield'], 1], [['mace', 'shield'], 1], [['sword', 'shield'], 1]],
     body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front'},
-  {id: 'spearman', group: 'линия', label: 'копейщик', note: 'длинное копьё из второго ряда, из-за плеча щитоносца',
+  {id: 'spearman', tactic: 'second', kit: {order: 11, forms: ['spear']}, group: 'линия', label: 'копейщик', note: 'длинное копьё из второго ряда, из-за плеча щитоносца',
     hands: [[['spear'], 3], [['spear', 'shield'], 1]], body: 'medium', back: [], potions: 0, squad: 'front', place: 'mid'},
-  {id: 'cleaver', group: 'линия', label: 'рубака', note: 'двуручное оружие, мало брони: врезается, оглушает, проламывает строй',
+  {id: 'cleaver', tactic: 'breaker', kit: {order: 12, melee: true}, group: 'линия', label: 'рубака', note: 'двуручное оружие, мало брони: врезается, оглушает, проламывает строй',
     hands: [[['maul'], 2], [['warhammer'], 2], [['axe'], 1], [['sword'], 1]],
     body: 'light', back: [], potions: 0, squad: 'front', place: 'front'},
   // the dwarves' hammer-smith: a two-handed hammer and a smith's arm — its blunt blows land harder; the first rank
-  {id: 'smith', group: 'линия', label: 'мастер-кузнец', note: 'молотобоец: двуручный молот, дробящий удар сильнее на треть, стоит в первом ряду',
+  {id: 'smith', tactic: 'breaker', kit: {order: 7, forms: ['warhammer', 'maul'], own: true}, group: 'линия', label: 'мастер-кузнец', note: 'молотобоец: двуручный молот, дробящий удар сильнее на треть, стоит в первом ряду',
     hands: [[['warhammer'], 3], [['maul'], 1]], body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front', blows: {blunt: 1.3}},
   // the humans' knights (the tilt-yard; data/raids.js host): heavy armour, a good blade and a shield — the tank of the line,
   // its arms a step of metal above the band's (`tierUp` levels); on a horse from the hippodrome — the horse-knight
-  {id: 'knight', group: 'линия', label: 'рыцарь', note: 'тяжёлый доспех, меч, булава или копьё со щитом: держит строй, бьёт неплохо',
+  {id: 'knight', tactic: 'guard', kit: {order: 6, forms: ['shield'], places: ['knight', 'fighter'], heavyBody: true, own: true}, group: 'линия', label: 'рыцарь', note: 'тяжёлый доспех, меч, булава или копьё со щитом: держит строй, бьёт неплохо',
     hands: [[['sword', 'shield'], 3], [['mace', 'shield'], 2], [['spear', 'shield'], 1]], body: 'heavy', back: [], potions: 1, squad: 'front', place: 'front', tierUp: 8, linkOnly: true},
   {id: 'horseknight', group: 'подвижные', label: 'конный рыцарь', note: 'рыцарь на боевом коне: копьё или меч со щитом, тяжёлый доспех; бьют оба — всадник и конь',
     hands: [[['spear', 'shield'], 3], [['sword', 'shield'], 2]], body: 'heavy', back: [], potions: 1, squad: 'front', place: 'flank', tierUp: 8, mount: 'horse', linkOnly: true},
@@ -64,29 +71,29 @@ COMBAT_ROLES.registerAll([
   {id: 'beastmaster', group: 'подвижные', label: 'загонщик', note: 'сеть и дротики, кость и кожа, железа не носит; бьёт зверей и чудовищ сильнее; водит с собой боевых зверей',
     hands: [[['net', 'javelin'], 3], [['net', 'spear'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'mid', versus: {beast: 1.3, monster: 1.3}, lead: [1, 2], maxTier: 0},
   // two weapons, no armour; a wound throws it into a frenzy, then it is spent (FRENZY)
-  {id: 'berserker', group: 'линия', label: 'берсерк', note: 'два оружия, без брони; раненый впадает в бешенство: бьёт сильнее, быстрее, увёртливее, а после устаёт',
+  {id: 'berserker', kit: {order: 8, offhand: true, noArmour: true, own: true}, group: 'линия', label: 'берсерк', note: 'два оружия, без брони; раненый впадает в бешенство: бьёт сильнее, быстрее, увёртливее, а после устаёт',
     hands: [[['axe', 'axe'], 3], [['hatchet', 'hatchet'], 1], [['sword', 'axe'], 1]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front', frenzy: true},
   {id: 'brute', group: 'линия', label: 'громила', note: 'дубина в рост человека: огры, великаны',
     hands: [[['maul'], 1], [['club'], 2]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front'},
   // ── the quick ones
-  {id: 'cutthroat', group: 'подвижные', label: 'головорез', note: 'два кинжала или кинжал с топориком: крадётся, заходит с фланга и в спину, режет стрелков, знахарей, раненых',
+  {id: 'cutthroat', tactic: 'sneak', kit: {order: 10, offhand: true, notPlaces: ['knight', 'fighter']}, group: 'подвижные', label: 'головорез', note: 'два кинжала или кинжал с топориком: крадётся, заходит с фланга и в спину, режет стрелков, знахарей, раненых',
     hands: [[['dagger', 'dagger'], 3], [['dagger', 'hatchet'], 2], [['hatchet', 'hatchet'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'flank'},
-  {id: 'skirmisher', group: 'подвижные', label: 'застрельщик', note: 'дротики со щитом или праща: бьёт издали и отходит, метает вблизи',
+  {id: 'skirmisher', kit: {order: 4, forms: ['sling', 'javelin']}, group: 'подвижные', label: 'застрельщик', note: 'дротики со щитом или праща: бьёт издали и отходит, метает вблизи',
     hands: [[['javelin', 'shield'], 3], [['sling'], 2], [['javelin', 'hatchet'], 1]], body: 'light', back: [], potions: 0, squad: 'shooter', place: 'mid'},
-  {id: 'catcher', group: 'подвижные', label: 'ловчий', note: 'ловчая сеть и дубина: опутывает и вяжет живым — работорговцы',
+  {id: 'catcher', tactic: 'net', kit: {order: 2, quality: 'ensnare'}, group: 'подвижные', label: 'ловчий', note: 'ловчая сеть и дубина: опутывает и вяжет живым — работорговцы',
     hands: [[['net', 'club'], 3], [['net', 'spear'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'mid'},
   // ── from afar
-  {id: 'archer', group: 'дальний бой', label: 'стрелок', note: 'лук или арбалет за спиной щитоносцев',
+  {id: 'archer', kit: {order: 3, forms: ['bow', 'crossbow']}, group: 'дальний бой', label: 'стрелок', note: 'лук или арбалет за спиной щитоносцев',
     hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
   // the dwarves' forge-master: no weapon and no armour; breathes the forge's fire at a javelin's reach, and fire does not
   // take him
-  {id: 'forgemaster', group: 'дальний бой', label: 'мастер горна', note: 'без оружия и брони: плюёт огнём на дальность метания, поджигает цель и землю под ней; огонь его не берёт',
+  {id: 'forgemaster', kit: {order: 5, forms: ['spitfire'], own: true}, group: 'дальний бой', label: 'мастер горна', note: 'без оружия и брони: плюёт огнём на дальность метания, поджигает цель и землю под ней; огонь его не берёт',
     hands: [[['spitfire'], 1]], body: 'none', back: [], potions: 0, squad: 'shooter', place: 'mid', fireproof: true},
   // ── support
   // the elves' caller of beasts: keeps back with a staff; once in a fight calls the forest beasts (agents/summon.js)
   {id: 'summoner', group: 'поддержка', label: 'призыватель зверей', note: 'посох; раз за бой зовёт лесных зверей на подмогу',
     hands: [[['staff'], 1]], body: 'light', back: [], potions: 1, squad: 'front', place: 'back', noChores: true},
-  {id: 'healer', group: 'поддержка', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
+  {id: 'healer', tactic: 'heal', kit: {order: 1, skill: 'medicine'}, group: 'поддержка', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
     hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back', noChores: true},
 ]);
 
@@ -231,5 +238,6 @@ export const roleRow = a => (a?.fightRole && COMBAT_ROLES.has(a.fightRole) ? COM
 // rider lies `fall` ticks stunned
 export const RIDE = {hitMount: 0.6, fall: 30, aside: 0.3, least: 0.05};   // (the loosed mount stands `aside` cells off, with at least `least` health)
 
-export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25}};
+export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25},
+  want: {fight: 3, leave: 1}};   // what a called beast's two offers are worth (agents/behaviours/summoned.js)
 

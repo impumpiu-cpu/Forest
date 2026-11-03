@@ -67,7 +67,15 @@ export const OPEN = Uint8Array.from(BY_CODE.map(d => (d.open ? 1 : 0)));
 // after an edit of the table «Рельеф» (data/schema): the hot-loop copies are made again, in place
 export function rebuildTerrain() {
   for (const d of TERRAIN.all()) { WALKABLE[d.code] = d.walkable ? 1 : 0; OPEN[d.code] = d.open ? 1 : 0; }
-  GRAZE_SETS.clear();
+  GRAZE_SETS.clear(); cheap = null;
+}
+// the cheapest step of any walkable ground: the scale of the path search's estimate (nav/astar.js), kept until an edit
+let cheap = null;
+export function cheapestStep() {
+  if (cheap != null) return cheap;
+  let m = Infinity;
+  for (const t of Object.values(BY_CODE)) if (t && t.walkable && t.pathCost > 0 && t.pathCost < m) m = t.pathCost;
+  return (cheap = Number.isFinite(m) ? Math.min(1, m) : 1);
 }
 export const isWater = code => BY_CODE[code].kind === 'water';
 // where a grazer may feed: the terrains its species names plus every open meadow (graze ≥ 0.5 — grass,

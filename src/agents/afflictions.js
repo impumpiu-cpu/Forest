@@ -17,6 +17,7 @@ import {kill} from './agent.js';
 import {refreshBody} from './special.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
+import {hasHut} from '../settlement/healing.js';
 
 const rebuildIf = (a, ...rows) => { if (rows.some(conditionHasMods)) refreshBody(a); };
 
@@ -32,7 +33,7 @@ export function catchIll(w, a, id) {
 // one step easier on the ladder when the settlement has a healer's hut
 const stepFor = (w, A) => {
   const ids = DIFFICULTY.ids(), k = ids.indexOf(A.save);
-  return w.buildings?.some(b => b.key === 'healerhut' && b.done) ? ids[Math.max(0, k - 1)] : A.save;
+  return w.buildings && hasHut(w) ? ids[Math.max(0, k - 1)] : A.save;
 };
 
 export function stepIll(w, a) {
