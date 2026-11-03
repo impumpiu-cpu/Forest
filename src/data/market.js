@@ -141,13 +141,16 @@ export const COMPANY_MAX = 12, JOINED_MAX = 4;
 // next one is not sought for `every` days (the winter excepted); a stay lasts at most `stay` days, or the winter —
 // wintered only where the winter is hard (its mean below `winterBelow`°: the land hardly feeds then). Too poor to stock
 // up for the way, they stay up to `work` days in all hired out for board and pay (the town feeds them, the pay is kept)
+// A caravan out in the last `lateIn` days of the season before the lean one already looks for a town to winter in.
 // For the smith (SMITH): with at least `smithOre` units of ore worth forging and `smithGold` gold, a town with a smith
 // on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days
-export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, work: 20, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
+export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, lateIn: 20, work: 20, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
 // the one with a pan (× the cell's gold sand level, data/regions.js placer)
-export const EARN = {hide: 0.3, pan: 0.4};
+export const EARN = {hide: 0.3, pan: 0.4,
+  hideGame: ['deer', 'boar', 'elk', 'aurochs', 'saiga', 'goat'],   // the game a day of camp may skin (data/species.js ids)
+  panTool: 'pan'};   // the gold pan (data/items.js): who has one washes gold sand on a stop
 
 // The smith of a friendly town forges from the caravan's own ore (campaign/town.js smithy): where one of `at`
 // stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`

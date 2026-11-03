@@ -48,20 +48,20 @@ export const tameTargets = w => perTick(w, 'tameTargets', () => {
   if (room <= 0) return [];
   // no new mouths for the winter unless the hay is already in: taming is for spring and summer,
   // or an autumn with the hay stacked; and no more of a kind than the colony has use for (`max`)
-  const S = season(w).id;
-  if (S === 'winter') return [];
+  const S = season(w);
+  if (S.lean) return [];
   const kinds = {};
   for (const a of herd(w)) kinds[a.species] = (kinds[a.species] || 0) + 1;
   return w.agents.filter(o => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o)) && !(w.tick - (o.unreachable ?? -1e9) < 600)
     && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity)
-    && (S !== 'autumn' || (w.stock.hay || 0) >= winterHay(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter))
+    && (!S.stockUp || (w.stock.hay || 0) >= winterHay(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter))
     && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);
 });
 export const hasBait = (w, T) => Object.entries(T.bait).every(([r, v]) => (w.stock[r] || 0) >= v);
 
 // animals with something to take: milk or a grown fleece (sheared in spring and summer)
 export const chores = w => perTick(w, 'chores', () => herd(w).filter(a => (a.milk || 0) >= 1 || woolReady(w, a)));
-const woolReady = (w, a) => tameOf(a).wool && (a.wool || 0) >= 1 && ['spring', 'summer'].includes(season(w).id);
+const woolReady = (w, a) => tameOf(a).wool && (a.wool || 0) >= 1 && !!season(w).shear;
 
 // the herder's try: bait from the stock, then a roll; every failed try makes the next one easier
 export function tryTame(w, a, beast) {
@@ -140,12 +140,12 @@ export function stepHerd(w) {
     }
     if (a.hungry >= HERD.hungryDays) { breakOut(w, a, 'без сена'); continue; }
     const grown = a.age >= (T.grownDays || 0);
-    if (T.milk && grown && a.fed > 0.5) a.milk = Math.min(HERD.milkCap, (a.milk || 0) + T.milk * (S.id === 'winter' ? HERD.winterMilk : 1));
+    if (T.milk && grown && a.fed > 0.5) a.milk = Math.min(HERD.milkCap, (a.milk || 0) + T.milk * (S.lean ? HERD.winterMilk : 1));
     if (T.wool && a.fed > 0.3) a.wool = Math.min(1, (a.wool || 0) + 1 / T.woolDays);
   }
   if (hayShort) log(w, 'Скоту не хватает сена. Без корма животные уйдут в лес.', 'people', 'notice');
   // kids: two grown goats, room in the pen, fed, not winter
-  if (S.id !== 'winter') for (const sp of new Set(list.map(a => a.species))) {
+  if (!S.lean) for (const sp of new Set(list.map(a => a.species))) {
     const T = SPECIES.get(sp).tame; if (!T.breed) continue;
     const grown = herd(w).filter(a => a.species === sp && a.age >= T.grownDays && a.fed > 0.6);
     for (let k = 0; k + 1 < grown.length; k += 2) if (penRoom(w) >= T.space && w.rngs.wild() < T.breed) bear(w, grown[k]);
@@ -162,7 +162,7 @@ export function stepHerd(w) {
   // winter: what the hay cannot feed till spring goes for meat, the youngest goats first, mules last;
   // a couple of goats are kept for breeding whatever happens. Planned on the first day of winter, then
   // checked again every day (the hay may go to bedding, or be stolen)
-  if (S.id === 'winter') {
+  if (S.lean) {
     const plan = daysLeftInSeason(w) > SEASON_DAYS - 1;
     const culled = [];
     for (let k = 0; k < 30; k++) {

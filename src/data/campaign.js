@@ -18,7 +18,7 @@ export const CAMPAIGN = {
   // picked by the way, in a camp the whole day goes to hunting, fishing and gathering
   forage: {march: 0.4, camp: 1.6, spread: 0.6},
   // the season's × on what the land gives; in hard frost (a winter day's mean below −5°) × `frost` more
-  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7},
+  seasonFood: {spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7, frostBelow: -5},
   // hunger: a day fed below `starveAt` of the need is a hungry day; hungry, the caravan walks at `slow`
   // and nobody heals; after `wasteAfter` hungry days in a row everyone loses `waste` health a day
   // the chronicle tells of a new hunger only `again` days after the last told, of its end after `over` days of it
@@ -32,7 +32,8 @@ export const CAMPAIGN = {
   // are `full` (a food camp: that share of what they can carry, at most `stock` days of food) or the core
   // is `healed` (a camp of the wounded). Fed and in a quiet place, every `think` days the council looks
   // whether to stop to build (a cart, a wagon, a building for it) or to tame (data/transport.js)
-  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85, stock: 12, think: 10},
+  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85, stock: 12, think: 10,
+    wooded: 0.3, basketTrees: 0.1, basket: 0.5},   // trees enough to build and gather bark (`wooded`), to weave a basket (`basketTrees`) and its chance a day
   // in frost the march is slower (winter, the day's mean below 0°)
   frost: 0.7,
   // the speed a day on open meadow, cells of a 192-high world (as the world's parties on foot, data/parties.js)

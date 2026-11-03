@@ -34,6 +34,8 @@ import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {NIGHT, WILD_FOES} from '../data/campaign.js';
 import {MIGRATIONS} from '../data/migrations.js';
+import {SEASONS} from '../data/seasons.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
 // Game by the beasts that live there (as the local map would have them), plants by the soil and biomes
@@ -52,24 +54,27 @@ export function pasture(a, i, seasonId) {
   if (!a.f.land?.[i] || a.f.ocean[i]) return false;
   const reg = cellRegion(a, i);
   const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0);
-  const frost = seasonId === 'winter' && a.f.temp[i] - a.f.trange[i] / 2 < -5;
+  const frost = !!SEASONS.get(seasonId).lean && a.f.temp[i] - a.f.trange[i] / 2 < CAMPAIGN.seasonFood.frostBelow;
   return plants >= FODDER.graze && !frost;
 }
 
 // the season's × on food: the calendar's, less in frost (the winter half of the year below zero)
 export function seasonFood(a, i, seasonId) {
   const k = CAMPAIGN.seasonFood[seasonId] ?? 1;
-  const cold = a.f.temp[i] - (seasonId === 'winter' ? a.f.trange[i] / 2 : 0);
-  return cold < -5 ? k * CAMPAIGN.seasonFood.frost : k;
+  const cold = a.f.temp[i] - (SEASONS.get(seasonId).lean ? a.f.trange[i] / 2 : 0);
+  return cold < CAMPAIGN.seasonFood.frostBelow ? k * CAMPAIGN.seasonFood.frost : k;
 }
 
 // who a lair sends on the local map (campaign/camp.js): its band (data/seam.js LAIR_BANDS) or its beast
 // ── the wild as foes (data/campaign.js WILD_FOES): who lives in a cell by the world's fields — every beast of prey that
 // hunts people, every lair's monster, every tribe's folk, by its density there. The lair whose land it is counts its own
 // kind itself (above)
-const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
+// (made on first use, made anew after a table edit: a lair's species and tribe are table cells)
+let folk = null;
+const FOLK_BAND = () => folk || (folk = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]])));
 const MIG = new Map();
-onSpeciesChange(() => MIG.clear());   // (a species made or removed in the constructor: data/species.js)
+onSpeciesChange(() => MIG.clear());
+onEdit(() => { folk = null; MIG.clear(); });   // (a species made or removed in the constructor: data/species.js)
 // the beasts' arrival on the local map that brings a species as a hunter of people (data/migrations.js), or null
 const hunterOf = id => { if (!MIG.has(id)) MIG.set(id, MIGRATIONS.all().find(m => m.species === id && m.faction === 'predators')?.id || null); return MIG.get(id); };
 export function wildFoes(a, i, lair = lairAt(a, i)) {
@@ -80,7 +85,7 @@ export function wildFoes(a, i, lair = lairAt(a, i)) {
     const v = s.N[j]; if (!(v >= W.at)) continue;
     let kind, who;
     if (s.role === 'dead') { kind = 'undead'; who = {band: 'undead'}; }   // the risen of a necromancer (atlas/necro.js)
-    else if (s.role === 'folk') { if (!FOLK_BAND[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND[s.id]}; }
+    else if (s.role === 'folk') { if (!FOLK_BAND()[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND()[s.id]}; }
     else { const m = hunterOf(s.id); if (!m) continue; kind = s.lair ? 'lair' : 'beasts'; who = {beast: m}; }
     const P = W[kind === 'undead' ? 'dead' : kind], x = Math.min(P.cap, v);
     out.push({kind, p: P.p * x, strength: P.s[0] + P.s[1] * x, label: s.sp.plural, species: s.id, ...who});
@@ -127,6 +132,10 @@ export function withCompany(d, ds, r) {
   return {...d, with: {...(o.beast ? {beast: o.beast} : {band: o.band}), label: lab, share: M.share[0] + r() * (M.share[1] - M.share[0])}, label: `${d.label} и ${lab}`};
 }
 
+// the fight a lair of the wild brings as a foe of the caravan (data/campaign.js FOES): its cult, its dead, its tribe, or the lair
+// (its beasts). (A raid of a lair counts a lair of neither kind a tribe, a guard of a grave counts a fiend undead: their own rules)
+export const lairFoeKind = L => (L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair');
+
 export function lairFoe(kind) {
   const L = LAIRS.get(kind);
   if (LAIR_BANDS[kind]) return {band: LAIR_BANDS[kind]};
@@ -140,7 +149,7 @@ export function dangers(a, i, K = null) {
   const out = [], N = NIGHT;
   const lair = lairAt(a, i);
   if (lair) {
-    const L = LAIRS.get(lair.kind), kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
+    const L = LAIRS.get(lair.kind), kind = lairFoeKind(L);
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
     const ld = lair.leader && isAt(lair.leader, 'lair', lair.id) ? lair.leader : null, M = ld ? LEADER.camp : null;   // (a leader out with its band is not at home: atlas/persons.js)
     out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),

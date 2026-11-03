@@ -83,6 +83,7 @@ export const PLAN = {
   skill: 0.15,        // × skill / 10
   best: 0.15,         // the colony's best at the job's skill
   habit: 0.12,        // the same job as yesterday
+  buildCrew: {most: 4, perSite: 2},   // builders at once: two to an open site, at most `most` (settlement/plan.js crewCap)
 };
 
 // ── furnace fuel. A recipe asks for `fuel` units of heat at a `heat` level (data/recipes.js); each fuel
@@ -158,3 +159,19 @@ export const COMMAND = {
   ignite: {fuel: 0.05, fire: 0.6, heat: 300},   // cells with more fuel than this catch, at this fire and heat
   rain: {r: 7, cool: 2, smoke: 0.3},             // within this radius: fire out, cooled to the air less this, smoke × this
 };
+
+// the evening council at the campfire (settlement/council.js): the hours it sits (from, to), the share of the colony that
+// must come before it starts (`quorum`), unless it is this many hours (`late`) before the end; the pull a goal gives to work
+// that brings what it lacks (`goalPull`), a colonist's fondness for building (`buildPref`) and the random sway of a vote
+// (`noise`) in the arguments; the share of the day's memories kept after it (`memory`)
+export const COUNCIL = {from: 19, to: 21.5, quorum: 0.7, late: 0.3, goalPull: 0.3, buildPref: 0.2, noise: 0.25, memory: 0.4};
+
+// the stores (settlement/stock.js, settlement/buildings.js): portions a pot holds (`potHolds`), what of the open food a
+// granary keeps out of reach (`granary`), how much of the money a forged chest keeps from raiders (`chest`), the spoiling
+// of food a tick (`spoil`) and how much slower it spoils in pots (`sealed`); the wood never spent on building — `fuelCold`
+// when the night ahead (`fuelHour` o'clock) is colder than `coldBelow`°, else `fuelMild`
+export const STORE = {potHolds: 6, granary: 0.5, chest: 0.4, spoil: 0.00015, sealed: 0.6, fuelHour: 3, coldBelow: 6, fuelCold: 10, fuelMild: 4};
+
+// the camp (settlement/query.js): how many people it takes in before any building adds room (`popBase`); the raid alarm is
+// raised when a raider would reach the camp within `alarmHours` hours at `alarmPace` of its own pace (woods and detours)
+export const CAMP_LIFE = {popBase: 8, alarmHours: 12, alarmPace: 0.8};

@@ -21,7 +21,7 @@ import {DAY, HOUR, dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {esc, plural} from '../core/util.js';
 import {colonists, foodTotal} from './query.js';
-import {COUNCIL_TO} from './council.js';
+import {COUNCIL} from '../data/colony.js';
 import {allItems, itemDef, itemPrice, newItem, def as itemOf} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -393,7 +393,7 @@ export function stepTrade(w) {
   }
   // trade right after today's council (or after the council hour, if nobody sat)
   if (c.phase === 'camp' && !c.traded && h < TRADE.tradeUntil && colonists(w).length &&
-      (w.council.lastDay === today && h >= 19 || h >= COUNCIL_TO)) {
+      (w.council.lastDay === today && h >= COUNCIL.from || h >= COUNCIL.to)) {
     holdTrade(w); c.phase = 'trading'; c.tradeEnd = w.tick + 1.2 * HOUR;
   }
   if (c.phase === 'trading' && w.tick >= c.tradeEnd) c.phase = 'night';

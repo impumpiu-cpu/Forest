@@ -85,7 +85,7 @@ BUILDINGS.registerAll([
       [c.crowded ? 0.8 : 0, 'в лагере тесно'], [c.count('hut') === 0 ? 0.3 : 0, 'хочет крышу над головой']]},
 
   // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
-  {id: 'house', furnishText: 'сон здесь лучше для настроения', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
+  {id: 'house', furnishRank: 0, furnishText: 'сон здесь лучше для настроения', name: 'Изба', nameAcc: 'избу', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
     heat: {to: 26, add: 4.5, fuel: 0.0004}, furnish: true,
     available: w => !dwarven(w) || !rockNear(w),   // the dwarves dig a home into the rock instead, where there is rock
     effect: 'Тёплый дом из тёса под камышовой кровлей, стены обмазаны глиной: 4 места, зимой тепло на малых дровах. Лагерь примет на 4 жителей больше.',
@@ -215,7 +215,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.fishLakes ? 0.15 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, 'любит рыбачить'], [a.mem.walkFish * 0.8, 'далеко носить рыбу'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
-  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
+  {id: 'crafthut', furnishRank: 4, name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, луки, пращи, удочки, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
@@ -275,7 +275,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.season === 'autumn' ? 0.9 : c.season === 'summer' ? 0.5 : 0.2, c.season === 'autumn' ? 'зима на носу, надо запасаться' : 'хочет запасов на зиму'],
       [c.spoiled * 0.05, 'еда портится'], [a.mem.hunger * 0.6, 'помнит голод'], [(a.prefs.preserve - 1) * 1.4, 'любит заготовки']]},
 
-  {id: 'hearth', name: 'Очаг', gender: 'm', cost: {stone: 8, wood: 6}, furnish: true, work: 140, max: 1, wooden: false, color: '#c4703a', mark: 'Оч', station: true, benches: 1, needs: 'quarry',
+  {id: 'hearth', furnishRank: 3, name: 'Очаг', gender: 'm', cost: {stone: 8, wood: 6}, furnish: true, work: 140, max: 1, wooden: false, color: '#c4703a', mark: 'Оч', station: true, benches: 1, needs: 'quarry',
     effect: 'Здесь варят похлёбку из двух припасов: она сытнее, чем они порознь, и горячая еда поднимает настроение. Похлёбка не хранится.',
     effects: {},
     wish: 'хочет горячей еды',
@@ -285,7 +285,7 @@ BUILDINGS.registerAll([
   // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
   // close by themselves; herbs make the treatment work fully (settlement/healing.js); a station too — the healing
   // potion is brewed here (data/recipes.js `potion`)
-  {id: 'healerhut', portable: true, station: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
+  {id: 'healerhut', furnishRank: 2, portable: true, station: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
     effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы и варит из них зелья лечения.',
     effects: {}, beds: 3,
     wish: 'хочет, чтобы раненых было где лечить',
@@ -311,7 +311,7 @@ BUILDINGS.registerAll([
       ...(c.count('pen') ? [] : [[a.mem.hunger * 0.5, 'скот кормит и в голодный год'], [a.mem.cold * 0.3, 'из шерсти выйдет тёплая одежда'], [(a.prefs.herd - 1) * 1.5, 'любит возиться со скотиной']])]},
 
   // ── the shrine: a carved idol under a little roof, the graves beside it (settlement/life.js)
-  {id: 'shrine', furnishText: 'молитва утешает сильнее', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
+  {id: 'shrine', furnishRank: 1, furnishText: 'молитва утешает сильнее', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
     furnish: true, walkTo: true,
     effect: 'Резной идол под навесом и погост рядом. Тот, кому тяжело на душе, приходит сюда помолиться; умерших здесь хоронят с обрядом, и скорбь отпускает живых вдвое быстрее.',
     effects: {},

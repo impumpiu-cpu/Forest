@@ -9,7 +9,8 @@ import {WHEELS} from '../data/transport.js';
 
 const DIRS8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
 const SCRATCH = new WeakMap();
-const scratchOf = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s = {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []}); return s; };
+// the A* buffers kept beside the world, never saved (also for the world's own path search: tools/campaign-check.mjs)
+export const scratchOf = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s = {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []}); return s; };
 
 export const onRoad = (a, i) => !!a.f.road && roadLevel(a.f.road[i]) >= 0 && a.f.road[i] >= WHEELS.roadAt;
 

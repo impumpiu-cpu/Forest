@@ -58,6 +58,24 @@ const raidChance = w => { const nb = worldNb(w); return nb ? nb.hostile?.chance 
 
 const caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
 
+// the game the wild sends (data/migrations.js ARRIVALS, the rows with `wait`): its first check after `first` days, then
+// every wait[0] + wait[1] × a roll days; it comes with `chance` (× the season's hares for the grazers, GRAZE), n[0] + ⌊n[1] ×
+// a roll⌋ of them (one number in `n`: just that many); all but the rats only where the start menu lets game in
+// (WILDLIFE … hares). How the season and the menu weigh each is the provider's: GAME_RULES
+const GAME_RULES = {deer: {wild: true, seasonal: true}, foxes: {wild: true, seasonal: true}, boars: {wild: true}, rats: {}, mules: {wild: true}, goats: {wild: true, seasonal: true}};
+function gameFlows() {
+  const out = {};
+  for (const id of Object.keys(A)) {
+    if (!A[id].wait) continue;
+    const R = GAME_RULES[id] || {wild: true};
+    out[id] = {from: 'wilds', first: w => w.tick + A[id].first * DAY,
+      offer: (w, rng) => ((!R.wild || WILDLIFE[w.cfg.wildlife].hares) && rng() < A[id].chance * (R.seasonal ? season(w).hares : 1)
+        ? A[id].n[0] + (A[id].n.length > 1 ? Math.floor(rng() * A[id].n[1]) : 0) : 0),
+      next: (w, rng) => w.tick + (A[id].wait[0] + rng() * A[id].wait[1]) * DAY};
+  }
+  return out;
+}
+
 export const scripted = {
   id: 'scripted', label: 'Сценарий',
 
@@ -79,30 +97,7 @@ export const scripted = {
       first: w => w.tick + A.wolves.every,
       offer: (w, rng) => { const k = PREDATORS[w.cfg.predators].wolves; return k && rng() <= k ? A.wolves.n[0] + Math.floor(rng() * (k >= 1 ? A.wolves.n[1] : A.wolves.n[2])) : 0; },
       next: w => w.tick + A.wolves.every},
-    // game from the woods: deer in small herds, a fox now and then, a boar or a sounder of them;
-    // fewer in lean seasons. How many stay is up to the land (data/migrations.js)
-    deer: {from: 'wilds', first: w => w.tick + A.deer.first * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.deer.chance * season(w).hares ? A.deer.n[0] + Math.floor(rng() * A.deer.n[1]) : 0),
-      next: (w, rng) => w.tick + (A.deer.wait[0] + rng() * A.deer.wait[1]) * DAY},
-    foxes: {from: 'wilds', first: w => w.tick + A.foxes.first * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.foxes.chance * season(w).hares ? A.foxes.n[0] : 0),
-      next: (w, rng) => w.tick + (A.foxes.wait[0] + rng() * A.foxes.wait[1]) * DAY},
-    boars: {from: 'wilds', first: w => w.tick + A.boars.first * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.boars.chance ? A.boars.n[0] + Math.floor(rng() * A.boars.n[1]) : 0),
-      next: (w, rng) => w.tick + (A.boars.wait[0] + rng() * A.boars.wait[1]) * DAY},
-    // rats smell a full stock
-    rats: {from: 'wilds', first: w => w.tick + A.rats.first * DAY,
-      offer: (w, rng) => (rng() < A.rats.chance ? A.rats.n[0] + Math.floor(rng() * A.rats.n[1]) : 0),
-      next: (w, rng) => w.tick + (A.rats.wait[0] + rng() * A.rats.wait[1]) * DAY},
-    // now and then a wild mule wanders in from the woods
-    mules: {from: 'wilds',
-      first: w => w.tick + A.mules.first * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.mules.chance ? A.mules.n[0] : 0),
-      next: (w, rng) => w.tick + (A.mules.wait[0] + rng() * A.mules.wait[1]) * DAY},
-    // wild goats, a few at a time
-    goats: {from: 'wilds', first: w => w.tick + A.goats.first * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.goats.chance * season(w).hares ? A.goats.n[0] + Math.floor(rng() * A.goats.n[1]) : 0),
-      next: (w, rng) => w.tick + (A.goats.wait[0] + rng() * A.goats.wait[1]) * DAY},
+    ...gameFlows(),
     // a caravan may come on day firstDay, then every everyDays: each time it sets out with `chance`,
     // in the morning, so that it reaches the camp before the evening council (data/trade.js)
     caravan: {from: 'empire',

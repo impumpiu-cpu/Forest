@@ -11,7 +11,6 @@ import {rulerOf, rulerTitle} from '../atlas/polities.js';
 import {gearDef} from '../agents/equipment.js';
 import {rollCreature} from '../agents/special.js';
 import {SPECIES} from '../data/species.js';
-import {ITEMS} from '../data/items.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
 import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';

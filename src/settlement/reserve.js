@@ -24,7 +24,6 @@ export function reserve(w, key, a, ttl = LEASE) {
 
 // free for a (nobody holds it, the lease ran out, or a holds it already)
 export const isFree = (w, key, a) => { const r = w.reserve?.[key]; return !live(w, r) || (!!a && r.by === a.id); };
-export const holderOf = (w, key) => { const r = w.reserve?.[key]; return live(w, r) ? r.by : null; };
 
 export function release(w, key, a) {
   const r = w.reserve?.[key];
@@ -49,11 +48,6 @@ export function freeSlot(w, prefix, n, a) {
   }
   return free;
 }
-export const slotsHeld = (w, prefix, n, but) => {
-  let c = 0;
-  for (let k = 0; k < n; k++) { const r = w.reserve?.[`${prefix}:${k}`]; if (live(w, r) && (!but || r.by !== but.id)) c++; }
-  return c;
-};
 
 // drop lapsed leases now and then, so the table does not grow with old keys
 export function sweepReserve(w) {

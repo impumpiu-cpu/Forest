@@ -6,6 +6,7 @@ import {SPECIES} from '../data/species.js';
 import {exposedOre} from '../world/ores.js';
 import {ORE_BY_CODE} from '../data/ores.js';
 import {ofSpeciesList} from '../agents/lookup.js';
+import {CAMP_LIFE} from '../data/colony.js';
 
 export const count = (w, key, any = false) => w.buildings.reduce((n, b) => n + (b.key === key && (any || b.done) ? 1 : 0), 0);
 export const has = (w, key) => w.buildings.some(b => b.key === key && b.done);
@@ -26,7 +27,7 @@ export const favourites = w => perTick(w, 'favourites', () => {   // by fresh fo
   return out;
 });
 
-export const popCap = w => 8 + w.mods.add.popCap;
+export const popCap = w => CAMP_LIFE.popBase + w.mods.add.popCap;
 // a job with `open` needs no building in a camp of the campaign that came to dig (the outcrop is worked by hand)
 export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some(b => has(w, b)) || (!!job.open && w.light && w.campDig?.size > 0);
 
@@ -41,13 +42,12 @@ export const wantedOre = w => perTick(w, 'wantedOre', () => {
 });
 
 // The raid alarm: raiders on the map, and one of them close enough in time — it would reach the camp
-// (by the camp flow field, at its own pace) within ALARM_HOURS. A fast band raises it almost as soon
+// (by the camp flow field, at its own pace) within CAMP_LIFE.alarmHours. A fast band raises it almost as soon
 // as it comes out of the woods, as before, so the colony has time to gather; the dead, who shamble for
 // a day or more across a big map, raise it only on their last stretch, and nobody starves at the fire
 // waiting for them. Asked many times a tick, so counted once.
-export const ALARM_HOURS = 12;
 export const raidAlarm = w => perTick(w, 'raidAlarm', () => {
-  const camp = w.nav.get('camp'), reach = ALARM_HOURS * HOUR * 0.8;   // 0.8: woods and detours slow the march
+  const camp = w.nav.get('camp'), reach = CAMP_LIFE.alarmHours * HOUR * CAMP_LIFE.alarmPace;   // (woods and detours slow the march)
   return w.agents.some(o => {
     if (o.faction !== 'raiders' || o.dead || o.downed) return false;   // one lying senseless is no threat (settlement/captives.js)
     // a squad falling back or leaving with its loot is no alarm any more (agents/squad.js state); who

@@ -53,20 +53,20 @@ export function homeComfort(w) {
 // how much a building's standing speeds work there (×)
 export const workBonus = b => 1 + statusOf(b);
 
-// which building should get the next piece: houses, then the shrine and the healer, then the rest;
-// the barest one of the kind first
-const ORDER = ['house', 'shrine', 'healerhut', 'hearth', 'crafthut'];
+// which building should get the next piece: by its `furnishRank` (data/buildings.js: houses, then the shrine and the
+// healer…), the rest after them; the barest one of the kind first
+const RANKLESS = 5;
 function furnish(w) {
   const pieces = FURNITURE.filter(f => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
   for (const f of pieces) {
     while ((w.stock[f.id] || 0) >= 1) {
       const room = furnishable(w).filter(b => (b.furniture?.length || 0) < FURNISH_MAX);
       if (!room.length) return;
-      const rank = b => { const k = ORDER.indexOf(b.key); return (k < 0 ? ORDER.length : k) * 10 + statusOf(b) * 20; };
+      const rank = b => (BUILDINGS.get(b.key).furnishRank ?? RANKLESS) * 10 + statusOf(b) * 20;
       const b = room.sort((x, y) => rank(x) - rank(y))[0];
       (b.furniture ||= []).push(f.id); w.stock[f.id] -= 1;
       const d = BUILDINGS.get(b.key);
-      log(w, `${f.label[0].toUpperCase() + f.label.slice(1)} — ${d.name === 'Изба' ? 'в избу' : 'в ' + d.name.toLowerCase()}. Убранство: ${b.furniture.map(id => FURNITURE.get(id).label).join(', ')}.`, 'build');
+      log(w, `${f.label[0].toUpperCase() + f.label.slice(1)} — в ${d.nameAcc || d.name.toLowerCase()}. Убранство: ${b.furniture.map(id => FURNITURE.get(id).label).join(', ')}.`, 'build');
     }
   }
 }
