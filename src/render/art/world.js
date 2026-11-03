@@ -7,6 +7,7 @@ import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {drawSprite, hasSprite, cached, MARK, FIGURE, FULL} from './sprite.js';
 import {LAIRS as LAIR_ART, SITES, PORT_LINES, PORT_IDS, HIDDEN_WALLS} from '../../data/looks.js';
 import {TOWN_BUILDINGS} from '../../data/townBuildings.js';
+import {byId} from '../index.js';
 import {drawPawn, headOf} from './pawn.js';
 import {LAIRS} from '../../data/lairs.js';
 import {drawBeast} from './beasts.js';
@@ -55,7 +56,7 @@ export function ruin(px, ru, x, y, r, k, S) {
 
 // ── parties: a banner, and in front of it a few pawns of who marches (their race, their beasts) when there is room
 function mainRace(a, p) {
-  const t = p.from != null ? a.towns?.find(o => o.id === p.from) : null;
+  const t = p.from != null ? byId(a).town.get(p.from) : null;
   const kin = t?.kin;
   if (kin && typeof kin === 'object') { let best = null, n = -1; for (const [r, v] of Object.entries(kin)) if (v > n && SPECIES.has(r)) { best = r; n = v; } if (best) return best; }
   return WORLD_PEOPLES.has(p.people) ? WORLD_PEOPLES.get(p.people).race : 'human';
@@ -83,7 +84,7 @@ export function party(px, p, x, y, r, k, S, a, dir) {
     troop(px, [race, race, race], x, y, D, S, c, beast && SPECIES.has(beast) ? beast : null);
     return true;
   }
-  const lair = p.owner != null ? a.lairs?.find(l => l.id === p.owner) : null;
+  const lair = p.owner != null ? byId(a).lair.get(p.owner) : null;
   const LK = lair && LAIRS.has(lair.kind) ? LAIRS.get(lair.kind) : null, sp = LK?.species && SPECIES.has(LK.species) ? SPECIES.get(LK.species) : null;
   if (p.kind === 'leader') { place(px, 'parties/leader', x, y, D * 0.8, S, {}, 0.2); if (sp) troop(px, [sp.id], x, y, D, S, c); return true; }
   if (p.kind === 'raid' || p.kind === 'brood' || p.kind === 'dragon') {

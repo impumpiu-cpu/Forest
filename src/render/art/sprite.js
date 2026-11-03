@@ -82,8 +82,9 @@ const LIMIT = 6000;
 export function cached(key, w, h, paint) {
   const dpr = globalThis.devicePixelRatio || 1, k = key + '@' + dpr;
   let c = cache.get(k);
-  if (c) return c;
-  if (cache.size >= LIMIT) cache.clear();
+  if (c) { cache.delete(k); cache.set(k, c); return c; }   // (used again: the newest — the oldest go first)
+  // full: the eighth least lately used go, not the whole cache (a zoom would else paint every bitmap again in one frame)
+  if (cache.size >= LIMIT) { let n = LIMIT >> 3; for (const key of cache.keys()) { cache.delete(key); if (--n <= 0) break; } }
   c = makeCanvas(Math.max(1, Math.ceil(w * dpr)), Math.max(1, Math.ceil(h * dpr)));
   const g = c.getContext('2d');
   g.scale(dpr, dpr);

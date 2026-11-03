@@ -27,7 +27,7 @@ import {seaLevelOf} from '../atlas/sea.js';
 import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {ruinAt} from '../atlas/diplomacy.js';
-import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
+import {realmLabel, realmLand} from '../atlas/realms.js';
 import {personOf} from '../atlas/persons.js';
 import {rulerOf, rulerTitle, profileOf} from '../atlas/polities.js';
 import {townLean} from '../atlas/mind.js';
@@ -55,6 +55,7 @@ import {partyAt} from '../atlas/parties.js';
 import {pickObject, inspectHtml, whereIs, kinLine} from './inspect.js';
 import {openTab} from './tabs.js';
 import {CATEGORIES} from '../data/townBuildings.js';
+import {byId} from '../render/index.js';
 import {RIVER_KINDS, PARTY_KINDS} from '../data/labels.js';
 
 const OPTS = {
@@ -75,7 +76,16 @@ const OPTS = {
 // (read at each paint, not at load: the tables' edits of the lairs are seen at once)
 function wildColors() { const C = {}; for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && !C[L.species]) C[L.species] = L.color; return C; }
 const WILD_K = 0.05;
-const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
+// what is drawn over the cells on each layer of the map (once, not a list a frame)
+const OVER = {
+  roads: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rot'], lanes: ['relief', 'biomes', 'peoples', 'realms'],
+  lairs: ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'], epic: ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'],
+  links: ['peoples'], sites: ['relief', 'biomes', 'peoples', 'realms', 'soils'], parties: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild'],
+  ruins: ['relief', 'biomes', 'peoples', 'realms', 'will', 'rot'], will: ['will'], towns: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rain', 'soils', 'rot'],
+  rivers: ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'],
+};
+const ON = {}; for (const [what, layers] of Object.entries(OVER)) for (const l of layers) (ON[l] ||= new Set()).add(what);
+const NONE = new Set();
 // the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
 // fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
 const DRAG_PX = 5;
@@ -421,17 +431,18 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rot'].includes(this.layer)) this.drawRoads(a, px);
-    if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
-    if (a.artifact && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
-    if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
-    if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
-    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild'].includes(this.layer)) this.drawParties(a, px);
-    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms', 'will', 'rot'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && this.layer === 'will') this.drawWill(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rain', 'soils', 'rot'].includes(this.layer)) this.drawTowns(a, px);
-    if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
+    const on = ON[this.layer] || NONE;
+    if (a.f.road && on.has('roads')) this.drawRoads(a, px);
+    if (a.f.sea && on.has('lanes')) this.drawLanes(a, px);
+    if (a.lairs && on.has('lairs')) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.artifact && on.has('epic')) this.drawEpic(a, px);
+    if (a.net && on.has('links')) this.drawLinks(a, px);
+    if (a.sites && on.has('sites')) this.drawSites(a, px);
+    if (a.parties && on.has('parties')) this.drawParties(a, px);
+    if (a.ruins && on.has('ruins')) this.drawRuins(a, px);
+    if (a.towns && on.has('will')) this.drawWill(a, px);
+    if (a.towns && on.has('towns')) this.drawTowns(a, px);
+    if (a.f.flow && on.has('rivers')) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
   }
@@ -503,7 +514,7 @@ export class MapView {
     for (const t of a.towns) {
       if (!t.alive) continue;
       const will = this.layer === 'will' && t.realm != null;
-      const c = will ? (t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat) : (t.realm && realmOf(a, t.realm) || WORLD_PEOPLES.get(t.people)).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
+      const c = will ? (t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat) : (t.realm && byId(a).realm.get(t.realm) || WORLD_PEOPLES.get(t.people)).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
       const pic = skin.art && ART.town(px, t, x, y, s, k, this.cam.S, {color: c, will, a});   // the picture (render/art/), with its own capital mark
       if (!pic) {
         px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
@@ -523,7 +534,8 @@ export class MapView {
     const k = this.unit(a);
     for (const t of a.towns) {
       if (!t.alive || t.realm == null || t.capital) continue;
-      const R = realmOf(a, t.realm), seat = R && a.towns.find(o => o.id === R.capital && o.alive);
+      const I = byId(a), R = I.realm.get(t.realm), seat = R && I.town.get(R.capital);
+      if (seat && !seat.alive) continue;
       if (!seat) continue;
       const c = t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat;
       px.strokeStyle = `rgba(${c.join(',')},0.55)`; px.lineWidth = Math.max(this.minW, (0.2 + 0.15 * t.tier) * k);
@@ -666,10 +678,10 @@ export class MapView {
   // the leaders of the old lairs (atlas/leaders.js): a silver ring round the lair; a thin line to the lord of a vassal
   drawLeaders(a, px) {
     const k = this.unit(a), sz = Math.max(2.2 / Math.pow(this.cam.zoom, 0.6), 3 * k), silver = 'rgba(225,232,240,0.95)';
-    const byId = new Map(a.lairs.map(l => [l.id, l]));
+    const lairs = byId(a).lair;
     px.strokeStyle = 'rgba(225,232,240,0.35)'; px.lineWidth = Math.max(this.minW, 0.3 * k);
     px.beginPath();
-    for (const l of a.lairs) { const lord = l.alive && l.lord != null ? byId.get(l.lord) : null; if (lord?.alive && lord.leader) { px.moveTo(l.x + 0.5, l.y + 0.5); px.lineTo(lord.x + 0.5, lord.y + 0.5); } }
+    for (const l of a.lairs) { const lord = l.alive && l.lord != null ? lairs.get(l.lord) : null; if (lord?.alive && lord.leader) { px.moveTo(l.x + 0.5, l.y + 0.5); px.lineTo(lord.x + 0.5, lord.y + 0.5); } }
     px.stroke();
     px.strokeStyle = silver; px.lineWidth = Math.max(this.minW, 0.7 * k);
     for (const l of a.lairs) {
