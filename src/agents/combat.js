@@ -2,7 +2,7 @@
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {maxHp} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
@@ -191,7 +191,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
 // a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
 const silverFactor = (t, item, by = null) => {
   const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver) || (!!item && silverCoat(by));   // (a silver oil on the blade: agents/potions.js)
-  const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
+  const fear = fearsSilver(sp) ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
   return silvered ? fear * resistTo(sp, 'silver') : fear;
 };
 

@@ -8,7 +8,7 @@ import {tempAt} from '../world/heat.js';
 import {HEAT, BODY} from '../data/behaviour.js';
 import {resistTo} from '../data/balance/combat.js';
 import {exhaustionStage, exhaustionRow, conditionHasMods, EXHAUSTION, effectResist} from '../data/conditions.js';
-import {AFFLICTIONS} from '../data/afflictions.js';
+import {caughtFrom} from '../data/afflictions.js';
 import {catchIll, stepIll, stepTaint, stepWithdrawal} from './afflictions.js';
 import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
@@ -79,8 +79,8 @@ export function stepBody(w, a) {
   heatHarm(a, sp, T, 'colonist', w);
   stepExhaustion(a);
   // a chill caught in the cold (data/afflictions.js `catch` a day; 0 — never): the colony's people only
-  const CH = AFFLICTIONS.get('chill');
-  if (CH.catch > 0 && a.faction === 'colony' && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, 'chill');
+  const CH = caughtFrom('cold');
+  if (CH && CH.catch > 0 && a.faction === 'colony' && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, CH.id);
   const B = BODY, comfy = sp.needs.every(id => a.needs[id] > B.comfy);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's — not a strengthening
   // brew's (mods.mend): the greater of the two works

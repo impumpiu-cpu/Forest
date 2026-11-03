@@ -9,7 +9,7 @@ import {hourOf} from '../core/time.js';
 import {COUNCIL_TO} from '../settlement/council.js';
 import {JOBS} from '../data/jobs.js';
 import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {think} from './mind.js';
@@ -159,7 +159,7 @@ export function itemPrice(type, q = 0, silver = false, mark = null, of = null, m
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
 // the colony has met such a creature (w.chronicle.silverFoes, settlement/migration.js), nothing before
-const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && SPECIES.get(o.species).weakTo?.includes('silver'));
+const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && fearsSilver(SPECIES.get(o.species)));
 // (worked out once per outfit() — the search weighs many loadouts, and nothing on the map changes meanwhile)
 let silverNow = null, inOutfit = false;
 const silverOf = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);

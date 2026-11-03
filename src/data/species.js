@@ -30,6 +30,8 @@ export const SPECIES = new Registry('species');
 
 // a hunter of the pack: has the `predator` block (data/behaviour.js WAYS.predator reads it)
 export const isPredator = sp => !!sp.predator;
+// silver bites it (`weakTo`, the tag «Боится серебра»)
+export const fearsSilver = sp => !!sp?.weakTo?.includes('silver');
 // the brain a creature of this species is born with: its own (a race names none: the faction's — colonist, raider, caravan),
 // or the tabled one for every row that lists its behaviours (agents/brains/tabled.js, docs/BEHAVIOUR.md)
 export const brainOf = (sp, fa) => sp.brain || (sp.behaviours ? 'tabled' : fa?.brain);

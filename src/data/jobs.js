@@ -79,7 +79,8 @@ const RESOURCES_FOOD = () => FOODS.all();
 const atStations = value => (w, ctx, job) => (job.stations.some(s => ctx.orders[s]) ? value : -1);
 
 JOBS.registerAll([
-  {id: 'gather', skill: 'gathering', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
+  // forage: what a hungry colonist does when the stores are empty — picks food to eat on the spot (agents/tasks.js eat)
+  {id: 'gather', forage: true, skill: 'gathering', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
     runner: 'harvest', nav: 'berries', resource: 'berries', food: 'berries', carry: 3, time: 12, memory: 'walkFood',
     desire: (w, ctx, job) => foodWant(w, ctx, job),
     valid: (w, i) => w.grid.food[i] > 0.3 && w.grid.fire[i] === 0,
@@ -129,7 +130,8 @@ JOBS.registerAll([
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
-  {id: 'hunt', skill: 'hunting', riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
+  // scavenges: a hunter takes a carcass the beasts left before it shoots (agents/jobRunners.js hunt)
+  {id: 'hunt', skill: 'hunting', scavenges: true, riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
     runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox', 'salamander'], risky: ['boar', 'elk'], lastResort: ['mule', 'goat'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too

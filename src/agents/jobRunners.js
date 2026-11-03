@@ -112,7 +112,7 @@ export const RUNNERS = {
       const back = a.resume;
       if (back && back.job === task.job && back.cell === i && w.tick - back.t < RUNNER.resumeFor) { task.work = Math.max(task.work || 0, back.work); }
       if (back) a.resume = null;
-      const skill = task.job === 'heal' ? job.gatherSkill : job.skill;
+      const skill = job.gatherSkill ?? job.skill;   // (the healer picking herbs: data/jobs.js gatherSkill)
       task.work = (task.work || 0) + workRate(w, a, job.id, skill);
       practice(a, skill);
       if (task.work < job.time) return;
@@ -283,7 +283,7 @@ export const RUNNERS = {
     if (a.carry && !task.oneMore) { a.stalking = false; haulHome(w, a); return; }
     // a carcass close by (agents/carcass.js) is meat for the taking, no arrows needed: beasts at it give way
     // or turn on the hunter
-    if (!a.carry && job.id === 'hunt') {
+    if (!a.carry && job.scavenges) {
       // worth the walk only with meat still on it (bones and hide come along)
       const c = task.c != null ? carcassById(w, task.c) : smellCarcass(w, a, H.smell);
       if (c && (c.yields.meat || 0) * share(c) >= H.meat) {

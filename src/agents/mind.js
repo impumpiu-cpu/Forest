@@ -3,6 +3,7 @@
 // and wishes read from needs, gear and what they would argue for at the council.
 import {THOUGHTS, MOOD_LABELS} from '../data/thoughts.js';
 import {NEEDS} from '../data/needs.js';
+import {JOBS} from '../data/jobs.js';
 import {clamp} from '../core/util.js';
 import {handItems, def as itemDef} from './equipment.js';
 import {MIND} from '../data/behaviour.js';
@@ -40,7 +41,7 @@ export function wishes(w, a, councilWish) {
   if (a.equip) {
     if (!hands.some(d => d.melee || d.ranged)) out.push('оружие в руки');
     if (!a.equip.body) out.push('одежду потеплее');
-    if (a.likes === 'hunt' && !hands.some(d => d.ranged)) out.push('лук или пращу для охоты');
+    if (a.likes && JOBS.has(a.likes) && JOBS.get(a.likes).runner === 'hunt' && !hands.some(d => d.ranged)) out.push('лук или пращу для охоты');
     if (a.gear?.ranged?.ammo && !a.gear.rangedReady) out.push('стрел в колчан');
   }
   if (councilWish) out.push(`чтобы построили ${councilWish.name.toLowerCase()}: ${councilWish.why}`);

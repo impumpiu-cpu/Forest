@@ -11,7 +11,7 @@
 import {STRENGTH} from '../data/balance/creatures.js';
 import {COMBAT} from '../data/balance/combat.js';
 import {CRIT} from '../data/wounds.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearsSilver} from '../data/species.js';
 import {STATS} from '../data/special.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
@@ -56,7 +56,7 @@ export function strengthParts(a, {now = false} = {}) {
   let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => (1 - STRENGTH.shotShare) * blockAgainst(g, k) + STRENGTH.shotShare * blockAgainst(g, k, false))) * (1 - (m.dodge || 0)));
   staying /= mean(k => resistOf(sp, k, true));
   staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
-  if (sp.weakTo?.includes('silver')) staying /= COMBAT.silver.plain;   // against plain weapons
+  if (fearsSilver(sp)) staying /= COMBAT.silver.plain;   // against plain weapons
   if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
   return {offence, staying, raw: offence * staying};
 }

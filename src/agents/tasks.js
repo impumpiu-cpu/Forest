@@ -48,6 +48,9 @@ export const TASKS = new Registry('task');
 const done = (w, a) => endTask(w, a, 'done');
 const fail = (w, a, why, outcome = 'blocked') => endTask(w, a, outcome, why);
 
+// the job a hungry one takes up to eat when the stores are empty (data/jobs.js `forage`)
+const forage = () => JOBS.all().find(j => j.forage)?.id || null;
+
 // wander a little inside the camp so people don't stand in one spot
 function mill(w, a, task, radius = TASK.mill.sleep) {
   if (!task.spot || w.rngs.colony() < TASK.mill.respot) {
@@ -78,8 +81,8 @@ TASKS.registerAll([
     // are bare too (winter: gathering just came back blocked): then there is nothing to eat, and the
     // meal waits so that the hunt or the rod gets its turn instead of eat → gather → eat on the spot
     else if (carriedFood(a) >= 1) { eatCarried(a); done(w, a); }
-    else if (skipped(w, a, {id: 'job', job: 'gather'})) fail(w, a, 'есть нечего: склад пуст, ягод нет');
-    else a.task = {id: 'job', job: 'gather', eatNow: true};
+    else if (!forage() || skipped(w, a, {id: 'job', job: forage()})) fail(w, a, 'есть нечего: склад пуст, ягод нет');
+    else a.task = {id: 'job', job: forage(), eatNow: true};
   }},
 
   {id: 'sleep', quiet: true, label: () => 'спит', step(w, a, task) {

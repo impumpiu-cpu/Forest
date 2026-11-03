@@ -47,3 +47,5 @@ export function stagesErrors(stages, keysOf) {
   });
   return errs;
 }
+// the illness caught this way (`from`: 'cold', 'dressed'), the first of the list; null when none is
+export const caughtFrom = from => AFFLICTIONS.all().find(x => x.from === from) || null;
