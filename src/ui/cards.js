@@ -179,7 +179,7 @@ export function creatureHtml(w, a) {
   if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
   if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
   rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-  const who = a.brain === 'trader' || a.brain === 'guard' ? STANDINGS[a.brain].label : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
+  const who = a.brain === 'trader' || a.brain === 'guard' ? STANDINGS[a.brain].label : a.tame ? `${sp.label}, ${{f: 'своя', n: 'своё'}[sp.g] || 'свой'}` : raceOf(a);
   const whoFull = fighterLabel(w, a, who);   // in a band: «гоблин-стрелок-грабитель»
   const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${esc(whoFull)}` : whoFull[0].toUpperCase() + esc(whoFull.slice(1));
   return `<div class="pc-head"><h3>${title}</h3></div><dl class="kv">${rows.join('')}</dl>${whyHtml(w, a)}`;   // the beast's choice too (agents/brains/tabled.js a.why)
@@ -269,7 +269,7 @@ export function buildingHtml(w, b) {
     const by = {}; for (const id of b.furniture || []) by[id] = (by[id] || 0) + 1;
     const items = Object.entries(by).map(([id, n]) => FURNITURE.get(id).label + (n > 1 ? ' ×' + n : ''));
     const st = statusOf(b);
-    const what = b.key === 'house' ? 'сон здесь лучше для настроения' : b.key === 'shrine' ? 'молитва утешает сильнее' : d.station || b.key === 'healerhut' ? `работа здесь быстрее на ${Math.round(st * 100)}%` : 'поселение выглядит богаче';
+    const what = d.furnishText || (d.station ? `работа здесь быстрее на ${Math.round(st * 100)}%` : 'поселение выглядит богаче');
     rows.push(`<dt>Убранство</dt><dd>${items.length ? items.join(', ') : 'голые стены'} (${(b.furniture || []).length}/${FURNISH_MAX})${st ? ` · ${what}` : ''}</dd>`);
   }
   if (d.pen && b.done) {
