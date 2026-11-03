@@ -31,6 +31,9 @@
 //                           necromancer lose their master; the beasts of a summoner go back to the wood; golems and
 //                           treants are a place's and stay
 //   lairs      (lair profiles) a test of the lair kind this profile is for (data/lairs.js row)
+//   guard      (lair profiles) who stands with the lair's own band when the caravan storms its seat (campaign/land.js lairGuard):
+//                summons — those its ruler raises for the fight: {band, label, share} — that share of the guard's strength
+//                (the necromancer's dead fight beside his cultists); the ruler itself, at home, stands at the head
 import {Registry} from '../core/registry.js';
 
 export const POLITIES = new Registry('polity');
@@ -52,7 +55,8 @@ POLITIES.registerAll([
   {id: 'camp', label: 'племенной стан', labelGen: 'племенного стана', rule: 'chief', seat: 'lair', lairs: L => !!L.tribe,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'tower', label: 'башня некроманта', labelGen: 'башни некроманта', rule: 'personal', seat: 'lair', lairs: L => !!L.domain,
-    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']}},
+    ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: ['undead']},
+    guard: {summons: {band: 'undead', label: 'поднятые мертвецы', share: 0.4}}},
   {id: 'rift', label: 'владение демонов', labelGen: 'владения демонов', rule: 'chief', seat: 'lair', lairs: L => !!L.fiend,
     ruler: {leads: true, battle: 0.25, storm: 0.7, razed: 1, vacancy: 'heir', channels: []}},
   {id: 'manor', label: 'усадьба вампира', labelGen: 'усадьбы вампира', rule: 'personal', seat: 'lair', lairs: L => L.at === 'town',

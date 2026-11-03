@@ -20,6 +20,7 @@
 // one walk played in full. `local` as the third argument plays every walk in full (slow: minutes).
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small] [local]
 import {realmWorks} from '../src/atlas/towns.js';
+import {LAIRS} from '../src/data/lairs.js';
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive, finished, chronicleText} from '../src/campaign/index.js';
@@ -420,6 +421,21 @@ check('караваны обзаводятся обозом и выбирают 
     golemMend(men, null, false) === 0, golemMend(dw, null, false) === G.field, golemMend(dw, {built: ['inn']}, false) === G.field, golemMend(hurt, null, true) === 0,
     golemMend(bound, null, true) === 0, golemMend(mk('dwarves', ['dwarf']), null, true) === G.day];
   check('големы: чинятся в кузне города (любой из GOLEM_REPAIR.at), у походного горна и руками свободного дварфа в пути', r.every(Boolean), r.map(x => (x ? '+' : '−')).join(''));
+}
+
+// the guard of a lair's seat by its uklad (campaign/land.js lairGuard): a necromancer's cultists with the dead he raises,
+// a tribe's camp its band; the ruler at home at the head at the storm (rulerAtHead)
+{
+  const {lairGuard, rulerAtHead} = await import('../src/campaign/land.js');
+  const A = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const tower = lairGuard(A, 'necromancer', 0, 2), camp = (A.lairs || []).find(l => l.alive && LAIRS.get(l.kind).tribe);
+  const cg = camp ? lairGuard(A, camp.kind, camp.i, 2, camp) : null;
+  const fake = camp ? {...camp, id: -77, leader: {id: 'p1', title: ['вождь'], name: 'Тест', species: 'orc', at: {kind: 'lair', id: -77}}} : null;
+  if (fake) A.lairs.push(fake);
+  const head = fake ? rulerAtHead(A, {...cg, seat: -77}) : null, away = fake ? rulerAtHead(A, {...cg, seat: -77, boss: {name: 'x'}}) : null;
+  check('стража логова по укладу: у башни некроманта — культисты и поднятые им мертвецы, у стана — его банда, правитель дома — во главе',
+    tower.kind === 'cultists' && tower.band === 'cultists' && tower.with?.band === 'undead' && tower.with.share > 0 && !!cg && cg.kind === 'tribe' && !cg.with && head?.person === 'p1' && away.boss.name === 'x',
+    `башня ${tower.kind}+${tower.with?.band}, стан ${cg?.kind}${cg?.band ? ' ' + cg.band : ''}, во главе ${head?.boss?.name || '—'}`);
 }
 
 if (!ok) process.exit(1);

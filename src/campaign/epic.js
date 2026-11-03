@@ -22,7 +22,7 @@ import {wherePhrase} from '../atlas/lairs.js';
 import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {reachable, foot, circle} from './quest.js';
-import {lairFoe} from './land.js';
+import {lairGuard} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {QUEST} from '../data/quest.js';
 import {plural, cellDist} from '../core/util.js';
@@ -51,14 +51,11 @@ export function seats(a) {
   return (a.seats = out);
 }
 
-// who guards a place of the old calamities: the band of its lair's kind; strength by the distance from home
+// who guards a place of the old calamities: the band of its lair's kind and its ruler's summoned, as any lair's seat
+// (campaign/land.js lairGuard); strength by the distance from home
 function guardFor(a, K, lairKind, i, x = 1) {
-  const L = LAIRS.get(lairKind), G = EPIC.guard, diag = Math.hypot(a.w, a.h);
-  const s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, i) / diag) * x);
-  // (the demons have no band of their own on the local map: they come as the dead do)
-  const kind = L?.undead || L?.fiend ? 'undead' : L?.tribe ? 'tribe' : 'lair';
-  const who = L?.fiend ? {band: 'undead'} : lairFoe(lairKind);
-  return {kind, strength: s, ...who};
+  const G = EPIC.guard, diag = Math.hypot(a.w, a.h);
+  return lairGuard(a, lairKind, i, Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, i) / diag) * x));
 }
 const grown = (r, M) => Object.fromEntries(['S', 'E', 'A'].map(id => [id, Math.round(between(r, M.add))]));
 

@@ -25,7 +25,7 @@ import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {BUBBLE} from '../data/bubble.js';
 import {YEAR_DAYS} from '../data/seasons.js';
-import {lairFoe} from './land.js';
+import {lairFoe, lairGuard, rulerAtHead} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
@@ -88,12 +88,12 @@ function places(a, K, mask) {
 // who guards a place, and how strong: stronger the further from home
 function guardOf(a, K, p, crown = false) {
   const G = QUEST.guard, diag = Math.hypot(a.w, a.h), s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, p.i) / diag) * (crown ? G.crown : 1));
-  const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null, L = l && LAIRS.get(l.kind);
+  const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null;
   if (p.kind === 'town') return null;
   if (p.kind === 'dragon') return {kind: 'lair', strength: s, label: `выводок дракона — ${p.label}`, beast: 'drake'};
   if (p.kind === 'barrow') return {kind: 'undead', strength: s, label: 'мертвецы древнего кургана', band: 'undead'};
   if (p.kind === 'ruin') return {kind: 'bandits', strength: s, label: `разбойники, засевшие ${p.town != null ? 'на пепелище' : 'в развалинах'}`, band: 'bandits'};
-  return {kind: L?.undead ? 'undead' : L?.tribe ? 'tribe' : 'lair', strength: s, label: p.label, ...(l ? lairFoe(l.kind) : {})};
+  return {...(l ? lairGuard(a, l.kind, p.i, s, l) : {kind: 'lair', strength: s}), label: p.label};   // its band, its ruler's summoned (campaign/land.js)
 }
 
 // the crown's story, by where it lies (g — the gender of its name: «она сгинула», «он сгинул»)
@@ -270,7 +270,7 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     }
     K.stats.storms = (K.stats.storms || 0) + 1;
     const sk = here === C ? 'stormsLair' : here.kind === 'grave' ? 'stormsGrave' : null; if (sk) K.stats[sk] = (K.stats[sk] || 0) + 1;
-    const win = fight(here.guard);
+    const win = fight(rulerAtHead(a, here.guard));   // (its lair's ruler, at home, at its head: campaign/land.js)
     if (!win) {
       Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day};
       if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`);   // beaten back again and again: leave it for a while, look elsewhere

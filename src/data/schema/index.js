@@ -384,6 +384,7 @@ export const TABLES = [
       col('ruler.vacancy', 'Преемство', 'enum', {values: {court: 'двор назначает', contest: 'борьба за власть', heir: 'поднимется новый', none: 'держава кончается'}}),
       col('ruler.split', 'Раскол при борьбе', 'num', {min: 0, max: 1, nullable: true}),
       col('ruler.channels', 'Личные каналы', 'ids', {ref: new Set(['undead', 'summons']), note: 'что держится на самом правителе и теряется с ним (atlas/control.js): undead — мертвецы некроманта, summons — звери призывателя'}),
+      col('guard', 'Стража логова', 'json', {nullable: true, note: 'кто встаёт со своей бандой логова, когда караван штурмует его (campaign/land.js lairGuard): summons — {band, label, share} — поднятые правителем на бой, доля силы стражи (башня некроманта: мертвецы рядом с культистами); сам правитель, если дома, — во главе'}),
     ]},
   {id: 'successionRules', label: 'Преемство: правила', group: 'Народы', ...params(() => paramRows(SUCCESSION))},
   {id: 'facts', label: 'Факты', group: 'Народы', key: 'id', computed: true, rows: () => FACTS.all().map(f => ({...f, scope: f.scope === 'either' ? 'город или держава' : 'город', ops: Object.entries(OPS).map(([k, v]) => `${k} — ${v}`).join(', ')})),

@@ -297,7 +297,7 @@ function evening(a, K) {
   // the quest (campaign/quest.js): at a place it seeks — a clue taken, the crown, a storm of the guards
   if (K.quest) {
     const {r, done} = draw(K, 'quest'), tell = (text, kind, world, who) => say(a, K, text, kind, world, who);
-    const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => fight(a, K, d, r, 'guard'), tell, caravanMight(K));
+    const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => { const won = fight(a, K, d, r, 'guard'); if (d.person != null) worldOutcome(a, K, d, won); return won; }, tell, caravanMight(K));   // (a lair's ruler at the head of its guard: its fate in the storm is its fate — worldOutcome)
     const any = K.members.some(m => m.alive && isCore(m));
     if (any && K.phase === 'back' && K.i === K.home && K.quest.crown.state === 'carried') { done(); homecoming(a, K, ms); return; }
     const g = any ? questTarget(a, K, r, tell) : null;

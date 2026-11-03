@@ -35,6 +35,7 @@ import {clamp} from '../core/util.js';
 import {NIGHT, WILD_FOES} from '../data/campaign.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {SEASONS} from '../data/seasons.js';
+import {lairPolity} from '../data/polities.js';
 import {onEdit} from '../data/schema/layer.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
@@ -138,6 +139,25 @@ export function withCompany(d, ds, r) {
 // the fight a lair of the wild brings as a foe of the caravan (data/campaign.js FOES): its cult, its dead, its tribe, or the lair
 // (its beasts). (A raid of a lair counts a lair of neither kind a tribe, a guard of a grave counts a fiend undead: their own rules)
 export const lairFoeKind = L => (L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair');
+
+// the guard of a lair's seat (the quest's places — campaign/quest.js guardOf, the epic's — campaign/epic.js guardFor): the lair's own
+// band (a demons' rift has none on the local map: its demons come as the dead do), and those its uklad's ruler raises
+// beside it (data/polities.js `guard.summons`: the necromancer's dead). `seat` — the lair's id, for its ruler at the storm
+// (rulerAtHead). → {kind, strength, band | beast, pool?, with?, seat?}
+export function lairGuard(a, lairKind, i, strength, lair = null) {
+  const L = LAIRS.get(lairKind); if (!L) return {kind: 'lair', strength};
+  const kind = L.fiend ? 'undead' : lairFoeKind(L), who = L.fiend ? {band: 'undead'} : lairFoe(lairKind);
+  const S = lairPolity(L).guard?.summons;
+  return {kind, strength, ...who, ...(who.band === 'cultists' ? {pool: cultPool(a, i)} : {}), ...(S ? {with: {band: S.band, label: S.label, share: S.share, summoned: true}} : {}), ...(lair ? {seat: lair.id} : {})};
+}
+// the guard as it stands at the storm: the ruler of its lair (atlas/persons.js — a leader of an old lair, a chief), if it is
+// alive and at home, at the head of it, a named foe whose fate in the fight is its fate in the world (campaign/march.js
+// worldOutcome)
+export function rulerAtHead(a, g) {
+  if (!g || g.seat == null || g.boss) return g;
+  const l = (a.lairs || []).find(x => x.id === g.seat), ld = l?.alive && l.leader && isAt(l.leader, 'lair', l.id) ? l.leader : null;
+  return ld ? {...g, boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, person: ld.id} : g;
+}
 
 export function lairFoe(kind) {
   const L = LAIRS.get(kind);
