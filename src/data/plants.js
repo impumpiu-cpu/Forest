@@ -19,10 +19,10 @@
 //              `hurt` takes that much health per picking (bee stings); `tool`: only someone with that tool
 //              (data/items.js `tool`) can do it; `weight` scales how keen the colony is on it (default 1)
 import {Registry} from '../core/registry.js';
-import {SPECIES} from './species.js';
 
-// hay the tame animals eat in a winter of 30 days (settlement/herd.js keeps the herd to it)
-const winterHay = w => w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.eats : 0), 0) * 30 * 0.7;
+// hay the herd eats in a winter (settlement/herd.js winterHay, handed over by it at load: it cannot be imported here)
+let WINTER_HAY = null;
+export const useWinterHay = f => { WINTER_HAY = f; };
 
 // the herbs of the brews are picked only for a healer's hut to brew them: n while there is one
 const hutKeep = (w, n) => (w.buildings?.some(b => b.key === 'healerhut' && b.done) ? n : 0);
@@ -68,7 +68,7 @@ PLANTS.registerAll([
   {id: 'meadow', resource: 'hay', label: 'луговая трава', terrain: ['grass', 'steppe'], fertMin: 0.45, chance: 0.05, seasons: ['summer', 'autumn'],
     start: [0.2, 0.6], regrow: 0.0005, ripe: 0.6, take: 0.6, tint: [150, 180, 80], mapColor: [170, 220, 90],
     // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
-    job: {id: 'mow', skill: 'farming', label: 'косить сено', short: 'сено', verb: 'косит сено', time: 20, carry: 3, keep: w => 30 + winterHay(w)}},
+    job: {id: 'mow', skill: 'farming', label: 'косить сено', short: 'сено', verb: 'косит сено', time: 20, carry: 3, keep: w => 30 + WINTER_HAY(w)}},
 
   // gold-bearing sand in the shallows: washed with a pan, a little at a time; the river brings more
   // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.

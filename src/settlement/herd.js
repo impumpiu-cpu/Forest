@@ -24,6 +24,7 @@ import {createAgent} from '../agents/agent.js';
 import {recomputeMods} from './mods.js';
 import {think} from '../agents/mind.js';
 import {HERD} from '../data/colony.js';
+import {useWinterHay} from '../data/plants.js';
 
 export {HERD};   // (data/colony.js)
 const tameOf = a => SPECIES.get(a.species).tame;
@@ -39,7 +40,6 @@ export const penSpace = w => pens(w).reduce((s, b) => s + BUILDINGS.get(b.key).p
 export const penUsed = w => herd(w).reduce((s, a) => s + tameOf(a).space, 0);
 export const penRoom = w => penSpace(w) - penUsed(w);
 export const isTameable = o => !o.dead && !o.tame && !o.warBeast && !o.summoned && o.faction === 'wild' && o.owner == null && !!SPECIES.get(o.species).tame;
-useHerd({isTameable});   // (data/buildings.js: the pen's `available`)
 
 // wild animals the herder could go for now: room for them in the pen, bait in the stock, not too far
 // (the herder's runner leaves a beast another herder is already after to them: `tamerAt` is renewed
@@ -205,6 +205,9 @@ export function lostBeast(w, a, cause) {
 
 // hay the herd eats in a winter (the mowers keep this much on top of the bedding)
 export const winterHay = w => perTick(w, 'winterHay', () => herd(w).reduce((s, a) => s + tameOf(a).eats, 0) * SEASON_DAYS * (1 - HERD.graze.winter));
+// the tables' hooks read these (data/buildings.js: the pen's `available`; data/plants.js: the mowers' `keep`)
+useHerd({isTameable, penRoom});
+useWinterHay(winterHay);
 
 // for the panel: what a tame animal is like now
 export function beastText(w, a) {

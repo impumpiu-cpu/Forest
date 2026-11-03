@@ -60,7 +60,9 @@ import {ITEMS} from '../src/data/items.js';
 import {TRADE} from '../src/data/trade.js';
 import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../src/settlement/trade.js';
 import {JOBS, huntable} from '../src/data/jobs.js';
-import {canTame, makeTame, stepHerd, herd} from '../src/settlement/herd.js';
+import {canTame, makeTame, stepHerd, herd, penRoom, winterHay} from '../src/settlement/herd.js';
+import {PLANTS} from '../src/data/plants.js';
+import {BUILDINGS as BUILDING_ROWS} from '../src/data/buildings.js';
 import {season as seasonOf, daysLeftInSeason, SEASON_DAYS} from '../src/data/seasons.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
@@ -2112,6 +2114,17 @@ check('T144', 'стадо — не только козы: зимний забо�
   for (; d < 400; d++) { w.tick = d * DAY + 6 * HOUR; w.scratch = {}; if (seasonOf(w).lean && daysLeftInSeason(w) > SEASON_DAYS - 1) break; }
   stepHerd(w);
   return (herdOf('sheep') === 2 && herdOf('goat') === 2 && herdOf('mule') === 0) || `осталось: овец ${herdOf('sheep')}, коз ${herdOf('goat')}, мулов ${herdOf('mule')}`;
+});
+
+check('T145', 'места в загоне и зимнее сено считает одно правило (settlement/herd.js): боевой зверь их не занимает, косцы запасают ровно столько', () => {
+  const w = scene();
+  w.buildings.push({id: 9001, key: 'pen', done: true, cells: [], x: 40, y: 40});
+  const goat = put(w, 'goat', 'wild', 20.5, 20.5); makeTame(w, goat, null, true);
+  const war = put(w, 'mule', 'wild', 21.5, 20.5); makeTame(w, war, null, true); war.warBeast = true; w.scratch = {};
+  const mow = PLANTS.all().find(p => p.job?.id === 'mow').job, pen = BUILDING_ROWS.get('pen');
+  if (mow.keep(w) !== 30 + winterHay(w)) return `косцы держат ${mow.keep(w)}, а зимнего корма ${winterHay(w)} + 30`;
+  if (penRoom(w) !== pen.pen - 1) return `свободно ${penRoom(w)} мест из ${pen.pen}: боевой мул занял место`;
+  return pen.available(w) === (penRoom(w) < 2) || 'второй загон решает не по penRoom';
 });
 
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }
