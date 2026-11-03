@@ -28,7 +28,7 @@ import {relation, attitude, meet, fight, barrows} from '../diplomacy.js';
 import {realmLabel, realmLabelGen} from '../realms.js';
 import {sendParty} from '../parties.js';
 import {scaleOf} from '../tectonics.js';
-import {dist} from './shared.js';
+import {dist, countRaid, raidsDone} from './shared.js';
 import {raider} from './raid.js';
 import {liveTowns} from './realm.js';
 
@@ -58,7 +58,8 @@ export const captives = {
     if (role !== 'realm') return null;
     const y = a.hist.year;
     const often = cultOf(actor)?.raids ?? 1;   // the cult of war raids the more (data/peoples.js warCult)
-    if (actor.raids?.year === y && actor.raids.n >= D.raidsPerYear * often) return null;
+    const full = raidsDone(actor, y, often, D);   // the year's raids on towns are done: the camps of the wild are not held (the cult of war)
+    if (full && !cultOf(actor)) return null;
     const out = [], k = scaleOf(a), towns = a.towns.filter(t => t.alive);
     for (const t of liveTowns(a, actor)) {
       if (!townFx(t).defence || r() > CR.realm.chance * often / SEASONS_PER_YEAR) continue;
@@ -66,7 +67,7 @@ export const captives = {
       // the nearest; the cult of war weighs what it would carry off against how likely it is to win (atlas/treasury.js lootOf)
       const cult = cultOf(actor), mt = cult ? might(t, townFx(t)) : 0;
       let bv = 0;
-      for (const o of towns) if (o.realm !== actor.id && o.pop >= CR.minPop && relation(a, actor.id, o.realm) && (cult || attitude(a, actor.id, o.realm) < 0)) {
+      if (!full) for (const o of towns) if (o.realm !== actor.id && o.pop >= CR.minPop && relation(a, actor.id, o.realm) && (cult || attitude(a, actor.id, o.realm) < 0)) {
         const d = Math.hypot(t.x - o.x, t.y - o.y); if (d >= D.raidReach * k) continue;
         if (!cult) { if (d < bd) { bd = d; target = o; } continue; }
         const v = (lootOf(o) + o.pop) * Math.min(TOWN_MONEY.plunder.dare, mt / Math.max(1, might(o, townFx(o)))); if (v > bv) { bv = v; target = o; }
@@ -95,9 +96,12 @@ export const captives = {
     if (plan.lair != null) {
       const t = a.towns.find(x => x.id === plan.from), l = (a.lairs || []).find(x => x.id === plan.lair); if (!t?.alive || !l?.alive) return null;
       const L2 = LAIRS.get(l.kind), sp = SPECIES.get(L2.species), TW = TOWN_WAR, CT = CR.realm.tribe;
+      countRaid(actor, a.hist.year, 'camps');   // (counted with the year's raids, never held by them)
       if (townBeatsLair(t, l, r)) {
-        const n = Math.max(1, Math.round(CT.heads * l.strength)) * CR.realm.grow;
-        l.strength = Math.max(0, l.strength - CT.hit); t.slaves = (t.slaves || 0) + n; (t.slavesOf ||= {})[L2.species] = (t.slavesOf[L2.species] || 0) + n;
+        // as from a town: `hit` of the camp's people (CT.heads at full strength) are carried off — the camp the weaker by as
+        // many — and `grow` of them become the raiding town's slaves
+        const took = Math.max(1, Math.round(CT.heads * l.strength * CT.hit)), n = took * CR.realm.grow;
+        l.strength = Math.max(0, l.strength - took / CT.heads); t.slaves = (t.slaves || 0) + n; (t.slavesOf ||= {})[L2.species] = (t.slavesOf[L2.species] || 0) + n;
         return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} разорили ${L2.labelAcc || L2.label} «${l.name}» и увели ${sp.plural} в рабство.`;
       }
       killShare(a, t, TW.raidLoss * raidShare(townFx(t)), 'raid');
@@ -106,7 +110,7 @@ export const captives = {
     const t = a.towns.find(x => x.id === plan.from), target = a.towns.find(x => x.id === plan.target);
     if (!t?.alive || !target?.alive) return null;
     const y = a.hist.year;
-    actor.raids = actor.raids?.year === y ? {year: y, n: actor.raids.n + 1} : {year: y, n: 1};
+    countRaid(actor, y);
     const rel = meet(a, actor.id, target.realm, y);
     rel.att = Math.max(-5, rel.att - D.raid * (cultOf(actor)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {
