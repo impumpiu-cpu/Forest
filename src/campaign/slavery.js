@@ -13,11 +13,12 @@ import {STANDING} from '../data/market.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {relation} from '../atlas/diplomacy.js';
-import {free, held, bondsSets, mouths} from './captives.js';
+import {held, bondsSets, mouths} from './captives.js';
 import {makeMember, draw} from './start.js';
 import {bestBonds} from '../data/captives.js';
 import {assign} from './baggage.js';
 import {famed} from './road.js';
+import {reserveFor} from './town.js';
 
 const gold = v => Math.round(v * 10) / 10;
 const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -62,8 +63,7 @@ function deal(a, K, t, st, L, r, parts) {
   if (L.law !== 'legal' || r() >= SLAVE.buy.offer) return parts;
   if (held(K).length >= Math.min(CAPTIVE.max, SLAVE.buy.want) || bondsSets(K) < 1) return parts;
   const p = gold(captivePrice({hp: 1, S: 5, will: SLAVE.buy.will}) * L.k * SLAVE.buy.mark * STANDING[st].buy);
-  const keep = free(K).length * CAMPAIGN.ration * 6 * 0.3;   // about a week of food money left over
-  if (K.gold - p < keep) return parts;
+  if (K.gold - p < reserveFor(K, t, st, SLAVE.buy.reserveDays, a)) return parts;   // the food money kept, as for any buy in town (campaign/town.js)
   const R = SLAVE.buy.races, race = R[(r() * R.length) | 0];
   const B = bestBonds(K.cargo); K.cargo[B.resource] -= B.n; if (K.cargo[B.resource] <= 0) delete K.cargo[B.resource];
   const m = makeMember(K, r, {race, role: 'captive', gear: CAPTIVE.campaign.gear, captive: {since: K.day, bonds: B.id, from: 'bought', will: SLAVE.buy.will}});
