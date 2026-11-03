@@ -20,16 +20,11 @@
 //   nerve — added to the squad's retreat threshold (agents/squad.js SQUAD.nerve): trolls and the
 //         bloodthirsty hold on longer (< 0), goblins break sooner (> 0).
 import {Registry} from '../core/registry.js';
-import {pick, plural, weighted} from '../core/util.js';
-import {SPECIES, isMindless} from './species.js';
-import {ITEMS} from './items.js';
-import {hasSense} from './tongues.js';
-import {expectedStrength} from '../agents/strength.js';
+import {pick, plural} from '../core/util.js';
+import {SPECIES} from './species.js';
 import {chanceWeight} from './chance.js';
-import {roleKit, drawRole, mixOf, LINKS, ROLE_TIERS, COMBAT_ROLES} from './roles.js';
-import {mountUp} from '../agents/mount.js';
-import {golemOf, GOLEM_METALS} from './constructs.js';
-import {refreshBody} from '../agents/special.js';
+// the make-up of a band — fill a budget, links, the beast-driver's beasts, the golems — is the system's (outside/bands.js)
+import {fill, withLed, heads, golemFor} from '../outside/bands.js';
 
 // a band that has lost many to the colony comes for the one who killed them; scouts come first, few
 const feud = w => Math.min(2, (w.chronicle.raidersKilled || 0) / 6);
@@ -38,131 +33,28 @@ const torches = w => (w.buildings.some(b => b.done && b.cells.length && b.key !=
 
 export const RAID_BANDS = new Registry('raid band');
 
-// Raiders of level t: the more the enemy has learned, the tougher and the better shots its people are
-// (data/migrations.js puts this on every member as the band arrives)
-export const raiderBody = t => ({hp: Math.min(1.1, 0.75 + t * 0.012), ranged: Math.min(0.7, 0.1 + t * 0.025)});
-
-// what one member of a band of level t is worth (КС), on average: in its fighting role (data/roles.js), or over the roles
-// its species takes (`role` null), with the gear a band of that level brings, as it will be given out on arrival
-export function memberStrength(species, t, role = null) {
-  const L = Math.max(0, Math.floor(t)), body = raiderBody(L);
-  return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role),
-    prepare: a => {
-      if (SPECIES.get(species).behaviours) { a.marks = ['trained']; refreshBody(a); }   // a band's beast is trained (data/migrations.js)
-      if (role && COMBAT_ROLES.get(role)?.mount) mountUp(a, COMBAT_ROLES.get(role).mount);   // a rider and its beast (agents/mount.js)
-      a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
-    }});
-}
-// The yardstick of a raid's size (settlement/threat.js): what «a band of five» means is five raiders of the old days,
-// whatever the bands bring now — clubs and slings in rags early, spears, shields, bows and leather later. A band of
-// roles buys its fighters with this budget: fewer heads, each better armed, the same strength (КС) in all
-export function yardstickKit(rng, t) {
-  const early = [['club'], ['club'], ['spear'], ['sling'], ['staff']];
-  const late = [['spear', 'shield'], ['club', 'shield'], ['maul'], ['bow', 'quiver'], ['spear'], ['sling']];
-  const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
-  const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
-  return [...set, ...(r < plates ? ['hardleather'] : r < plates + leather ? ['jerkin'] : r < plates + leather + 0.4 ? ['clothes'] : [])];
-}
-// one raider of level t by that yardstick
-export function raiderStrength(t) {
-  const L = Math.max(0, Math.floor(t)), body = raiderBody(L);
-  return expectedStrength('human', {key: `yardstick|${L}`, kit: rng => yardstickKit(rng, L), prepare: a => { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; }});
-}
-// A band of links (data/roles.js LINKS): a link drawn by the band's weights, its places filled in order — each with one of
-// the band's species that may take the role (its weight in the band × in «Роли видов», `max` as for fill) — then the
-// next link, while the budget lasts by the same rule as fill. The rest of the mix comes in among them by its share of
-// its weight: the beasts (no hands, no roles) and those whose roles none of the band's links has a place for (an ogre
-// with the orcs: a brute, drawn its role of its own). Every member of a link knows it (`linkNo`, `linkKind`).
-function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
-  const places = new Set(links.flatMap(([id]) => (LINKS.has(id) ? LINKS.get(id).roles : [])));
-  const linked = sp => SPECIES.get(sp).inventory && Object.keys(mixOf(sp)).some(r => places.has(r) && mixOf(sp)[r] > 0);
-  const out = [...extra], people = mix.filter(([sp, wt]) => wt > 0 && linked(sp)), beasts = mix.filter(([sp, wt]) => wt > 0 && !linked(sp));
-  const P = people.reduce((s, m) => s + m[1], 0), B = beasts.reduce((s, m) => s + m[1], 0);
-  let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0), no = 0, kind = null, slot = 0;
-  const fits = c => (up ? left > 0 : c / 2 <= left);
-  const under = sp => out.filter(m => m.species === sp).length < (max[sp] ?? Infinity);
-  for (let guard = 0; guard < 60 && out.length < 18; guard++) {
-    // a war beast now and then, as thick as the band's mix has them
-    if (B > 0 && rng() < B / (P + B)) {
-      const sp = weighted(rng, beasts.filter(([s]) => under(s) && fits(cost(s))));
-      if (!sp) { if (!P) break; continue; }
-      const role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null;   // an ogre: a brute of its own, in no link
-      out.push({species: sp, ...(role ? {role} : {})}); left -= cost(sp, role); continue;
-    }
-    if (!P) continue;
-    if (!kind || slot >= LINKS.get(kind).roles.length) { kind = weighted(rng, links.filter(([id]) => LINKS.has(id))); no++; slot = 0; }
-    const role = LINKS.get(kind).roles[slot++];
-    const sp = weighted(rng, people.map(([s, wt]) => [s, wt * (mixOf(s)[role] || 0)]).filter(([s, wt]) => wt > 0 && under(s)));
-    if (!sp) continue;   // nobody of this band takes the role: the place stays empty
-    if (!fits(cost(sp, role))) { if (fits(cost(sp))) continue; break; }   // too dear: the cheaper places may still fit
-    out.push({species: sp, role, linkNo: no, linkKind: kind}); left -= cost(sp, role);
-  }
-  if (!out.length) { const sp = (people[0] || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null; out.push({species: sp, ...(role ? {role} : {})}); }
-  return out.slice(0, 18);
-}
-
-// the war beasts a beast-driver brings (role `lead`, data/roles.js): of the land's beasts and monsters, as thick as they
-// live there (o.here, a world cell) or the band's own `led` kinds on the polygon
-export const LED = ['wolf', 'boar', 'varg', 'bear'];
-function withLed(rng, list, o, led = LED) {
-  const here = o?.here ? Object.entries(o.here).filter(([id, v]) => v > 0 && ['beast', 'monster'].includes(SPECIES.get(id).kind) && SPECIES.get(id).mind !== 'sentient') : led.map(id => [id, 1]);
-  if (!here.length) return list;
-  const out = [...list];
-  for (const m of list) {
-    const L = m.role && COMBAT_ROLES.get(m.role)?.lead; if (!L) continue;
-    const n = L[0] + Math.floor(rng() * (L[1] - L[0] + 1));
-    for (let k = 0; k < n && out.length < 18; k++) out.push({species: weighted(rng, here)});
-  }
-  return out;
-}
-
-// a budget counted in such bandits, for the bands that change their make-up with size
-const heads = (budget, t) => budget / raiderStrength(t);
-
-// Fill the budget with species drawn from `mix` ([[species, weight], …]): a member is taken while it brings
-// the band's expected rating closer to the budget (at least half of it fits into what is left, so a band of
-// big creatures comes out over as often as under; with `up` — while anything of the budget is left, so the heads are
-// rounded up: a campaign's foe, data/camp.js CAMP.foe); `max` caps a
-// species by head count ({ogre: 2}); `extra` — members who come anyway (a necromancer), paid from the budget
-// too. At least one member; no more than 18.
-function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, here = null, roles = null, least = null, links = null} = {}) {
-  const cost = (sp, role = null) => memberStrength(sp, t, role);
-  if (here) mix = mix.map(([sp, wt]) => [sp, wt * (here[sp] ?? 1)]);   // the war beasts only as many as live about (data/raids.js BAND_BEASTS)
-  if (links?.length) return fillLinks(rng, budget, mix, t, links, {extra, max, up, cost});
-  const out = [...extra];
-  let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0);
-  for (let guard = 0; guard < 40; guard++) {
-    const fits = mix.filter(([sp, wt]) => wt > 0 && (up ? left > 0 : cost(sp) / 2 <= left) && out.filter(m => m.species === sp).length < (max[sp] ?? Infinity));
-    if (!fits.length) break;
-    let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
-    for (const [s, wt] of fits) { r -= wt; if (r <= 0) { sp = s; break; } }
-    // its fighting role (data/roles.js): what the band still lacks first, then by the species' weights
-    const role = SPECIES.get(sp).inventory ? drawRole(rng, sp, {bias: roles, least, have: out.filter(m => m.species === sp).map(m => m.role)}) : null;
-    out.push({species: sp, ...(role ? {role} : {})}); left -= cost(sp, role);
-  }
-  if (!out.length) { const sp = (mix.find(m => m[1] > 0) || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp, {bias: roles, least}) : null; out.push({species: sp, ...(role ? {role} : {})}); }
-  return out.slice(0, 18);
-}
+// The numbers of the bands' make-up (outside/bands.js; docs/SETTLEMENT.md «Набеги»):
+//   RAIDER    — raiders of level t: the more the enemy has learned, the tougher (`hp`: × health) and the better shots (`ranged`:
+//               the skill) its people are — base + per × t, at most max (data/migrations.js puts this on every member)
+//   YARDSTICK — the yardstick of a raid's size (settlement/threat.js): five raiders «of the old days» — clubs and slings in rags
+//               early (`early`), spears, shields, bows and leather later (`late`, with the chance per × t, at most max); a jerkin
+//               with leather.per × t (at most max), hardened leather past plates.from with (t − from) × per (at most max), plain
+//               clothes with `clothes` more
+//   BAND      — at most `max` heads a band, `guard`/`linkGuard` draws while filling it; `led` — the war beasts a beast-driver
+//               brings on the polygon (a world cell gives its own)
+export const RAIDER = {hp: {base: 0.75, per: 0.012, max: 1.1}, ranged: {base: 0.1, per: 0.025, max: 0.7}};
+export const YARDSTICK = {
+  early: [['club'], ['club'], ['spear'], ['sling'], ['staff']],
+  late: [['spear', 'shield'], ['club', 'shield'], ['maul'], ['bow', 'quiver'], ['spear'], ['sling']],
+  lateAt: {per: 0.04, max: 0.9}, leather: {per: 0.025, max: 0.6}, plates: {from: 12, per: 0.025, max: 0.3}, clothes: 0.4,
+};
+export const BAND = {max: 18, guard: 40, linkGuard: 60, led: ['wolf', 'boar', 'varg', 'bear']};
 
 // On a cell of the world map (seam/cell.js: the game in a settlement, a caravan's camp) a band's war beasts — the wargs
 // of goblins and orcs, the spiders, the hyenas of gnolls — come only as thick as they live about (world/region.js
 // faunaLevel): × their level over `full` (at most 1); on the polygon, as the band's list says
 export const BAND_BEASTS = {full: 0.6};
 
-// what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing
-// (with no role given, one is drawn from the species' row: a creature that comes outside a band, the arena)
-export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? withTorch(species, roleKit(species, role ?? drawRole(rng, species), rng, t)) : []);
-// one who does not see in the dark carries a torch (data/balance/forms.js torch): in a free hand, else behind the back
-export const TORCH_ITEM = 'torch';
-function withTorch(species, kit) {
-  if (hasSense(species, 'darkvision') || isMindless(SPECIES.get(species))) return kit;
-  const defs = kit.map(tok => { const id = String(tok).split(/[~+@$!]/)[0]; return ITEMS.has(id) ? ITEMS.get(id) : null; });
-  const hands = defs.reduce((s, d) => s + (d?.slot === 'hand' ? d.hands || 1 : 0), 0), back = defs.some(d => d?.slot === 'back');
-  return hands < 2 || !back ? [...kit, TORCH_ITEM] : kit;   // (both hands taken: behind the back — agents/equipment.js dress)
-}
-
-// the golem a dwarven band of level t brings: of the best metal its level opens (data/roles.js ROLE_TIERS), none below bronze
-const golemFor = t => { const k = ROLE_TIERS.from.reduce((b, f, i) => (t >= f ? i : b), 0); return k > 0 ? golemOf(GOLEM_METALS[Math.min(k, GOLEM_METALS.length) - 1]) : null; };
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };
 

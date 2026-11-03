@@ -7,7 +7,7 @@ import {DEFAULT_CFG} from '../src/data/presets.js';
 import {spawnGroup} from '../src/settlement/migration.js';
 import {RANK_RULES} from '../src/data/ranks.js';
 import {COMBAT_ROLES, rolesOf} from '../src/data/roles.js';
-import {raiderStrength} from '../src/data/raids.js';
+import {raiderStrength} from '../src/outside/bands.js';
 import {squadOf, moraleOf, noteFallen} from '../src/agents/squad.js';
 import {holdsGround} from '../src/agents/auras.js';
 import {maxHp} from '../src/agents/agent.js';

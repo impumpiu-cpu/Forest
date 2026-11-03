@@ -115,7 +115,7 @@ import {KIN, REALM_LAND, TIER_FALL, WAR_BEASTS} from '../peoples.js';
 import {LAIR_FIELD, CAPTIVE_RAID, RAID_MIX, NECRO, WILD as LAIR_WILD} from '../lairs.js';
 import {ZONE, THORNS, ROCK_NEAR, WAR_DENS, PEN_K} from '../buildings.js';
 import {GOLEM_GUARD, GOLEM_REPAIR, GOLEM_LOCAL} from '../constructs.js';
-import {BAND_BEASTS} from '../raids.js';
+import {BAND_BEASTS, RAIDER, YARDSTICK, BAND} from '../raids.js';
 import {WANTS, ALCHEMY} from '../market.js';
 import {CAMP_KIT, PEOPLE_KIT, CARAVAN_GOLEMS, FIELD_BUILD} from '../transport.js';
 import {WILD_FOES, FOES, RETINUE} from '../campaign.js';
@@ -800,6 +800,7 @@ TABLES.push(
   {id: 'lairFieldRules', label: 'Логова: поля и набеги', group: 'Мир', note: 'Логова как поля (data/lairs.js LAIR_FIELD), набеги за пленными (CAPTIVE_RAID), всадники набегов (RAID_MIX), башня некроманта (NECRO), дикие логова (WILD); шов: набеги племён на поселение (data/seam.js FOLK_RAIDS).', ...grp({field: LAIR_FIELD, captiveRaid: CAPTIVE_RAID, raidMix: RAID_MIX, necro: NECRO, wild: LAIR_WILD, folkRaids: FOLK_RAIDS})},
   {id: 'landKinds', label: 'Земля: почвы и климат', group: 'Мир', note: 'Плодородие по породе (data/soils.js ROCK_FERT), с какой доли наносов почва аллювий (ALLUVIAL_FROM — постоянное), пороги климата Кёппена (data/biomes.js KOPPEN), нижний предел зверей (FAUNA_FLOOR — постоянное).', ...grp({rockFert: ROCK_FERT, alluvialFrom: ALLUVIAL_FROM, koppen: KOPPEN, faunaFloor: FAUNA_FLOOR})},
   {id: 'outpostRules', label: 'Постройки поселения: правила', group: 'Поселение', note: 'Зона поселения (data/buildings.js ZONE), терновая изгородь (THORNS), скала у лагеря (ROCK_NEAR), логова варгов и пауков, бойцовские ямы (WAR_DENS), загоны зеленокожих (PEN_K), големы поселения (data/constructs.js GOLEM_GUARD, GOLEM_REPAIR, GOLEM_LOCAL), звери банд на клетке мира (data/raids.js BAND_BEASTS).', ...grp({zone: ZONE, thorns: THORNS, rockNear: ROCK_NEAR, warDens: WAR_DENS, penK: PEN_K, golemGuard: GOLEM_GUARD, golemRepair: GOLEM_REPAIR, golemLocal: GOLEM_LOCAL, bandBeasts: BAND_BEASTS})},
+  {id: 'bandRules', label: 'Налётчики: правила', group: 'Поселение', note: 'Тело налётчика по уровню угрозы (data/raids.js RAIDER: base + per × уровень, не больше max), мерило набега — снаряжение «разбойника былых дней» (YARDSTICK), голов в банде и звери погонщика (BAND); outside/bands.js.', ...grp({raider: RAIDER, yardstick: YARDSTICK, band: BAND})},
   {id: 'traitRanges', label: 'Черты: пределы', group: 'Поселение', note: 'Насколько поселенец любит любимое дело, не любит нелюбимое и относится к прочим (data/traits.js LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE: [от, до]).', ...grp({like: LIKE_RANGE, dislike: DISLIKE_RANGE, neutral: NEUTRAL_RANGE})},
   {id: 'caravanKit', label: 'Обоз и свита', group: 'Караван', note: 'Лагерь каравана (data/transport.js CAMP_KIT), снаряжение народов (PEOPLE_KIT), големы обоза (CARAVAN_GOLEMS), сборка в поле (FIELD_BUILD); враги дикой земли (data/campaign.js WILD_FOES, FOES), свита (RETINUE); нужды каравана в городе (data/market.js WANTS), лаборатория (ALCHEMY); эпилог (data/epilogue.js EPILOGUE).', ...grp({campKit: CAMP_KIT, peopleKit: PEOPLE_KIT, caravanGolems: CARAVAN_GOLEMS, fieldBuild: FIELD_BUILD, wildFoes: WILD_FOES, foes: FOES, retinue: RETINUE, wants: WANTS, alchemy: ALCHEMY, epilogue: EPILOGUE})},
 );
