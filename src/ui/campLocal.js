@@ -7,6 +7,7 @@ import {openTab} from './tabs.js';
 import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {CAMP_KINDS} from '../data/labels.js';
+import {mindAt, mindCard} from '../render/minds.js';
 
 // the camps watched on the local map by the pace (core/clock.js PACE): at the observer's pace the day stops too, at
 // `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
@@ -40,13 +41,22 @@ export const campLocal = Base => class extends Base {
     this.localR.draw(w, L.view);
     if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
     L.frames = (L.frames || 0) + 1;
-    if (L.view.selected && L.frames % 15 === 0) this.localCard();   // the creature's card follows it
+    if ((L.view.selected || L.view.mind) && L.frames % 15 === 0) this.localCard();   // the creature's card follows it
     if (L.frames % 15 === 0 && !$('campStock').closest('[data-pane]').hidden) this.renderStock();   // the dock's «Склад», while it is open
   }
   // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
   pickLocal(e) {
     const L = this.local; if (!L) return;
     const r = $('campLocal').getBoundingClientRect(), [fx, fy] = this.localR.toCell(e.clientX - r.left, e.clientY - r.top), w = L.w;
+    // an icon of the overmind (render/minds.js) first: its boxes are in CSS pixels from the map's corner
+    const R = this.localR, hit = mindAt(R.mindHits || [], e.clientX - r.left - R.ox, e.clientY - r.top - R.oy);
+    if (hit) {
+      L.view.selected = null; L.view.selBld = null; L.view.selCell = null; L.view.mind = hit;
+      $('campInspect').innerHTML = `<div class="pc">${mindCard(w, hit)}</div>`;
+      if (this.ids?.dock) openTab($(this.ids.dock), 'object');
+      return;
+    }
+    L.view.mind = null;
     let best = null, bd = 0.9;
     for (const a of w.agents) { if (a.dead) continue; const d = Math.hypot(a.x - fx, a.y - fy); if (d < bd) { bd = d; best = a; } }
     const i = (fy | 0) * w.w + (fx | 0);
@@ -60,6 +70,7 @@ export const campLocal = Base => class extends Base {
     if (!L) return;
     const a = L.view.selected;
     if (a && (a.dead || !w.agents.includes(a))) { L.view.selected = null; box.innerHTML = '<p class="muted">Его больше нет на карте.</p>'; return; }
+    if (L.view.mind) { box.innerHTML = `<div class="pc">${mindCard(w, L.view.mind)}</div>`; return; }   // a flag changes by the tick: followed
     if (!force && !a) return;   // a building or a cell does not change by the tick
     if (a) box.innerHTML = `<div class="pc">${a.diary && a.likes ? personHtml(w, a) : creatureHtml(w, a)}</div>`;
     else if (L.view.selBld != null) { const b = w.buildings.find(b => b.id === L.view.selBld); box.innerHTML = b ? `<div class="pc">${buildingHtml(w, b)}</div>` : ''; }

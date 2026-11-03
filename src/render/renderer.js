@@ -15,6 +15,7 @@ import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {skin} from './skin.js';
 import {ART} from './art/index.js';
+import {drawMinds} from './minds.js';
 import {Camera} from './camera.js';
 import {ORE_BY_CODE} from '../data/ores.js';
 import {seasonTint, snowy} from '../data/seasons.js';
@@ -195,6 +196,8 @@ export class Renderer {
     this.drawPick(w, view);
     this.drawAgents(w, view.selected);
     this.drawShots(w);
+    // what the overmind has posted (render/minds.js): over everything, in screen-sized icons; their boxes for a click
+    this.mindHits = drawMinds(ctx, w, S, view);
     this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
   }
 

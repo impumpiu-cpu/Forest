@@ -5,6 +5,7 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
+import {wireMindsButton} from '../render/minds.js';
 import {skin} from '../render/skin.js';
 import {ART} from '../render/art/index.js';
 import {segOf, loadDetail, saveDetail, exportChronicle, MapView, ATLAS_OPTS} from './atlasView.js';
@@ -121,6 +122,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.watch = true; this.queue = []; this.local = null;
     $('campWatch').addEventListener('click', () => { this.watch = !this.watch; $('campWatch').setAttribute('aria-pressed', String(this.watch)); if (!this.watch) this.endLocal(); });
     $('campLocalSkip').addEventListener('click', () => this.endLocal());
+    wireMindsButton($('campMinds'));   // the overmind's marks on the camp's map (render/minds.js)
     this.localR = new Renderer($('campLocal'));
     // a click on the camp's map: the card of the creature there, else the building, else the cell (ui/cards.js)
     $('campLocal').addEventListener('click', e => this.pickLocal(e));
