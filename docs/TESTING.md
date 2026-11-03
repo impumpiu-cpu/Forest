@@ -68,7 +68,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run arena:races` | `arena.mjs --part races` | только групповые бои рас |
 | `npm run arena:monsters` | `arena.mjs --part monsters` | только существа против рас |
 | `npm run arena:calibrate` | `arena.mjs --part races,monsters --write` | подбирает `alpha` и поправки `ks` и пишет их в `data/balance/creatures.js` |
-| `npm run tables` | `check-tables.mjs` | таблицы по схемам и их правка ([Таблицы](TABLES.md#проверка-таблиц)) |
+| `npm run tables` | `check-tables.mjs` | таблицы по схемам и их правка ([Таблицы](TABLES.md#проверка-таблиц)); список «Все таблицы» в TABLES.md сходится со схемой |
 | `npm run races` | `races-check.mjs` | каждая банда налётчиков приходит к обычной колонии и бьётся; приходят переселенцы других рас; потери по бандам |
 | `npm run bestiary` | `bestiary-check.mjs` | кто живёт в каждом регионе; каждый зверь бестиария на карте обычной колонии несколько дней |
 | `npm run align` | `align-check.mjs` | мировоззрение: ярлыки, три слоя (раса → держава → пешка) в пределах, отношения держав по взглядам, дрейф |
@@ -133,7 +133,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 
 Сид по умолчанию у `smoke`, `determinism`, `rng-check` — `DEFAULT_CFG.seed` из `data/presets.js`. Размеры мира — `small`, `medium`, `large` (`ATLAS_SIZES` в `data/atlas.js`).
 
-Ключи `--…`: `items-check.mjs` — `--csv файл.csv` (таблица ещё и в CSV), `--strict` (выход с ошибкой, если есть вещь с ✗); `check-layers.mjs` — `--numbers` (записать нынешние числа как новую линию). У остальных проверок (`check-data`, `check-tables`, `art-check`, `align`, `leaders`, `buildings`, `elves`, `dwarves`, `greenskins`, `humans`, `caravan`, `economy`, `kinds`, `fight`, `conditions`, `ranks`, `potions`, `checks`, `kingdom`, `polity`, `mind:check`, `demography`, `build:check`, `fisc`, `content`, `land`, `settle`, `questhand`, `audit`, `logic`) ключей нет. Ключи `balance`, `campaign:balance`, `arena`, `stress` — в разделах ниже.
+Ключи `--…`: `items-check.mjs` — `--csv файл.csv` (таблица ещё и в CSV), `--strict` (выход с ошибкой, если есть вещь с ✗); `check-layers.mjs` — `--numbers` (записать нынешние числа как новую линию); `check-tables.mjs` — `--docs` (переписать список «Все таблицы» в TABLES.md). У остальных проверок (`check-data`, `art-check`, `align`, `leaders`, `buildings`, `elves`, `dwarves`, `greenskins`, `humans`, `caravan`, `economy`, `kinds`, `fight`, `conditions`, `ranks`, `potions`, `checks`, `kingdom`, `polity`, `mind:check`, `demography`, `build:check`, `fisc`, `content`, `land`, `settle`, `questhand`, `audit`, `logic`) ключей нет. Ключи `balance`, `campaign:balance`, `arena`, `stress` — в разделах ниже.
 
 ## Балансный прогон
 
