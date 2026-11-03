@@ -127,14 +127,31 @@ export function recycle(t, L, P, give) {
   return took;
 }
 
+// ── a season of the towns' money, in its phases (each over all the towns, in this order): the works' buying, the season's
+// store, the people's needs, then each town's merchants, wages, taxes, upkeep and prices
 export function seasonMoney(a, towns) {
+  const prep = openSeason(a, towns);
+  const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
+  const C = {a, towns, links, deal: (b, s) => dealOf(a, b, s)};
+  const sold = worksBuying(C, prep);
+  seasonStore(towns, sold);
+  peopleNeeds(C);
+  for (const t of towns) closeSeason(a, t);
+}
+const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
+
+// the season's start: each town's ledger opened and its works' first reckoning, of its own store → Map town → [heat, prep]
+function openSeason(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   const prep = new Map();   // (the season's first half of each town's works, given again after the buying: atlas/economy.js prepEconomy)
   for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }   // (at: the season's step — a town burnt later in the season still sold this season)
-  const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
-  const deal = (b, s) => dealOf(a, b, s), realmBy = new Map((a.realms || []).map(r => [r.id, r]));
-  const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
-  // ── the works' buying: what each lacks this season, and what each has to sell after it
+  return prep;
+}
+
+// ── the works' buying: what each lacks this season, and what each has to sell after it; the buyers work again with what came
+// → Map town id → {good: how much it sold}
+function worksBuying(C, prep) {
+  const {a, towns, links, deal} = C, realmBy = new Map((a.realms || []).map(r => [r.id, r]));
   const lack = new Map(), spare = new Map();
   for (const t of towns) {
     const e = t.econ, L = {}, P = {};
@@ -170,7 +187,11 @@ export function seasonMoney(a, towns) {
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
-  // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
+  return sold;
+}
+
+// ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
+function seasonStore(towns, sold) {
   for (const t of towns) {
     const e = t.econ, out = sold.get(t.id) || {};
     const works = ((e.made.gold || 0) - (e.used.gold || 0)) / S; t.makersGold = r2(t.makersGold + works); t.trade.works = r2(works); if (works > 0) earn(t, 'makers', works);
@@ -179,8 +200,12 @@ export function seasonMoney(a, towns) {
       t.stock[g] = Math.max(0, (t.stock[g] || 0) + ((e.made[g] || 0) - (e.used[g] || 0)) / S - (out[g] || 0));
     }
   }
-  // ── the people's needs: the wants fixed at the season's start; the basic ones first, at home and then in the linked towns,
-  // then the comfort ones the same way
+}
+
+// ── the people's needs: the wants fixed at the season's start; the basic ones first, at home and then in the linked towns,
+// then the comfort ones the same way; what they got → t.needs, t.econ.people
+function peopleNeeds(C) {
+  const {towns, links, deal} = C;
   const want = new Map(), had = new Map();
   for (const t of towns) { const W = wants(t); want.set(t.id, {left: {basic: {...W.basic}, comfort: {...W.comfort}}, all: W}); had.set(t.id, {basic: 0, comfort: 0}); }
   const home = (t, kind) => {
@@ -221,48 +246,63 @@ export function seasonMoney(a, towns) {
     for (const kind of KINDS) for (const [g, n] of Object.entries(left[kind])) if (all[kind][g] > 0 && n / all[kind][g] > M.needs.unmet) un[g] = Math.max(un[g] || 0, r2(Math.min(1, n / all[kind][g])));
     t.needs.lack = un;
   }
-  // ── the merchants, the wages and taxes, the upkeep, the market's prices
-  for (const t of towns) {
-    const e = t.econ, R = realmOf(a, t.realm);
-    // the store: what is over its room goes to the merchants — the dearest first, as far as their purse goes (the town's people ×
-    // its trade); the rest rots, is burnt or carried off for nothing
-    const fair = M.merchants.at.some(id => t.built.includes(id)) ? M.merchants.fair : M.merchants.cheap, over = [];
-    for (const g of Object.keys(t.stock)) {
-      let v = t.stock[g];
-      const room = roomOf(t, g);
-      if (v > room) { over.push([g, v - room]); v = room; }
-      if (v >= M.dust) t.stock[g] = r2(v); else delete t.stock[g];
-    }
-    let purse = M.merchants.purse * t.pop * (1 + townFx(t).trade);
-    for (const [g, n] of over.sort((p, q) => goodPrice(q[0]) - goodPrice(p[0]))) {
-      const unit = goodPrice(g) * fair, k = Math.min(n, purse / unit), m = k * unit;
-      purse -= m; t.makersGold = r2(t.makersGold + m); add(t.trade, 'merchants', m); if (m > 0) earn(t, 'makers', m);
-      if (n > k) add(t.trade, 'wasted', (n - k) * goodPrice(g));
-    }
-    // the wages: for the free hands at work (the slaves are not paid), as far as the makers' purse goes
-    const hands = Math.max(0, e.hands - (t.slaves || 0) * TOWN_FLOW.slaves.work - e.freeHands);   // the free hands its works took
-    const bill = hands * M.makers.wage, wage = Math.min(bill, Math.max(0, t.makersGold));
-    t.makersGold = r2(t.makersGold - wage); t.peopleGold = r2(t.peopleGold + wage); earn(t, 'people', wage);
-    add(t.trade, 'wages', wage); if (bill > wage) add(t.trade, 'owed', bill - wage);
-    // the taxes: of what the makers and the people earned this season (before the upkeep: the treasury pays with them)
-    const tm = Math.min(Math.max(0, t.makersGold), (t.trade.makersIn || 0) * M.makers.tax), tp = Math.min(Math.max(0, t.peopleGold), (t.trade.peopleIn || 0) * M.people.tax);
-    t.makersGold = r2(t.makersGold - tm); t.peopleGold = r2(t.peopleGold - tp); t.gold = r2(t.gold + tm + tp); add(t.trade, 'tax', tm + tp);
-    // the upkeep: from the treasury (and the realm's) to the people who keep the buildings (their pay is taxed next season)
-    const cost = upkeepYear(t) / S;
-    let owe = cost;
-    const pay = Math.min(owe, Math.max(0, t.gold)); t.gold = r2(t.gold - pay); owe -= pay;
-    if (owe > 0 && R && R.gold > 0) { const p = Math.min(owe, R.gold); R.gold = r2(R.gold - p); owe -= p; t.trade.aid = r2(p); }
-    t.peopleGold = r2(t.peopleGold + cost - owe); add(t.carry ||= {}, 'peopleIn', cost - owe);
-    t.trade.upkeep = r2(cost);
-    t.unpaid = cost > 0 ? Math.round(owe / cost * 1000) / 1000 : 0;
-    // the season's prices of its market (saved): a good its works or its people lack dearer, one it has in plenty cheaper
-    const P = M.price, mk = {};
-    for (const g of new Set([...Object.keys(e.short), ...Object.keys(t.stock), ...Object.keys(t.needs.lack)])) {
-      const k = Math.max(P.lo, Math.min(P.hi, 1 + P.short * (e.short[g] || 0) + P.need * (t.needs.lack[g] || 0) - P.plenty * Math.min(1, (t.stock[g] || 0) / roomOf(t, g))));
-      if (Math.abs(k - 1) >= M.dust) mk[g] = r2(k);
-    }
-    t.market = mk;
+}
+
+// ── the season's close of a town: the merchants, the wages, the taxes, the upkeep, the market's prices
+function closeSeason(a, t) {
+  sellOver(t);
+  payWages(t);
+  takeTaxes(t);
+  payUpkeep(t, realmOf(a, t.realm));
+  setPrices(t);
+}
+// the store: what is over its room goes to the merchants — the dearest first, as far as their purse goes (the town's people ×
+// its trade); the rest rots, is burnt or carried off for nothing
+function sellOver(t) {
+  const fair = M.merchants.at.some(id => t.built.includes(id)) ? M.merchants.fair : M.merchants.cheap, over = [];
+  for (const g of Object.keys(t.stock)) {
+    let v = t.stock[g];
+    const room = roomOf(t, g);
+    if (v > room) { over.push([g, v - room]); v = room; }
+    if (v >= M.dust) t.stock[g] = r2(v); else delete t.stock[g];
   }
+  let purse = M.merchants.purse * t.pop * (1 + townFx(t).trade);
+  for (const [g, n] of over.sort((p, q) => goodPrice(q[0]) - goodPrice(p[0]))) {
+    const unit = goodPrice(g) * fair, k = Math.min(n, purse / unit), m = k * unit;
+    purse -= m; t.makersGold = r2(t.makersGold + m); add(t.trade, 'merchants', m); if (m > 0) earn(t, 'makers', m);
+    if (n > k) add(t.trade, 'wasted', (n - k) * goodPrice(g));
+  }
+}
+// the wages: for the free hands at work (the slaves are not paid), as far as the makers' purse goes
+function payWages(t) {
+  const e = t.econ, hands = Math.max(0, e.hands - (t.slaves || 0) * TOWN_FLOW.slaves.work - e.freeHands);   // the free hands its works took
+  const bill = hands * M.makers.wage, wage = Math.min(bill, Math.max(0, t.makersGold));
+  t.makersGold = r2(t.makersGold - wage); t.peopleGold = r2(t.peopleGold + wage); earn(t, 'people', wage);
+  add(t.trade, 'wages', wage); if (bill > wage) add(t.trade, 'owed', bill - wage);
+}
+// the taxes: of what the makers and the people earned this season (before the upkeep: the treasury pays with them)
+function takeTaxes(t) {
+  const tm = Math.min(Math.max(0, t.makersGold), (t.trade.makersIn || 0) * M.makers.tax), tp = Math.min(Math.max(0, t.peopleGold), (t.trade.peopleIn || 0) * M.people.tax);
+  t.makersGold = r2(t.makersGold - tm); t.peopleGold = r2(t.peopleGold - tp); t.gold = r2(t.gold + tm + tp); add(t.trade, 'tax', tm + tp);
+}
+// the upkeep: from the treasury (and the realm's, R) to the people who keep the buildings (their pay is taxed next season)
+function payUpkeep(t, R) {
+  const cost = upkeepYear(t) / S;
+  let owe = cost;
+  const pay = Math.min(owe, Math.max(0, t.gold)); t.gold = r2(t.gold - pay); owe -= pay;
+  if (owe > 0 && R && R.gold > 0) { const p = Math.min(owe, R.gold); R.gold = r2(R.gold - p); owe -= p; t.trade.aid = r2(p); }
+  t.peopleGold = r2(t.peopleGold + cost - owe); add(t.carry ||= {}, 'peopleIn', cost - owe);
+  t.trade.upkeep = r2(cost);
+  t.unpaid = cost > 0 ? Math.round(owe / cost * 1000) / 1000 : 0;
+}
+// the season's prices of its market (saved): a good its works or its people lack dearer, one it has in plenty cheaper
+function setPrices(t) {
+  const e = t.econ, P = M.price, mk = {};
+  for (const g of new Set([...Object.keys(e.short), ...Object.keys(t.stock), ...Object.keys(t.needs.lack)])) {
+    const k = Math.max(P.lo, Math.min(P.hi, 1 + P.short * (e.short[g] || 0) + P.need * (t.needs.lack[g] || 0) - P.plenty * Math.min(1, (t.stock[g] || 0) / roomOf(t, g))));
+    if (Math.abs(k - 1) >= M.dust) mk[g] = r2(k);
+  }
+  t.market = mk;
 }
 
 // ── building (atlas/peoples.js): a plan of what a building takes — its materials from the store and from the linked towns, the
