@@ -27,7 +27,7 @@ const CASES = {
   avoid1: () => { P.settlers = {...P.settlers, avoid: {orcs: 1}}; },
   avoid0: () => { P.settlers = {...P.settlers, avoid: null}; },
   bunks10: () => { P.bunks = 10; },
-  take1: () => { P.folk = {...P.folk, take: 1, expel: 0}; },
+  take1: () => { P.strangers = {...P.strangers, take: 1, expel: 0}; },
   // the Greenskins' cult of war off; every Dwarf building's defence doubled (fxBy: the Dwarves' own share on top)
   nocult: () => { const O = WORLD_PEOPLES.get('orcs'); O.warCult = {...O.warCult, chance: 0}; },
   fort: () => { for (const b of TOWN_BUILDINGS.all()) if (b.fx?.defence && (!b.peoples || b.peoples.includes(who))) b.fxBy = {...b.fxBy, [who]: {...b.fxBy?.[who], defence: (b.fxBy?.[who]?.defence || 0) + b.fx.defence}}; },

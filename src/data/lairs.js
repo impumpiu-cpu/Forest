@@ -141,9 +141,12 @@ export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5,
 //   keep:       the share of a lair's captives alive a year later (the rest die, are eaten, or are raised)
 //   realm:      a realm's raid for captives (the orcs): the town's chance a year (as DIPLOMACY.raidChance is for a raid), the
 //               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
+//               tribe — on a wild tribe's camp (the greenskins, captives.js): `heads` — the camp's people at full strength,
+//               `hit` — the share of them a won raid carries off (the camp the weaker by as many; `grow` of them are slaves);
+//               these raids are not held to DIPLOMACY.raidsPerYear (they are counted in realm.raids.camps)
 //   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
 //               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
-export const CAPTIVE_RAID = {minPop: 20, chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 20, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
+export const CAPTIVE_RAID = {minPop: 20, chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 130, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [

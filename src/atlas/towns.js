@@ -240,53 +240,58 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k, t.people)) * need[k] * (P.taste[k] ?? 1);
     // the flows (atlas/economy.js): what the town's buildings lack of a good, a building that gives it fills; food short
     // of the people — a building that gives food; and no hands to work it — little use
-    const E = ctx.econ;
-    if (E) {
-      // what it takes, as its people takes it (data/peoples.js swaps: the elves' wood for metal); what it does without (soft)
-      // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
-      // makes: it may be bought)
-      const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
-      // the council's forecast of the store (not the store's fact, which the works read each season — atlas/economy.js): what the
-      // town has and made this season, as the number it is; a good it has none of but its realm makes may be bought — enough for
-      // «any of it» (stock > 0), never for a quantity asked
-      const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? Math.max(0, (t.stock?.[arg] || 0) + (E.made[arg] || 0)) || (none(arg) ? 0 : Number.EPSILON) : facts.get(f, arg, sc))});
-      const R = recipesOf(b).filter(q => may(q, true));
-      const bin = {...(b.in || {})}; for (const q of R) for (const [g, v] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + v / R.length;
-      const bout = {...(b.out || {})}; for (const q of R) for (const [g, v] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + v / R.length;
-      const ins = Object.keys(swapGoods(t.people, bin)), softIn = g => TOWN_GOODS.get(g).soft || (b.soft || []).some(s => swapGoods(t.people, {[s]: 1})[g]);
-      let flow = 0;
-      for (const g of [...Object.keys(bout), ...(b.dig ? makesOf(b) : [])]) flow += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
-      for (const g of ins) if (!TF.flow.spareSkip.includes(g)) flow += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain (food is not stored: its surplus is no reason)
-      // of a pool (a kitchen: any raw food): what lies unused of its goods — raw food nobody cooks
-      for (const id of Object.keys(b.any || {})) flow += Object.keys(POOLS[id]).reduce((s, g) => s + (E.spare?.[g] || 0), 0) * TF.flow.spare;
-      // the reworking (the dwarves' `recycle`): what lies spare into what is short — worth as much as the less of the two
-      if (b.recycle) flow += Math.min(Object.values(E.short).reduce((s, v) => s + v, 0) * TF.flow.short + Object.values(t.needs?.lack || {}).reduce((s, v) => s + v, 0) * TF.flow.needs,
-        Object.values(E.spare || {}).reduce((s, v) => s + v, 0) * TF.flow.spare) / b.recycle.k;
-      // an upgrade or an annex that boosts its host: what the host makes and the town lacks, × the boost
-      for (const [id, k] of Object.entries(b.boost || {})) if (t.built.includes(id)) for (const g of makesOf(TOWN_BUILDINGS.get(id))) flow += (E.short[g] || 0) * TF.flow.short * k * t.built.filter(x => x === id).length;
-      v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
-      // a work that earns the town its next step (data/peoples.js TIERS needsAny), once it has nearly the people for it
-      const next = TIERS[(t.tier || 0) + 1];
-      if (next && t.pop >= next.pop * TF.flow.tierAt && next.needsAny.includes(b.id) && !next.needsAny.some(id => lineHas(t.built, id))) v += TF.flow.tierUp;
-      // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
-      const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
-      if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
-      // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
-      const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
-      if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
-      if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
-      // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
-      // is never stopped, so it is never idle
-      // (so with a pool none of whose goods the town has or its realm makes: a furnace with no fuel at all; and a work of recipes
-      // none of which may run here — a brewery with no raw food of its kinds, a forge with no ingots to be had; a work of `req` dark)
-      const pools = [...Object.keys(b.any || {}), ...(b.fire || R.some(q => q.fire) ? ['fuel'] : [])];
-      const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b, false);
-      if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && none(g)) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
-    }
+    if (ctx.econ) { v = flowScore(t, b, P, need, ctx.econ, inRealm, facts, v); if (v == null) continue; }
     // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)
     if (ctx.lean) v *= 1 + ctx.lean.k * along(vectorOf(b), ctx.lean.vec);
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }
   return best;
+}
+
+// the flows of a building (atlas/economy.js) on its score v: what the town's buildings lack of a good, a building that gives it
+// fills; food short of the people — a building that gives food; and no hands to work it — little use; E — the town's economy
+// (ctx.econ). → the score, or null (nobody to work it: not built)
+function flowScore(t, b, P, need, E, inRealm, facts, v) {
+  // what it takes, as its people takes it (data/peoples.js swaps: the elves' wood for metal); what it does without (soft)
+  // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
+  // makes: it may be bought)
+  const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
+  // the council's forecast of the store (not the store's fact, which the works read each season — atlas/economy.js): what the
+  // town has and made this season, as the number it is; a good it has none of but its realm makes may be bought — enough for
+  // «any of it» (stock > 0), never for a quantity asked
+  const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? Math.max(0, (t.stock?.[arg] || 0) + (E.made[arg] || 0)) || (none(arg) ? 0 : Number.EPSILON) : facts.get(f, arg, sc))});
+  const R = recipesOf(b).filter(q => may(q, true));
+  const bin = {...(b.in || {})}; for (const q of R) for (const [g, n] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + n / R.length;
+  const bout = {...(b.out || {})}; for (const q of R) for (const [g, n] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + n / R.length;
+  const ins = Object.keys(swapGoods(t.people, bin)), softIn = g => TOWN_GOODS.get(g).soft || (b.soft || []).some(s => swapGoods(t.people, {[s]: 1})[g]);
+  let flow = 0;
+  for (const g of [...Object.keys(bout), ...(b.dig ? makesOf(b) : [])]) flow += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
+  for (const g of ins) if (!TF.flow.spareSkip.includes(g)) flow += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain (food is not stored: its surplus is no reason)
+  // of a pool (a kitchen: any raw food): what lies unused of its goods — raw food nobody cooks
+  for (const id of Object.keys(b.any || {})) flow += Object.keys(POOLS[id]).reduce((s, g) => s + (E.spare?.[g] || 0), 0) * TF.flow.spare;
+  // the reworking (the dwarves' `recycle`): what lies spare into what is short — worth as much as the less of the two
+  if (b.recycle) flow += Math.min(Object.values(E.short).reduce((s, x) => s + x, 0) * TF.flow.short + Object.values(t.needs?.lack || {}).reduce((s, x) => s + x, 0) * TF.flow.needs,
+    Object.values(E.spare || {}).reduce((s, x) => s + x, 0) * TF.flow.spare) / b.recycle.k;
+  // an upgrade or an annex that boosts its host: what the host makes and the town lacks, × the boost
+  for (const [id, k] of Object.entries(b.boost || {})) if (t.built.includes(id)) for (const g of makesOf(TOWN_BUILDINGS.get(id))) flow += (E.short[g] || 0) * TF.flow.short * k * t.built.filter(x => x === id).length;
+  v += Math.min(TF.flow.cap, flow);   // a work of many goods is not worth many works
+  // a work that earns the town its next step (data/peoples.js TIERS needsAny), once it has nearly the people for it
+  const next = TIERS[(t.tier || 0) + 1];
+  if (next && t.pop >= next.pop * TF.flow.tierAt && next.needsAny.includes(b.id) && !next.needsAny.some(id => lineHas(t.built, id))) v += TF.flow.tierUp;
+  // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
+  const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
+  if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
+  // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
+  const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
+  if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
+  if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) return null;   // nobody to work it: not built
+  // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
+  // is never stopped, so it is never idle
+  // (so with a pool none of whose goods the town has or its realm makes: a furnace with no fuel at all; and a work of recipes
+  // none of which may run here — a brewery with no raw food of its kinds, a forge with no ingots to be had; a work of `req` dark)
+  const pools = [...Object.keys(b.any || {}), ...(b.fire || R.some(q => q.fire) ? ['fuel'] : [])];
+  const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b, false);
+  if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && none(g)) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
+  return v;
 }

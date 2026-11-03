@@ -12,7 +12,7 @@ import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES, KIN} from '../src/data/peoples.js';
 import {LAIRS} from '../src/data/lairs.js';
 import {POLITIES} from '../src/data/polities.js';
-import {OFFICES} from '../src/data/kingdom.js';
+import {OFFICES, COURT} from '../src/data/kingdom.js';
 import {SPECIES} from '../src/data/species.js';
 import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
 import {C, ALL, ANY, needsOf, reqNeeds} from '../src/data/requirements.js';
@@ -477,7 +477,7 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     seat.heads = {human: [0, 500, 0]}; sync(seat); seat.book = null;
     const hp = makeRuler(a, r), army = send(a, seat, goal, 50, {owner: r.id}); moveTo(hp, 'party', army.id);
     const n0 = seat.pop; r.kingdom.court.ruler.until = a.hist.year; a.hist.season = SEASONS_PER_YEAR - 1;
-    stepKingdom(a, say);
+    const fill = COURT.fill; COURT.fill = 0; stepKingdom(a, say); COURT.fill = fill;   // (no other office filled from the seat this year: the count is the ruler's alone)
     const apart = hp.alive && !hp.inCount && hp.crowd && isAt(hp, 'party', army.id) && livingPersons(a).includes(hp) && !r.kingdom.court.ruler?.person && Math.abs(seat.pop - n0) < 1e-6;
     check(`B02 (${way}): срок вышел в походе — пост свободен, личность жива и ведётся отдельно при отряде, в счёт города никто не добавлен`, apart, `${JSON.stringify(hp.at)}, inCount ${!!hp.inCount}, pop ${n0} → ${seat.pop}`);
     let to = seat;

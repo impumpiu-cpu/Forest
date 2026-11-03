@@ -4,7 +4,8 @@
 // no births makes nobody. `node tools/demography-check.mjs`
 import {generateAtlas} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../src/data/peoples.js';
-import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove, lifeOf, deathRate, brawlRate, lifeYear, breedOf, foundAge} from '../src/atlas/demography.js';
+import {lifeOf} from '../src/atlas/population.js';
+import {migrate, abandonEmpty, freeCaptives, drawTo, mayMove, deathRate, brawlRate, lifeYear, breedOf, foundAge} from '../src/atlas/demography.js';
 import {foundFrom, settleSpot, stepPeoples, bornOf} from '../src/atlas/peoples.js';
 import {returnArmy} from '../src/atlas/army.js';
 import {mulberry} from '../src/core/rng.js';

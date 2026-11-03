@@ -97,6 +97,14 @@ export function meet(a, p, q, year) {
   if (!a.rel[k]) a.rel[k] = {att: memory(a, p, q), war: null, wars: 0, routes: 0, met: year};
   return a.rel[k];
 }
+// a war begins between the two realms of `rel` (atlas/realms.js breakAway, atlas/deeds/warOn.js, liberate.js): one record for
+// every war — `turn`, whose move it is (the realm `by` that began it first; atlas/deeds/march.js musters by it), `mustered`,
+// the year its army last came together → the war
+export function newWar(a, rel, by) {
+  rel.war = {since: a.hist.year, battles: 0, razed: 0, turn: by, mustered: null};
+  rel.wars = (rel.wars || 0) + 1;
+  return rel.war;
+}
 // the worst standing between the realms of two races (for the races' fields pushing each other)
 export function raceState(a, P, Q) {
   let worst = null;
@@ -165,12 +173,12 @@ export function muster(a, t, target, war, rnd, say) {
   say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''}${wild ? `; с ними ${wild}` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
 }
 // the mingling of the peoples by trade (DIPLOMACY.mingle; atlas/population.js): a town on routes with towns of other peoples
-// takes in `mingle` × its people's `folk.take` of its people a year, as many as the other towns can spare (TOWN_LIFE.minTarget
+// takes in `mingle` × its people's `strangers.take` of its people a year, as many as the other towns can spare (TOWN_LIFE.minTarget
 // stays home), shared out over its routes, from the peoples it welcomes (data/peoples.js `welcome`), up to `mingleMax` of its
 // people of strangers — they come as they are, their races and ages
 export function mingle(a, routes, say) {
   for (const [x, froms] of routes) {
-    const P = WORLD_PEOPLES.get(x.people), welcome = P.welcome || [], take = P.folk?.take ?? 1;
+    const P = WORLD_PEOPLES.get(x.people), welcome = P.welcome || [], take = P.strangers?.take ?? 1;
     const from = froms.filter(o => o.alive && welcome.includes(o.people)); if (!from.length) continue;
     const was = Object.fromEntries(from.map(o => [o.people, shareOfPeople(a, x, o.people)]));
     const all = Math.max(0, Math.min(D.mingle * take, D.mingleMax - strangersShare(a, x))) * x.pop, each = all / from.length;
@@ -178,7 +186,7 @@ export function mingle(a, routes, say) {
       const n = Math.min(each, Math.max(0, o.pop - TL.minTarget));
       if (n > 0) moveHeads(a, o, x, n, 'mingled');
     }
-    for (const [y, w] of Object.entries(was)) if (w < D.folkSeen && shareOfPeople(a, x, y) >= D.folkSeen && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
+    for (const [y, w] of Object.entries(was)) if (w < D.strangersSeen && shareOfPeople(a, x, y) >= D.strangersSeen && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
   }
 }
 const strangersShare = (a, t) => strangersOf(a, t).strangers;
@@ -261,10 +269,10 @@ export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) 
 export function stepDiplomacy(a, rnd, say, overlap) {
   driftRealms(a);
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
-  // a people that will not have strangers (data/peoples.js folk.expel: the dwarves) pushes them out of its towns: `expel` of
+  // a people that will not have strangers (data/peoples.js strangers.expel: the dwarves) pushes them out of its towns: `expel` of
   // its people a year of the races not its own, to the nearest town that takes them as its own (atlas/population.js)
   for (const t of towns) {
-    const ex = WORLD_PEOPLES.get(t.people)?.folk?.expel; if (!ex) continue;
+    const ex = WORLD_PEOPLES.get(t.people)?.strangers?.expel; if (!ex) continue;
     const own = new Set(Object.keys(WORLD_PEOPLES.get(t.people).kin || {}));
     for (const [race, sh] of Object.entries(townKin(a, t))) {
       if (own.has(race) || !(sh > 0)) continue;
@@ -273,7 +281,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
       if (!home) continue;
       const n = Math.min(sh, ex) * t.pop, G = takeHeads(a, t, n, {race, how: 'expelled'});
       addGroup(a, home, G);
-      if (sh >= D.folkSeen && sh - n / Math.max(1, t.pop) < D.folkSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${SPECIES.get(race).plural} уходят.`);
+      if (sh >= D.strangersSeen && sh - n / Math.max(1, t.pop) < D.strangersSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${SPECIES.get(race).plural} уходят.`);
     }
   }
   // the nearest towns of two peoples, and how far apart they are

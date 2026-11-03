@@ -221,7 +221,7 @@ function lairHtml(a, l) {
     row('данники', vassals || null) +
     row('в полоне', captiveCount(l) || null) +
     row('отряды', parties || null) +
-    (L.dragon ? row('сон', l.sleep > 0 ? `ещё ${l.sleep} ${plural(l.sleep, 'лето', 'лета', 'лет')}` : 'проснулся') : '') +
+    (L.dragon ? row('сон', l.wakes > (a.hist?.year ?? 0) ? `ранен: ещё ${l.wakes - a.hist.year} ${plural(l.wakes - a.hist.year, 'лето', 'лета', 'лет')}` : 'летом чаще спит, иногда вылетает жечь') : '') +
     `<div class="ir"><span>нравы</span></div>${deedsHtml(sp.deeds?.lair)}` +
     `<div class="ir"><span>о чём думало логово</span></div>${thoughtsHtml(l)}`) + leader;
 }

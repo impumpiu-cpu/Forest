@@ -285,7 +285,7 @@ function fall(a, c, r, by, told = null) {
     if (d) {
       const Y = eraYears(a);
       d.strength *= CAL.dragon.wound;
-      d.sleep = Math.max(CAL.dragon.sleep, Math.round(Y.elder.from + Y.elder.len / 2 - a.hist.year));   // wounded: it wakes deep in the next era
+      d.wakes = a.hist.year + Math.max(CAL.dragon.sleep, Math.round(Y.elder.from + Y.elder.len / 2 - a.hist.year));   // wounded: it sleeps till deep in the next era (atlas/deeds/strike.js)
       line = words(FALL.dragon).replace('{dragon}', d.name);
     } else { by = 'beasts'; line = words(FALL.beasts); }
   } else line = told || words(FALL[by]);

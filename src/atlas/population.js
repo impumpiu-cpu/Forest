@@ -17,6 +17,12 @@ import {townKin, kinOfLand} from './towns.js';
 export const BANDS = ['young', 'grown', 'old'];
 const r4 = v => Math.round(v * 10000) / 10000;
 const bodyOf = id => (SPECIES.has(id) ? SPECIES.get(id).body || {} : {});
+// how long a race lives in a town of this health (its lifeFrom … life, the health a soft lift): the towns' life tables
+// (atlas/demography.js) and a person's span (atlas/persons.js) alike
+export function lifeOf(race, health = 0) {
+  const B = bodyOf(race), hi = B.life || 70, lo = B.lifeFrom ?? hi, lift = 1 - Math.exp(-Math.max(0, health) / TL.age.health);
+  return lo + (hi - lo) * lift;
+}
 // the edges of the bands of a race: grown at `adult`, old at life × oldAt (data/races.js body; TOWN_LIFE.age)
 export const bandEdges = race => { const B = bodyOf(race), L = B.life || B.lifeFrom || 70; return [B.adult ?? 16, Math.round(L * TL.age.oldAt)]; };
 // the middle age of a band of a race (the death rate reads it: atlas/demography.js)

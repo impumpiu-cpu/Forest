@@ -112,7 +112,7 @@ WORLD_PEOPLES.registerAll([
     // strangers (atlas/diplomacy.js): the dwarves love only dwarves — a town of theirs takes in folk of other peoples at
     // × `take` of the usual pace, and pushes them out by `expel` of its people a year; on shared land they press the others
     // × `push` harder (atlas/peoples.js)
-    folk: {take: 0.25, expel: 0.03, push: 1.5},
+    strangers: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
     flows: {ore_iron: 1.5, ore_bronze: 1.5, ore_silver: 1.5, ore_gold: 1.5, ore_mithril: 1.5, stone: 1.5, gems: 1.5, bar_bronze: 1.25, bar_iron: 1.25, bar_steel: 1.25, bar_silver: 1.25, bar_gold: 1.25, bar_mithril: 1.25, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
@@ -144,10 +144,10 @@ WORLD_PEOPLES.registerAll([
     // weights of the caravan's core they always were: data/campaign.js RETINUE)
     kin: {human: {base: 6}, halfling: {base: 1}, giant: {base: 0.5}},
     // the middling people: no gift of their own, but every road leads to them — they take in strangers × `take` faster and
-    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `folk`);
+    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `strangers`);
     // they settle among the others: on shared land another people pushes them off only × (1 − `mix`), and their town may stand
     // within `near` × their spacing of another people's town — by the elves' coast, under the dwarves' hills (atlas/peoples.js)
-    folk: {take: 1.5, mix: 0.5, near: 0.7},
+    strangers: {take: 1.5, mix: 0.5, near: 0.7},
     trade: 1.25, breed: 1.3,   // many children: the middling people spread faster than the elder ones
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast', free: 0.7},   // an empty shore: not the elves' coast (atlas/peoples.js arrive)
     get home() { return raceHome('human'); },

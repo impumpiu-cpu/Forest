@@ -17,7 +17,7 @@
 import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin} from './towns.js';
-import {headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';
+import {lifeOf, headsOf, sync, bandEdges, bandAge, pullToLand, addHeads, moveHeads, takeHeads, shareOfPeople} from './population.js';
 import {razeSites} from './sites.js';
 import {seatFallen} from './realms.js';
 import {townGone} from './persons.js';
@@ -33,11 +33,6 @@ import {DIPLOMACY} from '../data/diplomacy.js';
 // town drift: the goblins breed and die fast, the trolls and the ogres slowly; and the land pulls them back a little
 // (KIN.pull). → the year's vital signs: {born, dead, brawl, want, …the losses booked by cause during the year}
 const bodyOf = id => (SPECIES.has(id) ? SPECIES.get(id).body || {} : {});
-// how long a race lives in a town of this health (its lifeFrom … life, the health a soft lift)
-export function lifeOf(race, health = 0) {
-  const B = bodyOf(race), hi = B.life || 70, lo = B.lifeFrom ?? hi, lift = 1 - Math.exp(-Math.max(0, health) / TL.age.health);
-  return lo + (hi - lo) * lift;
-}
 // the base of death, the children, the sick and the unlucky: high in a poor land, low where the town is healthy
 const baseOf = health => { const [hi, lo] = TL.age.base; return lo + (hi - lo) * Math.exp(-Math.max(0, health) / TL.age.health); };
 // the share of a race of this age that dies of age this year

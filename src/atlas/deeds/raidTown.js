@@ -17,13 +17,14 @@ import {realmLabel, realmLabelGen} from '../realms.js';
 import {BURNT} from '../peoples.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
+import {countRaid, raidsDone} from './shared.js';
 
 
 export const raidTown = {
   want(a, realm, {r}) {
     const y = a.hist.year;
     const often = cultOf(realm)?.raids ?? 1;   // the cult of war raids the more (data/peoples.js warCult)
-    if (realm.raids?.year === y && realm.raids.n >= D.raidsPerYear * often) return null;
+    if (raidsDone(realm, y, often, D)) return null;
     const out = [], k = scaleOf(a), towns = a.towns.filter(t => t.alive);
     for (const t of liveTowns(a, realm)) {
       if (!townFx(t).defence || r() > D.raidChance * often / SEASONS_PER_YEAR) continue;   // only a camp with warriors goes raiding
@@ -44,7 +45,7 @@ export const raidTown = {
     const t = a.towns.find(x => x.id === plan.from), target = a.towns.find(x => x.id === plan.target);
     if (!t?.alive || !target?.alive) return null;
     const y = a.hist.year;
-    realm.raids = realm.raids?.year === y ? {year: y, n: realm.raids.n + 1} : {year: y, n: 1};
+    countRaid(realm, y);
     const rel = meet(a, realm.id, target.realm, y);
     rel.att = Math.max(-5, rel.att - D.raid * (cultOf(realm)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {

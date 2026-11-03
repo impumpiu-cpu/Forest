@@ -14,7 +14,7 @@ import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/people
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx, townLabel, townGender} from './towns.js';
-import {meet} from './diplomacy.js';
+import {meet, newWar} from './diplomacy.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
@@ -133,7 +133,7 @@ export function breakAway(a, r, seat, rnd, say, why) {
   rel.att = SCHISM.attitude;
   say(`${why} ${townLabel(seat, 0)} ${seat.name} объявил${TIERS[seat.tier].gender[seat.people] === 'f' ? 'а' : TIERS[seat.tier].gender[seat.people] === 'n' ? 'о' : ''} себя столицей новой державы «${realmLabel(a, nr.id)}»` +
     (went ? `; с ${went === 1 ? 'ней ушёл 1 город' : `ней ушли ${went} ${went < 5 ? 'города' : 'городов'}`}.` : '.'));
-  if (old && rnd() < SCHISM.war) { rel.war = {since: a.hist.year, battles: 0, razed: 0}; rel.wars++; say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, nr.id)} не поделили власть: началась война.`); }
+  if (old && rnd() < SCHISM.war) { newWar(a, rel, r.id); say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, nr.id)} не поделили власть: началась война.`); }
   return nr;
 }
 
