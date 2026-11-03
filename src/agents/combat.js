@@ -322,7 +322,7 @@ export function shoot(w, a, t) {
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
-  if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks.js torch)
+  if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks/raid.js torch)
   // the first shot of a fight, as the first blow: a brew for it (a light step; a cat's eye at night; a fire-ward against
   // a fire-breather) — the shot waits; no oil goes on a bow (agents/potions.js fits)
   if (a.belt?.length && (isHostile(a, t) || aggressor(a, t)) && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return 'drink'; }   // (not at game: a hunter keeps its brews)

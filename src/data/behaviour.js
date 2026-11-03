@@ -318,7 +318,7 @@ export const KINDLE = {torch: {fire: 0.6, heat: 300, fuel: 0.9}, breath: {fuel: 
 // building within the torch's reach — while no foe is within `clear`
 export const TORCH = {casual: 0.06, clear: 3};
 
-// How a colonist weighs gear (agents/equipment.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
+// How a colonist weighs gear (agents/outfit.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
 // every `blowTicks`, × `melee` × courage + `meleeBase`; silver while a creature that fears it is here (`silverHere`) or
 // once met (`silverMet`); a shot × `ranged` × liking for the hunt + `rangedBase`, × `noAmmo` without arrows; block ×
 // `block` × courage; a tool's gain × `tool` × liking for the job (× `backTool` on the back); speed in the hand ×

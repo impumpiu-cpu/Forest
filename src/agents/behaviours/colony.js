@@ -1,7 +1,7 @@
 // The colonist's smaller behaviours (docs/BEHAVIOUR.md «Люди»), each an offer the old decide() made, with its weight:
 // idle, the council, the evening trade, the healer's hut, a prayer, a gloomy spell, a nechist's spell held, fighting a
 // fire, the night watch, the alarm (muster at the fire, keeping out of harm's way), going along with a lone gatherer,
-// helping the wounded, binding a fallen foe, learning beside a master. Each offers a task of agents/tasks.js and reads
+// helping the wounded, binding a fallen foe, learning beside a master. Each offers a task of agents/tasks/social.js and reads
 // the settlement's systems that know the answer. Reads: nothing of its own.
 import {SPECIES} from '../../data/species.js';
 import {councilDue} from '../../settlement/council.js';

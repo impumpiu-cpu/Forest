@@ -25,7 +25,7 @@ import {COUNCIL} from '../data/colony.js';
 import {onEdit} from '../data/schema/layer.js';
 
 export {COUNCIL};   // (data/colony.js)
-// (kept for agents/equipment.js: live bindings, renewed on a table edit; the council's own steps read COUNCIL)
+// (kept for agents/outfit.js: live bindings, renewed on a table edit; the council's own steps read COUNCIL)
 export let COUNCIL_FROM = COUNCIL.from, COUNCIL_TO = COUNCIL.to;
 onEdit(() => { COUNCIL_FROM = COUNCIL.from; COUNCIL_TO = COUNCIL.to; });
 

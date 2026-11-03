@@ -5,7 +5,7 @@
 //   - A master working at the craft has MASTER.places places for learners («ученик мастера»): soft places
 //     every colonist weighs for itself (assistOption), a free one before a captive — a captive takes one
 //     only when no vacancy of its own pulls harder, and only beside a master working inside the camp.
-//   - A learner keeps close to the master (agents/tasks.js 'assist'); while the master works (workRate is
+//   - A learner keeps close to the master (agents/tasks/social.js 'assist'); while the master works (workRate is
 //     read, agents/jobRunners.js), the master works faster by `bonus` per place and the learner practises the
 //     craft; a captive learner earns service (stage 4: the way out of captivity).
 import {MASTERS, MASTER} from '../data/masters.js';

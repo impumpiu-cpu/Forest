@@ -84,7 +84,7 @@ function makeCraftContext(w) {
   for (const a of col) for (const it of allItems(a)) count(it);
   for (const it of w.armory) count(it);
   const owned = id => counts[id] || 0;
-  // silver blades: silvered iron and cast silver (agents/equipment.js def() carries the flag)
+  // silver blades: silvered iron and cast silver (agents/itemDefs.js def() carries the flag)
   let silvered = 0;
   for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
   for (const it of w.armory) if (def(it).silver) silvered++;
