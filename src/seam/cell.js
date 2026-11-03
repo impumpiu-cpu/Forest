@@ -27,7 +27,7 @@ import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
 import {BIOMES} from '../data/biomes.js';
 import {faunaLevel} from '../world/region.js';
-import {SEAM, LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
+import {SEAM, LAIR_BANDS, WAR_ONLY_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
 // the raid band of a tribe's folk (by the lair kinds of its species)
 const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
 

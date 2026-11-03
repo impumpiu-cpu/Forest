@@ -5,7 +5,7 @@ import {clamp} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 import {T, BY_CODE, OPEN, TERRAIN} from '../data/terrain.js';
 import {BIOMES} from '../data/biomes.js';
-import {makeSite, paintOrder, SIDES} from './site.js';
+import {makeSite, paintOrder} from './site.js';
 import {findPath} from '../nav/astar.js';
 import {DX, DY} from './grid.js';
 const BIOME_LIST = BIOMES.all();

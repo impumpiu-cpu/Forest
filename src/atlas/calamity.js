@@ -391,6 +391,3 @@ export function fallToCaravan(a, c, line) {
   A.trail.at(-1).text = `взят${G3(A.g, '', 'а', 'о')} караваном у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`;
   a.chronicle.at(-1).text = `${A.name} не пропал${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''}: ${A.g === 'f' ? 'её' : 'его'} унёс караван.`;
 }
-
-// the calamity whose boss holds a lair (for the screen: a boss's mark)
-export const calamityOf = (a, lair) => (lair?.boss != null ? a.calamities?.find(c => c.id === lair.boss) : null);

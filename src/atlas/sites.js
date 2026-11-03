@@ -207,10 +207,3 @@ export function scourgedFood(a, t) {
   for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += Math.max(0, foodNet(TOWN_BUILDINGS.get(s.kind))) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged;
   return v;
 }
-
-// what a town's works yield, for the panel: {food, raw} as shares of its land's feed and of its craft
-export function siteYields(a, t) {
-  const out = {food: 0, raw: 0};
-  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += Math.max(0, foodNet(b)) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
-  return out;
-}

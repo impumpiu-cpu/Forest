@@ -20,7 +20,6 @@ export function profileOf(x) {
   if (isLair(x)) return lairPolity(LAIRS.get(x.kind));
   throw new Error('polity: neither a realm nor a lair');
 }
-export const polityKey = x => (isRealm(x) ? `r:${x.id}` : `l:${x.id}`);
 export const handle = x => ({kind: isRealm(x) ? 'realm' : 'lair', id: x.id, obj: x, profile: profileOf(x)});
 
 // all the living polities of the world: the realms not fallen, the lairs alive
@@ -29,12 +28,6 @@ export function polities(a) {
   for (const r of a.realms || []) if (r.fallen == null) out.push(handle(r));
   for (const l of a.lairs || []) if (l.alive) out.push(handle(l));
   return out;
-}
-export const polityAlive = x => (isRealm(x) ? x.fallen == null : !!x.alive);
-// by its key («r:r3», «l:12»)
-export function polityByKey(a, key) {
-  const [k, id] = key.split(':');
-  return k === 'r' ? (a.realms || []).find(r => r.id === id) || null : (a.lairs || []).find(l => String(l.id) === id) || null;
 }
 
 // ── the seat and the holdings

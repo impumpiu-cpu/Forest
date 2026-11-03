@@ -58,8 +58,6 @@ export function faunaLevel(w, sp) {
   const v = faunaFrom(r.biomes || {}, sp) * (r.faunaShift?.[sp] ?? 1);
   return Math.max(v < FAUNA_FLOOR ? 0 : v, r.extra?.[sp] || 0);
 }
-// every beast of the region with its level, most common first (for the panel)
-export const regionFauna = w => SPECIES.filter(s => s.habitat).map(s => [s, faunaLevel(w, s.id)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
 export const floraLevel = (w, id) => (id === 'placer' ? region(w).placer : region(w).flora[id] ?? 1);
 
 // older saves: the land they were made on

@@ -59,7 +59,6 @@ function bandsFor(race, n, meanAge) {
 export const groupSize = G => Object.values(G || {}).reduce((s, b) => s + b[0] + b[1] + b[2], 0);
 export const bandSum = (G, b) => Object.values(G || {}).reduce((s, x) => s + x[b], 0);
 export const grownOf = (a, t) => bandSum(headsOf(a, t), 1);
-export const youngOf = (a, t) => bandSum(headsOf(a, t), 0);
 
 // the sums: t.pop, t.kin (shares, 4 places), t.age (the mean by the bands' middles)
 export function sync(t) {

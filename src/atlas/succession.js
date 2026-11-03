@@ -10,7 +10,7 @@ import {SUCCESSION} from '../data/polities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
 import {profileOf, officeOf, rulerTitle} from './polities.js';
-import {realmLabel, realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
+import {realmLabelGen, capitalOf, realmTowns, breakAway} from './realms.js';
 import {townLabel, townFx} from './towns.js';
 import {newPerson, moveTo, personLabel, nameOut, hasGrown, personOf} from './persons.js';
 import {mulberry, seedNumber} from '../core/rng.js';

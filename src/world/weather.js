@@ -13,7 +13,6 @@ export function setWind(w) {
 }
 
 export {SNOW};   // (data/nature.js)
-export const snowCover = w => w.snow || 0;
 function stepSnow(w) {
   if (snowy(w)) w.snow = Math.min(1, (w.snow || 0) + (w.weather.rain > 0.1 ? SNOW.storm : SNOW.fall));
   else if (w.snow > 0) w.snow = Math.max(0, w.snow - SNOW.melt * Math.max(0.3, (dayMeanTemp(w) + 1) / 6));
