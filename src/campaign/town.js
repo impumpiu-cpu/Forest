@@ -17,7 +17,7 @@ import {BEASTS, CARAVAN_GOLEMS, CAMP_KIT, kitOf} from '../data/transport.js';
 import {golemMetal} from '../atlas/golems.js';
 import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
-import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
+import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY, BUY_ORDER} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
 import {TOWN_MONEY} from '../data/townBuildings.js';
 import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/treasury.js';
@@ -38,6 +38,7 @@ import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
+import {allowed} from '../data/commands.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -112,9 +113,12 @@ export const herdMax = K => Math.round(CAMP_KIT.herd.max * (kitOf(K).herd ?? 1))
 
 // the wheels' answer during one trade() (wants() is asked again and again by the smith): {i, goal, vehicles, fits}; never saved
 const FITS = new WeakMap();
-// ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
+// ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve — the decision point
+// `caravan.buy` (data/commands.js): a rule, each kind of thing the command `caravan.buy.<kind>` with its place in the order
+// (data/market.js BUY_ORDER: the lower first); a kind the run's profile switches off is not bought
 function wants(a, K, t, st) {
   const out = [], ms = alive(K), tier = toolTier(K);
+  const want = (kind, o) => { if (allowed(a.cfg, 'caravan.buy.' + kind)) out.push([BUY_ORDER[kind], o]); };
   // wheels are worth their price only when they can go the way to the goal (as the council asks, campaign/march.js)
   // (asked once a visit's trade: the way does not change while the caravan trades — trade() keeps the answer, K.wheelsFit)
   const wheelsFit = () => {
@@ -128,22 +132,22 @@ function wants(a, K, t, st) {
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
     if (o.kind === 'item' && !free(K).some(m => !m.former && mayTake(m.race, o.id))) continue;   // nobody free of the caravan would carry it (the elves and iron): the same as equip() gives to
-    if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) out.push([6, o]); continue; }
-    if (o.kind === 'beast' && BEASTS[o.id].use === 'food') { if (herdOf(K) < herdMax(K)) out.push([4, o]); continue; }   // the herd: milk and meat on the way   // a golem: one guard of the caravan, after the arms
-    if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
-    if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
-    if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
-    if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) < ALCHEMY.pots && hasBuilding(K, 'healerhut')) out.push([3, o]);   // pots for the camp's healer's hut: cheap, and every potion takes one
-    if (o.kind === 'goods' && o.need === 'belt') for (let k = 0; k < kindRoom(K, potionOf(o.id).potion, o.id); k++) out.push([8, o]);   // as many as would be worn of its kind   // potions for the belts (data/market.js: the strong first)
-    if (o.kind === 'goods' && o.need === 'home') for (let k = 0; k < homeRoom(K, potionOf(o.id).potion); k++) out.push([8, o]);   // the brews of the cargo (after the belts: the market lists them later)
-    if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
-    if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
-    if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) out.push([2, o]);
-    if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => inLine(m) && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) out.push([7, o]);
-    if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => isFighter(m) && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
-    if (o.kind === 'building' && !hasBuilding(K, o.id)) out.push([6.5, o]);
+    if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) want('golem', o); continue; }
+    if (o.kind === 'beast' && BEASTS[o.id].use === 'food') { if (herdOf(K) < herdMax(K)) want('herd', o); continue; }   // the herd: milk and meat on the way   // a golem: one guard of the caravan, after the arms
+    if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) want('pack', o);
+    if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) want('mount', o);
+    if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) want('bonds', o);   // bonds for captives, last
+    if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) < ALCHEMY.pots && hasBuilding(K, 'healerhut')) want('pots', o);   // pots for the camp's healer's hut: cheap, and every potion takes one
+    if (o.kind === 'goods' && o.need === 'belt') for (let k = 0; k < kindRoom(K, potionOf(o.id).potion, o.id); k++) want('potion', o);   // as many as would be worn of its kind   // potions for the belts (data/market.js: the strong first)
+    if (o.kind === 'goods' && o.need === 'home') for (let k = 0; k < homeRoom(K, potionOf(o.id).potion); k++) want('potion', o);   // the brews of the cargo (after the belts: the market lists them later)
+    if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) want('cart', o);
+    if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) want('wagon', o);
+    if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) want('tool', o);
+    if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => inLine(m) && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) want('armor', o);
+    if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => isFighter(m) && bestDmg(m) < gearDef(o.id).melee.dmg)) want('weapon', o);
+    if (o.kind === 'building' && !hasBuilding(K, o.id)) want('building', o);
     // healing potions for the empty slots, after the arms and armour (campaign/potions.js)
-    if (o.kind === 'goods' && o.need === 'heal') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) out.push([8, o]);
+    if (o.kind === 'goods' && o.need === 'heal') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) want('potion', o);
   }
   return out.sort((p, q) => p[0] - q[0]).map(e => e[1]);
 }

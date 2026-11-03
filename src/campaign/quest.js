@@ -30,6 +30,8 @@ import {bubbleOf, cellAt} from './bubble.js';
 import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
 import {cellDist, weighted} from '../core/util.js';
+import {pointCommands, allowed} from '../data/commands.js';
+import {pickFirst, tracing, noteDecision} from '../core/decide.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -194,25 +196,40 @@ export function questTarget(a, K, rnd, say = null) {
   }
   return g;
 }
-function target(a, K, rnd) {
-  const Q = K.quest;
-  const C = Q.crown;
-  if (C.state === 'carried') return K.home;
-  if ((C.exact || C.seen) && !(C.rest > K.day)) return C.i;   // (a crown left for a while after storms beaten back: elsewhere meanwhile)
+// the decision point `caravan.quest` (data/commands.js): the commands `caravan.quest.<id>` asked in the search's own order, the
+// first that knows where to go taken (policy first); each ask → the cell to go to, or undefined (nothing for it to offer)
+const QUEST_CMD = 'caravan.quest.';
+const QUEST_ASK = {
+  home: (a, K, rnd, Q, C) => (C.state === 'carried' ? K.home : undefined),
+  crown: (a, K, rnd, Q, C) => ((C.exact || C.seen) && !(C.rest > K.day) ? C.i : undefined),   // (a crown left for a while after storms beaten back: elsewhere meanwhile)
   // a clue whose place was seen, or whose area is known: the nearest first (the order is the caravan's)
-  const open = Q.clues.filter(c => !c.found && (c.seen || c.area) && !(c.rest > K.day));
-  const near = (p, q) => distTo(a, K, p) - distTo(a, K, q);
-  const seen = open.filter(c => c.seen).sort(near)[0];
-  if (seen) return seen.i;
-  const area = open.sort(near)[0] || (C.area && !(C.rest > K.day) ? C : null);
-  if (area) return searchCell(a, K, area, rnd);
+  clue: (a, K, rnd, Q, C, x) => x.seen(a, K, Q)?.i,
+  search: (a, K, rnd, Q, C, x) => { const area = x.open(a, K, Q).sort(x.near(a, K))[0] || (C.area && !(C.rest > K.day) ? C : null); return area ? searchCell(a, K, area, rnd) : undefined; },
   // every place known is left for a while, and none is unknown to be asked of: back to the one left the soonest
-  if (Q.clues.every(c => c.found || c.area)) {
-    // (not a place left after storms beaten back: meanwhile they heal where they are)
+  // (not a place left after storms beaten back: meanwhile they heal where they are)
+  back: (a, K, rnd, Q, C) => {
+    if (!Q.clues.every(c => c.found || c.area)) return undefined;
     const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms').sort((p, q) => p.rest - q.rest)[0];
-    if (back) { back.rest = 0; return target(a, K, rnd); }
-  }
-  return null;   // nothing known: the council looks for rumours in a town (campaign/march.js evening, campaign/visit.js findTown)
+    if (!back) return undefined;
+    back.rest = 0; return target(a, K, rnd);
+  },
+};
+// what the asks share in one look: the open clues, and the nearest seen of them
+function questLook() {
+  let open = null;
+  const near = (a, K) => (p, q) => distTo(a, K, p) - distTo(a, K, q);
+  return {
+    open: (a, K, Q) => (open ||= Q.clues.filter(c => !c.found && (c.seen || c.area) && !(c.rest > K.day))),
+    near,
+    seen(a, K, Q) { return this.open(a, K, Q).filter(c => c.seen).sort(near(a, K))[0]; },
+  };
+}
+function target(a, K, rnd) {
+  const Q = K.quest, C = Q.crown, x = questLook(), cmds = pointCommands('caravan.quest');
+  const {option, asked} = pickFirst(cmds, c => { const g = QUEST_ASK[c.id.slice(QUEST_CMD.length)](a, K, rnd, Q, C, x); return g === undefined ? null : {id: c.id, g}; }, c => allowed(a.cfg, c.id));
+  if (tracing()) noteDecision({point: 'caravan.quest', who: `caravan:${K.capital}`, at: K.day, band: 'routine', policy: 'first',
+    opts: asked.map(c => ({cmd: c.id, key: c.id, score: c.id === option?.id ? 1 : 0})), pick: option?.id ?? null, unasked: cmds.filter(c => !asked.includes(c)).map(c => c.id)});
+  return option ? option.g : null;   // nothing known: the council looks for rumours in a town (campaign/march.js evening, campaign/visit.js findTown)
 }
 const distTo = (a, K, c) => Math.hypot(c.area ? c.area.x - K.x : xy(a, c.i)[0] - K.x, c.area ? c.area.y - K.y : xy(a, c.i)[1] - K.y);
 // a cell of an area to search: its centre first, then a new cell each time one is reached

@@ -37,6 +37,24 @@ export function pickFirst(cmds, ask, allowed = () => true) {
   return {option: null, asked};
 }
 
+// the council's way, as a court's (atlas/actor.js): the commands lane by lane (`bands`, the upper first), each lane's allowed
+// commands all asked in the old order, the first lane with anything on offer drawn from by weight; the lanes below it are not
+// asked. `ask(cmd)` → an option {score, …} or null. → {option, band, opts, asked: [commands asked]}
+export function pickLanes(cmds, ask, r, {allowed = () => true, bands = ['reflex', 'red', 'yellow', 'routine']} = {}) {
+  const asked = [];
+  for (const band of bands) {
+    const opts = [];
+    for (const c of cmds) {
+      if (c.band !== band || !allowed(c)) continue;
+      asked.push(c);
+      const o = ask(c);
+      if (o && o.score > 0) opts.push(o);
+    }
+    if (opts.length) return {option: pickDraw(opts, r), band, opts, asked};
+  }
+  return {option: null, band: null, opts: [], asked};
+}
+
 // ── the trace. Off by default: the game keeps only its own readout (a.why, actor.why). On, every decision is a record
 //   {id, point, who, at, band, policy, opts: [{cmd, key, score}], pick: key | null, alt: key | null, unasked: [lanes or commands]}
 // and its outcome is joined later by its id (noteOutcome). Modes:

@@ -36,8 +36,11 @@ POINTS.registerAll([
   {id: 'town.raze', level: 'town', label: 'освободить место', clock: 'сезон', policy: 'rule', code: 'atlas/build.js'},
   {id: 'town.buy', level: 'town', label: 'закупки мастерских', clock: 'сезон', policy: 'rule', code: 'atlas/treasury.js worksBuying'},
   {id: 'town.settle', level: 'town', label: 'поселенцы', clock: 'год', policy: 'rule', code: 'atlas/peoples.js sendSettlers'},
-  {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'first', code: 'campaign/visit.js wantVisit'},
-  {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'first', code: 'campaign/march.js evening'},
+  {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'draw', code: 'campaign/visit.js wantVisit'},
+  {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'draw', code: 'campaign/march.js evening'},
+  {id: 'caravan.quest', level: 'caravan', label: 'куда идти по квесту', clock: 'вечер', policy: 'first', code: 'campaign/quest.js questTarget'},
+  {id: 'caravan.pace', level: 'caravan', label: 'темп', clock: 'день', policy: 'rule', code: 'campaign/road.js choosePace'},
+  {id: 'caravan.buy', level: 'caravan', label: 'что купить в городе', clock: 'в городе', policy: 'rule', code: 'campaign/town.js wants'},
 ]);
 
 // the commands of the minds that had no catalogue; the order within a point is the order the old code asked them in
@@ -48,16 +51,41 @@ const OWN = [
   {id: 'town.raze.worst', point: 'town.raze', label: 'снести худшее', note: 'строить нечего, места полны: худшая работа ниже половины'},
   {id: 'town.buy.works', point: 'town.buy', label: 'купить для мастерских', note: 'нехватку мастерских — у городов по связям'},
   {id: 'town.settle.send', point: 'town.settle', label: 'послать поселенцев', note: 'людный город шлёт поселенцев на новое место'},
-  {id: 'caravan.visit.winter', point: 'caravan.visit', label: 'перезимовать', note: 'тощее время года и мороз: в город на зимовку'},
-  {id: 'caravan.visit.food', point: 'caravan.visit', label: 'купить еды', note: 'еды меньше, чем на дни пути'},
-  {id: 'caravan.visit.heal', point: 'caravan.visit', label: 'подлечить раненых', note: 'кто-то из свободных тяжело ранен'},
+  // the caravan's council (policy draw, as a realm's court): the first lane with anything on offer, a draw by weight in it —
+  // data/campaign.js COUNCIL.want, × the caravan's mission (COUNCIL.mission); the order is the old one
+  {id: 'caravan.visit.winter', point: 'caravan.visit', band: 'yellow', label: 'перезимовать', note: 'тощее время года и мороз: в город на зимовку'},
+  {id: 'caravan.visit.food', point: 'caravan.visit', band: 'yellow', label: 'купить еды', note: 'еды меньше, чем на дни пути'},
+  {id: 'caravan.visit.heal', point: 'caravan.visit', band: 'yellow', label: 'подлечить раненых', note: 'кто-то из свободных тяжело ранен'},
   {id: 'caravan.visit.smith', point: 'caravan.visit', label: 'отдать руду кузнецу', note: 'руды на вещь лучше своего металла и золото на работу'},
   {id: 'caravan.visit.shop', point: 'caravan.visit', label: 'потратить казну', note: 'казна полна и давно не были в городе'},
-  {id: 'caravan.camp.food', point: 'caravan.camp', label: 'стоянка: охота и сбор', note: 'еда на исходе, земля кормит; в опасном месте не встают, если не голодны'},
-  {id: 'caravan.camp.heal', point: 'caravan.camp', label: 'стоянка: отлежаться', note: 'раненые еле идут; в опасном месте не встают, если не голодны'},
+  {id: 'caravan.camp.food', point: 'caravan.camp', band: 'yellow', label: 'стоянка: охота и сбор', note: 'еда на исходе, земля кормит; в опасном месте не встают, если не голодны'},
+  {id: 'caravan.camp.heal', point: 'caravan.camp', band: 'yellow', label: 'стоянка: отлежаться', note: 'раненые еле идут; в опасном месте не встают, если не голодны'},
   {id: 'caravan.camp.build', point: 'caravan.camp', label: 'стоянка: тележка, повозка, постройка', note: 'сыты, целы, тихо: колёса, если пригодятся в пути, иначе постройка лагеря'},
   {id: 'caravan.camp.tame', point: 'caravan.camp', label: 'стоянка: приручить', note: 'сыты, целы, тихо: здесь пасутся звери, которых не хватает'},
   {id: 'caravan.camp.mine', point: 'caravan.camp', label: 'стоянка: добыча', note: 'сыты, целы, тихо: здесь выходит руда, за которой стоит встать'},
+  // the quest's way (policy first: the order is the search's own — the crown carried home before all, a place seen before an area)
+  {id: 'caravan.quest.home', point: 'caravan.quest', label: 'домой с короной', note: 'корона у каравана: в столицу'},
+  {id: 'caravan.quest.crown', point: 'caravan.quest', label: 'к короне', note: 'место короны известно или видено'},
+  {id: 'caravan.quest.clue', point: 'caravan.quest', label: 'к ближнему видимому следу', note: 'след, чьё место видели'},
+  {id: 'caravan.quest.search', point: 'caravan.quest', label: 'обыскать круг', note: 'известен только круг, где искать: клетка за клеткой'},
+  {id: 'caravan.quest.back', point: 'caravan.quest', label: 'вернуться к оставленному', note: 'всё известное оставлено на время: к тому, что оставлено раньше всех'},
+  // the pace (a rule: data/road.js PACE_RULES says which pace each keeps)
+  {id: 'caravan.pace.pursued', point: 'caravan.pace', label: 'темп под погоней', note: 'за караваном идут по следу короны'},
+  {id: 'caravan.pace.danger', point: 'caravan.pace', label: 'темп в опасных местах', note: 'опасность вокруг выше dangerAt'},
+  // the shopping list in a town (a rule: by data/market.js BUY_ORDER, the lower first, while the gold beyond the food lasts)
+  {id: 'caravan.buy.tool', point: 'caravan.buy', label: 'железный инструмент', note: 'пока инструмент хуже железного'},
+  {id: 'caravan.buy.pack', point: 'caravan.buy', label: 'вьючный зверь', note: 'меньше двух одного вида'},
+  {id: 'caravan.buy.pots', point: 'caravan.buy', label: 'горшки для лекаря', note: 'есть хижина лекаря, горшков мало'},
+  {id: 'caravan.buy.herd', point: 'caravan.buy', label: 'стадо', note: 'молоко и мясо в пути, до предела стада'},
+  {id: 'caravan.buy.cart', point: 'caravan.buy', label: 'тележка', note: 'колёс нет, а дорогой к цели идти можно'},
+  {id: 'caravan.buy.mount', point: 'caravan.buy', label: 'верховой зверь', note: 'ездовых меньше, чем свободных'},
+  {id: 'caravan.buy.golem', point: 'caravan.buy', label: 'голем', note: 'страж каравана, до предела'},
+  {id: 'caravan.buy.wagon', point: 'caravan.buy', label: 'повозка', note: 'есть тягловый зверь и дорогой к цели идти можно'},
+  {id: 'caravan.buy.building', point: 'caravan.buy', label: 'постройка лагеря', note: 'какой ещё нет'},
+  {id: 'caravan.buy.armor', point: 'caravan.buy', label: 'доспех', note: 'лучше, чем у кого-то в строю'},
+  {id: 'caravan.buy.weapon', point: 'caravan.buy', label: 'оружие', note: 'бьёт сильнее, чем у кого-то из бойцов'},
+  {id: 'caravan.buy.potion', point: 'caravan.buy', label: 'зелья', note: 'в пояса, домой и лечебные в пустые места'},
+  {id: 'caravan.buy.bonds', point: 'caravan.buy', label: 'путы для пленных', note: 'последними'},
 ];
 
 // the marks (see above), by full id
@@ -65,9 +93,11 @@ export const MARKS = {
   hostile: ['local.behaviour.maul', 'local.behaviour.raid', 'local.behaviour.capture', 'local.behaviour.bind',
     'world.deed.raid', 'world.deed.captives', 'world.deed.subdue', 'world.deed.rival', 'world.deed.strike',
     'world.deed.warOn', 'world.deed.march', 'world.deed.raidTown', 'world.deed.clearLair', 'world.deed.liberate'],
-  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'caravan.visit.smith', 'caravan.visit.shop'],
+  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'caravan.visit.smith', 'caravan.visit.shop',
+    'caravan.buy.tool', 'caravan.buy.pack', 'caravan.buy.pots', 'caravan.buy.herd', 'caravan.buy.cart', 'caravan.buy.mount', 'caravan.buy.golem',
+    'caravan.buy.wagon', 'caravan.buy.building', 'caravan.buy.armor', 'caravan.buy.weapon', 'caravan.buy.potion', 'caravan.buy.bonds'],
   side: ['caravan.camp.build', 'caravan.camp.tame', 'caravan.camp.mine'],
-  must: ['local.behaviour.downed', 'local.behaviour.fleeFire', 'local.behaviour.needs', 'local.behaviour.led', 'local.behaviour.keepIn', 'local.behaviour.penned'],
+  must: ['caravan.quest.home', 'local.behaviour.downed', 'local.behaviour.fleeFire', 'local.behaviour.needs', 'local.behaviour.led', 'local.behaviour.keepIn', 'local.behaviour.penned'],
 };
 export const MARK_LABELS = {hostile: 'вражда', trade: 'торг', side: 'побочный промысел', must: 'обязательна'};
 
@@ -77,8 +107,12 @@ PROFILES.registerAll([
   {id: 'noHostile', label: 'без исходящей агрессии', offMarks: ['hostile'], off: [],
     note: 'никто не начинает враждебного: набегов, войн, походов, выжигания логов, захвата пленных; мир, оборона и отпор остаются. Вне каталога и не выключаются: драка логов, чьи владения соприкасаются (atlas/lairs.js), и война после раскола державы (atlas/realms.js)'},
   {id: 'noSide', label: 'без побочных промыслов', offMarks: ['side'], off: [], note: 'караван ходит по городам и живёт стоянками, но не строит колёс, не приручает и не добывает'},
-  {id: 'isolation', label: 'без торговли', offMarks: ['trade'], off: [], note: 'ни купцов, ни закупок мастерских, ни лавок и кузнецов каравана; голодный караван город всё ещё кормит'},
+  {id: 'isolation', label: 'без торговли', offMarks: ['trade'], off: [], note: 'ни купцов, ни закупок мастерских, ни лавок, кузнецов и покупок каравана; еду караван покупает (это не список покупок), голодного город кормит'},
+  {id: 'noLeans', label: 'без влияния склонностей', offMarks: [], off: [], leans: false,
+    note: 'все команды, но склонности не влияют на выбор: у пешек их добавка ноль, профиль миссии каравана нейтрален; храбрость, мировоззрение и предпочтения работ — как были'},
 ]);
+// do the leanings weigh in a run (data/leans.js; the caravan's mission, data/campaign.js COUNCIL.mission): no — for a profile with leans: false
+export const leansOn = cfg => !(cfg?.profile && PROFILES.has(cfg.profile) && PROFILES.get(cfg.profile).leans === false);
 
 // ── the catalogue: the old registries through their adapters, then the rows above; built once, again after an edit
 let built = null, era = 0;

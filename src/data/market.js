@@ -146,6 +146,9 @@ export const COMPANY_MAX = 12, JOINED_MAX = 4;
 // on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days. In town they buy the food of
 // `dayFood` days a day, and are `stocked` at that share of what they would carry; a town is not sought whose way costs
 // more than `wayCost` × its straight reach
+// the caravan's shopping list in a town (campaign/town.js wants; the commands caravan.buy.*, data/commands.js): the order of the
+// kinds of things — the lower bought first, while the gold beyond the food reserve lasts; a tie keeps the market's order
+export const BUY_ORDER = {tool: 2, pack: 3, pots: 3, herd: 4, cart: 4, mount: 5, golem: 6, wagon: 6, building: 6.5, armor: 7, weapon: 8, potion: 8, bonds: 9};
 export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, lateIn: 20, work: 20, dayFood: 2, wayCost: 1.6, stocked: 0.9, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
