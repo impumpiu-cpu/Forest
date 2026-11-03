@@ -22,8 +22,8 @@ export const strike = {
     if (l.sleep == null) l.sleep = nap(r);
     if (--l.sleep > 0 || !a.towns.length) return null;
     let target = null, bv = 0;
-    for (const t of a.towns) if (t.alive && dist(l, t) <= DRAGON.reach * scaleOf(a)) { const v = t.pop * (0.7 + 0.6 * r()); if (v > bv) { bv = v; target = t; } }
-    if (!target) { l.sleep = 2; return null; }   // nothing worth the flight: a short nap
+    for (const t of a.towns) if (t.alive && dist(l, t) <= DRAGON.reach * scaleOf(a)) { const v = t.pop * luck(DRAGON.pick, r); if (v > bv) { bv = v; target = t; } }
+    if (!target) { l.sleep = DRAGON.nap; return null; }   // nothing worth the flight: a short nap
     return [[{goal: target.i, target: target.id}, 1, () => `проснулся: ${target.name} — самый богатый город в досягаемости`]];
   },
   act(a, l, plan, {L}) {

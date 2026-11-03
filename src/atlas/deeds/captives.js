@@ -52,7 +52,7 @@ export const captives = {
       if (season !== 'autumn' || !(L.tribe || L.undead) || L.at === 'town' || !a.towns || actor.leader) return null;
       if (actor.strength < TRIBE_RAID.from || r() > CR.chance) return null;
       let town = null, td = TRIBE_RAID.reach * scaleOf(a);
-      for (const t of a.towns) if (t.alive && t.pop >= 20 && raider(L, t)) { const d = dist(actor, t); if (d < td) { td = d; town = t; } }
+      for (const t of a.towns) if (t.alive && t.pop >= CR.minPop && raider(L, t)) { const d = dist(actor, t); if (d < td) { td = d; town = t; } }
       return town ? [[{goal: town.i, target: town.id}, 1, () => `осень, стан силён: в ${town.name} есть кого взять`]] : null;
     }
     if (role !== 'realm') return null;
@@ -66,7 +66,7 @@ export const captives = {
       // the nearest; the cult of war weighs what it would carry off against how likely it is to win (atlas/treasury.js lootOf)
       const cult = cultOf(actor), mt = cult ? might(t, townFx(t)) : 0;
       let bv = 0;
-      for (const o of towns) if (o.realm !== actor.id && o.pop >= 20 && relation(a, actor.id, o.realm) && (cult || attitude(a, actor.id, o.realm) < 0)) {
+      for (const o of towns) if (o.realm !== actor.id && o.pop >= CR.minPop && relation(a, actor.id, o.realm) && (cult || attitude(a, actor.id, o.realm) < 0)) {
         const d = Math.hypot(t.x - o.x, t.y - o.y); if (d >= D.raidReach * k) continue;
         if (!cult) { if (d < bd) { bd = d; target = o; } continue; }
         const v = (lootOf(o) + o.pop) * Math.min(TOWN_MONEY.plunder.dare, mt / Math.max(1, might(o, townFx(o)))); if (v > bv) { bv = v; target = o; }
