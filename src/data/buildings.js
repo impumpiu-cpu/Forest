@@ -19,7 +19,8 @@
 //   not even considered until the colony has one, and it goes into the building (it is in `cost` too).
 // `furnish: true` — a solid building that takes up to FURNISH_MAX pieces of furniture from the stock
 //   (data/furniture.js); what they add up to is its standing (settlement/life.js). Huts, fields, pits
-//   and fences take none.
+//   and fences take none. `furnishText` — what the standing does there, for its card (ui/cards.js); a station's is
+//   the speed of its work, any other's the look of the settlement.
 // `pen: n` — a fenced pen for n places of tame animals (settlement/herd.js).
 // `captureOnly: true` — never built by the council (it can only be captured, later).
 // `walkTo: true` — people walk to it for something other than crafting (a flow field 'station:<id>').
@@ -84,7 +85,7 @@ BUILDINGS.registerAll([
       [c.crowded ? 0.8 : 0, 'в лагере тесно'], [c.count('hut') === 0 ? 0.3 : 0, 'хочет крышу над головой']]},
 
   // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
-  {id: 'house', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
+  {id: 'house', furnishText: 'сон здесь лучше для настроения', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
     heat: {to: 26, add: 4.5, fuel: 0.0004}, furnish: true,
     available: w => !dwarven(w) || !rockNear(w),   // the dwarves dig a home into the rock instead, where there is rock
     effect: 'Тёплый дом из тёса под камышовой кровлей, стены обмазаны глиной: 4 места, зимой тепло на малых дровах. Лагерь примет на 4 жителей больше.',
@@ -310,7 +311,7 @@ BUILDINGS.registerAll([
       ...(c.count('pen') ? [] : [[a.mem.hunger * 0.5, 'скот кормит и в голодный год'], [a.mem.cold * 0.3, 'из шерсти выйдет тёплая одежда'], [(a.prefs.herd - 1) * 1.5, 'любит возиться со скотиной']])]},
 
   // ── the shrine: a carved idol under a little roof, the graves beside it (settlement/life.js)
-  {id: 'shrine', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
+  {id: 'shrine', furnishText: 'молитва утешает сильнее', name: 'Святилище', gender: 'n', cost: {wood: 14, stone: 6}, work: 200, max: 1, wooden: true, color: '#d6b8e6', mark: 'Св', needs: 'quarry',
     furnish: true, walkTo: true,
     effect: 'Резной идол под навесом и погост рядом. Тот, кому тяжело на душе, приходит сюда помолиться; умерших здесь хоронят с обрядом, и скорбь отпускает живых вдвое быстрее.',
     effects: {},

@@ -24,8 +24,9 @@ const {SPECIES} = await import('../src/data/species.js');
 const {BUILDINGS} = await import('../src/data/buildings.js');
 const {WORLD_PEOPLES, TIERS} = await import('../src/data/peoples.js');
 const {LAIRS} = await import('../src/data/lairs.js');
+const {TOWN_BUILDINGS} = await import('../src/data/townBuildings.js');
 const {coverage} = await import('../src/render/art/coverage.js');
-const lines = coverage(SPRITES, {SPECIES, BUILDINGS, WORLD_PEOPLES, TIERS, LAIRS});
+const lines = coverage(SPRITES, {SPECIES, BUILDINGS, WORLD_PEOPLES, TIERS, LAIRS, TOWN_BUILDINGS});
 
 if (bad.length) { console.log('Картинки:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   картинки: ${count} файлов, sprites.js свеж; ${lines.join('; ')}`);

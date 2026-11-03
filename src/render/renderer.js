@@ -15,12 +15,14 @@ import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {skin} from './skin.js';
 import {ART} from './art/index.js';
+import {Camera} from './camera.js';
 import {ORE_BY_CODE} from '../data/ores.js';
 import {season, seasonTint, snowy} from '../data/seasons.js';
 import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
-const PLANTS_TINT = PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
+// the plants' tints of the ground (data/plants.js), read at each paint: the tables' edits are seen at once
+const plantsTint = () => PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
 
 // fertility 0…1: pale clay → loam → dark humus with a green cast
 const FSTOPS = [[0, 186, 150, 120], [0.3, 176, 130, 80], [0.5, 196, 176, 70], [0.7, 120, 168, 60], [0.85, 50, 130, 50], [1, 20, 90, 40]];
@@ -48,11 +50,10 @@ function layer(w) {
   const ctx = c.getContext('2d'); return {c, ctx, img: ctx.createImageData(w.w, w.h)};
 }
 
-// the closest the camera comes: one cell this many CSS pixels wide
-export const MAX_CELL_PX = 40;
+export {MAX_CELL_PX} from './camera.js';
 
 export class Renderer {
-  constructor(canvas) { this.cv = canvas; this.ctx = canvas.getContext('2d'); this.ms = 0; this.S = 1; this.ox = 0; this.oy = 0; }
+  constructor(canvas) { this.cv = canvas; this.ctx = canvas.getContext('2d'); this.ms = 0; this.S = 1; this.ox = 0; this.oy = 0; this.camera = new Camera(1, 1); }
 
   setup(w) {
     this.w = w;
@@ -61,42 +62,33 @@ export class Renderer {
   }
 
   // ── camera. view.cam = {zoom, cx, cy}: zoom 1 shows the whole map, (cx, cy) is the centre in cells.
-  // Everything below draws in CSS pixels with one cell = this.S, shifted by (this.ox, this.oy).
+  // Everything below draws in CSS pixels with one cell = this.S, shifted by (this.ox, this.oy). The arithmetic is
+  // render/camera.js's: the view's plain {zoom, cx, cy} goes through it and comes back clamped.
   size() { return [this.cv.clientWidth || 1, this.cv.clientHeight || 1]; }
-  fitScale(w) { const [cw, ch] = this.size(); return Math.min(cw / w.w, ch / w.h); }
-  maxZoom(w) { return Math.max(1, MAX_CELL_PX / this.fitScale(w)); }
+  // run `fn` on the Camera with the view's position, then write the position and the scale back
+  withCam(w, cam, fn) {
+    const C = this.camera, [cw, ch] = this.size();
+    C.w = w.w; C.h = w.h; C.zoom = cam.zoom; C.cx = cam.cx; C.cy = cam.cy;
+    fn(C, cw, ch);
+    cam.zoom = C.zoom; cam.cx = C.cx; cam.cy = C.cy; this.S = C.S; this.ox = C.ox; this.oy = C.oy;
+  }
 
   // keep the zoom within limits and the map on screen; a map smaller than the view stays centred
-  clampCam(w, cam) {
-    const [cw, ch] = this.size();
-    cam.zoom = clamp(cam.zoom, 1, this.maxZoom(w));
-    const S = this.fitScale(w) * cam.zoom;
-    const hx = cw / 2 / S, hy = ch / 2 / S;
-    cam.cx = w.w <= 2 * hx ? w.w / 2 : clamp(cam.cx, hx, w.w - hx);
-    cam.cy = w.h <= 2 * hy ? w.h / 2 : clamp(cam.cy, hy, w.h - hy);
-    this.S = S; this.ox = cw / 2 - cam.cx * S; this.oy = ch / 2 - cam.cy * S;
-  }
+  clampCam(w, cam) { this.withCam(w, cam, (C, cw, ch) => C.clamp(cw, ch)); }
 
   // a point on the canvas (CSS pixels from its top-left corner) → map coordinates in cells
   toCell(px, py) { return [(px - this.ox) / this.S, (py - this.oy) / this.S]; }
 
   // zoom by `factor`, keeping the map point under (px, py) where it is
-  zoomAt(w, cam, factor, px, py) {
-    this.clampCam(w, cam);
-    const [mx, my] = this.toCell(px, py), [cw, ch] = this.size();
-    cam.zoom = clamp(cam.zoom * factor, 1, this.maxZoom(w));
-    const S = this.fitScale(w) * cam.zoom;
-    cam.cx = mx - (px - cw / 2) / S; cam.cy = my - (py - ch / 2) / S;
-    this.clampCam(w, cam);
-  }
+  zoomAt(w, cam, factor, px, py) { this.withCam(w, cam, (C, cw, ch) => C.zoomAt(cw, ch, factor, px, py)); }
 
-  pan(w, cam, dx, dy) { this.clampCam(w, cam); cam.cx -= dx / this.S; cam.cy -= dy / this.S; this.clampCam(w, cam); }
+  pan(w, cam, dx, dy) { this.withCam(w, cam, (C, cw, ch) => C.pan(cw, ch, dx, dy)); }
 
   paintTerrain(w) {
     const shoreOf = (g, i, W, H) => { const x = i % W, y = (i / W) | 0; return (x > 0 && !isWater(g.terr[i - 1])) || (x < W - 1 && !isWater(g.terr[i + 1])) || (y > 0 && !isWater(g.terr[i - W])) || (y < H - 1 && !isWater(g.terr[i + W])); };
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
-    const [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
+    const PLANTS_TINT = plantsTint(), [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       // the shore: water beside land is shallow and pale (an edge for the eye, not a kind of ground)

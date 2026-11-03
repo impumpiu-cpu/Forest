@@ -1,10 +1,11 @@
 // A camera over a grid of cells, shared by the screens that draw one: zoom 1 shows the whole grid in
 // the box, (cx, cy) is the centre of the view in cells. After clamp(), S is the size of a cell in CSS
 // pixels and (ox, oy) the pixel of the grid's top-left corner, so a point (x, y) in cells sits at
-// (ox + x·S, oy + y·S). The zoom stops when a cell is MAX_CELL_PX across. (render/renderer.js keeps
-// its own copy of this arithmetic for the local map; it will move here when it is next touched.)
+// (ox + x·S, oy + y·S). The zoom stops when a cell is MAX_CELL_PX across. (render/renderer.js, the local map,
+// works through it too.)
+import {clamp} from '../core/util.js';
+
 export const MAX_CELL_PX = 40;
-const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
 export class Camera {
   constructor(w, h) { this.w = w; this.h = h; this.reset(); }

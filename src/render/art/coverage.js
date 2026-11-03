@@ -1,12 +1,9 @@
 // How much of the game has a picture (tools/art-check.mjs, the gallery): each kind of thing the maps draw against the
 // pictures of src/art/ that would draw it. What has none is drawn as the scheme.
-export const LAIR_BASE = {
-  griffin: 'nest', wyvern: 'nest', drake: 'cave', dragon: 'cave', spider: 'web', stoneworm: 'cave', bat: 'cave', varg: 'den',
-  goblins: 'camp', gnolls: 'camp', ogres: 'camp', trolls: 'camp', swamptrolls: 'camp', icetrolls: 'camp', giants: 'camp',
-  wights: 'barrow', ghouls: 'barrow', necromancer: 'tower', vampire: 'manor', rift: 'rift',
-};
+// (which picture a row is drawn with: data/looks.js)
+import {LAIRS as LAIR_ART, SITES} from '../../data/looks.js';
 
-export function coverage(SPRITES, {SPECIES, BUILDINGS, WORLD_PEOPLES, TIERS, LAIRS}) {
+export function coverage(SPRITES, {SPECIES, BUILDINGS, WORLD_PEOPLES, TIERS, LAIRS, TOWN_BUILDINGS}) {
   const has = k => Object.prototype.hasOwnProperty.call(SPRITES, k);
   const count = (label, list, key) => { const n = list.filter(x => has(key(x))).length; return `${label} ${n}/${list.length}`; };
   const persons = SPECIES.all().filter(s => s.look?.shape === 'person');
@@ -17,6 +14,7 @@ export function coverage(SPRITES, {SPECIES, BUILDINGS, WORLD_PEOPLES, TIERS, LAI
     count('звери', shapes, s => `beasts/${s}`),
     count('постройки', BUILDINGS.all(), d => `buildings/${d.id}`),
     count('города', towns, t => `towns/${t}`),
-    count('логова', LAIRS.all(), l => `lairs/${LAIR_BASE[l.id] || l.id}`),
+    count('логова', LAIRS.all(), l => `lairs/${LAIR_ART[l.id] || l.id}`),
+    ...(TOWN_BUILDINGS ? [count('угодья', TOWN_BUILDINGS.filter(b => b.site), b => `map/site-${SITES[b.id] || b.id}`)] : []),
   ];
 }

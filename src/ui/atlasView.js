@@ -27,7 +27,7 @@ import {seaLevelOf} from '../atlas/sea.js';
 import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {ruinAt} from '../atlas/diplomacy.js';
-import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
+import {realmLabel, realmLand} from '../atlas/realms.js';
 import {personOf} from '../atlas/persons.js';
 import {rulerOf, rulerTitle, profileOf} from '../atlas/polities.js';
 import {townLean} from '../atlas/mind.js';
@@ -48,13 +48,15 @@ import {townFx, room, realmMetalWords} from '../atlas/towns.js';
 import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
 import {worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
-import {$} from './dom.js';
+import {$, seg} from './dom.js';
 import {SeasonClock} from '../core/clock.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {pickObject, inspectHtml, whereIs, kinLine} from './inspect.js';
 import {openTab} from './tabs.js';
 import {CATEGORIES} from '../data/townBuildings.js';
+import {byId} from '../render/index.js';
+import {RIVER_KINDS, PARTY_KINDS} from '../data/labels.js';
 
 const OPTS = {
   size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
@@ -71,14 +73,23 @@ const OPTS = {
 };
 // the layer «Живность»: each lair's owner in the colour of its first lair kind (data/lairs.js); a land that holds next to
 // none of a kind does not show it bright for the few that wandered in
-const WILD_COLORS = {}; for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && !WILD_COLORS[L.species]) WILD_COLORS[L.species] = L.color;
+// (read at each paint, not at load: the tables' edits of the lairs are seen at once)
+function wildColors() { const C = {}; for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && !C[L.species]) C[L.species] = L.color; return C; }
 const WILD_K = 0.05;
-const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
-// the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
-// fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
+// what is drawn over the cells on each layer of the map (once, not a list a frame)
+const OVER = {
+  roads: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rot'], lanes: ['relief', 'biomes', 'peoples', 'realms'],
+  lairs: ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'], epic: ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'],
+  links: ['peoples'], sites: ['relief', 'biomes', 'peoples', 'realms', 'soils'], parties: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild'],
+  ruins: ['relief', 'biomes', 'peoples', 'realms', 'will', 'rot'], will: ['will'], towns: ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rain', 'soils', 'rot'],
+  rivers: ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'],
+};
+const ON = {}; for (const [what, layers] of Object.entries(OVER)) for (const l of layers) (ON[l] ||= new Set()).add(what);
+const NONE = new Set();
+// a press that moves less than this is a click (a hover); further, it drags the map
 const DRAG_PX = 5;
 // the marks of the towns' works, by the building's category (data/townBuildings.js CATEGORIES)
-const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};   // a press that moves less than this is a click (a hover); further, it drags the map
+const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};
 
 const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
 const hexRgb = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
@@ -109,11 +120,8 @@ const windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4
 // the chronicle's detail, remembered in this browser (shared by the «Мир» and «Кампания» screens)
 export function loadDetail() { try { return localStorage.getItem('forest.chronDetail') || 'normal'; } catch (e) { return 'normal'; } }
 export function saveDetail(v) { try { localStorage.setItem('forest.chronDetail', v); } catch (e) { /* storage unavailable */ } }
-// a row of buttons for a choice; `on(value)` when one is pressed
-export function segOf(box, items, cur, on) {
-  box.innerHTML = items.map(d => `<button type="button" data-val="${d.id}" aria-pressed="${d.id === cur}">${d.label}</button>`).join('');
-  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); on(b.dataset.val); });
-}
+// a row of buttons for a choice; `on(value)` when one is pressed (ui/dom.js seg)
+export const segOf = (box, items, cur, on) => { seg(box, items, cur, on); };
 // the world's chronicle into a text file: by its eras at `what` detail ('major' | 'normal' | 'all'), or 'calamity'
 export function exportChronicle(a, name, what) {
   const title = name || `Мир ${a.cfg.seed}`;
@@ -128,12 +136,11 @@ export function exportChronicle(a, name, what) {
 // buttons, the screen, the legend — so nothing here reaches for an element of one page only.
 export class MapView {
   constructor(opts = {}) {
-    this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf';
+    this.atlas = null; this.layer = 'relief'; this.ore = OPTS.ore[0]?.[0]; this.fauna = OPTS.fauna[0]?.[0];
     this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
     // the observer's clock (core/clock.js): a season a step at the pace chosen; the screens give it their step
     this.clock = new SeasonClock({step: () => this.stepSeason(), after: () => this.afterSeason(), done: () => this.afterRun()});
     this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
-    this.pick = -1;   // the cell picked (the polygon: for a settlement, seam/cell.js), -1 — none
     this.sel = null; this.selCell = '';   // the object selected for the inspector (ui/inspect.js)
     this.setup(opts);
     this.build();
@@ -253,8 +260,8 @@ export class MapView {
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + '<span>пунктирный ромб — скрытое логово глуши</span>' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше; <b>отряды</b>: круг с хвостом — набег или выводок, квадрат — войско, крылья — дракон (пунктир — путь вперёд); ' + sw([170, 70, 40], 'фуражиры войска');
-    else if (this.layer === 'wild') html = Object.entries(WILD_COLORS).map(([id, c]) => sw(c, SPECIES.get(id).plural)).join('') + '<b>живность логов</b> — где чей народ гуще всего, ярче — гуще; ореолы вокруг логов, выводки несут их дальше; пунктирный ромб — скрытое логово' + sw([110, 60, 130], 'гниль');
-    else if (this.layer === 'rot') html = sw(ROT_RAMP[0][1], 'чисто') + sw(ROT_RAMP[1][1], '12% — вампир заводится в смешанном городе') + sw(mix(ROT_RAMP[1][1], ROT_RAMP[2][1], 0.6), '20% — упыри у пепелищ') + sw(ROT_RAMP[2][1], '25% — курганники на курганах') + sw(ROT_RAMP[3][1], '50% — башня некроманта') + sw(ROT_RAMP[4][1], 'гуще некуда') + sw([150, 110, 80], 'курганы и могилы — гниль сочится из них') + '<b>гниль</b> растёт от могил (битвы, набеги, пепелища), ползёт по округе и с обозами крыс по дорогам; тает в мороз и зной, быстрее у башен магов и храмов';
+    else if (this.layer === 'wild') html = Object.entries(wildColors()).map(([id, c]) => sw(c, SPECIES.get(id).plural)).join('') + '<b>живность логов</b> — где чей народ гуще всего, ярче — гуще; ореолы вокруг логов, выводки несут их дальше; пунктирный ромб — скрытое логово' + sw([110, 60, 130], 'гниль');
+    else if (this.layer === 'rot') html = sw(ROT_RAMP[0][1], 'чисто') + LAIRS.filter(L => L.rotAt != null).sort((p, q) => p.rotAt - q.rotAt).map(L => sw(ramp(ROT_RAMP, L.rotAt), `${Math.round(L.rotAt * 100)}% — ${L.label}`)).join('') + sw(ROT_RAMP[4][1], 'гуще некуда') + sw([150, 110, 80], 'курганы и могилы — гниль сочится из них') + '<b>гниль</b> растёт от могил (битвы, набеги, пепелища), ползёт по округе и с обозами крыс по дорогам; тает в мороз и зной, быстрее у башен магов и храмов';
     else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
       html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
         '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая' + sw(LAIRS.get('necromancer').color, 'владения некроманта: его башня, данники-нежить, культ') ; }
@@ -312,7 +319,7 @@ export class MapView {
       case 'wild': {   // the lairs' folk (atlas/lairs.js lairFolk): the kind that lives thickest here, as bright as it is thick
         const g = mix(base, [40, 40, 36], 0.6); if (!a.fauna || f.ocean[i]) return g;
         const F = a.fauna, j = faunaCellOf(a, i); let best = 0, col = null;
-        for (const s of F.list) { if (!s.lair || s.K[j] <= 0) continue; const v = Math.min(1, s.N[j] / Math.max(s.K[j], WILD_K)); if (v > best) { best = v; col = WILD_COLORS[s.id]; } }
+        for (const s of F.list) { if (!s.lair || s.K[j] <= 0) continue; const v = Math.min(1, s.N[j] / Math.max(s.K[j], WILD_K)); if (v > best) { best = v; col = (this.wildColors ||= wildColors())[s.id]; } }
         return col ? this.rotTint(a, i, mix(g, col, 0.15 + 0.8 * best)) : this.rotTint(a, i, g);
       }
       case 'rot': {   // the rot (atlas/lairs.js): its ramp over the land, the barrows and graves under it
@@ -375,6 +382,7 @@ export class MapView {
     if (this.bitmap && this.bitmapKey === key) return this.bitmap;
     if (this.layer === 'realms') this.legend();   // the realms come and go with the history
     // what «Державы» reads cell by cell, made once a repaint: the realms' land, the necromancers' seats
+    if (this.layer === 'wild') this.wildColors = wildColors();
     if (this.layer === 'realms' || this.layer === 'will') { this.realmOwn = realmLand(a); this.towerList = towers(a); this.seats = seatMap(a, this.towerList); }
     const off = this.bitmap || document.createElement('canvas');
     if (off.width !== a.w || off.height !== a.h) { off.width = a.w; off.height = a.h; }
@@ -418,17 +426,18 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rot'].includes(this.layer)) this.drawRoads(a, px);
-    if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
-    if (a.artifact && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
-    if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
-    if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
-    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild'].includes(this.layer)) this.drawParties(a, px);
-    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms', 'will', 'rot'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && this.layer === 'will') this.drawWill(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'will', 'fauna', 'wild', 'rain', 'soils', 'rot'].includes(this.layer)) this.drawTowns(a, px);
-    if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
+    const on = ON[this.layer] || NONE;
+    if (a.f.road && on.has('roads')) this.drawRoads(a, px);
+    if (a.f.sea && on.has('lanes')) this.drawLanes(a, px);
+    if (a.lairs && on.has('lairs')) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.artifact && on.has('epic')) this.drawEpic(a, px);
+    if (a.net && on.has('links')) this.drawLinks(a, px);
+    if (a.sites && on.has('sites')) this.drawSites(a, px);
+    if (a.parties && on.has('parties')) this.drawParties(a, px);
+    if (a.ruins && on.has('ruins')) this.drawRuins(a, px);
+    if (a.towns && on.has('will')) this.drawWill(a, px);
+    if (a.towns && on.has('towns')) this.drawTowns(a, px);
+    if (a.f.flow && on.has('rivers')) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
   }
@@ -500,7 +509,7 @@ export class MapView {
     for (const t of a.towns) {
       if (!t.alive) continue;
       const will = this.layer === 'will' && t.realm != null;
-      const c = will ? (t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat) : (t.realm && realmOf(a, t.realm) || WORLD_PEOPLES.get(t.people)).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
+      const c = will ? (t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat) : (t.realm && byId(a).realm.get(t.realm) || WORLD_PEOPLES.get(t.people)).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
       const pic = skin.art && ART.town(px, t, x, y, s, k, this.cam.S, {color: c, will, a});   // the picture (render/art/), with its own capital mark
       if (!pic) {
         px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
@@ -520,7 +529,8 @@ export class MapView {
     const k = this.unit(a);
     for (const t of a.towns) {
       if (!t.alive || t.realm == null || t.capital) continue;
-      const R = realmOf(a, t.realm), seat = R && a.towns.find(o => o.id === R.capital && o.alive);
+      const I = byId(a), R = I.realm.get(t.realm), seat = R && I.town.get(R.capital);
+      if (seat && !seat.alive) continue;
       if (!seat) continue;
       const c = t.role ? ROLE_COLORS[t.role] : ROLE_COLORS.seat;
       px.strokeStyle = `rgba(${c.join(',')},0.55)`; px.lineWidth = Math.max(this.minW, (0.2 + 0.15 * t.tier) * k);
@@ -663,10 +673,10 @@ export class MapView {
   // the leaders of the old lairs (atlas/leaders.js): a silver ring round the lair; a thin line to the lord of a vassal
   drawLeaders(a, px) {
     const k = this.unit(a), sz = Math.max(2.2 / Math.pow(this.cam.zoom, 0.6), 3 * k), silver = 'rgba(225,232,240,0.95)';
-    const byId = new Map(a.lairs.map(l => [l.id, l]));
+    const lairs = byId(a).lair;
     px.strokeStyle = 'rgba(225,232,240,0.35)'; px.lineWidth = Math.max(this.minW, 0.3 * k);
     px.beginPath();
-    for (const l of a.lairs) { const lord = l.alive && l.lord != null ? byId.get(l.lord) : null; if (lord?.alive && lord.leader) { px.moveTo(l.x + 0.5, l.y + 0.5); px.lineTo(lord.x + 0.5, lord.y + 0.5); } }
+    for (const l of a.lairs) { const lord = l.alive && l.lord != null ? lairs.get(l.lord) : null; if (lord?.alive && lord.leader) { px.moveTo(l.x + 0.5, l.y + 0.5); px.lineTo(lord.x + 0.5, lord.y + 0.5); } }
     px.stroke();
     px.strokeStyle = silver; px.lineWidth = Math.max(this.minW, 0.7 * k);
     for (const l of a.lairs) {
@@ -734,7 +744,7 @@ export class MapView {
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
     if (f.land) parts.push(f.lake && f.lake[i] >= 0 ? (a.lakes[f.lake[i]].salt ? 'солёное озеро' : 'озеро') : f.land[i] ? 'суша' : 'море');
     const rk = f.flow && f.lake[i] < 0 ? riverKind(a, i) : null;
-    if (rk) parts.push({stream: 'ручей', river: 'река', great: 'большая река'}[rk]);
+    if (rk) parts.push(RIVER_KINDS[rk] || rk);
     if (f.alluvium && f.alluvium[i] > 0.3) parts.push('пойма');
     parts.push(f.ocean && f.ocean[i] ? 'дно' : f.temp ? `${Math.max(1, Math.round(heightKm(a, f.elev[i]) * 1000))} м` : `высота ${f.elev[i].toFixed(3)}`);
     if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°` + (f.trange && f.land[i] ? ` (размах года ${Math.round(f.trange[i])}°)` : ''));
@@ -774,7 +784,7 @@ export class MapView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь: ${DEEDS.has(party.plan) ? deedLabel(party.plan) : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'leader' ? `${PARTY_KINDS.leader.map}: ${DEEDS.has(party.plan) ? deedLabel(party.plan) : party.plan}` : PARTY_KINDS[party.kind]?.label || party.kind}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -811,6 +821,5 @@ export class MapView {
   }
 }
 
-// The world screen of old (its own controls are gone with the polygon; the campaign screen builds on it: the library,
-// a saved world shown, the clock's steps over history).
+// the choices of the map's settings and layers (the screens of src/app/ build their rows from them)
 export {OPTS as ATLAS_OPTS};

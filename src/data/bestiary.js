@@ -235,7 +235,7 @@ export const BESTIARY = [
   // ── beasts of the far lands: the steppe, the hot south, the ice. Few of them reach the first
   // colonies' regions (data/regions.js); they are here for the world map and the lands to come
   // Horse: a herd of the open steppe, fast and shy; tamed, it carries the hunter and the builder
-  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, legend: 'лошадь',
+  beast({id: 'horse', kind: 'beast', label: 'лошадь', g: 'f', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, legend: 'лошадь',
     arrive: {group: [2, 5], every: [3, 5], chance: 0.5, cap: 6, first: 2, message: 'на луга вышел табун: {n}'},
     habitat: {steppe: 'common', meadow: 'common', savanna: 'usual', shrubland: 'rare', foothills: 'rare'},
     look: {shape: 'horse', size: 0.8, color: '#8c5a34'},
@@ -332,7 +332,7 @@ export const BESTIARY = [
     leaveChance: 0.0003}),
 
   // Sheep: the hills' flock; tamed for wool first of all
-  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, legend: 'овца',
+  beast({id: 'sheep', kind: 'beast', label: 'овца', g: 'f', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, legend: 'овца',
     arrive: {group: [3, 6], every: [2, 4], chance: 0.5, cap: 8, first: 2, message: 'по склонам разбрелись овцы: {n}'},
     habitat: {meadow: 'common', shrubland: 'common', foothills: 'usual', steppe: 'usual', highlands: 'rare'},
     look: {shape: 'sheep', size: 0.46, color: '#ece6d6'},

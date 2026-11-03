@@ -9,6 +9,7 @@
 //   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
 //            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
+//   g:       the grammatical gender of `label` when it is not masculine ('f', 'n'): «коза — своя» (ui/cards.js)
 //   kind:    what it is to the world (KINDS below): the world map lets each kind in through its own door
 //            (docs/WORLD.md); data/species.js and data/bestiary.js set it on
 //            the beasts, monsters and spirits, data/races.js on the races, data/monsters.js on the undead
@@ -153,7 +154,7 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, legend: 'коза',
+  {id: 'goat', kind: 'beast', label: 'коза', g: 'f', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, legend: 'коза',
     habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},
