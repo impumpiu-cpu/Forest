@@ -79,6 +79,11 @@ export function loadAtlas(save) {
     a.hist.rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:history`));
     a.hist.rnd.state = save.histRnd;
     upgradePersons(a);   // a world saved before the persons: its leaders and courts become persons (atlas/persons.js)
+    // a war of a schism saved before every war had its move (atlas/diplomacy.js newWar): the realm broken from moves first
+    for (const [k, rel] of Object.entries(a.rel || {})) if (rel?.war && rel.war.turn === undefined) {
+      const [p, q] = k.split(':'), from = (a.realms || []).find(r => r.id === q)?.from === p ? p : (a.realms || []).find(r => r.id === p)?.from === q ? q : p;
+      rel.war.turn = from; rel.war.mustered = null;
+    }
   }
   return a;
 }

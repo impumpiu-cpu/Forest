@@ -20,7 +20,8 @@ import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
 import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
 import {DOES} from '../src/atlas/deeds/index.js';
-import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
+import {meet, stepDiplomacy, newWar} from '../src/atlas/diplomacy.js';
+import {breakAway} from '../src/atlas/realms.js';
 import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
@@ -276,7 +277,7 @@ scene_('W12', 'державы: при общей границе и вражде 
   const b = world(), m = neighbours(b, 'elves', 'dwarves', -4);
   if (!m) return true;   // (this land gave the elves no forest by the dwarves: the half is not tried)
   if (m.rel.border && court(b, m.A)?.[3].id === 'warOn') return 'эльфы объявили войну';
-  m.rel.war = {since: b.hist.year, battles: 0, razed: 0, turn: m.A.id, mustered: null};
+  newWar(b, m.rel, m.A.id);
   m.t1.pop = 400;
   const o2 = court(b, m.A);
   return (o2?.[3].id === 'march') || `эльфы в войне: ${o2 ? o2[3].id : 'ничего'} (${m.rel.front ? 'фронт есть' : 'фронта нет'})`;
@@ -285,7 +286,7 @@ scene_('W12', 'державы: при общей границе и вражде 
 scene_('W13', 'держава в войне: ход её — войско из города у фронта идёт на город врага; ход переходит; второго войска в тот же год нет', () => {
   const a = world(), n = neighbours(a, 'humans', 'dwarves', -4);
   if (!n?.rel.border) return 'соседи не легли границей';
-  n.rel.war = {since: a.hist.year, battles: 0, razed: 0, turn: n.A.id, mustered: null}; n.t1.pop = 400;
+  newWar(a, n.rel, n.A.id); n.t1.pop = 400;
   const o = court(a, n.A, ['march']);
   if (o?.[3].id !== 'march') return `предложено: ${o ? o[3].id : 'ничего'} (${n.rel.front ? 'фронт есть' : 'фронта нет'})`;
   const army = (a.parties || []).find(p => p.kind === 'army' && p.owner === n.A.id);
@@ -293,6 +294,19 @@ scene_('W13', 'держава в войне: ход её — войско из �
   if (n.rel.war.turn !== n.B.id) return 'ход не перешёл';
   if (court(a, n.A, ['march']) !== null) return 'второе войско в тот же год';
   return court(a, n.B, ['march']) === null || 'дварфы собрали войско, пока людское в пути';
+});
+
+scene_('W13b', 'раскол с войной: у войны есть ход — старая держава собирает войско на отколовшуюся', () => {
+  const a = world(), n = neighbours(a, 'humans', 'humans', 0);
+  if (!n) return 'соседи не высадились';
+  n.t2.realm = n.A.id;   // (one realm of two towns: the second breaks away)
+  const nr = breakAway(a, n.A, n.t2, () => 0, () => {}, 'Раскол.'), rel = meet(a, n.A.id, nr.id, a.hist.year);
+  if (!rel.war) return 'войны нет';
+  if (rel.war.turn !== n.A.id || rel.war.mustered !== null) return `запись войны без хода: ${JSON.stringify(rel.war)}`;
+  stepDiplomacy(a, mulberry(1), () => {}, () => 0); n.t1.pop = 400;
+  if (!rel.front) return 'фронта нет';
+  const o = court(a, n.A, ['march']);
+  return o?.[3].id === 'march' || `предложено: ${o ? o[3].id : 'ничего'}`;
 });
 
 scene_('W14', 'усталость от войны: мир — красная полоса, он прежде набега и войска', () => {

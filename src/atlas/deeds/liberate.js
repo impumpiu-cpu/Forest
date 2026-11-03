@@ -13,7 +13,7 @@ import {LAIRS} from '../../data/lairs.js';
 import {SPECIES} from '../../data/species.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {townLabel} from '../towns.js';
-import {fight, meet} from '../diplomacy.js';
+import {fight, meet, newWar} from '../diplomacy.js';
 import {realmLabel} from '../realms.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
@@ -42,7 +42,7 @@ export const liberate = {
       // against a realm: war, if it is not on already
       const y = a.hist.year, rel = o.realm ? meet(a, realm.id, o.realm, y) : null;
       let begun = '';
-      if (rel) { rel.att = Math.max(-5, rel.att - L.att); if (!rel.war) { rel.war = {since: y, battles: 0, razed: 0, turn: realm.id, mustered: null}; rel.wars = (rel.wars || 0) + 1; begun = ` За братьев началась война с ${realmLabel(a, o.realm)}.`; } }
+      if (rel) { rel.att = Math.max(-5, rel.att - L.att); if (!rel.war) { newWar(a, rel, realm.id); begun = ` За братьев началась война с ${realmLabel(a, o.realm)}.`; } }
       if (fight(t, r) > fight(o, r)) {
         o.slaves = Math.max(0, (o.slaves || 0) - n); o.slavesOf[P] = 0;
         const home = Math.round(n * L.home); addHeads(a, t, WORLD_PEOPLES.get(P).race, home, 1);

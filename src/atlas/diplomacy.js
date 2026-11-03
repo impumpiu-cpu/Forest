@@ -97,6 +97,14 @@ export function meet(a, p, q, year) {
   if (!a.rel[k]) a.rel[k] = {att: memory(a, p, q), war: null, wars: 0, routes: 0, met: year};
   return a.rel[k];
 }
+// a war begins between the two realms of `rel` (atlas/realms.js breakAway, atlas/deeds/warOn.js, liberate.js): one record for
+// every war — `turn`, whose move it is (the realm `by` that began it first; atlas/deeds/march.js musters by it), `mustered`,
+// the year its army last came together → the war
+export function newWar(a, rel, by) {
+  rel.war = {since: a.hist.year, battles: 0, razed: 0, turn: by, mustered: null};
+  rel.wars = (rel.wars || 0) + 1;
+  return rel.war;
+}
 // the worst standing between the realms of two races (for the races' fields pushing each other)
 export function raceState(a, P, Q) {
   let worst = null;
