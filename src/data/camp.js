@@ -68,6 +68,8 @@ export const CAMP = {
   // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
   // rest — firewood, hay, stone — stays at the camp)
   // (every potion and its makings: data/potions.js — the alchemy goes on in the cargo)
+  // what of `carry` a stop to dig counts as dug (the rest the hunt and the camp give)
+  notDug: ['hide', 'leather', 'rope'],
   carry: [...POTION_RES, 'herbs', 'sleepgrass', 'wort', 'pots', 'slime', 'bile', 'venom', 'wax', 'lynxEyes', 'bone', 'gland', 'feathers', 'silverBar', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,

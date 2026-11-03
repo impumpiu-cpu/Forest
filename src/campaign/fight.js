@@ -92,7 +92,7 @@ export function playStop(a, K) {
   const food0 = K.food;
   applyCamp(a, K, S, o, null, 'stop'); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;
   if (K.food > food0) K.food = food0 + (K.food - food0) * stopFood(a, K);   // the cauldron and the people's way of the land (data/transport.js)
-  const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
+  const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && !CAMP.notDug.includes(id));
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
   for (const [id, n] of dug) K.stats.dug = (K.stats.dug || 0) + n;

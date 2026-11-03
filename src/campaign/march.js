@@ -94,8 +94,7 @@ export function reveal(a, K, i, r) {
 
 // a stop's food: × the people's dish in the cauldron (data/transport.js CAMP_KIT.dish), × the people's way with wooded land
 // (PEOPLE_KIT forage.wood: the elves)
-export const stopFood = (a, K) => campFx(K, 'food') * ((biomeAt(a, K.i)?.trees ?? 0) >= WOODED ? kitOf(K).forage?.wood ?? 1 : 1);
-const WOODED = 0.3;   // (the same share of trees the council builds and gathers bark at: campWork)
+export const stopFood = (a, K) => campFx(K, 'food') * ((biomeAt(a, K.i)?.trees ?? 0) >= CAMPAIGN.camp.wooded ? kitOf(K).forage?.wood ?? 1 : 1);
 
 // ── the members
 const itemDef = id => gearDef(id);
@@ -186,7 +185,7 @@ function entered(a, K, before) {
 
 // a day in camp: beasts tamed where they live, baskets woven, the building goes on, potions brewed in the healer's hut
 function campWork(a, K, r) {
-  const b = biomeAt(a, K.i), reg = cellRegion(a, K.i), wooded = (b?.trees ?? 0) >= 0.3;
+  const b = biomeAt(a, K.i), reg = cellRegion(a, K.i), wooded = (b?.trees ?? 0) >= CAMPAIGN.camp.wooded;
   const brewed = brewDay(K, r, wooded);
   if (brewed) { K.stats.brewed = (K.stats.brewed || 0) + brewed; if (!K.brewTold || K.day - K.brewTold > 60) { K.brewTold = K.day; say(a, K, `В хижине лекаря сварили зелье лечения${brewed > 1 ? ` (${brewed})` : ''}: зелий в поясах ${alive(K).reduce((s, m) => s + (m.potions || 0), 0)}.`, 'build'); } }
   for (const kind of Object.keys(BEASTS)) {
@@ -194,7 +193,7 @@ function campWork(a, K, r) {
     const lvl = faunaLevel({region: reg}, kind), hitch = BEASTS[kind].use === 'ride' ? kitOf(K).tame ?? 1 : 1;   // (the humans' hitching post)
     if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K) * hitch) gainBeast(a, K, kind, 'Приручили');
   }
-  if ((wooded || (b?.trees ?? 0) >= 0.1) && r() < 0.5) {
+  if ((wooded || (b?.trees ?? 0) >= CAMPAIGN.camp.basketTrees) && r() < CAMPAIGN.camp.basket) {
     const m = alive(K).filter(x => (x.back ?? 1) === 1).sort((p, q) => !inLine(p) - !inLine(q)).pop();
     if (m) {
       m.back = 1 + GETTING.basket.cells;
@@ -293,7 +292,7 @@ function plan(a, K) {
 // what the council would build now, if anything: a cart (bronze), a wagon (iron and a draft beast),
 // a building for the wagon; only where the wheels could then be used on the way to the goal
 function wantBuild(a, K) {
-  if (!((biomeAt(a, K.i)?.trees ?? 0) >= 0.3)) return null;
+  if (!((biomeAt(a, K.i)?.trees ?? 0) >= CAMPAIGN.camp.wooded)) return null;
   const tier = toolTier(K), has = kind => K.vehicles.some(v => v.kind === kind);
   const fit = () => {   // would the wheels go the way? asked rarely: only when there is something to build
     const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
