@@ -1,7 +1,7 @@
 // The caravan's council across walks (docs/CAMPAIGN.md «Вечерний совет и стоянки»): how the walks end, how long they take,
 // how many of the eight come home, and what the council chose — the camps by why, the towns by why. For comparing the
 // council before and after a change of its choice (its policy, its weights, the caravan's mission profile).
-// Usage: node tools/council-probe.mjs [worlds=4] [--json] [--peoples=humans,dwarves] [--want=caravan.visit.goOn=0 …]
+// Usage: node tools/council-probe.mjs [worlds=4] [--json] [--peoples=humans,dwarves] [--want=caravan.camp.goOn=0 …]
 // (the fights settled at once; --want sets a weight of data/campaign.js COUNCIL.want for this run only)
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';

@@ -35,7 +35,6 @@ const VISIT_ASK = {
   // ore for the smith (data/market.js SMITH): enough for a piece; a town with a smith is looked for further than a shop
   smith: (a, K) => K.day >= (K.nextVisit ?? 0) && smithOre(K) >= VISIT.smithOre && K.gold >= VISIT.smithGold && !(K.smithTried > K.day),
   shop: (a, K) => K.day >= (K.nextVisit ?? 0) && K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every,
-  goOn: () => true,   // (asked last of its lane: offered only beside something else — data/campaign.js COUNCIL)
 };
 const VISIT_CMD = 'caravan.visit.';
 // the way on: drawn, it means no town and no camp

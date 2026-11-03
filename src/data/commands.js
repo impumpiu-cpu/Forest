@@ -67,7 +67,6 @@ const OWN = [
   {id: 'caravan.visit.heal', point: 'caravan.visit', band: 'yellow', label: 'подлечить раненых', note: 'кто-то из свободных тяжело ранен'},
   {id: 'caravan.visit.smith', point: 'caravan.visit', label: 'отдать руду кузнецу', note: 'руды на вещь лучше своего металла и золото на работу'},
   {id: 'caravan.visit.shop', point: 'caravan.visit', label: 'потратить казну', note: 'казна полна и давно не были в городе'},
-  {id: 'caravan.visit.goOn', point: 'caravan.visit', label: 'не сворачивать', note: 'когда город хочется, но не нужен: идти дальше к цели — соперник лавки и кузнеца в жребии'},
   {id: 'caravan.camp.food', point: 'caravan.camp', band: 'yellow', label: 'стоянка: охота и сбор', note: 'еда на исходе, земля кормит; в опасном месте не встают, если не голодны'},
   {id: 'caravan.camp.heal', point: 'caravan.camp', band: 'yellow', label: 'стоянка: отлежаться', note: 'раненые еле идут; в опасном месте не встают, если не голодны'},
   {id: 'caravan.camp.build', point: 'caravan.camp', label: 'стоянка: тележка, повозка, постройка', note: 'сыты, целы, тихо: колёса, если пригодятся в пути, иначе постройка лагеря'},
