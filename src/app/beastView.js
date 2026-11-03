@@ -21,7 +21,8 @@ import {VERSION} from '../version.js';
 
 const $ = id => document.getElementById(id);
 const STORE = 'forest.app.beast';
-const KIND_ORDER = ['beast', 'monster', 'spirit', 'undead', 'fiend'];
+// the kinds of the list in the order of data/species.js KINDS; the races are not made here
+const kindOrder = () => Object.keys(KINDS).filter(k => k !== 'race');
 
 // the sections of the form: which table's columns, which keys (a prefix takes a block: `predator.` is every column of it)
 const SECTIONS = [
@@ -78,12 +79,12 @@ export class BeastView {
     this.open(this.id);
   }
 
-  list() { return SPECIES.filter(s => s.kind !== 'race').sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.label.localeCompare(b.label, 'ru')); }
+  list() { return SPECIES.filter(s => s.kind !== 'race').sort((a, b) => kindOrder().indexOf(a.kind) - kindOrder().indexOf(b.kind) || a.label.localeCompare(b.label, 'ru')); }
 
   // the list of species by kind, the query filters it; the ones with edits are marked, new ones too
   nav() {
     const q = this.query;
-    $('bstNav').innerHTML = KIND_ORDER.map(k => {
+    $('bstNav').innerHTML = kindOrder().map(k => {
       const rows = this.list().filter(s => s.kind === k && (!q || `${s.label} ${s.id} ${s.plural || ''}`.toLocaleLowerCase('ru').includes(q)));
       if (!rows.length) return '';
       return `<div class="grp"><span>${esc(KINDS[k])}</span>${rows.map(s => `<button type="button" data-sp="${esc(s.id)}" class="${this.hasEdits(s.id) ? 'has-ed' : ''}" aria-current="${String(s.id === this.id)}"><span>${esc(s.label)}${isNewSpecies(s.id) ? ' <i class="new">новый</i>' : ''}</span><small>${esc(s.id)}</small></button>`).join('')}</div>`;
