@@ -78,6 +78,7 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
 }
 {
   const realm = a.realms.find(r => r.people === 'orcs');
+  if (!gtowns.some(t => townFx(t).defence)) gtowns[0].built.push('warcamp');   // (a realm raids from a town with a defence: its history may not have built one yet)
   const plans = captives.want(a, realm, {role: 'realm', season: 'autumn', r: () => 0}) || [];
   check('набеги за рабами — на любого, своих и дикие племена тоже', plans.length > 0, plans.map(p => p[0].lair != null ? 'логово' : 'город').join(', '));
   const t = gtowns.find(x => a.fauna) || gtowns[0]; t.built = t.built.filter(x => x !== 'fightpits'); t.warBeasts = null; t.built.push('fightpits'); const m0 = might(t, townFx(t));   // (pits of its own, fresh: its history may have filled them)
@@ -139,6 +140,7 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
 {
   const P = WORLD_PEOPLES.get('orcs'), H = WORLD_PEOPLES.get('humans');
   const t = gtowns.find(x => x.pop > 100) || gtowns[0], R = a.realms.find(r => r.id === t.realm), tg = a.towns.find(x => x.alive && x.realm !== t.realm);
+  if (t.pop < 100) { for (const h of Object.values(t.heads)) h[1] += 120 * (h[0] + h[1] + h[2]) / t.pop; sync(t); }   // (a horde its history left small: grown ones enough for a third of it to be a host)
   t.stock = {...(t.stock || {}), beasts: 20}; t.warBeasts = {list: {varg: 2}, men: 1}; const pop0 = t.pop, said = [];
   const before = new Set((a.parties || []).map(p => p.id));   // (the town may have an army out from its history: the new one is checked)
   muster(a, t, tg, null, () => 0.5, s => said.push(s));

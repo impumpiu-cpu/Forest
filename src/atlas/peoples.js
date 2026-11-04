@@ -106,7 +106,28 @@ function siteScore(a, P, i) {
 }
 
 // (a people that settles among others — data/peoples.js strangers.near, the humans — sits closer to another people's town than to its own)
-const farFromTowns = (a, x, y, d, pe = null) => !a.towns.some(t => t.alive && Math.hypot(t.x - x, t.y - y) < d * (pe && t.people !== pe.id ? pe.P.strangers?.near ?? 1 : 1));
+const farFromTowns = (a, x, y, d, pe = null) => {
+  const near = pe ? pe.P.strangers?.near ?? 1 : 1, reach = d * Math.max(1, near), I = townIndex(a), B = I.B;
+  for (let by = Math.max(0, ((y - reach) / B) | 0); by <= Math.min(I.H - 1, ((y + reach) / B) | 0); by++) for (let bx = Math.max(0, ((x - reach) / B) | 0); bx <= Math.min(I.W - 1, ((x + reach) / B) | 0); bx++) {
+    for (const t of I.grid[by * I.W + bx]) if (t.alive && Math.hypot(t.x - x, t.y - y) < d * (pe && t.people !== pe.id ? near : 1)) return false;
+  }
+  return true;
+};
+// the towns by the cells they stand on and by coarse buckets of TOWN_INDEX cells (townAt, farFromTowns: a world of two hundred
+// towns asks these for every cell it weighs), made anew when a town is founded or the step of history moves on (a town gone
+// between is skipped by `alive`)
+const TOWN_INDEX = 8;
+function townIndex(a) {
+  const key = `${a.hist?.step ?? -1}:${a.towns.length}`, I = a.townIdx;
+  if (I && I.key === key) return I;
+  const B = TOWN_INDEX, W = Math.ceil(a.w / B), H = Math.ceil(a.h / B), grid = Array.from({length: W * H}, () => []), at = new Map();
+  for (const t of a.towns) {
+    if (!t.alive) continue;
+    grid[((t.y / B) | 0) * W + ((t.x / B) | 0)].push(t);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = t.x + dx, y = t.y + dy; if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue; const i = y * a.w + x; if (!at.has(i)) at.set(i, t); }   // (the first of the list, as `find` took it)
+  }
+  return (a.townIdx = {key, B, W, H, grid, at});
+}
 
 // whether a coarse cell and its ring (3c × 3c around its middle) have any room for a town at all:
 // a town closer to the middle than `spacing` minus the window's half-diagonal covers every cell in it
@@ -479,8 +500,11 @@ function threatAt(a, t) {
 // the town at or right next to a cell, and whose land a cell is
 export function townAt(a, i) {
   if (!a.towns) return null;
-  const x = i % a.w, y = (i / a.w) | 0;
-  return a.towns.find(t => t.alive && Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1) || null;
+  const t = townIndex(a).at.get(i);
+  if (t && t.alive) return t;
+  if (!t) return null;
+  const x = i % a.w, y = (i / a.w) | 0;   // (the one indexed is gone: the next that stands there, if any)
+  return a.towns.find(o => o.alive && Math.abs(o.x - x) <= 1 && Math.abs(o.y - y) <= 1) || null;
 }
 export function landOf(a, i) {
   if (!a.peoples || a.f.ocean[i]) return null;

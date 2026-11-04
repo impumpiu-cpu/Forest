@@ -263,14 +263,15 @@ export function stepRot(a) {
   else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
   // rats: the rot travels with the caravans between towns joined by road
   if (a.roadPairs && a.towns) {
-    const byId = new Map(a.towns.map(t => [t.id, t]));
+    const byId = new Map(a.towns.map(t => [t.id, t])), health = new Map();   // (a town's health once a step: townFx is dear)
+    const healthOf = t => { let h = health.get(t); if (h == null) health.set(t, h = Math.min(1, townFx(t).health)); return h; };
     for (const key of a.roadPairs) {
       const t = byId.get(Math.floor(key / 100000)), o = byId.get(key % 100000);
       if (!t || !o || !t.alive || !o.alive) continue;
       for (const [from, to] of [[t, o], [o, t]]) {
         const jf = cell[from.i], jt = cell[to.i];
         if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom) continue;
-        const keep = 1 - ROT.ratsHealth * Math.min(1, townFx(to).health);
+        const keep = 1 - ROT.ratsHealth * healthOf(to);
         src[jt] += ROT.rats * rot[jf] * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
         if (rot[jt] < ROT.ratsFrom && !to.ratsTold) { to.ratsTold = true; (a.ratsLines ||= []).push(`Крысы с обозами занесли гниль в ${townLabel(to, 1)} ${to.name}.`); }
       }

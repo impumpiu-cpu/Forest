@@ -138,7 +138,7 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
   check('караван: профиль миссии в середине — веса как в таблице', Object.keys(COUNCIL.want).every(id => Math.abs(councilWeight(mid, {people: 'orcs'}, id) - COUNCIL.want[id]) < 1e-9));
   const orc = councilWeight({cfg: {}}, {people: 'orcs'}, 'caravan.camp.heal'), elf = councilWeight({cfg: {}}, {people: 'elves'}, 'caravan.camp.heal');
   check('караван: осторожные эльфы стоят ради раненых охотнее зеленокожих', elf > orc, `эльфы ${elf.toFixed(2)}, зеленокожие ${orc.toFixed(2)}`);
-  const side = /приручить|добывать|сколотить|срубить/;
+  const side = /совет решил встать (в лесу|и приручить)|совет решил встать у |добывать/;   // (the camps of the side pursuits — campaign/march.js: to build, to tame, to mine; a hint in a loot line, a hunger camp — not)
   const lean = walk('noSide'), sideLines = K => (K.log || []).filter(x => side.test(x.text || '')).length;
   check('караван без побочных промыслов: не строит, не приручает, не добывает', sideLines(lean) === 0, `в обычном походе таких стоянок ${sideLines(plain)}`);
 }

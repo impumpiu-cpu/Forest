@@ -33,6 +33,7 @@ import {needsOf, tierNeed, workNeeds} from '../data/requirements.js';
 import {meets} from '../core/requirements.js';
 import {townFacts} from './requirements.js';
 import {ORE_GENESIS} from '../data/geology.js';
+import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {SPECIES} from '../data/species.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -40,7 +41,7 @@ import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
-import {siteCell} from './sites.js';
+import {siteFits} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA, TOWN_MONEY} from '../data/townBuildings.js';
 import {allowed} from '../data/commands.js';
 import {pickMax, tracing, noteDecision, r3} from '../core/decide.js';
@@ -201,17 +202,39 @@ export const leadKin = (a, t) => Object.entries(townKin(a, t)).sort((p, q) => q[
 // the realm, its step, its size, the land — is one requirement (data/requirements.js needsOf: the row's short fields and its
 // `need`), checked by one checker (core/requirements.js) against the town's facts (atlas/requirements.js townFacts); the
 // limits of count, slot, line and site are rules of their own below
-export function canBuild(a, t, b, inRealm = null, facts = null) {
+// (`sit`: what a council's sitting over many candidates shares — the counts of the town's buildings, its slots used, the
+// realm's unique works; made once by chooseBuilding, none for a lone question)
+export function canBuild(a, t, b, inRealm = null, facts = null, sit = null) {
   const src = facts || townFacts(a, t, {inRealm});
   if (!meets(tierNeed(b, t.people), src) || !meets(needsOf(b), src)) return false;
-  if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
-  if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
+  if (b.unique && (sit ? sit.unique.has(b.id) : a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id)))) return false;
+  if ((sit ? sit.count.get(b.id) || 0 : t.built.filter(id => id === b.id).length) >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
   if (lineFull(t, b)) return false;
   // its slot (data/townBuildings.js TOWN_SLOTS): a work of its own in the town, an upgrade; a tier takes its base's place
   const sk = slotKind(b);
-  if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;
-  if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
+  if (sk && (sit ? sit.used : slotsUsed(t))[sk] >= (sit ? sit.slots : slotsOf(t))[sk]) return false;
+  if (b.site) return siteFits(a, t, b);   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js; the cell itself is chosen when it is placed)
   return true;
+}
+// what the realm's towns make this season (their works' `made`; a town of no reckoning yet — its store), and what of it lies
+// spare — made and not used, and in the stores — a year's rate: what a new work of the realm could take (once a realm a step)
+function realmMakes(a, realm) {
+  const key = `${a.hist?.step ?? -1}:${realm}`, R = a.realmMakes ||= new Map();
+  if (R.has(key)) return R.get(key);
+  if (R.size > 64) R.clear();
+  const made = new Set(), spare = new Map();
+  for (const o of a.towns) if (o.alive && o.realm === realm) {
+    if (o.econ) for (const [g, v] of Object.entries(o.econ.made)) if (v > 0) { made.add(g); spare.set(g, (spare.get(g) || 0) + Math.max(0, v - (o.econ.used[g] || 0))); }
+    for (const [g, v] of Object.entries(o.stock || {})) if (v > 0) { if (!o.econ) made.add(g); spare.set(g, (spare.get(g) || 0) + v * SEASONS_PER_YEAR); }
+  }
+  const out = {made, spare}; R.set(key, out);
+  return out;
+}
+export function sittingOf(a, t) {
+  const count = new Map(); for (const id of t.built) count.set(id, (count.get(id) || 0) + 1);
+  const unique = new Set(); for (const o of a.towns) if (o !== t && o.alive && o.realm === t.realm) for (const id of o.built) if (TOWN_BUILDINGS.get(id)?.unique) unique.add(id);
+  const {made, spare} = realmMakes(a, t.realm);
+  return {count, unique, used: slotsUsed(t), slots: slotsOf(t), made, spare};
 }
 
 // what the town needs now, 0 … ~1.5 for each effect
@@ -238,14 +261,15 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
   const opts = [];
   const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
-  for (const b of TOWN_BUILDINGS.all()) {
-    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts)) continue;   // (skip: what it could not pay for this time)
+  const sit = ctx.sitting ||= sittingOf(a, t);   // (once a sitting: the council's tries share it — atlas/build.js pickProject)
+  for (const b of ctx.candidates ||= candidatesOf(t, P, need, E0)) {
+    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts, sit)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
     for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k, t.people)) * need[k] * (P.taste[k] ?? 1);
     // the flows (atlas/economy.js): what the town's buildings lack of a good, a building that gives it fills; food short
     // of the people — a building that gives food; and no hands to work it — little use
-    if (ctx.econ) { v = flowScore(t, b, P, need, ctx.econ, inRealm, facts, v); if (v == null) continue; }
+    if (ctx.econ) { v = flowScore(t, b, P, need, ctx.econ, inRealm, facts, v, sit); if (v == null) continue; }
     // the realm's council (atlas/mind.js leanOf): × (1 + k × how the building leans along the town's role, or the seat's wind)
     if (ctx.lean) v *= 1 + ctx.lean.k * along(vectorOf(b), ctx.lean.vec);
     v *= TF.noise[0] + TF.noise[1] * rnd();
@@ -258,14 +282,55 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   return best ? best.b : null;
 }
 
+// the buildings the council looks at: those that give what the town needs most — the effects whose need × taste is within
+// TOWN_FX.candidates.share of the strongest, and housing while it is wanted at all — and those that give what its works or its
+// people lack, or take what lies spare (the makers of a good: makersOf, the pools), and the works that earn its next step. The
+// rest it does not weigh this season: a building of a need the town does not feel would not pass TOWN_FX.floor anyway
+// (what each building gives and takes, and the effects it has for a people — worked out once, again after an edit of the tables)
+const CAND = new Map();
+onEdit(() => CAND.clear());
+const candOf = (b, people) => {
+  const key = `${b.id}:${people}`;
+  if (!CAND.has(key)) CAND.set(key, {makes: makesOf(b), takes: [...Object.keys(b.in || {}), ...Object.keys(b.any || {}).flatMap(id => Object.keys(POOLS[id]))], fx: new Set(KEYS.filter(k => k !== 'housing' && fxOf(b, k, people) > 0)), boostMakes: Object.keys(b.boost || {}).map(id => [id, makesOf(TOWN_BUILDINGS.get(id))])});
+  return CAND.get(key);
+};
+function candidatesOf(t, P, need, E) {
+  const C = TF.candidates, w = KEYS.map(k => [k, need[k] * (P.taste[k] ?? 1)]), top = Math.max(...w.map(x => x[1]));
+  const keys = new Set(w.filter(([k, v]) => v >= top * C.share || (k === 'housing' && v > 0)).map(([k]) => k));
+  const goods = new Set();
+  if (E) {
+    for (const g of Object.keys(E.short || {})) goods.add(g);
+    for (const g of Object.keys(t.needs?.lack || {})) goods.add(g);
+    for (const [g, v] of Object.entries(E.spare || {})) if (v > 0 && !TF.flow.spareSkip.includes(g)) goods.add(`spare:${g}`);
+  }
+  const next = TIERS[(t.tier || 0) + 1];
+  const out = [];
+  for (const b of TOWN_BUILDINGS.all()) {
+    const c = candOf(b, t.people);
+    let on = keys.has('housing') && b.house > 0;
+    if (!on) for (const k of keys) if (c.fx.has(k)) { on = true; break; }
+    if (!on && goods.size) {
+      for (const g of c.makes) if (goods.has(g)) { on = true; break; }
+      if (!on) for (const g of c.takes) if (goods.has(`spare:${g}`)) { on = true; break; }
+      if (!on) for (const [id, M] of c.boostMakes) if (t.built.includes(id) && M.some(g => goods.has(g))) { on = true; break; }
+      if (!on && b.recycle) on = true;
+    }
+    if (!on && next && next.needsAny.includes(b.id)) on = true;
+    if (on) out.push(b);
+  }
+  return out;
+}
+
 // the flows of a building (atlas/economy.js) on its score v: what the town's buildings lack of a good, a building that gives it
 // fills; food short of the people — a building that gives food; and no hands to work it — little use; E — the town's economy
 // (ctx.econ). → the score, or null (nobody to work it: not built)
-function flowScore(t, b, P, need, E, inRealm, facts, v) {
+function flowScore(t, b, P, need, E, inRealm, facts, v, sit = null) {
   // what it takes, as its people takes it (data/peoples.js swaps: the elves' wood for metal); what it does without (soft)
   // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
   // makes: it may be bought)
-  const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => lineHas(inRealm, id));
+  // (a good the town has none of: not made here, not in its store — and no town of its realm makes it now (sit.made: what their
+  // works gave this season), whatever stands there: a forge is not built on a smelter that has no ore)
+  const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !(sit ? sit.made.has(g) : makersOf(g).some(id => lineHas(inRealm, id)));
   // the council's forecast of the store (not the store's fact, which the works read each season — atlas/economy.js): what the
   // town has and made this season, as the number it is; a good it has none of but its realm makes may be bought — enough for
   // «any of it» (stock > 0), never for a quantity asked
@@ -301,6 +366,9 @@ function flowScore(t, b, P, need, E, inRealm, facts, v) {
   // none of which may run here — a brewery with no raw food of its kinds, a forge with no ingots to be had; a work of `req` dark)
   const pools = [...Object.keys(b.any || {}), ...(b.fire || R.some(q => q.fire) ? ['fuel'] : [])];
   const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b, false);
-  if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && none(g)) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
+  // (and a hard good the realm has too little of to spare for it — less than TF.flow.supply of what it would take a year, beyond
+  // what the town makes itself: a sixth smelter on one mine's ore would stand)
+  const scarce = g => sit && !(E.made[g] > 0) && (sit.spare.get(g) || 0) < (bin[g] || 0) * TF.flow.supply;
+  if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && (none(g) || scarce(g))) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
   return v;
 }
