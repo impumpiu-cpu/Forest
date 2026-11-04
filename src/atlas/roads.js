@@ -1,7 +1,7 @@
-// Roads worn by traffic (data/roads.js). Every few years each town sends traffic to its nearest towns
-// along the cheapest way (A* over the world grid); a road already there makes the way cheaper, so
+// Roads worn by traffic (data/roads.js). Every few years each link of the net of supply (atlas/sites.js) sends its traffic
+// along the cheapest way between its towns (A* over the world grid); a road already there makes the way cheaper, so
 // the traffic of many towns gathers on the same roads and wears them into highways, while roads
-// nobody walks overgrow. Peoples that dislike each other or are at war do not trade, so no road
+// nobody walks overgrow. The more a link carried — food down the net, goods bought — the more its road wears. Peoples that dislike each other or are at war do not trade, so no road
 // joins their towns (atlas/diplomacy.js).
 //
 // Field (a.f): road — the wear of each cell (0 none; data/roads.js levels: path, road, highway).
@@ -89,18 +89,20 @@ export function tradeLinks(a, links = ROADS.links, reach = ROADS.reach) {
 }
 
 // one round of traffic between towns; returns the pairs that got a road for the first time.
-// The traffic of a pair is its trade (√ of the peoples, more for trading towns) and the supply that
-// flowed down its link of the net this year (atlas/sites.js; data/sites.js NET.wear)
+// The pairs are the links of the net of supply (atlas/sites.js: the nearest towns that trade, and what they keep up by what
+// flows down them); the traffic of a pair is its trade (√ of the peoples, more for trading towns) and the supply that flowed
+// down its link this year (the food, and the goods bought down it — a mine's ore on its way to the forge: data/sites.js
+// NET.wear), so the roads wear where the goods go, and a link the goods have left overgrows with it
 export function wearRoads(a) {
   const f = a.f;
   for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
-  const fresh = [], net = a.net?.links;
-  for (const [t, o] of tradeLinks(a)) {
+  const fresh = [], pairs = a.net ? [...a.net.links.values()].filter(l => l.p.alive && l.q.alive).map(l => [l.p, l.q, l]) : tradeLinks(a).map(([t, o]) => [t, o, null]);
+  for (const [t, o, l] of pairs) {
     const key = linkKey(t, o);
     const path = findPath(a, t.i, o.i, t.people, scratch);
     if (!path) continue;
-    const flow = net?.get(key)?.flow || 0;
+    const flow = l?.flow || 0;
     const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
     for (const c of path) if (!f.scourge || f.scourge[c] <= ARMY.scourged) f.road[c] += amt;   // no caravan goes where an army's foragers are
     a.roadPairs ||= new Set();

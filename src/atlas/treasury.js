@@ -11,9 +11,10 @@
 //               takes; its buildings draw on the store first. It keeps for its works a season of what they will take (`keep`), and
 //               of the goods its people live by a season of their basic needs (`safety`): the people may draw on that, nobody
 //               else. Food is not stored here: it goes down the net as people
-//   buying    — a town whose buildings lack a good buys it from the towns it is linked with (last year's net, atlas/sites.js)
-//               that have it over what they keep, at the seller's price this season (of another realm that trades with it
-//               dearer): its makers pay the seller's makers. What it bought works this season; the goods strengthen the link
+//   buying    — a town whose buildings lack a good buys it from the towns of its province (its realm's towns the net joins,
+//               atlas/sites.js) that have it over what they keep, the nearest by the net first, at the seller's price this
+//               season; and from the towns of other realms it is linked with that trade with it, dearer: its makers pay the
+//               seller's makers. What it bought works this season; the goods strengthen the links they went down
 //   needs     — the people's wants of the season are fixed at its start (TOWN_MONEY.needs: basic for all, comfort the more the
 //               richer they are); they buy the basic first — at home, then in the linked towns — then the comfort, as far as
 //               their purse goes; how well they were met (t.needs) makes the town grow and its realm loyal; what they could not
@@ -39,7 +40,7 @@ import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
 import {ARMY} from '../data/parties.js';
-import {townEconomy, prepEconomy, heatFactor, econMode} from './economy.js';
+import {townEconomy, prepEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
@@ -139,21 +140,13 @@ export function seasonMoney(a, towns) {
   peopleNeeds(C);
   for (const t of towns) closeSeason(a, t);
 }
-// (the probe 'yearly', claude/world-lean: a town's works are reckoned in spring and when what it has built changes; the other
-// seasons go by the spring's flows — they are a year's rates — with the store, the buying and the needs as ever)
-const econKeyOf = t => `${t.built.length}:${t.built.at(-1)}:${t.tier}`;
-const keepYear = (a, t) => ['yearly', 'profile'].includes(econMode(a)) && t.econ && a.hist?.season !== 0 && t.econKey === econKeyOf(t);
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
 // the season's start: each town's ledger opened and its works' first reckoning, of its own store → Map town → [heat, prep]
 function openSeason(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   const prep = new Map();   // (the season's first half of each town's works, given again after the buying: atlas/economy.js prepEconomy)
-  for (const t of towns) {
-    open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry;
-    if (keepYear(a, t)) { prep.set(t, null); continue; }   // (the probe 'yearly': the spring's works stand the year)
-    const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); t.econKey = econKeyOf(t);
-  }   // (at: the season's step — a town burnt later in the season still sold this season)
+  for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }   // (at: the season's step — a town burnt later in the season still sold this season)
   return prep;
 }
 
@@ -191,23 +184,20 @@ function worksBuying(C, prep) {
       add(b.trade, 'bought', v); add(s.trade, 'sold', v);
     }
   };
-  if (allowed(a.cfg, 'town.buy.works')) {
-    if (a.cfg?.trade === 'realm') { realmPool(C, lack, spare, realmBy, buy); for (const l of links) if (l.p.realm !== l.q.realm) { buy(l.p, l.q, l); buy(l.q, l.p, l); } }   // (the probe of claude/world-lean: the realm's pool at home, the links abroad)
-    else for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }   // (the command `town.buy.works`: data/commands.js)
-  }
+  // at home — the province's pool (realmPool); abroad — link by link (the command `town.buy.works`: data/commands.js)
+  if (allowed(a.cfg, 'town.buy.works')) { realmPool(C, lack, spare, buy); for (const l of links) if (l.p.realm !== l.q.realm) { buy(l.p, l.q, l); buy(l.q, l.p, l); } }
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
-  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const hp = prep.get(t); if (!hp) continue; const [h, p] = hp; setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
+  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
   return sold;
 }
 
-// ── the realm's pool (a probe, claude/world-lean; cfg.trade 'realm'): the towns of one realm that the net joins (a province:
-// an island of the realm is a pool of its own) sell to each other in one clearing instead of link by link — each good's lacks
-// against its spares, the nearest seller first by the net's hops, at the seller's price; what is moved goes down the links of
-// the path it took (l.goods), so the roads wear where the goods went (atlas/sites.js, atlas/roads.js), and a weak path
-// carries less (× the least conductance on it, as a link does)
-function realmPool(C, lack, spare, realmBy, buy) {
+// ── the province's pool: the towns of one realm that the net joins (an island of the realm is a pool of its own) sell to each
+// other in one clearing — each buyer takes what it lacks from the nearest seller by the net's hops first, at the seller's price;
+// what is moved goes down the links of the path it took (l.goods), so the roads wear where the goods went (atlas/sites.js,
+// atlas/roads.js: a mine's road leads to the forge), and a weak path carries less (× the least conductance on it, as a link does)
+function realmPool(C, lack, spare, buy) {
   const {towns, links} = C, adj = new Map();
   for (const l of links) if (l.p.realm === l.q.realm) { (adj.get(l.p.id) || adj.set(l.p.id, []).get(l.p.id)).push([l.q, l]); (adj.get(l.q.id) || adj.set(l.q.id, []).get(l.q.id)).push([l.p, l]); }
   // the provinces: the components of the home links

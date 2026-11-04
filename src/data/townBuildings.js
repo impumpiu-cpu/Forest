@@ -326,7 +326,7 @@ TOWN_BUILDINGS.registerAll([
   // the road's toll; the trolls take theirs on a road through the marsh
   B('toll', 'дорожная застава', 'f', 'trade', 1, [...H, ...D, ...O], {trade: 0.05, defence: 0.05}, {line: 'outpost', needs: ['road'], jobs: 3, in: {tools: 0.6}, out: {gold: 40},
     recipes: [R('trollgate', 'топь-застава', ['kin:troll'], {out: {lux: 4}})], opens: ['toll']}),
-  A('caravanserai', 'караван-сарай', 'm', 'trade', 2, [...H, ...O], {trade: 0.25}, ['toll'], {line: 'outpost', needs: ['road', 'dry'], jobs: 4, in: {food: 6, raw: 6, tools: 0.8}, out: {gold: 80}, opens: ['caravans']}),
+  A('caravanserai', 'караван-сарай', 'm', 'trade', 2, [...H, ...O], {trade: 0.25}, ['toll'], {line: 'outpost', needs: ['road', 'dry'], jobs: 4, in: {food: 6, raw: 6, tools: 0.8}, soft: ['raw'], out: {gold: 80}, opens: ['caravans']}),
 
   // ── the town's works
   // the kitchens, all peoples': they cook whatever raw food the town has — nobody eats it raw (but the elves); the community
@@ -348,8 +348,8 @@ TOWN_BUILDINGS.registerAll([
   B('charpit', 'углежоги', 'pl', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {line: 'charpit', per: 800, local: 'charpit', jobs: 3, in: {wood: 200, tools: 0.6}, out: {fuel: 648}, opens: ['charcoal']}),
   // the hand workshop: the first tools of wood and bone, with no tools to begin with; the waterskins of the greenskins, the bows of
   // the elves and the humans, the elves' bark armour — its recipes
-  B('handshop', 'ручная мастерская', 'f', 'craft', 0, ALL, {}, {line: 'workshop', per: 500, jobs: 2, in: {wood: 10, bone: 10}, soft: ['bone'], out: {tools: 4, arms: 2}, recipes: SHOP_REC, opens: ['craft']}),
-  T('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, 'handshop', {line: 'workshop', per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20, tools: 0.8}, soft: ['bone', 'leather'], out: {tools: 15, arms: 10}, recipes: SHOP_REC, opens: ['craft']}),
+  B('handshop', 'ручная мастерская', 'f', 'craft', 0, ALL, {}, {line: 'workshop', per: 500, jobs: 2, in: {wood: 10, bone: 10}, soft: ['bone', 'fiber', 'leather'], out: {tools: 4, arms: 2}, recipes: SHOP_REC, opens: ['craft']}),
+  T('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, 'handshop', {line: 'workshop', per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20, tools: 0.8}, soft: ['bone', 'leather', 'fiber'], out: {tools: 15, arms: 10}, recipes: SHOP_REC, opens: ['craft']}),
   B('tannery', 'дубильня', 'f', 'craft', 1, ALL, {prod: 0.1}, {line: 'tannery', per: 600, requiresAny: ['lodge', 'pen', 'pasture', 'slaughter'], local: 'tannery', jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 60}, opens: ['leather']}),
   T('tannery2', 'улучшенное дубление', 'n', 'craft', 2, ALL, {prod: 0.1}, 'tannery', {line: 'tannery', per: 600, jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 75}, opens: ['leather']}),
   B('loom', 'ткацкая', 'f', 'craft', 1, ALL, {prod: 0.1}, {line: 'loom', per: 600, local: 'loom', jobs: 4, in: {fiber: 120, tools: 0.8}, out: {cloth: 40}, opens: ['cloth']}),
@@ -362,7 +362,7 @@ TOWN_BUILDINGS.registerAll([
   // the steelworks: iron ingots into steel (a big town's work); the magma forge melts mithril — it needs no fire of its own
   A('foundry', 'сталеварня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, ['smelter'], {line: 'smelter', per: 2000, pop: 800, jobs: 10, fire: 300, in: {bar_iron: 140, tools: 2}, req: ['stock:bar_iron'], out: {bar_steel: 56}, metals: ['steel']}),
   A('magmaforge', 'магмовый горн', 'm', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, ['smelter'], {line: 'smelter', needs: ['magma'], local: 'magmaforge', pop: 800, jobs: 6, in: {ore_mithril: 20, tools: 1.2}, req: ['stock:ore_mithril'], out: {bar_mithril: 10}, metals: ['mithril']}),
-  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {line: 'forge', per: 800, local: 'forge', notable: true, jobs: 4, fire: 75, in: {tools: 0.8}, recipes: FORGE_REC, metals: ['iron'], opens: ['smithing']}),
+  B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {line: 'forge', per: 800, local: 'forge', notable: true, jobs: 4, fire: 75, in: {tools: 0.8}, soft: ['leather'], recipes: FORGE_REC, metals: ['iron'], opens: ['smithing']}),
   // fine work of any two materials (LUX): its luxury is worth what went into it × LUX.markup
   B('jeweler', 'мастерская роскоши', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {line: 'jeweler', per: 1500, local: 'jeweler', jobs: 3, in: {tools: 0.6}, any: {finery: 2}, yields: LUX_YIELDS, metals: ['silver'], opens: ['jewelry']}),
   B('healerhut', 'дом лекаря', 'm', 'life', 1, ALL, {health: 0.15}, {line: 'healer', per: 800, local: 'healerhut', jobs: 2, in: {herbs: 20, ware: 10, tools: 0.4}, out: {potions: 10}, opens: ['healing']}),
@@ -374,7 +374,7 @@ TOWN_BUILDINGS.registerAll([
   V('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}, {line: 'barracks', jobs: 30, in: {arms: 4, armor: 1}, opens: ['garrison']}),
   A('armory', 'арсенал', 'm', 'craft', 2, [...H, ...D, ...O], {defence: 0.2}, ['barracks', 'warcamp'], {line: 'barracks', local: 'armory', jobs: 2, opens: ['arsenal']}),
   A('tiltyard', 'ристалище', 'n', 'defence', 1, H, {defence: 0.15, prestige: 0.15}, ['barracks'], {line: 'barracks', local: 'tiltyard', notable: true, jobs: 6, in: {arms: 2, armor: 3, food: 10}, opens: ['knights']}),
-  T('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, 'tiltyard', {line: 'barracks', needsAny: ['flat', 'pasture'], notable: true, jobs: 8, in: {food: 20, fiber: 40}, out: {beasts: 3}, opens: ['cavalry', 'knights']}),
+  T('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, 'tiltyard', {line: 'barracks', needsAny: ['flat', 'pasture'], notable: true, jobs: 8, in: {food: 20, fiber: 40}, soft: ['fiber'], out: {beasts: 3}, opens: ['cavalry', 'knights']}),
   A('fightpits', 'бойцовские ямы', 'pl', 'defence', 1, O, {defence: 0.15, prestige: 0.1}, ['warcamp'], {line: 'barracks', local: 'fightpits', notable: true, jobs: 6, in: {food: 20, arms: 2}, opens: ['warbeasts']}),
   B('shrine', 'святилище', 'n', 'faith', 0, ALL, {faith: 0.15}, {line: 'shrine', local: 'shrine', jobs: 1, opens: ['faith']}),
   V('shamanhut', 'хижина шамана', 'f', 'faith', 0, O, {faith: 0.15, health: 0.1}, {line: 'shrine', jobs: 1, in: {herbs: 15}, opens: ['faith']}),
@@ -398,7 +398,7 @@ TOWN_BUILDINGS.registerAll([
   // the harbour opens the sea lanes (atlas/sea.js): traffic to other harbours, faster than any road
   B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {line: 'harbor', needs: ['coast'], here: ['pier'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120}, opens: ['harbor', 'sealanes']}),
   A('lighthouse', 'маяк', 'm', 'trade', 2, [...H, ...E], {trade: 0.1, defence: 0.05}, ['harbor'], {line: 'harbor', needs: ['coast'], jobs: 1, fire: 40, opens: ['lighthouse']}),
-  A('shipyard', 'верфь', 'f', 'craft', 2, [...H, ...E], {trade: 0.25, prod: 0.1}, ['harbor'], {line: 'harbor', needs: ['coast', 'forest'], jobs: 15, in: {planks: 200, fiber: 40, cloth: 30}, opens: ['shipyard']}),
+  A('shipyard', 'верфь', 'f', 'craft', 2, [...H, ...E], {trade: 0.25, prod: 0.1}, ['harbor'], {line: 'harbor', needs: ['coast', 'forest'], jobs: 15, in: {planks: 200, fiber: 40, cloth: 30}, soft: ['fiber', 'cloth'], opens: ['shipyard']}),
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
   // the dwarves' reworking, one in a town: what the town has over its keep and safety into what it lacks — its works and its
   // people's basic needs — at the worth in gold, `k` to one, up to `worth` gold of it a year at full hands (atlas/treasury.js)
@@ -420,10 +420,10 @@ TOWN_BUILDINGS.registerAll([
   A('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, WALLS, {line: 'wall', local: 'watchtower', jobs: 2, in: {wood: 5}}),
   A('tower', 'крепостные башни', 'pl', 'defence', 2, [...H, ...D], {defence: 0.3}, ['stonewall'], {line: 'wall', jobs: 10, in: {stone: 15, arms: 2}}),
   // the dwarves' walls of metal, each in place of the one before it: bronze, iron, steel, mithril — the ingots they take a year
-  T('bronzewall', 'бронзовая стена', 'f', 'defence', 1, D, {defence: 0.7, prestige: 0.05}, 'stonewall', {line: 'wall', requires: ['smelter'], jobs: 4, in: {stone: 20, bar_bronze: 6}}),
-  T('ironwall', 'железная стена', 'f', 'defence', 2, D, {defence: 0.9, prestige: 0.1}, 'bronzewall', {line: 'wall', requires: ['forge'], jobs: 6, in: {stone: 20, bar_iron: 6}}),
-  T('steelwall', 'стальная стена', 'f', 'defence', 2, D, {defence: 1.1, prestige: 0.15}, 'ironwall', {line: 'wall', requires: ['forge'], jobs: 8, in: {stone: 20, bar_steel: 4}}),
-  T('mithrilwall', 'мифриловая стена', 'f', 'defence', 2, D, {defence: 1.5, prestige: 0.3}, 'steelwall', {line: 'wall', requires: ['forge'], pop: 800, jobs: 10, in: {stone: 20, bar_mithril: 1}}),
+  T('bronzewall', 'бронзовая стена', 'f', 'defence', 1, D, {defence: 0.7, prestige: 0.05}, 'stonewall', {line: 'wall', requires: ['smelter'], jobs: 4, in: {stone: 20, bar_bronze: 6}, soft: ['stone']}),
+  T('ironwall', 'железная стена', 'f', 'defence', 2, D, {defence: 0.9, prestige: 0.1}, 'bronzewall', {line: 'wall', requires: ['forge'], jobs: 6, in: {stone: 20, bar_iron: 6}, soft: ['stone']}),
+  T('steelwall', 'стальная стена', 'f', 'defence', 2, D, {defence: 1.1, prestige: 0.15}, 'ironwall', {line: 'wall', requires: ['forge'], jobs: 8, in: {stone: 20, bar_steel: 4}, soft: ['stone']}),
+  T('mithrilwall', 'мифриловая стена', 'f', 'defence', 2, D, {defence: 1.5, prestige: 0.3}, 'steelwall', {line: 'wall', requires: ['forge'], pop: 800, jobs: 10, in: {stone: 20, bar_mithril: 1}, soft: ['stone']}),
   T('citadel', 'цитадель', 'f', 'defence', 2, [...H, ...D], {defence: 0.6, prestige: 0.2}, 'stonewall', {line: 'wall', pop: 800, jobs: 40, in: {stone: 40, arms: 6, armor: 3}}),
   B('well', 'колодец', 'm', 'life', 1, ALL, {health: 0.1}, {line: 'water', local: 'well', in: {stone: 2}}),
   A('bathhouse', 'баня', 'f', 'life', 2, [...H, ...D], {health: 0.15}, ['well'], {line: 'water', needs: ['water'], jobs: 3, fire: 120}),
@@ -550,9 +550,11 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
   sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   gather: {brush: 2},   // what a town's people gather a head a year by hand, with no building (brushwood: half a charge of fuel)
-  // recipeFloor — the least weight of a recipe that may run when the store holds none of what it takes (it still asks for it)
+  // recipeFloor — the ask of a recipe that may run but has none of what it takes: this share of what it would take goes into the
+  // demand (it runs at nothing and takes no share of its building)
   recipeFloor: 0.05,
-  rounds: 8, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, hands: 0.5, shortAt: 0.01,
+  // rounds — the most rounds of sharing out a season; settle — the rounds stop once no row's strength moves by more than this
+  rounds: 5, settle: 0.002, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
 
 // The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a

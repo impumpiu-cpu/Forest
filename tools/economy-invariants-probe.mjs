@@ -1,47 +1,39 @@
-// Targeted comparisons of world-lean modes. No production data are changed permanently.
+// The town's works on small scenes (claude/world-lean; from the branch codex/world-economy-review): what a season of the flows
+// must come to, whatever the sharing out — a smelter without fuel makes nothing, one with fuel and one ore makes all its iron
+// (a recipe of an ore the town has none of takes no share), a forge without leather still forges (leather is soft), a hearth
+// without a mill cooks as a hearth, a chain of logs → charcoal → ingots → wares settles within TOWN_FLOW.rounds. Hand-gathered
+// brushwood is off in the scenes, to see the fuel alone. Usage: node tools/economy-invariants-probe.mjs
 import assert from 'node:assert/strict';
-import {writeFileSync} from 'node:fs';
+import {TOWN_FLOW} from '../src/data/townBuildings.js';
 import {townEconomy} from '../src/atlas/economy.js';
-import {TOWN_BUILDINGS, TOWN_FLOW} from '../src/data/townBuildings.js';
 
-const MODES = ['full', 'r7', 'soft', 'lean', 'pool'];
-const town = built => ({id: 1, i: 0, people: 'humans', alive: true, realm: 1, pop: 1000, heads: {human: [0, 1000, 0]}, kin: {human: 1}, built: [...built], tier: 2, stock: {}});
-function run(mode, built, supply, rounds = null) {
-  const prior = TOWN_FLOW.rounds;
+const town = built => ({id: 1, alive: true, people: 'humans', built, pop: 400, tier: 1, stock: {}, slaves: 0});
+const year = o => Object.fromEntries(Object.entries(o).map(([g, v]) => [g, v * 4]));   // (what the store lends, as a year's rate)
+function run(built, supply, rounds = null) {
+  const prior = TOWN_FLOW.rounds, gather = TOWN_FLOW.gather;
   try {
     if (rounds != null) TOWN_FLOW.rounds = rounds;
-    const t = town(built), a = {cfg: {econ: mode}, towns: [t], realms: [], sites: []};
-    const e = townEconomy(a, t, 1, {...supply});
-    return {made: e.made, used: e.used, feeds: e.feeds, rows: e.rows.map(r => ({id:r.id, eff:r.eff})), recipes: e.recipes.filter(r=>r.eff>1e-9).map(r=>({id:r.id, eff:r.eff})), overdrafts: Object.entries(e.used).filter(([g,n])=>n > (supply[g]||0)+(e.made[g]||0)+1e-6).map(([g,n])=>({good:g, used:n, available:(supply[g]||0)+(e.made[g]||0)}))};
-  } finally { TOWN_FLOW.rounds = prior; }
+    TOWN_FLOW.gather = {};
+    const t = town(built), a = {cfg: {}, towns: [t], realms: [], sites: []};
+    const e = townEconomy(a, t, 1, year(supply));
+    return {made: Object.fromEntries(Object.entries(e.made).map(([g, v]) => [g, Math.round(v * 100) / 100])), rows: e.rows.map(r => [r.id, Math.round(r.eff * 100) / 100]), recipes: e.recipes.filter(x => x.eff > 0).map(x => [x.id, Math.round(x.eff * 100) / 100])};
+  } finally { TOWN_FLOW.rounds = prior; TOWN_FLOW.gather = gather; }
 }
-
-const gather = TOWN_FLOW.gather;
-const results = {base: '86a8d5a9a5b4f2f4861031f3ea4d3c480cca0a85', units: 'annual rates', note: 'Hand-gathered brushwood disabled in fixtures to isolate fuel supply; all other coefficients unchanged.', cases: {}};
-try {
-  TOWN_FLOW.gather = {};
-  const fixtures = {
-    smelterWithoutFuel: {built:['smelter'], supply:{ore_iron:1200,tools:100}},
-    smelterWithFuel: {built:['smelter'], supply:{ore_iron:1200,tools:100,fuel:1200}},
-    forgeWithoutLeather: {built:['forge'], supply:{bar_iron:500,tools:100,fuel:1000}},
-    hearthWithoutMill: {built:['hearth'], supply:{raw:1000,tools:100,fuel:1000}},
-    localMetalChain: {built:['woodcut','charpit','smelter','forge'], supply:{ore_iron:120,tools:20,leather:20}},
-  };
-  for (const [name,f] of Object.entries(fixtures)) results.cases[name] = Object.fromEntries(MODES.map(m=>[m,run(m,f.built,f.supply)]));
-  const f=fixtures.localMetalChain;
-  results.convergence=Object.fromEntries([2,7,8,16,32,64].map(n=>[n,run('full',f.built,f.supply,n)]));
-  // A structured work requirement must remain meaningful under the common requirements API.
-  const q=TOWN_BUILDINGS.get('smelter').recipes.find(q=>q.id==='iron'), old=q.need;
-  try {
-    q.need={fact:'kinShare',arg:'elf',op:'>=',value:0.8};
-    results.cases.structuredRaceRequirement=Object.fromEntries(['full','pool'].map(m=>[m,run(m,['smelter'],{ore_iron:1200,tools:100,fuel:1200})]));
-  } finally { if(old===undefined)delete q.need;else q.need=old; }
-} finally { TOWN_FLOW.gather=gather; }
-assert.equal(results.cases.smelterWithoutFuel.full.made.bar_iron||0,0);
-assert.ok(results.cases.smelterWithoutFuel.soft.made.bar_iron>0);
-assert.ok(results.cases.smelterWithoutFuel.pool.made.bar_iron>0);
-assert.equal(results.cases.structuredRaceRequirement.full.made.bar_iron||0,0);
-assert.ok(results.cases.structuredRaceRequirement.pool.made.bar_iron>0);
-const out=process.argv.find(s=>s.startsWith('--out='))?.slice(6);
-if(out)writeFileSync(out,JSON.stringify(results,null,2)+'\n');
-console.log(JSON.stringify(results,null,2));
+const cases = {
+  smelterWithoutFuel: run(['smelter'], {ore_iron: 1200, tools: 100}),
+  smelterWithFuel: run(['smelter'], {ore_iron: 1200, tools: 100, fuel: 1200}),
+  forgeWithoutLeather: run(['forge'], {bar_iron: 500, tools: 100, fuel: 1000}),
+  hearthWithoutMill: run(['hearth'], {raw: 1000, tools: 100, fuel: 1000}),
+  localMetalChain: run(['woodcut', 'charpit', 'smelter', 'forge'], {ore_iron: 120, tools: 20, leather: 20}),
+};
+const chain = Object.fromEntries([2, 3, 4, 5, 8].map(n => [n, run(['woodcut', 'charpit', 'smelter', 'forge'], {ore_iron: 120, tools: 20, leather: 20}, n).made.arms || 0]));
+let fails = 0;
+const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) fails++; };
+check((cases.smelterWithoutFuel.made.bar_iron || 0) === 0, 'плавильня без топлива не плавит');
+check(Math.abs((cases.smelterWithFuel.made.bar_iron || 0) - 86) < 0.5, `плавильня с топливом и одной рудой даёт всё своё железо (${cases.smelterWithFuel.made.bar_iron})`);
+check((cases.forgeWithoutLeather.made.arms || 0) >= 5, `кузня без кожи куёт вполсилы (оружия ${cases.forgeWithoutLeather.made.arms})`);
+check(Math.abs((cases.hearthWithoutMill.made.food || 0) - 80) < 0.5, `очаг без мельницы варит как очаг (еды ${cases.hearthWithoutMill.made.food})`);
+check((cases.localMetalChain.made.arms || 0) >= 10, `цепочка вырубка → уголь → плавка → кузня куёт (оружия ${cases.localMetalChain.made.arms})`);
+check(chain[TOWN_FLOW.rounds] >= 10 && chain[8] === chain[TOWN_FLOW.rounds], `цепочка сходится за TOWN_FLOW.rounds = ${TOWN_FLOW.rounds} (оружие по раундам: ${JSON.stringify(chain)})`);
+if (process.argv.includes('--json')) console.log(JSON.stringify({cases, chain}, null, 1));
+if (fails) process.exit(1);

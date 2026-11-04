@@ -1,7 +1,6 @@
 // What a world's history comes to — its events and its peoples — for comparing two ways of reckoning the towns' economy
-// (claude/world-lean: the full flows against the lean profile). Not a check: a measure. One seed per process.
-// Usage: node tools/world-events-probe.mjs <seed> [--size=small] [--econ=full|soft|lean|yearly|r7] [--out=file.json]
-//   --econ   cfg.econ (atlas/economy.js econMode): the way the towns' works are reckoned
+// (claude/world-lean: one way of reckoning against another, by `--tag`). Not a check: a measure. One seed per process.
+// Usage: node tools/world-events-probe.mjs <seed> [--size=small] [--out=file.json] [--tag=name]
 import {writeFileSync} from 'node:fs';
 import {newAtlas, runNextStage, landDone} from '../src/atlas/generate.js';
 import {startHistory, stepHistory, historyDone} from '../src/atlas/history.js';
@@ -11,7 +10,7 @@ import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const args = process.argv.slice(2), seed = args.find(s => !s.startsWith('--')) || '5';
 const opt = k => args.find(s => s.startsWith(`--${k}=`))?.split('=')[1];
-const size = opt('size') || 'small', econ = opt('econ') || 'full', lean = econ !== 'full', out = opt('out');
+const size = opt('size') || 'small', tag = opt('tag') || 'full', out = opt('out');
 const PEOPLES = WORLD_PEOPLES.all().map(p => p.id);
 
 // the chronicle's kinds of lines (data/worldChronicle.js LEVEL_RULES and what the towns' history says)
@@ -25,7 +24,7 @@ const KINDS = {
 };
 const kindOf = text => Object.entries(KINDS).filter(([, re]) => re.test(text)).map(([k]) => k);
 
-const a = newAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', ...(lean ? {econ} : {}), ...(opt('choose') ? {choose: opt('choose')} : {}), ...(opt('trade') ? {trade: opt('trade')} : {})});
+const a = newAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', });
 let t0 = performance.now();
 while (!landDone(a)) runNextStage(a);
 const landMs = performance.now() - t0;
@@ -74,7 +73,7 @@ const pnames = WORLD_PEOPLES.all().map(p => [p.id, new RegExp(p.label.slice(0, 5
 const major = chron.filter(c => lineLevel(c) === 'major').map(c => ({y: c.year, k: kindOf(c.text)[0] || 'other', p: pnames.filter(([, re]) => re.test(c.text)).map(([id]) => id).sort().join('+'), text: c.text}));
 const trade = [...(a.net?.links?.values() || [])].reduce((s, l) => s + (l.goods || 0), 0);
 const res = {
-  seed, size, econ, choose: opt('choose') || null, trade: opt('trade') || null, landMs: Math.round(landMs), histMs: Math.round(histMs), years: a.hist.year - 1,
+  seed, size, tag, landMs: Math.round(landMs), histMs: Math.round(histMs), years: a.hist.year - 1,
   end: series.at(-1), series, kinds, majorN: major.length, major: major.map(({y, k, p}) => ({y, k, p})),
   towns: a.towns.length, ruins: Object.fromEntries(PEOPLES.map(p => [p, (a.ruins || []).filter(r => r.people === p).length])),
   warsStarted: Object.values(a.rel || {}).reduce((s, r) => s + (r.wars || 0), 0),
@@ -84,4 +83,4 @@ const res = {
 };
 const txt = JSON.stringify(res);
 if (out) writeFileSync(out, txt); else console.log(txt);
-console.error(`seed ${seed}${lean ? ' ' + econ : ''}: land ${(landMs / 1000).toFixed(1)} s, history ${(histMs / 1000).toFixed(1)} s, ${res.years} years, towns ${res.towns}, wars ${res.warsStarted}, major ${res.majorN}`);
+console.error(`seed ${seed}${tag !== 'full' ? ' ' + tag : ''}: land ${(landMs / 1000).toFixed(1)} s, history ${(histMs / 1000).toFixed(1)} s, ${res.years} years, towns ${res.towns}, wars ${res.warsStarted}, major ${res.majorN}`);
