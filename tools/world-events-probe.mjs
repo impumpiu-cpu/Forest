@@ -33,6 +33,10 @@ startHistory(a);
 t0 = performance.now();
 const series = [];   // a line a year (at its spring): the peoples' towns and people, realms, wars
 let famine = 0, hungryTowns = 0, needsSum = 0, needsN = 0, unpaidSum = 0, idleN = 0, rowsN = 0;
+// the trade down the links, a season at a time: within a realm and between realms (gold of goods), how many towns bought
+// anything, how many links carried goods, how many towns lacked a good their works take (claude/world-lean: the realm pool)
+const T = {home: 0, foreign: 0, buyers: 0, lacking: 0, townSeasons: 0, linksUsed: 0, linkSeasons: 0, hops: {}};
+const lastGoods = new Map();
 while (!historyDone(a)) {
   stepHistory(a);
   const H = a.hist, live = a.towns.filter(t => t.alive);
@@ -43,7 +47,12 @@ while (!historyDone(a)) {
     unpaidSum += t.unpaid || 0;
     for (const r of t.econ?.rows || []) { rowsN++; if (r.eff < 0.25) idleN++; }
   }
-  if (H.season === 0) series.push({
+  if (H.era !== 'wild') {
+    if (H.season === 0) lastGoods.clear();   // (the links' goods are reset each spring: atlas/sites.js stepNet)
+    for (const [key, l] of a.net?.links || []) { const d = (l.goods || 0) - (lastGoods.get(key) || 0); if (d > 1e-9) { T[l.p.realm === l.q.realm ? 'home' : 'foreign'] += d; T.linksUsed++; } lastGoods.set(key, l.goods || 0); T.linkSeasons++; }
+    for (const t of live) { T.townSeasons++; if ((t.trade?.bought || 0) + (t.trade?.imported || 0) > 1e-6) T.buyers++; if (t.econ && Object.keys(t.econ.short).length) T.lacking++; }
+  }
+  if (H.season === 0) { series.push({
     y: H.year,
     pop: Object.fromEntries(PEOPLES.map(p => [p, Math.round(live.filter(t => t.people === p).reduce((s, t) => s + t.pop, 0))])),
     towns: Object.fromEntries(PEOPLES.map(p => [p, live.filter(t => t.people === p).length])),
@@ -53,7 +62,7 @@ while (!historyDone(a)) {
     armies: (a.parties || []).filter(p => p.kind === 'army' && p.state !== 'gone').length,
     realmGold: Math.round((a.realms || []).reduce((s, r) => s + (r.gold || 0), 0)),
     stock: Math.round(live.reduce((s, t) => s + Object.values(t.stock || {}).reduce((q, v) => q + v, 0), 0)),
-  });
+  }); }
 }
 const histMs = performance.now() - t0;
 
@@ -71,6 +80,7 @@ const res = {
   warsStarted: Object.values(a.rel || {}).reduce((s, r) => s + (r.wars || 0), 0),
   famine: Math.round(famine), hungryTowns, needs: needsN ? +(needsSum / needsN).toFixed(3) : null, unpaid: +(unpaidSum / Math.max(1, needsN)).toFixed(3),
   idleRows: rowsN ? +(idleN / rowsN).toFixed(3) : 0, trade: Math.round(trade), chronicle: a.chronicle.length,
+  tradeFlow: {home: Math.round(T.home), foreign: Math.round(T.foreign), buyerShare: +(T.buyers / Math.max(1, T.townSeasons)).toFixed(3), lackingShare: +(T.lacking / Math.max(1, T.townSeasons)).toFixed(3), linkUseShare: +(T.linksUsed / Math.max(1, T.linkSeasons)).toFixed(3)},
 };
 const txt = JSON.stringify(res);
 if (out) writeFileSync(out, txt); else console.log(txt);
