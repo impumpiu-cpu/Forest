@@ -15,8 +15,8 @@ import {realmBuilt, placeHas} from './towns.js';
 import {headsOf} from './population.js';
 import {SPECIES} from '../data/species.js';
 
-export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {}) {
-  let realmSet = inRealm, lights = lit;
+export function townFacts(a, t, {inRealm = null} = {}) {
+  let realmSet = inRealm;
   const realm = () => realmSet || (realmSet = realmBuilt(a, t));
   const pk = t.place ||= {};
   const has = need0 => { const need = placeNeed(t.people, need0); return need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)); };   // the land does not change; roads and graves do
@@ -31,8 +31,6 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
         case 'built': return scope === 'realm' ? lineHas(realm(), arg) : scope == null || scope === 'town' ? lineHas(t.built, arg) : undefined;
         case 'exact': return t.built.includes(arg);
         case 'place': return a?.f ? has(arg) : true;
-        case 'opens': return lights ? lights.has(arg) : (t.econ?.lit ? t.econ.lit.includes(arg) : false);
-        case 'stock': return (stock || t.stock || {})[arg] || 0;   // (the economy asks of the season's supply, imports too)
         case 'pop': return t.pop;
         case 'tier': return t.tier || 0;
         case 'capital': return !!t.capital;
@@ -43,12 +41,12 @@ export function townFacts(a, t, {inRealm = null, lit = null, stock = null} = {})
     },
   };
 }
-// the words for the cards: a race by its plural, a building by its name, a good by its label
-import {TOWN_BUILDINGS, TOWN_GOODS, PLACE_NEEDS, indicatorLabel, PEOPLE_WORDS} from '../data/townBuildings.js';
+// the words for the cards: a race by its plural, a building by its name
+import {TOWN_BUILDINGS, PLACE_NEEDS, PEOPLE_WORDS} from '../data/townBuildings.js';
 export const WORDS = {
   arg: (fact, arg) => (fact === 'kinShare' || fact === 'kinCount' || fact === 'kinHands' ? (SPECIES.has(arg) ? SPECIES.get(arg).plural : arg) + (fact === 'kinCount' ? ' (число)' : fact === 'kinHands' ? ' (руки)' : '')
     : fact === 'built' || fact === 'exact' ? (TOWN_BUILDINGS.has(arg) ? TOWN_BUILDINGS.get(arg).name : arg)
-    : fact === 'place' ? (PLACE_NEEDS[arg] || arg) : fact === 'opens' ? indicatorLabel(arg) : fact === 'stock' ? `на складе: ${TOWN_GOODS.has(arg) ? TOWN_GOODS.get(arg).label : arg}` : null),
+    : fact === 'place' ? (PLACE_NEEDS[arg] || arg) : null),
   value: (fact, v) => (fact === 'people' ? PEOPLE_WORDS[v] || v : fact === 'polity' ? (POLITIES.has(v) ? POLITIES.get(v).label : v) : v),
 };
 export const townExplain = (a, t, req, opts) => explain(req, townFacts(a, t, opts), WORDS);

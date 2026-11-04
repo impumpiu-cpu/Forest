@@ -101,8 +101,8 @@ WORLD_PEOPLES.registerAll([
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     // children of the wood: the land feeds them better, herbs are theirs, stone and clay they take humanely;
     // metal they do not touch — the ironwood and the sacred tree stand for it
-    flows: {food: 1.25, raw: 1.25, herbs: 1.5, potions: 1.5, hide: 1.25, stone: 0.5, clay: 0.5},
-    swaps: {bar_silver: {to: 'wood', k: 3}},
+    flows: {food: 1.25, raw: 1.25, herbs: 1.5, potions: 1.5, hide: 1.25, stone: 0.5},
+    swaps: {silver: {to: 'wood', k: 3}},
     wants: {basic: {drink: 0}, comfort: {drink: 0}},   // they brew no beer (docs/WORLD.md «Мёд»: honey is raw food and an indicator)
     breed: 0.8,   // long lives, few children: their towns grow slowest (× TOWN_LIFE.growth)
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
@@ -115,9 +115,9 @@ WORLD_PEOPLES.registerAll([
     strangers: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
-    flows: {ore_iron: 1.5, ore_bronze: 1.5, ore_silver: 1.5, ore_gold: 1.5, ore_mithril: 1.5, stone: 1.5, gems: 1.5, bar_bronze: 1.25, bar_iron: 1.25, bar_steel: 1.25, bar_silver: 1.25, bar_gold: 1.25, bar_mithril: 1.25, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
-    // leather and hide where others wear cloth (no pastures under the mountain); stone bowls for pots
-    swaps: {cloth: {to: 'leather', k: 1}, ware: {to: 'stone', k: 2}},
+    flows: {bronze: 1.5, iron: 1.5, steel: 1.25, silver: 1.5, goldbar: 1.5, mithril: 1.5, stone: 1.5, gems: 1.5, fuel: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
+    // leather and hide where others wear cloth (no pastures under the mountain)
+    swaps: {cloth: {to: 'leather', k: 1}},
     breed: 0.9,   // few children, long lives
     // cramped and of one clan: a bunk in every workshop and store (`bunks`), little crime where everyone knows everyone and
     // a crime is never washed off in a life of four centuries (`ruinGrow`); tools of stone where the mountain has no logs
@@ -125,7 +125,7 @@ WORLD_PEOPLES.registerAll([
     // the knowledge of stone: a rare ore anywhere in the mountain about a mine is found and dug × k (atlas/economy.js digOf)
     stoneLore: {reach: 5, k: {silver: 2, gold: 3, mithril: 4}},
     workSwaps: {handshop: {wood: {to: 'stone', k: 1}}, crafthut: {wood: {to: 'stone', k: 1}}},
-    placeFlows: {needsAny: ['steep', 'caves'], flows: {ore_iron: 1.25, ore_bronze: 1.25, ore_silver: 1.25, ore_gold: 1.25, ore_mithril: 1.25, stone: 1.25}},
+    placeFlows: {needsAny: ['steep', 'caves'], flows: {bronze: 1.25, iron: 1.25, silver: 1.25, goldbar: 1.25, mithril: 1.25, stone: 1.25}},
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     // the mountains first, the hills seldom; the densest of all — where others see no room they set a workshop, a store and a bunk
@@ -181,17 +181,14 @@ WORLD_PEOPLES.registerAll([
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
     // nomads and warriors (from the branch Elves): luxury, gems, silver and gold they sell as soon as they have them and buy arms
     // at 0.8 of the worth (atlas/peoples.js tradeUp); they want no luxury, and arms are a need of theirs
-    tradeUp: {sells: ['lux', 'gems', 'bar_silver', 'bar_gold'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
+    tradeUp: {sells: ['lux', 'gems', 'silver', 'goldbar'], buys: 'arms', rate: 0.8}, wants: {basic: {arms: 0.004}, comfort: {lux: 0}},
     levy: 10 / 3, breed: 1.45, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
-    // what they do without: meat smoked on the fire for salt, rough logs for boards (atlas/economy.js swaps); their ware is
-    // waterskins (the hand workshop's recipe)
-    swaps: {salt: {to: 'wood', k: 2}, planks: {to: 'wood', k: 1.5}},
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
     placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, raw: 1.25, beasts: 1.25, hide: 1.25}},
     // nomads live by meat: their herds graze and their hunters ride on any open land of theirs; the hunt and the slaughterhouse
     // give more meat, the fields, gardens, fishers and gatherers less (atlas/economy.js workFlows)
     places: {pasture: 'grazing'},
-    workFlows: {lodge: {raw: 2}, slaughter: {raw: 1.5}, pen: {beasts: 1.5}, pasture: {beasts: 1.5}, field: {raw: 0.25}, garden: {raw: 0.5}, gatherer: {raw: 0.5}, fishhut: {raw: 0.5}, pier: {raw: 0.5}},
+    workFlows: {lodge: {raw: 2}, pen: {raw: 1.5, beasts: 1.5}, pasture: {raw: 1.5, beasts: 1.5}, field: {raw: 0.25}, garden: {raw: 0.5}, gatherer: {raw: 0.5}, fishhut: {raw: 0.5}, pier: {raw: 0.5}},
     warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,

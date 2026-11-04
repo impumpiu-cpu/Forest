@@ -51,6 +51,7 @@ function deal(a, K, t, st, L, r, parts) {
     if (!short && (m.captive.resigned || (m.captive.will ?? 0) < SLAVE.sell.will)) continue;   // an unruly one, or anyone when food runs short
     const p = gold(priceOf(m) * L.k * STANDING[st].sell);
     if (townPurse(t) < p) continue;   // the town's makers have not the gold for one
+    K.stats.slaveMarket = (K.stats.slaveMarket || 0) + 1;   // (a sale that may happen: the checks count the chances)
     m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true}; memberFate(a, m, 'sold', t);
     K.gold = gold(K.gold + fromTown(t, p)); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);

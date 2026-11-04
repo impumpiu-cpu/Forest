@@ -260,7 +260,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   if (!allowed(a.cfg, 'town.project.build')) return null;   // (the run's profile: no town builds)
   const need = townNeeds(a, t, fx, ctx);
   const opts = [];
-  const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
+  const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm});
   const sit = ctx.sitting ||= sittingOf(a, t);   // (once a sitting: the council's tries share it — atlas/build.js pickProject)
   for (const b of ctx.candidates ||= candidatesOf(t, P, need, E0)) {
     if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts, sit)) continue;   // (skip: what it could not pay for this time)
@@ -326,15 +326,12 @@ function candidatesOf(t, P, need, E) {
 // (ctx.econ). → the score, or null (nobody to work it: not built)
 function flowScore(t, b, P, need, E, inRealm, facts, v, sit = null) {
   // what it takes, as its people takes it (data/peoples.js swaps: the elves' wood for metal); what it does without (soft)
-  // (its recipes: those whose indicators the town has lit — E.lit —, a good of the store as one the town has, makes or its realm
-  // makes: it may be bought)
+  // (its recipes: those for its people or kinds — E.lit — whose hard goods the town has, makes or its realm makes: it may be bought)
   // (a good the town has none of: not made here, not in its store — and no town of its realm makes it now (sit.made: what their
-  // works gave this season), whatever stands there: a forge is not built on a smelter that has no ore)
+  // works gave this season), whatever stands there: a forge is not built in a realm that has no metal)
   const lit = new Set(E.lit || []), none = g => !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !(sit ? sit.made.has(g) : makersOf(g).some(id => lineHas(inRealm, id)));
-  // the council's forecast of the store (not the store's fact, which the works read each season — atlas/economy.js): what the
-  // town has and made this season, as the number it is; a good it has none of but its realm makes may be bought — enough for
-  // «any of it» (stock > 0), never for a quantity asked
-  const may = (x, recipe) => meets(workNeeds(x, recipe), {get: (f, arg, sc) => (f === 'stock' ? Math.max(0, (t.stock?.[arg] || 0) + (E.made[arg] || 0)) || (none(arg) ? 0 : Number.EPSILON) : facts.get(f, arg, sc))});
+  const hard = q => Object.keys(q.in || {}).filter(g => !TOWN_GOODS.get(g).soft && !(b.soft || []).includes(g));
+  const may = (x, recipe) => meets(workNeeds(x, recipe), facts) && (!recipe || hard(x).every(g => !none(g)));
   const R = recipesOf(b).filter(q => may(q, true));
   const bin = {...(b.in || {})}; for (const q of R) for (const [g, n] of Object.entries(q.in || {})) bin[g] = (bin[g] || 0) + n / R.length;
   const bout = {...(b.out || {})}; for (const q of R) for (const [g, n] of Object.entries(q.out || {})) bout[g] = (bout[g] || 0) + n / R.length;
@@ -360,10 +357,10 @@ function flowScore(t, b, P, need, E, inRealm, facts, v, sit = null) {
   const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
   if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
   if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) return null;   // nobody to work it: not built
-  // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore); housing
-  // is never stopped, so it is never idle
+  // a hard good it takes that no building of the realm makes and the town has none of: it would stand (iron for the steelworks);
+  // housing is never stopped, so it is never idle
   // (so with a pool none of whose goods the town has or its realm makes: a furnace with no fuel at all; and a work of recipes
-  // none of which may run here — a brewery with no raw food of its kinds, a forge with no ingots to be had; a work of `req` dark)
+  // none of which may run here — a forge with no metal to be had)
   const pools = [...Object.keys(b.any || {}), ...(b.fire || R.some(q => q.fire) ? ['fuel'] : [])];
   const dark = (recipesOf(b).length && !R.length && !Object.keys(b.out || {}).length) || !may(b, false);
   // (and a hard good the realm has too little of to spare for it — less than TF.flow.supply of what it would take a year, beyond

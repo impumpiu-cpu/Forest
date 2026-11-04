@@ -143,7 +143,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   makeEpic() {
     this.halt(); this.seq = (this.seq || 0) + 1;   // a library world still loading is not shown over this one
     const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
-    const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, profile: this.epicProfile});
+    const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, profile: this.epicProfile, ...(this.epicYears ? {epicYears: this.epicYears} : {})});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0;
     this.making = true; $('campEpicGo').textContent = 'Остановить';
@@ -200,8 +200,9 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
   }
   // the quick start (forest.html «Быстрый старт»): this seed and size, made at once
-  startEpic({seed, size} = {}) {
+  startEpic({seed, size, years = null} = {}) {
     if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
+    this.epicYears = years;   // (the quick start's years of the eras; none — drawn by the seed, data/history.js EPIC_YEARS)
     if (size && EPIC_SIZES.some(([id]) => id === size)) {
       this.epicSize = size;
       press('campEpicSize', size);

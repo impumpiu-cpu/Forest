@@ -280,7 +280,7 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   // the builders and the council ask the same checker: canBuild agrees with the requirement for every building
   const agree = TOWN_BUILDINGS.all().every(b2 => { const ok = meets([needsOf(b2)].filter(Boolean), townFacts(a, t)); return ok || !canBuild(a, t, b2); });
   check('стройка и совет спрашивают одну проверку: что не проходит требование, того нельзя построить', agree);
-  check('рецепт: req читается как требование («kin:ogre» — доля огров не меньше KIN.least)', JSON.stringify(reqNeeds(['kin:ogre'])) === JSON.stringify(ALL(C('kinShare', 'ogre', '>=', KIN.least))) && JSON.stringify(reqNeeds(['a|b'])) === JSON.stringify(ALL(ANY(C('opens', 'a', '=', true), C('opens', 'b', '=', true)))));
+  check('рецепт: req читается как требование («kin:ogre» — доля огров не меньше KIN.least)', JSON.stringify(reqNeeds(['kin:ogre'])) === JSON.stringify(ALL(C('kinShare', 'ogre', '>=', KIN.least))) && JSON.stringify(reqNeeds(['people:elves|kin:ogre'])) === JSON.stringify(ALL(ANY(C('people', '=', 'elves'), C('kinShare', 'ogre', '>=', KIN.least)))));
   const bad = TOWN_BUILDINGS.all().flatMap(b2 => reqErrors(needsOf(b2), b2.id));
   check('требования всех построек правильно сложены', bad.length === 0, bad.slice(0, 3).join('; '));
   check('таблица укладов: у каждого народа свой', WORLD_PEOPLES.all().every(P => POLITIES.has(P.polity || P.id)));

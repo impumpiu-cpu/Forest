@@ -79,6 +79,10 @@ window.addEventListener('resize', () => { if (screen === 'settle') settle?.draw(
 const quick = (() => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } })();
 quick.seed = quick.seed || randomSeed();
 if (!EPIC_SIZES.some(([id]) => id === quick.size)) quick.size = 'medium';
+// the years of the eras (data/history.js EPIC_YEARS: a world of the campaign screen draws them 75–150 by its seed; the quick
+// start sets them by hand — a short elder era leaves the young peoples room)
+const ERA_SLIDERS = [['wild', 'quickWild', 100], ['elder', 'quickElder', 60], ['young', 'quickYoung', 120]];
+quick.years = Object.fromEntries(ERA_SLIDERS.map(([id, , d]) => [id, Math.max(10, Math.min(150, Math.round((quick.years?.[id] ?? d) / 5) * 5))]));
 const keep = () => { try { localStorage.setItem(STORE, JSON.stringify(quick)); } catch (e) { /* storage unavailable */ } };
 
 const seedBox = $('quickSeed'), note = $('quickSeedNote'), noteText = note.textContent;
@@ -92,12 +96,17 @@ $('quickCopy').addEventListener('click', async () => {
 });
 
 seg('quickSize', EPIC_SIZES, quick.size, v => { quick.size = v; keep(); });
+for (const [id, el] of ERA_SLIDERS) {
+  const r = $(el), out = $(`${el}V`);
+  r.value = quick.years[id]; out.textContent = `${quick.years[id]} лет`;
+  r.addEventListener('input', () => { quick.years[id] = +r.value; out.textContent = `${r.value} лет`; keep(); });
+}
 
 // the epic campaign: a new world with a long history on the campaign screen, then the capital and the walk
 $('quickGo').addEventListener('click', () => {
   if (!seedBox.value.trim()) { quick.seed = seedBox.value = randomSeed(); }
   keep();
-  openCampaign(v => { v.show('epic'); v.startEpic({seed: seedBox.value.trim(), size: quick.size}); });
+  openCampaign(v => { v.show('epic'); v.startEpic({seed: seedBox.value.trim(), size: quick.size, years: {...quick.years}}); });
 });
 
 // ── settings: the tables of src/data/schema/

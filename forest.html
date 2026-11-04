@@ -268,7 +268,13 @@
       </div>
       <div class="field"><span class="lbl">Размер</span><div class="seg" id="quickSize"></div></div>
       <div class="field">
-        <small>Земля, затем три эпохи по 75–150 лет: дикая, древних народов и молодых. На среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
+        <span class="lbl">Эпохи, лет</span>
+        <div class="row">
+          <label class="rng"><span>Дикая</span><input type="range" id="quickWild" min="10" max="150" step="5"><output id="quickWildV"></output></label>
+          <label class="rng"><span>Древние народы</span><input type="range" id="quickElder" min="10" max="150" step="5"><output id="quickElderV"></output></label>
+          <label class="rng"><span>Молодые народы</span><input type="range" id="quickYoung" min="10" max="150" step="5"><output id="quickYoungV"></output></label>
+        </div>
+        <small>Сколько длится каждая эпоха: дикая, эльфов и дварфов, людей и зеленокожих. Короткая эпоха древних — молодым народам достаётся больше земли. Земля, потом история; на среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
       </div>
       <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить и выступить</button></div>
     </div>
