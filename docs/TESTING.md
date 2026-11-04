@@ -31,7 +31,7 @@ check-data · check-tables · align-check · leaders-check · buildings-check ·
 caravan-check · economy-check · economy-regression-check · chain-balance 5 --check · kinds-check · fight-check ·
 conditions-check · ranks-check · potions-check · review-check · checks-check · clock-check · kingdom-check · polity-check · mind-check ·
 demography-check · build-check · fisc-check · content-check · land-check · settle-check ·
-quest-hand-check · audit-check · logic-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
+quest-hand-check · audit-check · logic-check · minds-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
 Строка `ok …` — проверка прошла, `warn …` — предупреждение (тест не падает), `FAIL …` или выход с ошибкой — тест упал.
@@ -103,6 +103,9 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run questhand` | `quest-hand-check.mjs` | бедствие руки — квест похода: ждущее и поднявшееся, все прошли, бедствий нет; поход до конца |
 | `npm run audit` | `audit-check.mjs` | то, что нашёл разбор кода, не возвращается: правки доходят до игры, числа не копируются из таблиц при загрузке, склад по видам, бедствия руки, держатель артефакта, досягаемость квеста, слова вещей |
 | `npm run logic` | `logic-check.mjs` | сцены правил поведения ([ниже](#проверка-логики)) |
+| `npm run minds` | `minds-check.mjs` | договор решения ([Поведение](BEHAVIOUR.md#договор-решения)): каждое поведение и дело — команда каталога, метки и профили ссылаются на то, что есть, обязательное не выключается; след не меняет поселение, мир и поход и пишет выбранное среди предложенного; профили выключают то, что называют (никто не работает, город не строит, нет враждебных дел, караван без промыслов); совет каравана тянет жребий в первой полосе, нужда прежде выбора, цель квеста — по порядку поиска; профиль миссии в середине не меняет весов; склонности: 0,5 — ноль, не больше предела, у каждого свои, «без влияния склонностей» = нулевой вес |
+| `node tools/council-probe.mjs [миры]` | `council-probe.mjs` | не в `npm test`: совет каравана по походам — исходы, дни, сколько вернулось, стоянки и города по причинам на поход; для сравнения до и после правки совета |
+| `npm run minds:baseline` | `minds-baseline.mjs` | не в `npm test` (~5 мин): отпечатки поселения, двух миров через всю историю и восьми походов сверяются с `tools/minds-baseline.json`; поселение в профиле «без влияния склонностей» — с отпечатком старой игры (без склонностей в нём); `--write` — записать заново после правки, которая должна менять игру |
 | `npm run behaviour` | `behaviour-check.mjs` | полигон поведения: сцены целой симуляции на маленькой карте ([ниже](#полигон-поведения)) |
 | `npm run fights` (`-- [миров=2] [сезонов=40] [auto]`) | `campaign-stats.mjs` | статистика боёв похода на локальной карте: по родам врага, сколько приходит, сила сторон, именные бои с судьбой босса ([Кампания](CAMPAIGN.md#статистика-боёв)); минуты |
 | `npm run world` | `world-check.mjs` | полигон дел мира: главарь на земле «Заселения мира» перед городом и соседями ([ниже](#полигон-дел-мира)) |

@@ -23,6 +23,8 @@ import {councilRoster} from './plan.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {COUNCIL} from '../data/colony.js';
 import {onEdit} from '../data/schema/layer.js';
+import {allowed} from '../data/commands.js';
+import {tracing, noteDecision} from '../core/decide.js';
 
 export {COUNCIL};   // (data/colony.js)
 // (kept for agents/outfit.js: live bindings, renewed on a table edit; the council's own steps read COUNCIL)
@@ -126,8 +128,10 @@ function hold(w, present, total) {
     decision = `Решили сначала достроить: ${d.name.toLowerCase()} (${Math.floor(site.progress / d.work * 100)}%).`;
     c.votes = [];
   } else {
-    const cands = BUILDINGS.ids().filter(k => eligible(w, k));
-    if (!cands.length) { decision = 'Всё задуманное построено. Совет просто посидел у огня.'; c.votes = []; c.goal = null; }
+    // the decision point `settlement.council` (data/commands.js): the command `settlement.council.build`, by vote
+    const may = allowed(w.cfg, 'settlement.council.build'), cands = may ? BUILDINGS.ids().filter(k => eligible(w, k)) : [];
+    if (!may) { decision = 'Совет посидел у огня: о стройке речи не было.'; c.votes = []; c.goal = null; }
+    else if (!cands.length) { decision = 'Всё задуманное построено. Совет просто посидел у огня.'; c.votes = []; c.goal = null; }
     else {
       const ctx = councilCtx(w, cands);
       const tally = {}, weight = {};
@@ -152,6 +156,8 @@ function hold(w, present, total) {
         round2 = ` Во втором туре: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
       }
       const d = BUILDINGS.get(win);
+      if (tracing()) noteDecision({point: 'settlement.council', who: 'council', at: w.tick, band: 'routine', policy: 'vote',
+        opts: ranked.map(k => ({cmd: 'settlement.council.build', key: `settlement.council.build(${k})`, score: tally[k]})), pick: `settlement.council.build(${win})`, round2: !!round2});
       if (canAfford(w, d.cost) && laySite(w, win)) {
         c.goal = null;
         w.chronicle.councilWins[win] = (w.chronicle.councilWins[win] || 0) + 1;

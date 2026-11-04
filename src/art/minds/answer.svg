@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- отвечают на флаг: щит, рядом число защитников -->
+<path fill="#4f86c6" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M14 10H86V44C86 68 70 84 50 94C30 84 14 68 14 44Z"/><path class="figure" fill="none" stroke="light" stroke-width="6" stroke-linecap="round" d="M50 22V78M28 42H72"/>
+</svg>

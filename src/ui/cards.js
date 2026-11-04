@@ -58,6 +58,7 @@ import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 import {WOODS, STONES} from '../data/kinds.js';
 import {STANDINGS} from '../agents/standing.js';
 import {TRADE} from '../data/trade.js';
+import {LEAN_AXES, LEANS, riskOf} from '../data/leans.js';
 
 // the fuels a furnace of this heat takes for `units` of work (data/resources.js furnace: tier, per), as words: «уголь 2 или древесина 6»
 const fuelWords = (units, heat) => RESOURCES.filter(x => x.furnace && x.furnace.tier >= heat).sort((x, y) => y.furnace.tier - x.furnace.tier).map(x => `${x.short} ${+(units * x.furnace.per).toFixed(1)}`).join(' или ');
@@ -190,6 +191,12 @@ export function creatureHtml(w, a) {
   return `<div class="pc-head"><h3>${title}</h3></div><dl class="kv">${rows.join('')}</dl>${whyHtml(w, a)}`;   // the beast's choice too (agents/brains/tabled.js a.why)
 }
 
+// the leanings (data/leans.js): each axis 0 … 1 as a short bar; risk is the bravery's
+function leansHtml(a) {
+  if (!a.leans) return '';
+  const v = {...a.leans, risk: riskOf(a)};
+  return `<div class="pc-leans">${Object.entries(LEAN_AXES).map(([k, x]) => `<div class="pc-bar" title="${esc(x.note)}"><span>${x.label}</span>${bar(v[k] ?? LEANS.roll.mid, 'var(--ember)')}<b>${Math.round((v[k] ?? LEANS.roll.mid) * 100)}</b></div>`).join('')}</div>`;
+}
 export function personHtml(w, a) {
   const sp = SPECIES.get(a.species), mood = moodOf(w, a);
   const traits = a.traits.map(id => `<span class="chip">${TRAITS.get(id).label}</span>`).join('');
@@ -227,6 +234,7 @@ export function personHtml(w, a) {
         <p class="pc-small">Любит ${JOBS.get(a.likes).label}, не любит ${JOBS.get(a.dislikes).label}.</p>
         ${a.food ? `<p class="pc-small">Любимая еда: ${FOODS.get(a.food.likes).label}${a.food.dislikes ? `, не любит: ${FOODS.get(a.food.dislikes).label}` : ''}.</p>` : ''}
         <div class="chips">${traits || '<span class="muted pc-small">ничем особым не выделяется</span>'}</div>
+        ${leansHtml(a)}
         <h4>Настроение</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
         <h4>Самочувствие</h4>${needs}
       </section>

@@ -22,6 +22,8 @@ import {planBuild, doBuild} from './treasury.js';
 import {placeWork, raiseBuilding} from './peoples.js';
 import {leanOf, note} from './mind.js';
 import {vectorOf} from '../data/mind.js';
+import {allowed} from '../data/commands.js';
+import {tracing, noteDecision, r3} from '../core/decide.js';
 
 const B = () => TOWN_MONEY.build;
 // the work-days a building takes
@@ -56,27 +58,36 @@ function pickProject(a, t, rnd) {
 }
 
 // a town at its slots (data/townBuildings.js TOWN_SLOTS) razes a work of its own in it that has worked below `raze` for `years`
-// years running — the worst of them, one a season — to make room (its seasons below are counted in t.idle) → its id, or null
-export function razeIdle(t) {
+// years running — the worst of them, one a season — to make room (its seasons below are counted in t.idle) → its id, or null.
+// The decision point `town.raze` (data/commands.js): the count goes on whatever the run's profile; only the razing is the
+// command `town.raze.idle`
+export function razeIdle(t, a = null) {
   const S = TOWN_SLOTS, idle = t.idle ||= {};
   for (const id of Object.keys(idle)) if (!t.built.includes(id)) delete idle[id];
   for (const id of new Set(t.built)) { if (slotKind(TOWN_BUILDINGS.get(id)) !== 'town') continue; if ((t.work?.[id] ?? 1) < S.raze) idle[id] = (idle[id] || 0) + 1; else delete idle[id]; }
-  if (slotsUsed(t).town < slotsOf(t).town) return null;
+  if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.idle'))) return null;
   const worst = Object.entries(idle).filter(([, n]) => n >= S.years * SEASONS_PER_YEAR).sort((p, q) => (t.work?.[p[0]] ?? 1) - (t.work?.[q[0]] ?? 1) || q[1] - p[1] || (p[0] < q[0] ? -1 : 1))[0];
   if (!worst) return null;
   t.built.splice(t.built.indexOf(worst[0]), 1); delete idle[worst[0]];
+  if (a) noteRaze(a, t, 'town.raze.idle', worst[0]);
   return worst[0];
 }
 
 // a town at its slots whose council finds nothing to build razes its worst work of its own below TOWN_SLOTS.idle (one a
-// season; a work no worse than that stays) → its id, or null
-export function razeWorst(t) {
+// season; a work no worse than that stays) → its id, or null. The command `town.raze.worst` (data/commands.js)
+export function razeWorst(t, a = null) {
   const S = TOWN_SLOTS;
-  if (slotsUsed(t).town < slotsOf(t).town) return null;
+  if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.worst'))) return null;
   const worst = [...new Set(t.built)].filter(id => slotKind(TOWN_BUILDINGS.get(id)) === 'town' && (t.work?.[id] ?? 1) < S.idle).sort((p, q) => (t.work?.[p] ?? 1) - (t.work?.[q] ?? 1) || (p < q ? -1 : 1))[0];
   if (!worst) return null;
   t.built.splice(t.built.indexOf(worst), 1); if (t.idle) delete t.idle[worst];
+  if (a) noteRaze(a, t, 'town.raze.worst', worst);
   return worst;
+}
+// a razing, for the trace (core/decide.js): a rule, one option
+function noteRaze(a, t, cmd, id) {
+  if (tracing()) noteDecision({point: 'town.raze', who: `town:${t.id}`, at: a.hist ? a.hist.year * 4 + a.hist.season : 0, band: 'routine', policy: 'rule',
+    opts: [{cmd, key: `${cmd}(${id})`, score: r3(t.work?.[id] ?? 1)}], pick: `${cmd}(${id})`});
 }
 
 // a season of building in every town: the project goes on, a finished one stands, the council picks the next (after the
@@ -87,7 +98,7 @@ const hardOk = (a, t, b) => meets([tierNeed(b, t.people), needsOf(b)].filter(Boo
 export function stepBuilds(a, rnd, say) {
   for (const t of a.towns || []) {
     if (!t.alive || !t.wants || !WORLD_PEOPLES.has(t.people)) continue;
-    razeIdle(t);
+    razeIdle(t, a);
     let days = crewDays(t);
     for (let guard = 0; guard < 4 && days > 1e-9; guard++) {   // a big crew may finish a small work and begin the next in a season
       let P = projectOf(t);
@@ -97,7 +108,7 @@ export function stepBuilds(a, rnd, say) {
       if (P && !(P.done > 0 ? hardOk(a, t, P.b) : canBuild(a, t, P.b))) { t.project = null; P = null; }
       if (!P) {
         const b = pickProject(a, t, rnd);
-        if (!b) { razeWorst(t); break; }   // nothing to build: a full town makes room
+        if (!b) { razeWorst(t, a); break; }   // nothing to build: a full town makes room
         t.project = b.id; P = projectOf(t);
       }
       const W = t.works[P.b.id], put = Math.min(days, P.days - W.done);

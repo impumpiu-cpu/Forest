@@ -44,6 +44,8 @@ import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
 import {BEHAVIOURS, BAND_LABELS} from '../behaviours.js';
+import {LEAN_AXES, LEANS, DRAWN_AXES} from '../leans.js';
+import {POINTS, PROFILES, MARKS as COMMAND_MARKS, MARK_LABELS, LEVELS, POLICIES, commands, resetCommands} from '../commands.js';
 import {DEEDS, DEED_BAND_LABELS} from '../deeds.js';
 import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
@@ -89,7 +91,7 @@ import {LANGUAGES, SPEAKS, SENSES, TONGUE, NIGHT as NIGHT_SIGHT} from '../tongue
 import {REPUTATION, PACES, PACE_RULES, TERMS} from '../road.js';
 import {SETTLEMENT_STATS} from '../colonyStats.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK, MARKET_TIERS, whenErrors, levelsErrors} from '../kingdom.js';
-import {FINDS} from '../campaign.js';
+import {FINDS, COUNCIL} from '../campaign.js';
 import {NEEDS} from '../needs.js';
 import {THOUGHTS} from '../thoughts.js';
 import {TRAITS} from '../traits.js';
@@ -218,6 +220,41 @@ export const TABLES = [
   {id: 'deeds', label: 'Дела мира', group: 'Существа', key: 'id', computed: true, rows: () => DEEDS.all(),
     note: 'Что может делать логово, его главарь или держава на карте мира (data/deeds.js, код в atlas/deeds/, docs/WORLD.md «Нравы»). Полоса — как у поведений; «Отряд» — какой отряд несёт дело по карте.',
     columns: [col('id', 'id'), col('label', 'В летописи'), col('band', 'Полоса', 'enum', {values: DEED_BAND_LABELS}), col('party', 'Отряд', 'text', {nullable: true}), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
+  // the contract of a decision (data/commands.js, core/decide.js, docs/BEHAVIOUR.md «Договор решения»): every command of every mind
+  // under its full id, the points they are asked at, their marks and the profiles of the runs
+  {id: 'decisionPoints', label: 'Точки решения', group: 'Существа', key: 'id', computed: true, rows: () => POINTS.all(),
+    note: 'Где и как часто решает каждый ум игры (data/commands.js POINTS): пешка и зверь, держава и логово, совет поселения, город, караван. «Как выбирает»: наибольшая оценка, жребий по весу, первое по прежнему порядку, голосование, правило.',
+    columns: [col('id', 'id'), col('level', 'Кто', 'enum', {values: LEVELS}), col('label', 'Решение'), col('clock', 'Когда'), col('policy', 'Как выбирает', 'enum', {values: POLICIES}), col('code', 'Код')]},
+  {id: 'commands', label: 'Команды', group: 'Существа', key: 'id', computed: true, rows: () => commands().all().map(c => ({...c})),
+    note: 'Всё, что может выбрать любой ум игры, под полным id (data/commands.js): поведения локальной карты — local.behaviour.*, дела мира — world.deed.*, команды города и каравана. Поведения и дела берутся из их таблиц; метки — из «Метки команд»; что выключено в прогоне — «Профили команд».',
+    columns: [col('id', 'id'), col('point', 'Точка', 'ref', {ref: 'decisionPoints'}), col('label', 'Название'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('marks', 'Метки', 'ids', {ref: 'commandMarks'}), col('must', 'Обязательна', 'bool'), col('note', 'Описание')]},
+  {id: 'commandMarks', label: 'Метки команд', group: 'Существа', key: 'id', rows: () => Object.keys(COMMAND_MARKS).map(id => ({id, label: MARK_LABELS[id] || id, ids: COMMAND_MARKS[id]})),
+    target: (r, c) => [COMMAND_MARKS, r.id], after: resetCommands,
+    note: 'К чему ведёт команда (data/commands.js MARKS): вражда — начинает враждебное, торг — торговля, побочный промысел — колёса, звери и руда каравана, обязательна — тело и обязанность (лежит без сознания, бежит из огня, нужды тела, уведённый связанным): не выключается ни одним профилем. Профили выключают по меткам.',
+    columns: [col('id', 'id'), col('label', 'Метка', 'text', {edit: false}), col('ids', 'Команды', 'ids', {ref: 'commands'})]},
+  {id: 'commandProfiles', label: 'Профили команд', group: 'Существа', key: 'id', rows: () => PROFILES.all(), after: resetCommands,
+    note: 'Какие команды разрешены в прогоне (data/commands.js PROFILES): по меткам и по id. Прогон называет профиль в настройках (cfg.profile); без профиля — всё как было. Выключенная команда не берёт нового дела; начатое идёт, пока команда его держала бы; обязательные не выключаются.',
+    columns: [col('id', 'id'), col('label', 'Название'), col('offMarks', 'Выключить метки', 'ids', {ref: 'commandMarks'}), col('off', 'Выключить команды', 'ids', {ref: 'commands'}), col('note', 'Описание')]},
+  // the leanings of a creature (data/leans.js) and the caravan's council (data/campaign.js COUNCIL): what they weigh, how much
+  {id: 'leanAxes', label: 'Склонности', group: 'Существа', key: 'id', computed: true, rows: () => Object.entries(LEAN_AXES).map(([id, x]) => ({id, ...x, drawn: DRAWN_AXES.includes(id)})),
+    note: 'Склонности существа (data/leans.js): каждая — своя ось 0…1, две могут быть высоки сразу. Тянутся при рождении своей струёй жребия, кроме готовности к риску — это храбрость, она уже решает тушение, отпор, доску и дозор и второй раз не прибавляется. Склонность 0,5 ничего не меняет.',
+    columns: [col('id', 'id'), col('label', 'Склонность'), col('drawn', 'Тянется при рождении', 'bool'), col('note', 'На что влияет')]},
+  {id: 'leanLinks', label: 'Склонности: связи', group: 'Существа', key: 'n', rows: () => LEANS.links.map((l, n) => ({n, ...l, jobs: l.jobs || [], kept: !!l.kept})),
+    target: (r, c) => [LEANS.links[r.n], c.key],
+    note: 'Какие команды взвешивает склонность (data/leans.js LEANS.links): к оценке варианта + k × (склонность − 0,5) × 2, всего не больше ±«Предел» (LEANS.cap). «Работы» — только работа этих работ; «Только начатое» — только идущее дело. Профиль «без влияния склонностей» обнуляет добавку.',
+    columns: [col('n', '№', 'int', {edit: false}), col('cmd', 'Команда', 'ref', {ref: 'commands'}), col('axis', 'Склонность', 'enum', {values: Object.fromEntries(Object.entries(LEAN_AXES).map(([k, x]) => [k, x.label]))}), col('k', 'Сила', 'num', {min: -1, max: 1}), col('jobs', 'Работы', 'ids', {ref: 'jobs'}), col('kept', 'Только начатое', 'bool')]},
+  {id: 'leanRules', label: 'Склонности: правила', group: 'Существа', key: 'id', rows: () => [{id: 'leans', cap: LEANS.cap, mid: LEANS.roll.mid, spread: LEANS.roll.spread}],
+    target: (r, c) => (c.key === 'cap' ? [LEANS, 'cap'] : [LEANS.roll, c.key]),
+    note: 'Как тянется склонность (среднее трёх бросков: середина ± разброс) и сколько она самое большее добавляет к оценке.',
+    columns: [col('id', 'id', 'text', {edit: false}), col('mid', 'Середина', 'num', {min: 0, max: 1}), col('spread', 'Разброс', 'num', {min: 0, max: 0.5}), col('cap', 'Предел добавки', 'num', {min: 0, max: 2})]},
+  {id: 'councilWants', label: 'Совет каравана', group: 'Караван', key: 'id', rows: () => Object.keys(COUNCIL.want).map(id => ({id, want: COUNCIL.want[id], ...COUNCIL.mission.leans[id]})),
+    target: (r, c) => (c.key === 'want' ? [COUNCIL.want, r.id] : [COUNCIL.mission.leans[r.id], c.key]),
+    note: 'Вечерний совет каравана (data/campaign.js COUNCIL): первая полоса, где есть чего хотеть (город или стоянка нужды — зимовка, еда, раненые), затем жребий по весу. Вес × (1 + k × Σ тяга по оси × (ось профиля миссии − 0,5) × 2).',
+    columns: [col('id', 'Команда', 'ref', {ref: 'commands', edit: false}), col('want', 'Вес', 'num', {min: 0}), col('pace', 'Тяга: темп', 'num', {min: -2, max: 2}), col('caution', 'Тяга: осторожность', 'num', {min: -2, max: 2}), col('side', 'Тяга: промыслы', 'num', {min: -2, max: 2})]},
+  {id: 'councilMission', label: 'Профиль миссии', group: 'Караван', key: 'id', rows: () => Object.entries(COUNCIL.mission.people).map(([id, v]) => ({id, ...v})),
+    target: (r, c) => [COUNCIL.mission.people[r.id], c.key],
+    note: 'Профиль миссии каравана по народу (data/campaign.js COUNCIL.mission.people): темп — скорее к цели, осторожность — еда, лечение, зимовка, промыслы — колёса, звери, руда, кузнец и лавка. Каждая ось своя, 0…1; 0,5 ничего не меняет. Сила — COUNCIL.mission.k.',
+    columns: [col('id', 'Народ', 'ref', {ref: WORLD_PEOPLES, edit: false}), col('pace', 'Темп', 'num', {min: 0, max: 1}), col('caution', 'Осторожность', 'num', {min: 0, max: 1}), col('side', 'Промыслы', 'num', {min: 0, max: 1})]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
   {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
     target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,

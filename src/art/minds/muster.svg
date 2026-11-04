@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- сбор по тревоге: рог — все к огню -->
+<path fill="bone" stroke="ink" stroke-width="7" stroke-linejoin="round" d="M12 30Q14 74 58 78L90 90L86 54L62 50Q40 46 30 22Z"/><path class="figure" fill="none" stroke="ink" stroke-linecap="round" stroke-width="5" d="M30 40Q40 58 60 60M24 54Q36 68 54 70"/><path fill="none" stroke="ink" stroke-width="10" stroke-linecap="round" d="M70 20L76 8M82 30L94 24M58 16L58 4"/><path fill="none" stroke="anger" stroke-width="5" stroke-linecap="round" d="M70 20L76 8M82 30L94 24M58 16L58 4"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- эмблема: нечисть — призрак -->
+<path fill="light" stroke="ink" stroke-width="8" stroke-linejoin="round" d="M50 10Q80 12 80 44V88L68 78L58 90L50 80L42 90L32 78L20 88V44Q20 12 50 10Z"/><g fill="ink"><circle cx="40" cy="42" r="7"/><circle cx="60" cy="42" r="7"/></g>
+</svg>

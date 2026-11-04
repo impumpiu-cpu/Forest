@@ -25,6 +25,7 @@ import {noteBoardDeath} from '../settlement/board.js';
 import {load} from './jobRunners.js';
 import {captiveDied} from '../settlement/captives.js';
 import {RAID_BANDS} from '../data/raids.js';
+import {LEANS, DRAWN_AXES} from '../data/leans.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -57,6 +58,14 @@ export function personality(w, a) {
   // how brave this one is beyond its traits: kept as its own extra, so a rebuilt body keeps it
   (a.own ||= {}).mul = {bravery: 0.85 + rng() * 0.3};
   a.food = drawFoodPrefs(rng);
+  a.leans = drawLeans(w.rngs.leans);
+}
+// the leanings (data/leans.js), each the mean of three draws around the middle, of their own stream; with no such stream (a
+// creature made outside a world) — the middle, which weighs nothing
+export function drawLeans(r) {
+  const R = LEANS.roll, out = {};
+  for (const k of DRAWN_AXES) out[k] = r ? Math.round(Math.max(0, Math.min(1, R.mid + R.spread * ((r() + r() + r()) * 2 / 3 - 1))) * 1000) / 1000 : R.mid;
+  return out;
 }
 
 // the next name from the list that no living colonist carries

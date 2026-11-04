@@ -193,6 +193,33 @@ export const FINDS = [
 // the caravan digs the outcrop itself (data/jobs.js 'dig' in a camp: no mine); in the quick mode a day gives
 // `auto[ore] × the cell's level × the diggers` units (a digger — one with Strength ≥ `strength`; gold sand —
 // the one with the pan)
+// The caravan's council (campaign/march.js evening, campaign/visit.js wantVisit; the decision points caravan.visit and
+// caravan.camp of data/commands.js), as a realm's court: the first lane with anything on offer (the town or the camp of need —
+// the winter, food, the wounded — before the ones of choice), a draw by weight within it.
+//   want     the weight of each command when it wants anything; `caravan.camp.goOn` — the way on, offered in the camp's lane
+//            of choice whenever anything else is: a camp wanted but not needed is drawn against it. (A town has no such rival:
+//            tried on 10 worlds, the shop and the smith drawn against the way on cost the humans and the dwarves their
+//            gear — 8 walks won of 20 against 13 without it, 14 before the draw)
+//   mission  the caravan's mission profile: three axes 0 … 1, each its own (not shares) — pace (on to the goal), caution (food,
+//            healing, the winter in a town), side (wheels, beasts, ore, the smith and the shop). A command's weight × (1 + k ×
+//            Σ its leaning along an axis × (the axis − 0.5) × 2): at 0.5 everywhere nothing changes; `people` — each people's
+//            profile (a people not listed, or the profile «без влияния склонностей»: `mid` on every axis). The humans' was
+//            tuned on 20 worlds (tools/council-probe.mjs): 0.5 · 0.5 · 0.55 won 15 walks, 0.6 · 0.5 · 0.4 — 19 (the old order: 17)
+export const COUNCIL = {
+  want: {'caravan.visit.winter': 6, 'caravan.visit.food': 3, 'caravan.visit.heal': 3, 'caravan.visit.smith': 1, 'caravan.visit.shop': 1,
+    'caravan.camp.food': 3, 'caravan.camp.heal': 2, 'caravan.camp.build': 1, 'caravan.camp.tame': 1, 'caravan.camp.mine': 1, 'caravan.camp.goOn': 0.5},
+  mission: {
+    k: 0.8, mid: 0.5,
+    axes: {pace: 'темп', caution: 'осторожность', side: 'побочные промыслы'},
+    leans: {'caravan.visit.winter': {pace: 0, caution: 1, side: 0}, 'caravan.visit.food': {pace: 0, caution: 1, side: 0}, 'caravan.visit.heal': {pace: 0, caution: 1, side: 0},
+      'caravan.visit.smith': {pace: 0, caution: 0, side: 1}, 'caravan.visit.shop': {pace: -0.5, caution: 0, side: 1},
+      'caravan.camp.food': {pace: -0.5, caution: 0.5, side: 0}, 'caravan.camp.heal': {pace: -0.5, caution: 1, side: 0},
+      'caravan.camp.build': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.tame': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.mine': {pace: -0.5, caution: 0, side: 1}, 'caravan.camp.goOn': {pace: 1, caution: 0, side: 0}},
+    people: {humans: {pace: 0.6, caution: 0.5, side: 0.4}, elves: {pace: 0.45, caution: 0.65, side: 0.4},
+      dwarves: {pace: 0.4, caution: 0.55, side: 0.75}, orcs: {pace: 0.7, caution: 0.3, side: 0.45}},
+  },
+};
+
 export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength: 4, rich: 40,
   ores: ['bronze', 'iron', 'silver', 'gems', 'mithril'],
   // (tuned to what a day on the local map digs, seed 777: iron ~10 units a day on a level-0.5 cell, bronze ~1,

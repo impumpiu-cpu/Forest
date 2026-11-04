@@ -50,7 +50,9 @@ import {morningFind} from './finds.js';
 import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
 import {LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
-import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening} from './visit.js';
+import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCaravan, councilWeight, readout, isGoOn} from './visit.js';
+import {pointCommands, allowed} from '../data/commands.js';
+import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 
@@ -276,6 +278,34 @@ function wantBuild(a, K) {
 }
 
 
+// the asks of the camp's commands (`caravan.camp.<id>`, data/commands.js) → {cmd, why, …} or null.
+// `x` — what the evening knows: the food a day takes, the land's richness, the free's mean health, the badly wounded,
+// a quiet place (the land's dangers low), a calm one (also nothing hunting them near); `x.ask` — what the asks share
+const CAMP_CMD = 'caravan.camp.';
+// a long camp where something hunts at night is death: they look for a quieter place, unless they already starve
+const restless = (K, x) => !K.hungry && !x.quiet && K.path && K.k < K.path.length;
+// fed, whole and in a quiet place, and the time to think of it has come (once an evening: the day of the next thought is set)
+const thinks = (K, x) => (x.ask.thinks ??= !K.hungry && x.calm && K.food >= x.need * x.C.foodDays && K.day >= (K.nextThink ?? 0) && ((K.nextThink = K.day + x.C.think), true));
+const CAMP_ASK = {
+  food: (a, K, x) => (K.food < x.need * x.C.foodDays && x.rich >= x.C.foodLand && !restless(K, x) ? {cmd: 'food', why: 'food'} : null),
+  heal: (a, K, x) => ((x.core < x.C.hp || x.badly) && !restless(K, x) ? {cmd: 'heal', why: 'heal'} : null),
+  // to build: the wheels, when they would go the way, else a building the camp lacks
+  build: (a, K, x) => { if (!thinks(K, x)) return null; const B = wantBuild(a, K); return B ? {cmd: 'build', why: 'build', build: B} : null; },
+  // to tame the beasts that graze here
+  tame: (a, K, x) => {
+    if (!thinks(K, x) || !(K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery)) return null;
+    const reg = cellRegion(a, K.i), kind = Object.keys(BEASTS).find(k => !BEASTS[k].golem && lacking(K, k) && faunaLevel({region: reg}, k) >= GETTING.tameLand);
+    return kind ? {cmd: 'tame', why: 'tame:' + kind} : null;
+  },
+  // fed, whole and in a quiet place: an ore worth stopping for here (data/campaign.js MINE)
+  mine: (a, K, x) => {
+    if (K.hungry || !x.calm || !(K.food >= x.need * x.C.foodDays) || !(K.day >= (K.nextMine ?? 0))) return null;
+    const m = wantMine(a, K);
+    return m ? {cmd: 'mine', why: 'mine:' + m.ore} : null;
+  },
+  goOn: (a, K, x, opts) => (opts.length ? {cmd: 'goOn', why: ''} : null),   // (beside something else only: data/campaign.js COUNCIL)
+};
+
 function homecoming(a, K, ms) {
   const t = a.towns.find(x => x.id === K.capital), Q = K.quest;
   say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? (Q.epic ? ` — ${Q.name} отныне в столице, и сила бедствия сломлена` : ` с короной — ${Q.name} снова дома`) : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
@@ -351,22 +381,19 @@ function evening(a, K) {
   else {
     // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
     const badly = fs.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i, K) <= C.danger, calm = quiet && !huntersNear(a, K);
-    let why = K.food < need * C.foodDays && rich >= C.foodLand ? 'food' : core < C.hp || badly ? 'heal' : '';
-    // a long camp where something hunts at night is death: they look for a quieter place, unless they already starve
-    if (why && !K.hungry && !quiet && K.path && K.k < K.path.length) why = '';
-    // fed, whole and in a quiet place: to build, or to tame the beasts that graze here
-    if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
-      K.nextThink = K.day + C.think;
-      const B = wantBuild(a, K), reg = cellRegion(a, K.i);
-      const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => !BEASTS[kind].golem && lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
-      if (B) { K.build = B; why = 'build'; }
-      else if (tame) { why = 'tame:' + tame; K.tamedAt = K.day; }
-    }
-    // fed, whole and in a quiet place: an ore worth stopping for here (data/campaign.js MINE)
-    if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextMine ?? 0)) {
-      const m = wantMine(a, K);
-      if (m) why = 'mine:' + m.ore;
-    }
+    // the decision point `caravan.camp` (core/decide.js, data/commands.js): the commands that want a camp, lane by lane (the
+    // camps of need — food, the wounded — before the ones of choice), drawn from by weight (data/campaign.js COUNCIL)
+    const cmds = pointCommands('caravan.camp');
+    const x = {need, rich, core, badly, quiet, calm, C, ask: {}};   // (one for the evening: the asks share it)
+    const {r, done} = draw(K, 'council');
+    const got = pickLanes(cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a?.cfg, c.id)});
+    done();
+    readout(K, got);
+    if (tracing()) noteCaravan(a, K, 'caravan.camp', cmds, got);
+    const option = got.option && !isGoOn(got.option.id) ? got.option : null;   // (the way on drawn: no camp)
+    let why = option ? option.why : '';
+    if (option?.build) K.build = option.build;
+    if (option?.cmd === 'tame') K.tamedAt = K.day;
     if (why && K.why !== why) {
       if (why.startsWith('mine:')) { (K.mined ||= []).push(K.i); K.nextMine = K.day + MINE.maxDays + MINE.every; K.mineGot = 0; K.mineDay = MINE.quit; }
       K.camp = why === 'build' ? K.build.days + 1 : why.startsWith('mine:') ? MINE.maxDays : C.maxDays; K.why = why; K.stats.camps++; K.stopPlayed = 0;

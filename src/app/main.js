@@ -14,6 +14,7 @@ import {CampaignView} from '../ui/campaignView.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
+import {minds} from '../render/minds.js';
 
 import {$, seg, press} from '../ui/dom.js';
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
@@ -66,6 +67,7 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select')) return;
   if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') skin.toggle();
+  if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') minds.toggle();   // the overmind's marks (render/minds.js)
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || screen === 'home' || e.target.closest('input, textarea, select')) return;
