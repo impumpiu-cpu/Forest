@@ -289,9 +289,13 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
 // (what each building gives and takes, and the effects it has for a people — worked out once, again after an edit of the tables)
 const CAND = new Map();
 onEdit(() => CAND.clear());
+// what a building answers (its card in the council's deck): the effects it gives — and «food» for one that feeds (foodNet > 0:
+// fields, groves, kitchens), so a hungry town looks at its farms, not only at its granary (docs/WORLD.md «Выбор стройки»)
+const feedsCard = (b, people) => foodNet(b, null, WORLD_PEOPLES.get(people)?.workFlows?.[b.id]) > 0;
 const candOf = (b, people) => {
   const key = `${b.id}:${people}`;
-  if (!CAND.has(key)) CAND.set(key, {makes: makesOf(b), takes: [...Object.keys(b.in || {}), ...Object.keys(b.any || {}).flatMap(id => Object.keys(POOLS[id]))], fx: new Set(KEYS.filter(k => k !== 'housing' && fxOf(b, k, people) > 0)), boostMakes: Object.keys(b.boost || {}).map(id => [id, makesOf(TOWN_BUILDINGS.get(id))])});
+  if (!CAND.has(key)) CAND.set(key, {makes: makesOf(b), takes: [...Object.keys(b.in || {}), ...Object.keys(b.any || {}).flatMap(id => Object.keys(POOLS[id]))],
+    fx: new Set([...KEYS.filter(k => k !== 'housing' && fxOf(b, k, people) > 0), ...(feedsCard(b, people) ? ['food'] : [])]), boostMakes: Object.keys(b.boost || {}).map(id => [id, makesOf(TOWN_BUILDINGS.get(id))])});
   return CAND.get(key);
 };
 function candidatesOf(t, P, need, E) {
