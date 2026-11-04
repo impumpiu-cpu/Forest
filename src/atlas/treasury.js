@@ -45,6 +45,8 @@ import {trades} from './diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
 import {allowed} from '../data/commands.js';
+import {NET} from '../data/sites.js';
+import {linkKey} from './common.js';
 
 const r2 = v => Math.round(v * 100) / 100;
 const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
@@ -195,10 +197,11 @@ function worksBuying(C, prep) {
 
 // ── the province's pool: the towns of one realm that the net joins (an island of the realm is a pool of its own) sell to each
 // other in one clearing — each buyer takes what it lacks from the nearest seller by the net's hops first, at the seller's price;
-// what is moved goes down the links of the path it took (l.goods), so the roads wear where the goods went (atlas/sites.js,
-// atlas/roads.js: a mine's road leads to the forge), and a weak path carries less (× the least conductance on it, as a link does)
+// what is moved goes down the link of the two (l.goods; a seller more than a hop away gets a link of its own: a trade route), so
+// the roads wear where the goods went (atlas/sites.js, atlas/roads.js: a mine's road leads to the forge), and a weak path
+// carries less (× the least conductance on it, as a link does)
 function realmPool(C, lack, spare, buy) {
-  const {towns, links} = C, adj = new Map();
+  const {a, towns, links} = C, adj = new Map();
   for (const l of links) if (l.p.realm === l.q.realm) { (adj.get(l.p.id) || adj.set(l.p.id, []).get(l.p.id)).push([l.q, l]); (adj.get(l.q.id) || adj.set(l.q.id, []).get(l.q.id)).push([l.p, l]); }
   // the provinces: the components of the home links
   const seen = new Set(), provinces = [];
@@ -226,7 +229,12 @@ function realmPool(C, lack, spare, buy) {
         // the transfer as one link whose conductance is the path's least: the buy charges it as the buying does a link
         const virtual = {c: weak.get(s.id), goods: 0};
         buy(b, s, virtual);
-        if (virtual.goods) for (const l of path) l.goods = (l.goods || 0) + virtual.goods;
+        if (!virtual.goods) continue;
+        // the goods go down the link of the two — a seller more than a hop away gets a link of its own with the buyer (a trade
+        // route: the net keeps it while the goods keep coming, atlas/sites.js stepNet, and the road wears between the two,
+        // atlas/roads.js wearRoads) — not down the path through the towns between
+        if (path.length === 1) path[0].goods = (path[0].goods || 0) + virtual.goods;
+        else if (a.net) { const key = linkKey(b, s); let l = a.net.links.get(key); if (!l) a.net.links.set(key, l = {p: s, q: b, c: NET.start, flow: 0}); l.goods = (l.goods || 0) + virtual.goods; }
       }
     }
   }

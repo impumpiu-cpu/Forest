@@ -108,6 +108,38 @@ export function townLights(a, t) {
   return lit;
 }
 
+// A town unfolded for a visit (campaign/town.js: the caravan at its market): what it has lit — its buildings' `opens`, its people
+// and kinds, the goods of its store — the recipes that run by those lights, and the goods its works make by them (its buildings'
+// own `out`, their running recipes', the ores of its mines). Worked out once, when asked, from the saved town alone (its
+// buildings, its store, its last season's work — a recipe that ran on what the town bought runs still): the world's flows are
+// not run for it → {lit: Set, recipes: [id], makes: Set}
+export function townUnfold(a, t) {
+  const lit0 = townLights(a, t), stock = {...(t.stock || {})}, built = [...new Set(t.built)].map(id => TOWN_BUILDINGS.get(id));
+  let recipes = [], makes = new Set(), lit = lit0;
+  // a few passes, as the season's rounds: what the works make of the store lights the recipes behind them (a smelter's ingots
+  // light the forge), until nothing new lights
+  for (let k = 0; k < TOWN_FLOW_PASSES; k++) {
+    lit = new Set(lit0);
+    for (const [g, v] of Object.entries(stock)) if (v > TOWN_MONEY.dust) lit.add(`stock:${g}`);
+    for (const g of makes) lit.add(`stock:${g}`);
+    const facts = townFacts(a, t, {lit, stock: Object.fromEntries([...lit].filter(x => x.startsWith('stock:')).map(x => [x.slice(6), stock[x.slice(6)] || 1]))});
+    const R = [], M = new Set();
+    for (const b of built) {
+      if ((b.req || b.workNeed) && !meets(workNeeds(b, false), facts)) continue;
+      for (const g of Object.keys(b.out || {})) M.add(g);
+      if (b.dig) for (const g of Object.keys(digOf(a, t, b))) M.add(g);
+      for (const g of Object.values(b.yields || {}).flatMap(o => Object.keys(o))) M.add(g);
+      // (a recipe that ran last season — on what the town bought, atlas/treasury.js — runs still; else as its lights say)
+      for (const q of recipesOf(b)) if ((t.work?.[`${b.id}:${q.id}`] || 0) > 0 || meets(workNeeds(q, true), facts)) { R.push(`${b.id}:${q.id}`); for (const g of Object.keys(q.out || {})) M.add(g); for (const o of q.opens || []) lit.add(o); }
+    }
+    const same = R.length === recipes.length && M.size === makes.size;
+    recipes = R; makes = M;
+    if (same) break;
+  }
+  return {lit, recipes, makes};
+}
+const TOWN_FLOW_PASSES = 5;
+
 // the climate's weight on a town's heat: cold ×1.6 at or below TOWN_FLOW.heat.cold °C, warm ×0.4 at or above .warm, between
 // the two in a line (the year's mean of the town's cell)
 export function heatFactor(a, t) {

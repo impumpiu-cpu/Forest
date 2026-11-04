@@ -46,7 +46,9 @@ function rerun(worlds, snaps, m) {
   worlds.forEach((a, k) => {
     for (const [t, s] of snaps[k]) Object.assign(t, JSON.parse(s));
     const T = a.towns.filter(t => t.alive);
-    for (const l of a.net?.links.values() || []) l.goods = 0;
+    // (the links as they were: the buying adds trade routes to the net — atlas/treasury.js realmPool — and a rerun starts without them)
+    a.netKeys ||= new Set(a.net?.links.keys() || []);
+    for (const [key, l] of a.net?.links || []) { if (!a.netKeys.has(key)) a.net.links.delete(key); else l.goods = 0; }
     for (let q = 0; q < SEASONS; q++) seasonMoney(a, T);
   });
   const M = measure(worlds);

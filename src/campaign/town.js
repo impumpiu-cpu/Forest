@@ -19,7 +19,8 @@ import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY, BUY_ORDER} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
-import {TOWN_MONEY} from '../data/townBuildings.js';
+import {TOWN_MONEY, lineHas} from '../data/townBuildings.js';
+import {townUnfold} from '../atlas/economy.js';
 import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/treasury.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
@@ -41,7 +42,7 @@ import {MATERIALS} from '../data/balance/materials.js';
 import {allowed} from '../data/commands.js';
 
 const alive = K => K.members.filter(m => m.alive);
-const has = (t, ids) => ids.some(id => t.built.includes(id));
+const has = (t, ids) => ids.some(id => lineHas(t.built, id));   // (a tier stands for its base: a town of a developed smelter has a smelter)
 const gold = v => Math.round(v * 10) / 10;
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
 
@@ -83,7 +84,23 @@ export const townGolem = (a, t) => {
   return m && BEASTS[golemOf(m)] ? m : null;
 };
 const golemOffer = (o, t, a) => { if (!o.golem) return o; if (!has(t, o.at)) return null; const m = townGolem(a, t); return m ? {...o, id: golemOf(m), metal: m, price: PRICES.beasts[golemOf(m)]} : null; };
-export const offers = (t, a = null) => OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!o.peoples || o.peoples.includes(t.people)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
+// (an item is on sale where the town makes its kind of good — its works' running recipes, the town unfolded for the visit:
+// atlas/economy.js townUnfold — or holds it in its store; a forge whose store has no ingots sells what is left on its shelves)
+// (a thing of a metal — where a recipe of that metal runs: a forge with the ingots in its store; the store's arms are of no metal in
+// particular, so they do not stand for it)
+// (a thing of a metal the town does not forge itself is on its shelves while its store holds the kind — arms, armour, tools —
+// and a forge of its realm ran that metal last season: the store's wares came from there, atlas/treasury.js realmPool)
+const madeHere = (a, t, o) => {
+  if (o.kind !== 'item' || t.anvil) return true;   // (the smith's anvil: he forges from the caravan's ore, whatever the town makes)
+  const u = unfoldOf(a, t), m = gearDef(o.id)?.material, g = offerGood(o);
+  if (m && FORGE_METALS.has(m)) return u.recipes.some(id => id.endsWith(`:${m}`)) || ((t.stock?.[g] || 0) > 0 && !!a && realmForges(a, t).has(m));
+  return (t.stock?.[g] || 0) > 0 || u.makes.has(g);
+};
+const realmForges = (a, t) => { const out = new Set(); for (const o of a.towns) if (o.alive && o.realm === t.realm) for (const [id, v] of Object.entries(o.work || {})) { const m = id.split(':')[1]; if (v > 0 && m && FORGE_METALS.has(m)) out.add(m); } return out; };
+const FORGE_METALS = new Set(['bronze', 'iron', 'steel', 'mithril']);
+let UNFOLD = new WeakMap();   // (a town's unfold, kept while its buildings and store are as they were)
+const unfoldOf = (a, t) => { const key = `${t.built.length}:${Object.keys(t.stock || {}).length}`, u = UNFOLD.get(t); if (u && u.key === key) return u.v; const v = townUnfold(a, t); UNFOLD.set(t, {key, v}); return v; };
+export const offers = (t, a = null) => OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!o.peoples || o.peoples.includes(t.people)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form)) && madeHere(a, t, o)).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
@@ -197,7 +214,7 @@ function smithy(a, K, t, st) {
   const done = [];
   if (!has(t, SMITH.at)) return done;
   // the smith makes any item of the metal, whether the town sells it or not: what the caravan would buy anywhere
-  const anvil = {...t, built: [...new Set([...t.built, ...OFFERS.filter(o => o.kind === 'item').flatMap(o => o.at)])]};
+  const anvil = {...t, anvil: true, built: [...new Set([...t.built, ...OFFERS.filter(o => o.kind === 'item').flatMap(o => o.at)])]};
   for (const o of wants(a, K, anvil, st)) {
     if (o.kind !== 'item') continue;
     const type = gearType(o.id), d = gearDef(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === type && !r.makes.silver);

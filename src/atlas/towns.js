@@ -238,7 +238,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
   const opts = [];
   const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
-  for (const b of TOWN_BUILDINGS.all()) {
+  for (const b of ctx.candidates ||= candidatesOf(t, P, need, E0)) {   // (once a season: the council's tries share them — atlas/build.js pickProject)
     if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
@@ -256,6 +256,36 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     opts: opts.map(o => ({cmd: 'town.project.build', key: `town.project.build(${o.b.id})`, score: r3(o.score)})), pick: best ? `town.project.build(${best.b.id})` : null,
     skip: ctx.skip?.size ? [...ctx.skip] : undefined});
   return best ? best.b : null;
+}
+
+// the buildings the council looks at: those that give what the town needs most — the effects whose need × taste is within
+// TOWN_FX.candidates.share of the strongest, and housing while it is wanted at all — and those that give what its works or its
+// people lack, or take what lies spare (the makers of a good: makersOf, the pools), and the works that earn its next step. The
+// rest it does not weigh this season: a building of a need the town does not feel would not pass TOWN_FX.floor anyway
+function candidatesOf(t, P, need, E) {
+  const C = TF.candidates, w = KEYS.map(k => [k, need[k] * (P.taste[k] ?? 1)]), top = Math.max(...w.map(x => x[1]));
+  const keys = new Set(w.filter(([k, v]) => v >= top * C.share || (k === 'housing' && v > 0)).map(([k]) => k));
+  const goods = new Set();
+  if (E) {
+    for (const g of Object.keys(E.short || {})) goods.add(g);
+    for (const g of Object.keys(t.needs?.lack || {})) goods.add(g);
+    for (const [g, v] of Object.entries(E.spare || {})) if (v > 0 && !TF.flow.spareSkip.includes(g)) goods.add(`spare:${g}`);
+  }
+  const next = TIERS[(t.tier || 0) + 1];
+  const out = [];
+  for (const b of TOWN_BUILDINGS.all()) {
+    let on = keys.has('housing') && b.house > 0;
+    if (!on) for (const k of keys) if (k !== 'housing' && fxOf(b, k, t.people) > 0) { on = true; break; }
+    if (!on && goods.size) {
+      for (const g of makesOf(b)) if (goods.has(g)) { on = true; break; }
+      if (!on) for (const g of [...Object.keys(b.in || {}), ...Object.keys(b.any || {}).flatMap(id => Object.keys(POOLS[id]))]) if (goods.has(`spare:${g}`)) { on = true; break; }
+      if (!on && b.boost) for (const id of Object.keys(b.boost)) if (t.built.includes(id) && makesOf(TOWN_BUILDINGS.get(id)).some(g => goods.has(g))) { on = true; break; }
+      if (!on && b.recycle) on = true;
+    }
+    if (!on && next && next.needsAny.includes(b.id)) on = true;
+    if (on) out.push(b);
+  }
+  return out;
 }
 
 // the flows of a building (atlas/economy.js) on its score v: what the town's buildings lack of a good, a building that gives it

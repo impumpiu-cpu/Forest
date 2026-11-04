@@ -14,6 +14,7 @@ import {PARTIES} from '../data/parties.js';
 import {stranded} from './persons.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 import {findPath, moveCost} from './roads.js';
+import {ROADS} from '../data/roads.js';
 import {scaleOf} from './tectonics.js';
 
 export const BEHAVIOURS = {};   // kind → {day, arrive, stay, home, lost}(a, p, rnd, say); filled by the systems that own the kinds
@@ -59,7 +60,7 @@ function walk(a, p) {
     const d = Math.hypot(nx - p.x, ny - p.y), v = cellSpeed(a, p, next);
     if (v <= 0) return false;
     const can = v * budget;
-    if (can >= d) { p.x = nx; p.y = ny; p.i = next; p.k++; budget -= d / v; }
+    if (can >= d) { p.x = nx; p.y = ny; p.i = next; p.k++; budget -= d / v; if (p.speed !== 'flight' && a.f.road) a.f.road[next] += (p.men || 1) / ROADS.feet; }   // (its feet wear the way: data/roads.js feet)
     else { p.x += (nx - p.x) / d * can; p.y += (ny - p.y) / d * can; budget = 0; }
   }
   if (p.k >= p.path.length) { p.i = p.goal; return true; }

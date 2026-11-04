@@ -9,6 +9,7 @@
 //   levels:    wear from which a cell is a path, a road, a highway
 export const ROADS = {
   every: 2, links: 3, reach: 70, roadEase: 0.75, slope: 6, river: 3, traffic: 900, decay: 0.8,
+  feet: 3000,   // a party on foot wears each cell it enters by its men / feet (atlas/parties.js walk): an army's road, a settlers' trail
   cost: {meadow: 1, steppe: 1, savanna: 1.1, shrubland: 1.3, forest: 1.6, taiga: 1.8, jungle: 2.6, tundra: 1.6, desert: 2,
     foothills: 2.4, highlands: 4, swamp: 3.5, volcano: 4, ice: 8, water: 25},
   levels: [{wear: 0.25, label: 'тропа', width: 0.45}, {wear: 1.2, label: 'дорога', width: 0.7}, {wear: 4, label: 'тракт', width: 1}],
