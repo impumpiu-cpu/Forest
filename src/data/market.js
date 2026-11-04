@@ -30,7 +30,25 @@ export const MARKET = {
   healers: ['healerhut', 'hospice', 'temple', 'bathhouse'],
 };
 
-// what a town sells besides food, and what of it it must have built (any of `at`); `price` for what has
+// The wares of a town's works (campaign/town.js offers): the items a recipe of the world (data/townBuildings.js `building:recipe`)
+// or a work with no recipes (a building id) puts on the market while it runs — the town unfolded for the visit, atlas/economy.js
+// townUnfold. A thing of a metal is sold where that metal's recipe runs (a forge with the ingots), or where the store holds its
+// kind and a forge of the realm ran the metal last season; a form a people will not touch is never sold (data/kinds.js
+// RACE_FORMS), nor a metal the realm does not work (`metals`). The items are of data/items.js
+export const WARES = {
+  'forge:bronze': ['bronzespear', 'bronzeaxe', 'bronzedagger', 'bronzesword', 'bronzejavelin', 'bronzehatchet', 'bronzelamellar'],
+  'forge:iron': ['ironspear', 'ironaxe', 'irondagger', 'sword', 'ironjavelin', 'ironhatchet', 'lamellar'],
+  'forge:steel': ['steelspear', 'steelaxe', 'steeldagger', 'steelsword', 'steeljavelin', 'steelhatchet', 'steellamellar'],
+  'forge:mithril': ['mithrilspear', 'mithrilaxe', 'mithrilsword', 'mithrillamellar'],
+  armory: ['chainmail', 'crossbow', 'shield'],   // the arsenal: the mail and the crossbow of the garrison's smiths, of what the realm forges
+  foundry: ['chainmail', 'crossbow'],
+  'handshop:bows': ['bow'], 'crafthut:bows': ['bow'],
+  crafthut: ['shield'],
+  tannery: ['hardleather', 'furcoat'], tannery2: ['hardleather', 'furcoat'], lodge: ['furcoat'],
+};
+export const WARE_IDS = [...new Set(Object.values(WARES).flat())];
+
+// what a town sells besides food and its works' wares, and what of it it must have built (any of `at`); `price` for what has
 // no `value` of its own. Beasts and vehicles join the baggage (data/transport.js), items the members' gear
 export const OFFERS = [
   {kind: 'beast', id: 'horse', at: ['pasture', 'pen', 'caravanserai'], price: CAMPAIGN.beasts.horse},
@@ -44,23 +62,6 @@ export const OFFERS = [
   {kind: 'beast', id: 'golem', golem: true, at: ['golemforge']},
   {kind: 'vehicle', id: 'cart', at: ['crafthut', 'sawmill', 'woodcut'], price: CAMPAIGN.vehicles.cart},
   {kind: 'vehicle', id: 'wagon', at: ['sawmill', 'crafthut'], also: ['forge', 'smelter'], price: CAMPAIGN.vehicles.wagon},
-  {kind: 'item', id: 'ironaxe', at: ['forge', 'smelter', 'foundry']},
-  {kind: 'item', id: 'ironspear', at: ['forge', 'armory']},
-  {kind: 'item', id: 'sword', at: ['forge', 'armory']},
-  {kind: 'item', id: 'bow', at: ['handshop', 'crafthut'], peoples: ['elves', 'humans']},   // (the bows: a recipe of the workshop of the elves and the humans)
-  {kind: 'item', id: 'crossbow', at: ['armory', 'foundry']},
-  {kind: 'item', id: 'irondagger', at: ['forge', 'armory']},
-  {kind: 'item', id: 'ironjavelin', at: ['forge', 'armory']},
-  {kind: 'item', id: 'ironhatchet', at: ['forge', 'smelter']},
-  {kind: 'item', id: 'shield', at: ['crafthut', 'armory']},
-  {kind: 'item', id: 'hardleather', at: ['tannery']},
-  {kind: 'item', id: 'lamellar', at: ['forge', 'armory']},
-  {kind: 'item', id: 'chainmail', at: ['armory', 'foundry']},
-  // steel: where a foundry tempers it (its realm works steel: data/townBuildings.js `metals`)
-  {kind: 'item', id: 'steelsword', at: ['foundry']},
-  {kind: 'item', id: 'steelspear', at: ['foundry']},
-  {kind: 'item', id: 'steellamellar', at: ['foundry']},
-  {kind: 'item', id: 'furcoat', at: ['tannery', 'lodge']},
   // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
   {kind: 'goods', id: 'rope', n: 4, any: true, at: [], need: 'bonds'},
   {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry'], need: 'bonds'},

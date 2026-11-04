@@ -140,6 +140,7 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
 {
   const P = WORLD_PEOPLES.get('orcs'), H = WORLD_PEOPLES.get('humans');
   const t = gtowns.find(x => x.pop > 100) || gtowns[0], R = a.realms.find(r => r.id === t.realm), tg = a.towns.find(x => x.alive && x.realm !== t.realm);
+  if (t.pop < 100) { for (const h of Object.values(t.heads)) h[1] += 120 * (h[0] + h[1] + h[2]) / t.pop; sync(t); }   // (a horde its history left small: grown ones enough for a third of it to be a host)
   t.stock = {...(t.stock || {}), beasts: 20}; t.warBeasts = {list: {varg: 2}, men: 1}; const pop0 = t.pop, said = [];
   const before = new Set((a.parties || []).map(p => p.id));   // (the town may have an army out from its history: the new one is checked)
   muster(a, t, tg, null, () => 0.5, s => said.push(s));

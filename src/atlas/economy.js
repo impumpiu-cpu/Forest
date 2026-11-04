@@ -112,10 +112,10 @@ export function townLights(a, t) {
 // and kinds, the goods of its store — the recipes that run by those lights, and the goods its works make by them (its buildings'
 // own `out`, their running recipes', the ores of its mines). Worked out once, when asked, from the saved town alone (its
 // buildings, its store, its last season's work — a recipe that ran on what the town bought runs still): the world's flows are
-// not run for it → {lit: Set, recipes: [id], makes: Set}
+// not run for it → {lit: Set, recipes: [id], works: [building id: those not dark], makes: Set}
 export function townUnfold(a, t) {
   const lit0 = townLights(a, t), stock = {...(t.stock || {})}, built = [...new Set(t.built)].map(id => TOWN_BUILDINGS.get(id));
-  let recipes = [], makes = new Set(), lit = lit0;
+  let recipes = [], makes = new Set(), works = [], lit = lit0;
   // a few passes, as the season's rounds: what the works make of the store lights the recipes behind them (a smelter's ingots
   // light the forge), until nothing new lights
   for (let k = 0; k < TOWN_FLOW_PASSES; k++) {
@@ -123,9 +123,10 @@ export function townUnfold(a, t) {
     for (const [g, v] of Object.entries(stock)) if (v > TOWN_MONEY.dust) lit.add(`stock:${g}`);
     for (const g of makes) lit.add(`stock:${g}`);
     const facts = townFacts(a, t, {lit, stock: Object.fromEntries([...lit].filter(x => x.startsWith('stock:')).map(x => [x.slice(6), stock[x.slice(6)] || 1]))});
-    const R = [], M = new Set();
+    const R = [], M = new Set(), W = [];
     for (const b of built) {
       if ((b.req || b.workNeed) && !meets(workNeeds(b, false), facts)) continue;
+      W.push(b.id);
       for (const g of Object.keys(b.out || {})) M.add(g);
       if (b.dig) for (const g of Object.keys(digOf(a, t, b))) M.add(g);
       for (const g of Object.values(b.yields || {}).flatMap(o => Object.keys(o))) M.add(g);
@@ -133,10 +134,10 @@ export function townUnfold(a, t) {
       for (const q of recipesOf(b)) if ((t.work?.[`${b.id}:${q.id}`] || 0) > 0 || meets(workNeeds(q, true), facts)) { R.push(`${b.id}:${q.id}`); for (const g of Object.keys(q.out || {})) M.add(g); for (const o of q.opens || []) lit.add(o); }
     }
     const same = R.length === recipes.length && M.size === makes.size;
-    recipes = R; makes = M;
+    recipes = R; makes = M; works = W;
     if (same) break;
   }
-  return {lit, recipes, makes};
+  return {lit, recipes, makes, works};
 }
 const TOWN_FLOW_PASSES = 5;
 
