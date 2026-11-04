@@ -383,10 +383,10 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   addHeads(a, t, 'human', 100, 1); const p0 = t.pop;
   (await import('../src/atlas/diplomacy.js')).stepDiplomacy(a, mulberry(1), say, () => 0);
   check('F12: выселять некуда — чужаки остаются, жители не пропадают', Math.abs(t.pop - p0) < 1e-6, `${p0} → ${t.pop}`);
-  const b = copy(), r = realmsOf(b, 'humans')[0], seat = capitalOf(b, r.id), n0 = seat.pop;
+  const b = copy(), r = realmsOf(b, 'humans')[0], seat = capitalOf(b, r.id), n0 = seat.pop, named0 = seat.book?.named || 0;   // (the book may already hold this year's named: count from it)
   for (const o of Object.keys(r.kingdom.court)) r.kingdom.court[o] = null;
   makeRuler(b, r);   // (crownRuler names it out of the seat)
-  check('A4: именованный ко двору — из счёта города: жителей на одного меньше, в книге «ко двору»', Math.abs(seat.pop - (n0 - 1)) < 1e-6 && seat.book?.named === 1, `${n0} → ${seat.pop}`);
+  check('A4: именованный ко двору — из счёта города: жителей на одного меньше, в книге «ко двору»', Math.abs(seat.pop - (n0 - 1)) < 1e-6 && seat.book?.named === named0 + 1, `${n0} → ${seat.pop}, в книге ${named0} → ${seat.book?.named}`);
   const tw = lairOf(b, 'necromancer');
   if (tw) {
     const master = tw.leader || lead(b, tw);
