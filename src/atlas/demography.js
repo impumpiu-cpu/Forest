@@ -85,7 +85,7 @@ export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
 }
 
 // how much people like a town: its fame and how well its people live (a town not counted yet: as well as can be)
-const pull = t => (1 + Math.max(0, townFx(t).prestige)) * (t.needs?.basic ?? 1);
+const pull = (t, fx = townFx(t)) => (1 + Math.max(0, fx.prestige)) * (t.needs?.basic ?? 1);
 
 // whether folk of a town may move to another: the same realm; or another realm that trades with theirs, near enough,
 // of their own people or of a people that welcomes them (data/peoples.js `welcome`), up to the folk the town keeps
@@ -102,7 +102,7 @@ export function mayMove(a, s, d) {
 export function migrate(a) {
   const live = (a.towns || []).filter(t => t.alive);
   if (live.length < 2) return 0;
-  const X = new Map(live.map(t => { const rm = room(townFx(t)); return [t, {t, A: pull(t), free: Math.max(0, rm - t.pop), over: Math.max(0, t.pop - rm)}]; }));
+  const X = new Map(live.map(t => { const fx = townFx(t), rm = room(fx); return [t, {t, A: pull(t, fx), free: Math.max(0, rm - t.pop), over: Math.max(0, t.pop - rm)}]; }));   // (the town's effects once: for its room and its pull)
   let moved = 0, abroad = 0;
   for (const s of X.values()) {
     const rate = WORLD_PEOPLES.get(s.t.people).migrate || 0;

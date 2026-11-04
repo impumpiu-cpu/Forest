@@ -40,7 +40,7 @@ import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
-import {siteCell} from './sites.js';
+import {siteFits} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA, TOWN_MONEY} from '../data/townBuildings.js';
 import {allowed} from '../data/commands.js';
 import {pickMax, tracing, noteDecision, r3} from '../core/decide.js';
@@ -201,17 +201,24 @@ export const leadKin = (a, t) => Object.entries(townKin(a, t)).sort((p, q) => q[
 // the realm, its step, its size, the land — is one requirement (data/requirements.js needsOf: the row's short fields and its
 // `need`), checked by one checker (core/requirements.js) against the town's facts (atlas/requirements.js townFacts); the
 // limits of count, slot, line and site are rules of their own below
-export function canBuild(a, t, b, inRealm = null, facts = null) {
+// (`sit`: what a council's sitting over many candidates shares — the counts of the town's buildings, its slots used, the
+// realm's unique works; made once by chooseBuilding, none for a lone question)
+export function canBuild(a, t, b, inRealm = null, facts = null, sit = null) {
   const src = facts || townFacts(a, t, {inRealm});
   if (!meets(tierNeed(b, t.people), src) || !meets(needsOf(b), src)) return false;
-  if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
-  if (t.built.filter(id => id === b.id).length >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
+  if (b.unique && (sit ? sit.unique.has(b.id) : a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id)))) return false;
+  if ((sit ? sit.count.get(b.id) || 0 : t.built.filter(id => id === b.id).length) >= (b.kind === 'upgrade' ? 1 : unitsMax(t, b))) return false;
   if (lineFull(t, b)) return false;
   // its slot (data/townBuildings.js TOWN_SLOTS): a work of its own in the town, an upgrade; a tier takes its base's place
   const sk = slotKind(b);
-  if (sk && slotsUsed(t)[sk] >= slotsOf(t)[sk]) return false;
-  if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
+  if (sk && (sit ? sit.used : slotsUsed(t))[sk] >= (sit ? sit.slots : slotsOf(t))[sk]) return false;
+  if (b.site) return siteFits(a, t, b);   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js; the cell itself is chosen when it is placed)
   return true;
+}
+export function sittingOf(a, t) {
+  const count = new Map(); for (const id of t.built) count.set(id, (count.get(id) || 0) + 1);
+  const unique = new Set(); for (const o of a.towns) if (o !== t && o.alive && o.realm === t.realm) for (const id of o.built) if (TOWN_BUILDINGS.get(id)?.unique) unique.add(id);
+  return {count, unique, used: slotsUsed(t), slots: slotsOf(t)};
 }
 
 // what the town needs now, 0 … ~1.5 for each effect
@@ -238,8 +245,9 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
   const opts = [];
   const inRealm = realmBuilt(a, t), E0 = ctx.econ, facts = townFacts(a, t, {inRealm, lit: E0 ? new Set(E0.lit || []) : null});
-  for (const b of ctx.candidates ||= candidatesOf(t, P, need, E0)) {   // (once a season: the council's tries share them — atlas/build.js pickProject)
-    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts)) continue;   // (skip: what it could not pay for this time)
+  const sit = ctx.sitting ||= sittingOf(a, t);   // (once a sitting: the council's tries share it — atlas/build.js pickProject)
+  for (const b of ctx.candidates ||= candidatesOf(t, P, need, E0)) {
+    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm, facts, sit)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
     for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k, t.people)) * need[k] * (P.taste[k] ?? 1);

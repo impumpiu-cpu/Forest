@@ -82,6 +82,18 @@ export function siteCell(a, t, b, rnd) {
   return best;
 }
 
+// is there a cell at all for a new site of this building near this town (the council asks it of every candidate: atlas/towns.js
+// canBuild — the best cell is sought only when the building is placed, siteCell)
+export function siteFits(a, t, b) {
+  const f = a.f, R = siteRadius(a, t), x0 = t.x, y0 = t.y;
+  const near = a.towns.filter(o => o.alive && Math.max(Math.abs(o.x - x0), Math.abs(o.y - y0)) <= R + footprint(a, o));
+  for (let y = Math.max(0, y0 - R); y <= Math.min(a.h - 1, y0 + R); y++) for (let x = Math.max(0, x0 - R); x <= Math.min(a.w - 1, x0 + R); x++) {
+    const i = y * a.w + x;
+    if (!(f.ocean[i] || f.lake[i] >= 0 || taken(a, i, x, y, near) || !cellFits(a, i, b, t.people))) return true;
+  }
+  return false;
+}
+
 // the town has chosen a site building: put it in its cell and lay the track; null when no cell fits
 export function placeSite(a, t, b, rnd) {
   const i = siteCell(a, t, b, rnd);

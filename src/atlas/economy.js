@@ -196,7 +196,7 @@ export function prepEconomy(a, t, heatK = heatFactor(a, t)) {
   for (const r of rows) for (const q of recipesOf(r.b)) {
     const x = {b: {id: `${r.b.id}:${q.id}`, cat: r.b.cat, peoples: r.b.peoples}, q, of: r, n: r.n, staff: r.staff, own: r.own, share: 0, eff: 0, golems: 0, golemBonus: r.golemBonus};
     x.in = {}; for (const [g, v] of Object.entries(q.in || {})) { const s = swaps[g], to = s ? s.to : g; x.in[to] = (x.in[to] || 0) + v * (s ? s.k : 1) * r.n; }
-    x.soft = r.soft; x.pool = {}; if (q.any) for (const [k, v] of Object.entries(q.any)) x.pool[k] = v * r.n;
+    x.soft = r.soft; x.hard = Object.keys(x.in).filter(g => !soft(r, g)); x.pool = {}; if (q.any) for (const [k, v] of Object.entries(q.any)) x.pool[k] = v * r.n;   // (hard: the goods of its `in` it cannot do without — asked each round)
     if (q.fire) x.pool.fuel = q.fire * r.n;
     x.out = Object.fromEntries(Object.entries(q.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (wf[r.b.id]?.[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     recRows.push(x);
@@ -258,8 +258,9 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
-      const on = meets(workNeeds(x.q, true), facts), ins = Object.keys(x.in).filter(g => !soft(x.of, g));
-      x.w = on ? (ins.length ? Math.min(...ins.map(avail)) : 1) : 0; x.ask = on && x.w <= 0;
+      const on = meets(workNeeds(x.q, true), facts), ins = x.hard;
+      let w = 1; if (on) for (const g of ins) w = Math.min(w, avail(g));
+      x.w = on ? w : 0; x.ask = on && x.w <= 0;
       by.set(x.of, (by.get(x.of) || 0) + x.w);
     }
     for (const x of recRows) x.share = x.w > 0 ? x.w / by.get(x.of) : 0;
