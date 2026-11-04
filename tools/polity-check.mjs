@@ -26,7 +26,7 @@ import {channelsOf} from '../src/atlas/control.js';
 import {stepKingdom} from '../src/atlas/kingdom.js';
 import {raise, freeVassals, leaderSlain} from '../src/atlas/leaders.js';
 import {newLair, findSpot, revealLair} from '../src/atlas/lairs.js';
-import {bend} from '../src/atlas/necro.js';
+import {bend, towerAt} from '../src/atlas/necro.js';
 import {muster} from '../src/atlas/diplomacy.js';
 import {seatFallen, realmTowns, capitalOf} from '../src/atlas/realms.js';
 import {foundFrom, settleSpot} from '../src/atlas/peoples.js';
@@ -135,7 +135,10 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   if (!tw) check('есть башня некроманта', false);
   else {
     const master = tw.leader || lead(a, tw);
-    const L = LAIRS.get('wights'), i = findSpot(a, L, mulberry(9), {x: tw.x, y: tw.y});
+    // (a spot in this tower's own seat — beside it: two towers may stand close, and the nearer one takes the knee, atlas/necro.js
+    // towerAt; the rot's best spot may lie by the other)
+    const L = LAIRS.get('wights'); let i = findSpot(a, L, mulberry(9), {x: tw.x, y: tw.y});
+    if (i >= 0 && towerAt(a, i % a.w, (i / a.w) | 0) !== tw) i = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => (tw.y + dy) * a.w + tw.x + dx).find(j => j >= 0 && j < a.n && !a.f.ocean[j] && towerAt(a, j % a.w, (j / a.w) | 0) === tw) ?? -1;
     const v = i >= 0 ? newLair(a, L, i, mulberry(10), 0.6) : null; if (v) { v.lord = null; bend(a, v); }
     const ch = channelsOf(a, master);
     check('некромант держит мертвецов лично (канал undead), башня с хозяином держит данников', ch.some(c => c.kind === 'undead') && (!v || v.lord === tw.id), `каналы: ${ch.map(c => c.kind).join(', ')}; данник: ${v?.lord}`);

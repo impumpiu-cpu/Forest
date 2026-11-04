@@ -19,8 +19,8 @@ import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WARES, WARE_IDS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY, BUY_ORDER} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
-import {TOWN_MONEY, TOWN_BUILDINGS, lineHas, recipesOf} from '../data/townBuildings.js';
-import {townUnfold} from '../atlas/economy.js';
+import {TOWN_MONEY, TOWN_BUILDINGS, lineHas, recipesOf, reqLit} from '../data/townBuildings.js';
+import {townUnfold, townLights} from '../atlas/economy.js';
 import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/treasury.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
@@ -97,7 +97,9 @@ function wareOffers(t, a) {
   const u = a ? unfoldOf(a, t) : null, ids = new Set();
   // the recipes that run and the works that stand; and the recipes of a standing work that do not run here (a forge without
   // ingots) — their wares while the store holds the kind and a forge of the realm ran the metal
-  const runs = u ? [...u.recipes, ...u.works] : [...new Set(t.built)], forged = a ? realmForges(a, t) : null;
+  // (no world — a town alone, as the checks ask: its works, and the recipes they run by its people and kinds, the store unasked)
+  const bare = () => { const L = townLights(null, t), out = []; for (const id of new Set(t.built)) { out.push(id); for (const q of recipesOf(TOWN_BUILDINGS.get(id))) if (reqLit((q.req || []).filter(x => !String(x).startsWith('stock:')), L)) out.push(`${id}:${q.id}`); } return out; };
+  const runs = u ? [...u.recipes, ...u.works] : bare(), forged = a ? realmForges(a, t) : null;
   const shelf = []; if (u) for (const b of u.works) for (const q of recipesOf(TOWN_BUILDINGS.get(b))) { const id = `${b}:${q.id}`; if (!u.recipes.includes(id) && forged.has(q.id)) shelf.push(id); }
   for (const id of runs) for (const w of WARES[id] || []) ids.add(w);
   for (const id of shelf) for (const w of WARES[id] || []) if ((t.stock?.[offerGood({kind: 'item', id: w})] || 0) > 0) ids.add(w);
