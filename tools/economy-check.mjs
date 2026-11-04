@@ -68,11 +68,11 @@ const T = a.towns.filter(t => t.alive);
 }
 // the caravan's market
 {
-  const t = T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.makersGold;
+  const t = T.find(x => x.market && Object.values(x.market).some(k => k > 1)) || T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.makersGold;   // (a town where something is dear, if any is)
   toTown(t, 10); const after = t.makersGold; const paid = fromTown({makersGold: 5}, 20);
   const dear = Object.entries(t.market || {}).find(([, k]) => k > 1), cheap = Object.entries(t.market || {}).find(([, k]) => k < 1);
   check('караван платит мастерам города; они платят не больше, чем у них есть; цены рынка — от склада и нехватки',
-    Math.abs(after - g0 - 10) < 0.01 && paid === 5 && (!!dear || !!cheap) && marketK(t, dear?.[0]) > 1, `${t.name}: дороже ${dear?.join(' ×') || '—'}, дешевле ${cheap?.join(' ×') || '—'}`);
+    Math.abs(after - g0 - 10) < 0.01 && paid === 5 && (!!dear || !!cheap) && (!dear || marketK(t, dear[0]) > 1) && (!cheap || marketK(t, cheap[0]) < 1), `${t.name}: дороже ${dear?.join(' ×') || '—'}, дешевле ${cheap?.join(' ×') || '—'}`);
   const fed = {...t, supply: {own: 3 * t.pop, got: 0, gave: 0}}, hungry = {...t, supply: {own: 0.5 * t.pop, got: 0, gave: 0}};
   check('паёк дешевле, где у города излишек еды', rationPrice(fed, 'own') < rationPrice(hungry, 'own'), `${rationPrice(fed, 'own').toFixed(3)} против ${rationPrice(hungry, 'own').toFixed(3)}`);
   check('цены в пределах', T.every(x => Object.values(x.market || {}).every(k => k >= TOWN_MONEY.price.lo && k <= TOWN_MONEY.price.hi)));
