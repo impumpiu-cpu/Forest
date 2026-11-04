@@ -191,12 +191,55 @@ function worksBuying(C, prep) {
       add(b.trade, 'bought', v); add(s.trade, 'sold', v);
     }
   };
-  if (allowed(a.cfg, 'town.buy.works')) for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }   // (the command `town.buy.works`: data/commands.js)
+  if (allowed(a.cfg, 'town.buy.works')) {
+    if (a.cfg?.trade === 'realm') { realmPool(C, lack, spare, realmBy, buy); for (const l of links) if (l.p.realm !== l.q.realm) { buy(l.p, l.q, l); buy(l.q, l.p, l); } }   // (the probe of claude/world-lean: the realm's pool at home, the links abroad)
+    else for (const l of links) { buy(l.p, l.q, l); buy(l.q, l.p, l); }   // (the command `town.buy.works`: data/commands.js)
+  }
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const hp = prep.get(t); if (!hp) continue; const [h, p] = hp; setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
   return sold;
+}
+
+// ── the realm's pool (a probe, claude/world-lean; cfg.trade 'realm'): the towns of one realm that the net joins (a province:
+// an island of the realm is a pool of its own) sell to each other in one clearing instead of link by link — each good's lacks
+// against its spares, the nearest seller first by the net's hops, at the seller's price; what is moved goes down the links of
+// the path it took (l.goods), so the roads wear where the goods went (atlas/sites.js, atlas/roads.js), and a weak path
+// carries less (× the least conductance on it, as a link does)
+function realmPool(C, lack, spare, realmBy, buy) {
+  const {towns, links} = C, adj = new Map();
+  for (const l of links) if (l.p.realm === l.q.realm) { (adj.get(l.p.id) || adj.set(l.p.id, []).get(l.p.id)).push([l.q, l]); (adj.get(l.q.id) || adj.set(l.q.id, []).get(l.q.id)).push([l.p, l]); }
+  // the provinces: the components of the home links
+  const seen = new Set(), provinces = [];
+  for (const t of towns) {
+    if (seen.has(t.id)) continue;
+    const P = [], st = [t]; seen.add(t.id);
+    while (st.length) { const x = st.pop(); P.push(x); for (const [o] of adj.get(x.id) || []) if (!seen.has(o.id)) { seen.add(o.id); st.push(o); } }
+    if (P.length > 1) provinces.push(P);
+  }
+  // the paths from a town over its province: hops, the way back, the least conductance (a breadth-first walk, once a town)
+  const pathsFrom = t => {
+    const hop = new Map([[t.id, 0]]), back = new Map(), weak = new Map([[t.id, 1]]), q = [t];
+    for (let k = 0; k < q.length; k++) { const x = q[k]; for (const [o, l] of adj.get(x.id) || []) if (!hop.has(o.id)) { hop.set(o.id, hop.get(x.id) + 1); back.set(o.id, [x, l]); weak.set(o.id, Math.min(weak.get(x.id), l.c)); q.push(o); } }
+    return {hop, back, weak};
+  };
+  for (const P of provinces) {
+    const paths = new Map(P.map(t => [t.id, pathsFrom(t)]));
+    for (const b of P) {
+      const L = lack.get(b.id); if (!L) continue;
+      const {hop, back, weak} = paths.get(b.id);
+      const sellers = P.filter(s => s !== b && spare.get(s.id)).sort((x, y) => hop.get(x.id) - hop.get(y.id) || x.id - y.id);
+      for (const s of sellers) {
+        if (!Object.keys(L).some(g => L[g] > 0)) break;
+        const path = []; for (let x = s; x !== b; ) { const [prev, l] = back.get(x.id); path.push(l); x = prev; }
+        // the transfer as one link whose conductance is the path's least: the buy charges it as the buying does a link
+        const virtual = {c: weak.get(s.id), goods: 0};
+        buy(b, s, virtual);
+        if (virtual.goods) for (const l of path) l.goods = (l.goods || 0) + virtual.goods;
+      }
+    }
+  }
 }
 
 // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers

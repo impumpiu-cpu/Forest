@@ -25,7 +25,7 @@ const KINDS = {
 };
 const kindOf = text => Object.entries(KINDS).filter(([, re]) => re.test(text)).map(([k]) => k);
 
-const a = newAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', ...(lean ? {econ} : {}), ...(opt('choose') ? {choose: opt('choose')} : {})});
+const a = newAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', ...(lean ? {econ} : {}), ...(opt('choose') ? {choose: opt('choose')} : {}), ...(opt('trade') ? {trade: opt('trade')} : {})});
 let t0 = performance.now();
 while (!landDone(a)) runNextStage(a);
 const landMs = performance.now() - t0;
@@ -74,7 +74,7 @@ const pnames = WORLD_PEOPLES.all().map(p => [p.id, new RegExp(p.label.slice(0, 5
 const major = chron.filter(c => lineLevel(c) === 'major').map(c => ({y: c.year, k: kindOf(c.text)[0] || 'other', p: pnames.filter(([, re]) => re.test(c.text)).map(([id]) => id).sort().join('+'), text: c.text}));
 const trade = [...(a.net?.links?.values() || [])].reduce((s, l) => s + (l.goods || 0), 0);
 const res = {
-  seed, size, econ, choose: opt('choose') || null, landMs: Math.round(landMs), histMs: Math.round(histMs), years: a.hist.year - 1,
+  seed, size, econ, choose: opt('choose') || null, trade: opt('trade') || null, landMs: Math.round(landMs), histMs: Math.round(histMs), years: a.hist.year - 1,
   end: series.at(-1), series, kinds, majorN: major.length, major: major.map(({y, k, p}) => ({y, k, p})),
   towns: a.towns.length, ruins: Object.fromEntries(PEOPLES.map(p => [p, (a.ruins || []).filter(r => r.people === p).length])),
   warsStarted: Object.values(a.rel || {}).reduce((s, r) => s + (r.wars || 0), 0),
