@@ -5,6 +5,7 @@
 // (CAMPAIGN), the one place to balance them.
 import {CAMPAIGN} from './balance/prices.js';
 import {POTION} from './potions.js';
+import {waresOf} from './townBuildings.js';
 
 // how a town stands to the caravan's realm: own — its own realm; friend — a realm it trades with and is
 // not at war with; anyone else does not let the caravan in. × on what the caravan pays and gets
@@ -30,22 +31,12 @@ export const MARKET = {
   healers: ['healerhut', 'hospice', 'temple', 'bathhouse'],
 };
 
-// The wares of a town's works (campaign/town.js offers): the items a recipe of the world (data/townBuildings.js `building:recipe`)
-// or a work with no recipes (a building id) puts on the market while it runs — the town unfolded for the visit, atlas/economy.js
-// townUnfold. A thing of a metal is sold where that metal's recipe runs (a forge with the ingots), or where the store holds its
+// The wares of a town's works (campaign/town.js offers): the items a recipe of the world (data/townBuildings.js `wares` of a
+// recipe, keyed `building:recipe`, or of a work with no recipes, keyed by its id) puts on the market while it runs — the town
+// unfolded for the visit, atlas/economy.js townUnfold. One source: the table of the world's buildings; this is read off it. A thing of a metal is sold where that metal's recipe runs (a forge with the ingots), or where the store holds its
 // kind and a forge of the realm ran the metal last season; a form a people will not touch is never sold (data/kinds.js
 // RACE_FORMS), nor a metal the realm does not work (`metals`). The items are of data/items.js
-export const WARES = {
-  'forge:bronze': ['bronzespear', 'bronzeaxe', 'bronzedagger', 'bronzesword', 'bronzejavelin', 'bronzehatchet', 'bronzelamellar'],
-  'forge:iron': ['ironspear', 'ironaxe', 'irondagger', 'sword', 'ironjavelin', 'ironhatchet', 'lamellar'],
-  'forge:steel': ['steelspear', 'steelaxe', 'steeldagger', 'steelsword', 'steeljavelin', 'steelhatchet', 'steellamellar'],
-  'forge:mithril': ['mithrilspear', 'mithrilaxe', 'mithrilsword', 'mithrillamellar'],
-  armory: ['chainmail', 'crossbow', 'shield'],   // the arsenal: the mail and the crossbow of the garrison's smiths, of what the realm forges
-  foundry: ['chainmail', 'crossbow'],
-  'handshop:bows': ['bow'], 'crafthut:bows': ['bow'],
-  crafthut: ['shield'],
-  tannery: ['hardleather', 'furcoat'], tannery2: ['hardleather', 'furcoat'], lodge: ['furcoat'],
-};
+export const WARES = waresOf();
 export const WARE_IDS = [...new Set(Object.values(WARES).flat())];
 
 // what a town sells besides food and its works' wares, and what of it it must have built (any of `at`); `price` for what has

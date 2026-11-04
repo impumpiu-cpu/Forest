@@ -39,7 +39,9 @@
 //   ── the chains of 6.1 (docs/WORLD.md «Цепочки 6.1»)
 //   kind, line    the kind of its row (base, variant, tier, annex, upgrade: B, V, T, A, U below) and its card
 //   opens         the indicators it lights while one of it stands (INDICATORS)
-//   recipes       [{id, name, req, in, fire, any, out, opens}]: they run while their `req` indicators are lit and share its strength
+//   recipes       [{id, name, req, in, fire, any, out, opens, wares}]: they run while their `req` indicators are lit and share its strength
+//   wares         the items (data/items.js ids) a running recipe, or a work with no recipes, puts on the town's market for the caravan
+//                 (campaign/town.js offers; the table of them: data/market.js WARES is read off this)
 //   req           the indicators it stands without (the steelworks: iron ingots in the store)
 //   soft          goods of `in` this building does without at TOWN_FLOW.soft (as a good marked `soft` in TOWN_GOODS): a
 //                 fisher's hut without twine for its nets, a craftsman's shop without bone and leather
@@ -247,17 +249,17 @@ const BREW_REC = [R('grain', 'зерновая брага', ['grain'], {in: {raw
   R('mushroom', 'грибная брага', ['mushrooms'], {in: {raw: 20}, out: {drink: 800}}), R('mead', 'медовая брага', ['honey'], {in: {raw: 20}, out: {drink: 800}})];
 const LARDER_REC = [R('dry', 'сушка', [], {in: {raw: 12}, out: {stores: 6}}), R('salt', 'засолка', ['stock:salt'], {in: {raw: 12, salt: 6}, out: {stores: 12}}),
   R('smoke', 'копчение', [], {in: {raw: 20}, fire: 40, out: {stores: 28}})];
-const SHOP_REC = [R('skins', 'бурдюки', ['people:orcs'], {in: {leather: 10}, out: {ware: 10}}), R('bows', 'луки', ['people:elves|people:humans'], {in: {wood: 30, fiber: 16}, out: {arms: 20}}),
+const SHOP_REC = [R('skins', 'бурдюки', ['people:orcs'], {in: {leather: 10}, out: {ware: 10}}), R('bows', 'луки', ['people:elves|people:humans'], {in: {wood: 30, fiber: 16}, out: {arms: 20}, wares: ['bow']}),
   R('bark', 'корьевая броня', ['people:elves'], {in: {wood: 40, fiber: 20, leather: 10}, out: {armor: 4}})];
 const SMELT_REC = k => [R('bronze', 'бронза', ['stock:ore_bronze'], {in: {ore_bronze: 120 * k}, fire: 180 * k, out: {bar_bronze: 72 * k}}),
   R('iron', 'железо', ['stock:ore_iron'], {in: {ore_iron: 120 * k}, fire: 180 * k, out: {bar_iron: 86 * k}}),
   R('silver', 'серебро', ['stock:ore_silver'], {in: {ore_silver: 120 * k}, fire: 180 * k, out: {bar_silver: 60 * k}}),
   R('gold', 'золото', ['stock:ore_gold'], {in: {ore_gold: 120 * k}, fire: 180 * k, out: {bar_gold: 60 * k}})];
 // a better metal gives more at the end of the chain: tools, arms and armour are spent by their worth
-const FORGE_REC = [R('bronze', 'бронзовые изделия', ['stock:bar_bronze'], {in: {bar_bronze: 50, leather: 10}, out: {tools: 11, arms: 8, armor: 1}}),
-  R('iron', 'железные изделия', ['stock:bar_iron'], {in: {bar_iron: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}}),
-  R('steel', 'стальные изделия', ['stock:bar_steel'], {in: {bar_steel: 50, leather: 10}, out: {tools: 22, arms: 15, armor: 3}}),
-  R('mithril', 'мифриловые изделия', ['stock:bar_mithril', 'people:dwarves'], {in: {bar_mithril: 10}, out: {arms: 15, armor: 5, lux: 3}})];
+const FORGE_REC = [R('bronze', 'бронзовые изделия', ['stock:bar_bronze'], {in: {bar_bronze: 50, leather: 10}, out: {tools: 11, arms: 8, armor: 1}, wares: ['bronzespear', 'bronzeaxe', 'bronzedagger', 'bronzesword', 'bronzejavelin', 'bronzehatchet', 'bronzelamellar']}),
+  R('iron', 'железные изделия', ['stock:bar_iron'], {in: {bar_iron: 50, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, wares: ['ironspear', 'ironaxe', 'irondagger', 'sword', 'ironjavelin', 'ironhatchet', 'lamellar']}),
+  R('steel', 'стальные изделия', ['stock:bar_steel'], {in: {bar_steel: 50, leather: 10}, out: {tools: 22, arms: 15, armor: 3}, wares: ['steelspear', 'steelaxe', 'steeldagger', 'steelsword', 'steeljavelin', 'steelhatchet', 'steellamellar']}),
+  R('mithril', 'мифриловые изделия', ['stock:bar_mithril', 'people:dwarves'], {in: {bar_mithril: 10}, out: {arms: 15, armor: 5, lux: 3}, wares: ['mithrilspear', 'mithrilaxe', 'mithrilsword', 'mithrillamellar']})];
 const WALLS = ['palisade', 'thornhedge', 'earthwall', 'tunnels'], SHRINES = ['shrine', 'shamanhut', 'sacredgrove', 'stonecircle', 'ancestorhall'];
 
 export const TOWN_BUILDINGS = new Registry('townBuilding');
@@ -285,7 +287,7 @@ TOWN_BUILDINGS.registerAll([
   V('forestry', 'бережная вырубка', 'f', 'raw', 0, E, {prod: 0.1}, {line: 'forest', per: 300, needs: ['forest'], site: true, jobs: 8, in: {tools: 1.6}, out: {wood: 400}, opens: ['wood']}),
   // herbs, wild honey, berries and mushrooms, nettle and bast — everyone's first work of the wild
   B('gatherer', 'хижина собирателя', 'f', 'food', 0, ALL, {}, {line: 'gatherer', per: 400, needsAny: ['forest', 'pasture'], site: true, jobs: 6, in: {tools: 1.2}, out: {herbs: 20, raw: 20, fiber: 20}, opens: ['herbs', 'honey', 'wild']}),
-  B('lodge', 'хижина охотника', 'f', 'food', 0, ALL, {}, {line: 'hunter', per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2, tools: 2}, out: {raw: 25, hide: 80, bone: 80}, opens: ['meat', 'hides']}),
+  B('lodge', 'хижина охотника', 'f', 'food', 0, ALL, {}, {line: 'hunter', per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2, tools: 2}, out: {raw: 25, hide: 80, bone: 80}, opens: ['meat', 'hides'], wares: ['furcoat']}),
   U('traps', 'ловушки', 0, ALL, ['lodge'], 0.2, {line: 'hunter', in: {tools: 1}}),
   B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {}, {line: 'fishing', per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20, tools: 2}, soft: ['fiber'], out: {raw: 30}, opens: ['fish']}),
   T('pier', 'промысловая пристань', 'f', 'food', 1, ALL, {trade: 0.05}, 'fishhut', {line: 'fishing', per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30, tools: 4}, soft: ['fiber'], out: {raw: 70}, opens: ['fish']}),
@@ -349,9 +351,9 @@ TOWN_BUILDINGS.registerAll([
   // the hand workshop: the first tools of wood and bone, with no tools to begin with; the waterskins of the greenskins, the bows of
   // the elves and the humans, the elves' bark armour — its recipes
   B('handshop', 'ручная мастерская', 'f', 'craft', 0, ALL, {}, {line: 'workshop', per: 500, jobs: 2, in: {wood: 10, bone: 10}, soft: ['bone', 'fiber', 'leather'], out: {tools: 4, arms: 2}, recipes: SHOP_REC, opens: ['craft']}),
-  T('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, 'handshop', {line: 'workshop', per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20, tools: 0.8}, soft: ['bone', 'leather', 'fiber'], out: {tools: 15, arms: 10}, recipes: SHOP_REC, opens: ['craft']}),
-  B('tannery', 'дубильня', 'f', 'craft', 1, ALL, {prod: 0.1}, {line: 'tannery', per: 600, requiresAny: ['lodge', 'pen', 'pasture', 'slaughter'], local: 'tannery', jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 60}, opens: ['leather']}),
-  T('tannery2', 'улучшенное дубление', 'n', 'craft', 2, ALL, {prod: 0.1}, 'tannery', {line: 'tannery', per: 600, jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 75}, opens: ['leather']}),
+  T('crafthut', 'мастерская ремесленника', 'f', 'craft', 1, ALL, {prod: 0.1}, 'handshop', {line: 'workshop', per: 500, local: 'crafthut', jobs: 4, in: {wood: 40, bone: 20, leather: 20, tools: 0.8}, soft: ['bone', 'leather', 'fiber'], out: {tools: 15, arms: 10}, recipes: SHOP_REC, opens: ['craft'], wares: ['shield']}),
+  B('tannery', 'дубильня', 'f', 'craft', 1, ALL, {prod: 0.1}, {line: 'tannery', per: 600, requiresAny: ['lodge', 'pen', 'pasture', 'slaughter'], local: 'tannery', jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 60}, opens: ['leather'], wares: ['hardleather', 'furcoat']}),
+  T('tannery2', 'улучшенное дубление', 'n', 'craft', 2, ALL, {prod: 0.1}, 'tannery', {line: 'tannery', per: 600, jobs: 3, in: {hide: 60, tools: 0.6}, out: {leather: 75}, opens: ['leather'], wares: ['hardleather', 'furcoat']}),
   B('loom', 'ткацкая', 'f', 'craft', 1, ALL, {prod: 0.1}, {line: 'loom', per: 600, local: 'loom', jobs: 4, in: {fiber: 120, tools: 0.8}, out: {cloth: 40}, opens: ['cloth']}),
   T('loom2', 'развитое ткачество', 'n', 'craft', 2, ALL, {prod: 0.1}, 'loom', {line: 'loom', per: 600, jobs: 4, in: {fiber: 120, tools: 0.8}, out: {cloth: 50}, opens: ['cloth']}),
   B('potter', 'гончарня', 'f', 'craft', 1, [...H, ...D, ...E], {prod: 0.05}, {line: 'potter', per: 800, needs: ['clay'], local: 'potter', jobs: 3, fire: 40, in: {clay: 60, tools: 0.6}, out: {ware: 90}, opens: ['ware', 'pottery']}),
@@ -360,7 +362,7 @@ TOWN_BUILDINGS.registerAll([
   B('smelter', 'плавильный горн', 'm', 'craft', 1, [...H, ...D, ...O], {prod: 0.15}, {line: 'smelter', per: 800, local: 'smelter', jobs: 4, in: {tools: 0.8}, recipes: SMELT_REC(1), metals: ['bronze'], opens: ['smelting']}),
   T('smelter2', 'развитая плавильня', 'f', 'craft', 2, [...H, ...D, ...O], {prod: 0.2}, 'smelter', {line: 'smelter', per: 1500, jobs: 8, in: {tools: 1.6}, recipes: SMELT_REC(3), metals: ['bronze'], opens: ['smelting']}),
   // the steelworks: iron ingots into steel (a big town's work); the magma forge melts mithril — it needs no fire of its own
-  A('foundry', 'сталеварня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, ['smelter'], {line: 'smelter', per: 2000, pop: 800, jobs: 10, fire: 300, in: {bar_iron: 140, tools: 2}, req: ['stock:bar_iron'], out: {bar_steel: 56}, metals: ['steel']}),
+  A('foundry', 'сталеварня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, ['smelter'], {line: 'smelter', per: 2000, pop: 800, jobs: 10, fire: 300, in: {bar_iron: 140, tools: 2}, req: ['stock:bar_iron'], out: {bar_steel: 56}, metals: ['steel'], wares: ['chainmail', 'crossbow']}),
   A('magmaforge', 'магмовый горн', 'm', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, ['smelter'], {line: 'smelter', needs: ['magma'], local: 'magmaforge', pop: 800, jobs: 6, in: {ore_mithril: 20, tools: 1.2}, req: ['stock:ore_mithril'], out: {bar_mithril: 10}, metals: ['mithril']}),
   B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {line: 'forge', per: 800, local: 'forge', notable: true, jobs: 4, fire: 75, in: {tools: 0.8}, soft: ['leather'], recipes: FORGE_REC, metals: ['iron'], opens: ['smithing']}),
   // fine work of any two materials (LUX): its luxury is worth what went into it × LUX.markup
@@ -372,7 +374,7 @@ TOWN_BUILDINGS.registerAll([
   // the hippodrome (horse-knights), the fighting pits (beasts of the land about broken to war: atlas/beasts.js)
   B('barracks', 'казармы', 'pl', 'housing', 1, [...H, ...D], {defence: 0.25}, {line: 'barracks', vec: {agg: 0.9, grow: 0.1}, house: 100, jobs: 30, heat: 60, in: {arms: 3, armor: 1}, opens: ['garrison']}),
   V('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}, {line: 'barracks', jobs: 30, in: {arms: 4, armor: 1}, opens: ['garrison']}),
-  A('armory', 'арсенал', 'm', 'craft', 2, [...H, ...D, ...O], {defence: 0.2}, ['barracks', 'warcamp'], {line: 'barracks', local: 'armory', jobs: 2, opens: ['arsenal']}),
+  A('armory', 'арсенал', 'm', 'craft', 2, [...H, ...D, ...O], {defence: 0.2}, ['barracks', 'warcamp'], {line: 'barracks', local: 'armory', jobs: 2, opens: ['arsenal'], wares: ['chainmail', 'crossbow', 'shield']}),
   A('tiltyard', 'ристалище', 'n', 'defence', 1, H, {defence: 0.15, prestige: 0.15}, ['barracks'], {line: 'barracks', local: 'tiltyard', notable: true, jobs: 6, in: {arms: 2, armor: 3, food: 10}, opens: ['knights']}),
   T('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, 'tiltyard', {line: 'barracks', needsAny: ['flat', 'pasture'], notable: true, jobs: 8, in: {food: 20, fiber: 40}, soft: ['fiber'], out: {beasts: 3}, opens: ['cavalry', 'knights']}),
   A('fightpits', 'бойцовские ямы', 'pl', 'defence', 1, O, {defence: 0.15, prestige: 0.1}, ['warcamp'], {line: 'barracks', local: 'fightpits', notable: true, jobs: 6, in: {food: 20, arms: 2}, opens: ['warbeasts']}),
@@ -531,6 +533,8 @@ export const KITCHENS = ['firepit', 'hearth', 'cookhouse'];
 // none — iron), and `dig.coal` charges of fuel × how rich it is in coal. Each ore is a good of its own, each smelted by its recipe.
 export const ORE_GOODS = Object.fromEntries(Object.entries(METALS).filter(([, m]) => m.ore).map(([k, m]) => [k, m.ore]));   // (from METALS)
 // what a building can make at all: its `out`, its recipes', the ores it digs, the metals of its yields
+// the wares of the world's works, by recipe (`building:recipe`) and by work with none (its id): data/market.js WARES
+export const waresOf = () => { const out = {}; for (const b of TOWN_BUILDINGS.all()) { if (b.wares) out[b.id] = b.wares; for (const q of recipesOf(b)) if (q.wares) out[`${b.id}:${q.id}`] = q.wares; } return out; };
 export const makesOf = b => [...new Set([...Object.keys(b.out || {}), ...recipesOf(b).flatMap(q => Object.keys(q.out || {})), ...(b.dig?.ores || []).map(k => ORE_GOODS[k]), ...(b.dig?.coal ? ['fuel'] : []),
   ...Object.values(b.yields || {}).flatMap(o => Object.keys(o))])];
 // what a building takes at all, its own and its recipes' (`in`)
