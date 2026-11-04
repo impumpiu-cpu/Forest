@@ -47,8 +47,8 @@ export function famed(a, K, kind, realm = null) {
 // its pace of PACE_RULES; one the run's profile switches off keeps the normal pace
 export function choosePace(a, K) {
   if (PACE_RULES.pursued === 'normal' && PACE_RULES.danger === 'normal') return 'normal';
-  if (allowed(a.cfg, 'caravan.pace.pursued') && (K.bubble?.things || []).some(x => x.pursuit)) return PACE_RULES.pursued;   // a band on the crown's trail (campaign/quest.js)
-  if (!allowed(a.cfg, 'caravan.pace.danger')) return 'normal';
+  if (allowed(a?.cfg, 'caravan.pace.pursued') && (K.bubble?.things || []).some(x => x.pursuit)) return PACE_RULES.pursued;   // a band on the crown's trail (campaign/quest.js)
+  if (!allowed(a?.cfg, 'caravan.pace.danger')) return 'normal';
   const ds = dangers(a, K.i, K), worst = ds.reduce((m, d) => Math.max(m, d.strength ?? 0), 0);
   return worst > PACE_RULES.dangerAt ? PACE_RULES.danger : 'normal';
 }

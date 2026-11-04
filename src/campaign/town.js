@@ -139,7 +139,7 @@ const FITS = new WeakMap();
 // (data/market.js BUY_ORDER: the lower first); a kind the run's profile switches off is not bought
 function wants(a, K, t, st) {
   const out = [], ms = alive(K), tier = toolTier(K);
-  const want = (kind, o) => { if (allowed(a.cfg, 'caravan.buy.' + kind)) out.push([BUY_ORDER[kind], o]); };
+  const want = (kind, o) => { if (allowed(a?.cfg, 'caravan.buy.' + kind)) out.push([BUY_ORDER[kind], o]); };
   // wheels are worth their price only when they can go the way to the goal (as the council asks, campaign/march.js)
   // (asked once a visit's trade: the way does not change while the caravan trades — trade() keeps the answer, K.wheelsFit)
   const wheelsFit = () => {

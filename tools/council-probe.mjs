@@ -1,15 +1,20 @@
 // The caravan's council across walks (docs/CAMPAIGN.md «Вечерний совет и стоянки»): how the walks end, how long they take,
 // how many of the eight come home, and what the council chose — the camps by why, the towns by why. For comparing the
 // council before and after a change of its choice (its policy, its weights, the caravan's mission profile).
-// Usage: node tools/council-probe.mjs [worlds=4] [--json]   (the fights settled at once)
+// Usage: node tools/council-probe.mjs [worlds=4] [--json] [--peoples=humans,dwarves] [--want=caravan.camp.goOn=0 …] [--mission=humans.pace=0.6 …]
+// (the fights settled at once; --want sets a weight of data/campaign.js COUNCIL.want, --mission an axis of a people's mission
+// profile, COUNCIL.mission.people — for this run only)
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
-import {CAMPAIGN} from '../src/data/campaign.js';
+import {CAMPAIGN, COUNCIL} from '../src/data/campaign.js';
 import {core} from '../src/campaign/march.js';
 import {traceMode} from '../src/core/decide.js';
 
 const worlds = +(process.argv.find(x => /^\d+$/.test(x)) || 4), asJson = process.argv.includes('--json');
+const onlyPeoples = (process.argv.find(x => x.startsWith('--peoples=')) || '').slice(10).split(',').filter(Boolean);
+for (const x of process.argv.filter(x => x.startsWith('--mission='))) { const [path, v] = x.slice(10).split('='), [pe, ax] = path.split('.'); COUNCIL.mission.people[pe][ax] = +v; }
+for (const x of process.argv.filter(x => x.startsWith('--want='))) { const [id, v] = x.slice(7).split('=') ; COUNCIL.want[id] = +v; }
 const sum = {walks: 0, won: 0, lost: 0, timeout: 0, days: 0, home: 0, camp: {}, visit: {}};
 const per = {};
 const add = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
@@ -17,6 +22,7 @@ for (let s = 0; s < worlds; s++) {
   const seed = String(777 + s * 13), base = generateAtlas({seed, size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
   const frozen = JSON.stringify(saveAtlas(base)), caps = capitals(base);
   for (const p of CAMPAIGN.peoples) {
+    if (onlyPeoples.length && !onlyPeoples.includes(p)) continue;
     const c = caps.find(x => x.people === p); if (!c) continue;
     const a = loadAtlas(JSON.parse(frozen));
     const camp = {}, visit = {};

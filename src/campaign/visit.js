@@ -35,7 +35,6 @@ const VISIT_ASK = {
   // ore for the smith (data/market.js SMITH): enough for a piece; a town with a smith is looked for further than a shop
   smith: (a, K) => K.day >= (K.nextVisit ?? 0) && smithOre(K) >= VISIT.smithOre && K.gold >= VISIT.smithGold && !(K.smithTried > K.day),
   shop: (a, K) => K.day >= (K.nextVisit ?? 0) && K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every,
-  goOn: () => true,   // (asked last of its lane: offered only beside something else — data/campaign.js COUNCIL)
 };
 const VISIT_CMD = 'caravan.visit.';
 // the way on: drawn, it means no town and no camp
@@ -44,7 +43,7 @@ export function wantVisit(a, K, seasonId) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
   const Sn = SEASONS.get(seasonId), cmds = pointCommands('caravan.visit');
   const {r, done} = draw(K, 'council');
-  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a.cfg, c.id)});
+  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a?.cfg, c.id)});
   done();
   if (got.option && isGoOn(got.option.id)) { readout(K, got); if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, got); return ''; }
   readout(K, got);

@@ -1,18 +1,21 @@
 {
  "settlement:20261010": {
-  "hash": "447ebd3d4de0e383",
-  "save": "85877160",
-  "tick": 5150
+  "hash": "b96fab3a35355194",
+  "save": "84994f23",
+  "tick": 5150,
+  "neutral": "447ebd3d4de0e383"
  },
  "settlement:x7": {
-  "hash": "091c7f02e81cdfe4",
-  "save": "3092762a",
-  "tick": 5150
+  "hash": "df034788684f0042",
+  "save": "967084e4",
+  "tick": 5150,
+  "neutral": "091c7f02e81cdfe4"
  },
  "settlement:fpl": {
-  "hash": "6524249a05b974a8",
-  "save": "b71c6f69",
-  "tick": 5150
+  "hash": "fdc72bacdac705fa",
+  "save": "908c62a1",
+  "tick": 5150,
+  "neutral": "6524249a05b974a8"
  },
  "world:minds1": {
   "hash": "d59da054",
@@ -27,51 +30,51 @@
   "chronicle": 2594
  },
  "campaign:777:humans": {
-  "hash": "6d14057d · 8/9",
-  "world": "919988f2",
-  "day": 128,
-  "why": "ca366b72"
+  "hash": "31c7f2b5 · 8/9",
+  "world": "d173f8c2",
+  "day": 138,
+  "why": "395a70b5"
  },
  "campaign:777:elves": {
-  "hash": "98c44ea2 · 6/15",
-  "world": "39f5b33f",
-  "day": 3001,
-  "why": "efa496b0"
+  "hash": "88ae6e33 · 11/13",
+  "world": "ec96d441",
+  "day": 1253,
+  "why": "ccedf019"
  },
  "campaign:777:dwarves": {
-  "hash": "ef70abf4 · 2/9",
-  "world": "4e3142da",
-  "day": 2109,
-  "why": "29be33d"
+  "hash": "6d356835 · 4/12",
+  "world": "4cce2c69",
+  "day": 1574,
+  "why": "ae61da8a"
  },
  "campaign:777:orcs": {
-  "hash": "913bebed · 0/14",
-  "world": "2a450b70",
-  "day": 1680,
-  "why": "8574334e"
+  "hash": "94326343 · 4/14",
+  "world": "d179f218",
+  "day": 1844,
+  "why": "3be6ca30"
  },
  "campaign:790:humans": {
-  "hash": "99453c2e · 5/21",
-  "world": "27b9d91e",
-  "day": 1271,
-  "why": "bba8dbb3"
+  "hash": "409d6480 · 10/26",
+  "world": "14e5dae2",
+  "day": 2843,
+  "why": "ee8c6f76"
  },
  "campaign:790:elves": {
-  "hash": "a4e0a45a · 5/12",
-  "world": "6dc671f4",
-  "day": 1986,
-  "why": "9792bcb4"
+  "hash": "5585bcf1 · 5/11",
+  "world": "79f51d00",
+  "day": 882,
+  "why": "35f0abf0"
  },
  "campaign:790:dwarves": {
-  "hash": "62f38f97 · 3/21",
-  "world": "72b93c56",
-  "day": 3001,
-  "why": "42999a31"
+  "hash": "b7f78779 · 7/14",
+  "world": "fa63145d",
+  "day": 1794,
+  "why": "677829cf"
  },
  "campaign:790:orcs": {
-  "hash": "259eb1e · 4/12",
-  "world": "8ab7b460",
-  "day": 688,
-  "why": "86fa5b88"
+  "hash": "74b2ca1e · 5/17",
+  "world": "2c5512d9",
+  "day": 711,
+  "why": "3bd66390"
  }
 }
