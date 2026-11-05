@@ -28,7 +28,7 @@
 //   tools     — one stock of the town (TOWN_FLOW.tools a hand at work): what it has of them against that weighs on every work, soft
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {ORE_KINDS} from '../data/worldLand.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, goodPrice, recipesOf} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, goodPrice, recipesOf} from '../data/townBuildings.js';
 // (reqLit: who a recipe is for — its people or kind — against the town's lights)
 import {reqLit} from '../data/townBuildings.js';
 import {workNeeds} from '../data/requirements.js';
@@ -93,6 +93,28 @@ export function digOf(a, t, b) {
   if (coal > 0) out.fuel = coal;
   return out;
 }
+// The metals a town's realm knows (docs/WORLD.md «Металлы»): what a town of it digs (its mines, by their cells), makes (a
+// building's own `out` and `yields`, a recipe that worked last season — t.work) or holds in its store. A recipe of a metal its
+// realm does not know does not ask for it (TOWN_FLOW.recipeFloor): the forge of a realm with no mithril does not want mithril.
+// From the saved towns alone (their buildings, work, store), so a world loaded goes on as it would have → Set of goods
+const METAL_GOODS = new Set(Object.values(METALS).map(m => m.good));
+export function realmMetals(a, t) {
+  const out = new Set(), towns = t.realm == null || !a?.towns ? [t] : a.towns.filter(x => x.alive && x.realm === t.realm);
+  const put = g => { if (METAL_GOODS.has(g)) out.add(g); };
+  for (const x of towns) {
+    for (const [g, v] of Object.entries(x.stock || {})) if (v > TOWN_MONEY.dust) put(g);
+    for (const id of new Set(x.built)) {
+      if (!TOWN_BUILDINGS.has(id)) continue;
+      const b = TOWN_BUILDINGS.get(id);
+      for (const g of Object.keys(b.out || {})) put(g);
+      for (const o of Object.values(b.yields || {})) for (const g of Object.keys(o)) put(g);
+      if (b.dig && a) for (const [g, v] of Object.entries(digOf(a, x, b))) if (v > 0) put(g);
+      for (const q of recipesOf(b)) if ((x.work?.[`${b.id}:${q.id}`] || 0) > 0) for (const g of Object.keys(q.out || {})) put(g);
+    }
+  }
+  return out;
+}
+
 // The lights of a town: its people, the kinds it holds (data/peoples.js KIN.least) → Set — what a recipe may ask for (its `req`)
 export function townLights(a, t) {
   const lit = new Set([`people:${t.people}`]);
@@ -241,13 +263,15 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   // the shares of the recipes of a building: they share its strength by what the store holds of what each takes (a recipe
   // that takes nothing of the store — as one that has all it takes); one that has none of it runs at nothing and takes no
   // share — it only asks (`ask`: TOWN_FLOW.recipeFloor of what it would take goes into the demand, so the town buys or builds
-  // for it)
+  // for it) — and of a metal, only one its realm knows (realmMetals)
+  let knows = null;
+  const known = x => x.hard.every(g => !METAL_GOODS.has(g) || (knows ||= realmMetals(a, t)).has(g));
   const shareOut = () => {
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
       let w = 1; for (const g of x.hard) w = Math.min(w, avail(g));
-      x.w = w; x.ask = w <= 0;
+      x.w = w; x.ask = w <= 0 && known(x);
       by.set(x.of, (by.get(x.of) || 0) + x.w);
     }
     for (const x of recRows) x.share = x.w > 0 ? x.w / by.get(x.of) : 0;

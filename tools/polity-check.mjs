@@ -123,7 +123,10 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     const nowSeat = capitalOf(a, r.id);
     check('столица сожжена, король был в другом городе: столица перенесена, король жив', king.alive && nowSeat && nowSeat !== seat && r.fallen == null, `${king.name} жив: ${king.alive}; столица — ${nowSeat?.name}`);
     const king2 = rulerOf(a, r), court = Object.values(r.kingdom.court).filter(Boolean).map(h => personOf(a, h.person));
-    townStormed(a, nowSeat, false, () => 0, say);   // stormed again, the king there now: it falls by the profile's `storm`
+    // stormed again, the king there now (the new seat need not be the town he waited in: a realm of three towns picks its
+    // biggest — he is brought to it): he falls by the profile's `storm`
+    if (king2 && !isAt(king2, 'town', nowSeat.id)) moveTo(king2, 'town', nowSeat.id);
+    townStormed(a, nowSeat, false, () => 0, say);
     check('штурм столицы с королём в ней: король гибнет по укладу, двор — с ним', !!king2 && !king2.alive && king2.died.how === 'storm' && court.every(p => !p.alive || !isAt(p, 'town', nowSeat.id)), `${king2?.name}: ${king2?.died?.how}`);
   }
 }
