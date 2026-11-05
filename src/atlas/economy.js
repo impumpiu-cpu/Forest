@@ -254,16 +254,17 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   };
   // the rounds: until no row's strength moves by TOWN_FLOW.settle, at most TOWN_FLOW.rounds (a chain of three works — logs, charcoal,
   // wares — settles in three; a town of no chains in one or two)
-  let toolK = 1;
+  let toolK = 1, asked = {};
   const facts = townFacts(a, t);
   for (let k = 0; k < F.rounds; k++) {
     shareOut();
-    sup = {...(imports || {})}; dem = {};
+    sup = {...(imports || {})}; dem = {}; asked = {};
     for (const r of yielders) for (const [g, v] of Object.entries(r.yout)) sup[g] = (sup[g] || 0) + v;
     for (const [g, v] of Object.entries(F.gather || {})) sup[g] = (sup[g] || 0) + v * t.pop;   // gathered by hand (brushwood)
     for (const r of rows) {
       for (const [g, v] of r.outE) sup[g] = (sup[g] || 0) + v * r.eff * boat(r);
       for (const [g, v] of r.inE) dem[g] = (dem[g] || 0) + v * r.staff * r.own * (r.ask ? F.recipeFloor : r.share);
+      if (r.ask) for (const [g, v] of r.inE) asked[g] = (asked[g] || 0) + v * r.staff * r.own * F.recipeFloor;   // (of it, the asks: for the reports)
     }
     if (toolsNeed > 0) dem.tools = (dem.tools || 0) + toolsNeed;   // the town's tools: one ask for all its works
     const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
@@ -319,7 +320,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   // a work that lives by its recipes alone (a forge, a larder: no `out` of its own) works as far as they do
   const own = rows.filter(r => !r.of);
   for (const r of own) if (recipesOf(r.b).length && !Object.keys(r.out).length && !r.b.yields) r.eff = Math.min(r.eff, recRows.filter(x => x.of === r).reduce((s, x) => s + x.eff, 0));
-  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, pools: pgot, tools: toolK, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
+  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, asked, food, dem, pools: pgot, tools: toolK, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, lit: [...lit0].sort(),
     rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
     recipes: recRows.map(x => ({id: x.b.id, of: x.of.b.id, name: x.q.name, on: x.w > 0 || !!x.ask, share: x.share, eff: x.eff, gave: Object.fromEntries(Object.entries(x.out).map(([g, v]) => [g, v * x.eff]))}))};
