@@ -28,7 +28,7 @@
 //   tools     — one stock of the town (TOWN_FLOW.tools a hand at work): what it has of them against that weighs on every work, soft
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {ORE_KINDS} from '../data/worldLand.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, goodPrice, recipesOf} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, goodPrice, recipesOf, makesOf} from '../data/townBuildings.js';
 // (reqLit: who a recipe is for — its people or kind — against the town's lights)
 import {reqLit} from '../data/townBuildings.js';
 import {workNeeds} from '../data/requirements.js';
@@ -36,7 +36,7 @@ import {meets} from '../core/requirements.js';
 import {townFacts} from './requirements.js';
 import {handsOf} from './population.js';
 import {WORLD_PEOPLES, swapOf, KIN, placeNeed} from '../data/peoples.js';
-import {placeHas, townKin} from './towns.js';
+import {placeHas, townKin, canBuild, realmBuilt} from './towns.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 import {onEdit} from '../data/schema/layer.js';
 
@@ -113,6 +113,27 @@ export function realmMetals(a, t) {
     }
   }
   return out;
+}
+
+// Can the realm make a metal it does not know: a town of it may build now a building that makes it (a mine — if its cell gives
+// it), though none does yet. The forge of a realm with iron and no steelworks asks for steel all the same, and the steel short
+// brings the steelworks into its council's deck (atlas/towns.js candidatesOf: the makers of what is short) — a need the realm
+// can answer is not silenced; one it cannot (mithril where no mine finds it) is. Once a realm a season and metal (as
+// atlas/towns.js realmMakes; a scratch, not saved)
+function realmCanMake(a, t, g) {
+  if (!a?.towns || t.realm == null) return false;
+  const key = `${a.hist?.step ?? -1}:${t.realm}:${g}`, R = a.realmCanMake ||= new Map();
+  if (R.has(key)) return R.get(key);
+  if (R.size > 256) R.clear();
+  const makers = TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g));
+  let ok = false;
+  for (const x of a.towns) {
+    if (!x.alive || x.realm !== t.realm) continue;
+    const inR = realmBuilt(a, x), facts = townFacts(a, x, {inRealm: inR});
+    if (makers.some(b => (!b.dig || digOf(a, x, b)[g] > 0) && canBuild(a, x, b, inR, facts))) { ok = true; break; }
+  }
+  R.set(key, ok);
+  return ok;
 }
 
 // The lights of a town: its people, the kinds it holds (data/peoples.js KIN.least) → Set — what a recipe may ask for (its `req`)
@@ -263,9 +284,9 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   // the shares of the recipes of a building: they share its strength by what the store holds of what each takes (a recipe
   // that takes nothing of the store — as one that has all it takes); one that has none of it runs at nothing and takes no
   // share — it only asks (`ask`: TOWN_FLOW.recipeFloor of what it would take goes into the demand, so the town buys or builds
-  // for it) — and of a metal, only one its realm knows (realmMetals)
+  // for it) — and of a metal, only one its realm knows (realmMetals) or may make (realmCanMake)
   let knows = null;
-  const known = x => x.hard.every(g => !METAL_GOODS.has(g) || (knows ||= realmMetals(a, t)).has(g));
+  const known = x => x.hard.every(g => !METAL_GOODS.has(g) || (knows ||= realmMetals(a, t)).has(g) || realmCanMake(a, t, g));
   const shareOut = () => {
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();

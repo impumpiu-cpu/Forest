@@ -77,8 +77,11 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   } else check('культ войны: у державы зеленокожих есть сосед', false);
 }
 {
-  const realm = a.realms.find(r => r.people === 'orcs');
-  if (!gtowns.some(t => townFx(t).defence)) gtowns[0].built.push('warcamp');   // (a realm raids from a town with a defence: its history may not have built one yet)
+  // (a realm of greenskins that still holds towns — the first one founded may have fallen; it raids from a town with a defence:
+  // its history may not have built one yet)
+  const realm = a.realms.find(r => r.people === 'orcs' && r.fallen == null && gtowns.some(t => t.realm === r.id)) || a.realms.find(r => r.people === 'orcs');
+  const own = gtowns.filter(t => t.realm === realm?.id);
+  if (own.length && !own.some(t => townFx(t).defence)) own[0].built.push('warcamp');
   const plans = captives.want(a, realm, {role: 'realm', season: 'autumn', r: () => 0}) || [];
   check('набеги за рабами — на любого, своих и дикие племена тоже', plans.length > 0, plans.map(p => p[0].lair != null ? 'логово' : 'город').join(', '));
   const t = gtowns.find(x => a.fauna) || gtowns[0]; t.built = t.built.filter(x => x !== 'fightpits'); t.warBeasts = null; t.built.push('fightpits'); const m0 = might(t, townFx(t));   // (pits of its own, fresh: its history may have filled them)

@@ -30,7 +30,7 @@ const FORMATS = [1];
 // buffers of the rot; `ms` (how long each stage took) belongs to this machine and this run; the caches of the land that
 // does not change — the roads' base costs by people (atlas/roads.js), the cells' place answers (atlas/sites.js) — are
 // worked out again from the land and the tables of this run (a world opened under other table edits takes them as they are now)
-const SCRATCH = new Set(['roadScratch', 'seaScratch', 'rotBuf', 'ms', 'roadBase', 'needCache', 'townIdx', 'realmMakes']);
+const SCRATCH = new Set(['roadScratch', 'seaScratch', 'rotBuf', 'ms', 'roadBase', 'needCache', 'townIdx', 'realmMakes', 'realmCanMake']);
 const HIST_LIVE = new Set(['rnd']);
 
 function externals() {

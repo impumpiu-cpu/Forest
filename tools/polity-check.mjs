@@ -482,6 +482,8 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     const a = copy(), r = realmsOf(a, 'humans').find(x => realmTowns(a, x.id).length >= 2) || realmsOf(a, 'humans')[0], seat = capitalOf(a, r.id), goal = a.towns.find(x => x.alive && x !== seat).i;
     seat.heads = {human: [0, 500, 0]}; sync(seat); seat.book = null;
     const hp = makeRuler(a, r), army = send(a, seat, goal, 50, {owner: r.id}); moveTo(hp, 'party', army.id);
+    // (the other chairs' terms put off: a chair of the world's own whose years run out this spring would step off into the count too)
+    for (const [k, h] of Object.entries(r.kingdom.court)) if (k !== 'ruler' && h) h.until = Infinity;
     const n0 = seat.pop; r.kingdom.court.ruler.until = a.hist.year; a.hist.season = SEASONS_PER_YEAR - 1;
     const fill = COURT.fill; COURT.fill = 0; stepKingdom(a, say); COURT.fill = fill;   // (no other office filled from the seat this year: the count is the ruler's alone)
     const apart = hp.alive && !hp.inCount && hp.crowd && isAt(hp, 'party', army.id) && livingPersons(a).includes(hp) && !r.kingdom.court.ruler?.person && Math.abs(seat.pop - n0) < 1e-6;
