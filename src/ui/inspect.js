@@ -1,6 +1,7 @@
 // The inspector of the world map (docs/GAME.md «Наблюдатель»): what a click on the map selects — a party, a town (and
 // its realm), a lair, a ruin or the cell — and its card: what it is, what it has, what it thinks and plans. The card is
 // a view of the live objects (the selection keeps ids and is resolved anew each season), so it changes as the world does.
+import {moodOf} from '../atlas/mood.js';
 import {DEEDS, DEED_BAND_LABELS, deedLabel} from '../data/deeds.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
@@ -213,6 +214,7 @@ function townHtml(a, t) {
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
     row('роль', t.realm != null ? roleLine(t) : null) +
     // the council's needs and its answers (atlas/townNeeds.js): what is lit, what is under way, what it could not do and why
+    row('довольство', `${Math.round(moodOf(t))} из 100`) +
     row('нужды', needsLine(a, t)) +
     row('строится', (P => (P ? `${esc(P.b.name)}: ${Math.min(99, Math.round(100 * P.done / P.days))}%, ещё ~${Math.max(1, Math.ceil((P.days - P.done) / Math.max(1e-9, crewDays(t))))} сез.` : null))(projectOf(t))) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));

@@ -538,7 +538,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 // treasury (t.gold); each realm a treasury (realm.gold).
 //   start     — a town's first gold in each purse (treasury, people, makers): × its people; dust — less than this of a good is none
 //   needs     — what the people buy a season, a head: `basic` all of them, `comfort` × how rich they are (their gold a head
-//               against `rich`); the town grows × (grow[0] + grow[1] × basic met) × (1 + comfortGrow × comfort met)
+//               against `rich`); how well they were met sets the town's mood (atlas/mood.js), and its growth by it
 //   makers    — the makers pay `wage` a season for each free hand at work, as far as their purse goes; the treasury takes `tax` of
 //               the season's earnings of the makers and of the people; link — the gold of goods bought down a link that counts
 //               as a person fed down it (atlas/sites.js)
@@ -597,7 +597,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, keep: 1, safety: 1, buy: 1, foreign: 1.25,
   merchants: {cheap: 0.4, fair: 0.7, purse: 0.03, at: ['market', 'tradepost', 'inn', 'caravanserai', 'harbor']},
   needs: {basic: {wood: 0.05, cloth: 0.01, leather: 0.004, drink: 0.02, tools: 0.002},
-    comfort: {lux: 0.001, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.008}, rich: 1, grow: [0.95, 0.05], comfortGrow: 0.1, unmet: 0.1},
+    comfort: {lux: 0.001, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.008}, rich: 1, unmet: 0.1},
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
   plunder: {raid: 0.25, storm: 0.5, cult: 3, chief: 0.3, dare: 1.5, slaves: 0.4},
   build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},

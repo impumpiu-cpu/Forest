@@ -18,6 +18,7 @@ import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from
 import {takeHeads, sync, foundHeads} from './population.js';
 import {townFx, room, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
+import {moodStep, moodGrow} from './mood.js';
 import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
@@ -181,7 +182,7 @@ export function settleSpot(a, t) {
 }
 // a year's growth of a town towards its target (what feeds and houses it): born of its people at its people's `breed`
 // (the elder peoples slower), by fame, its realm's economy and its people's needs; over the target it shrinks the same way
-export const bornOf = (t, P, fx, target) => TL.growth * (P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target));
+export const bornOf = (t, P, fx, target) => { const room = 1 - t.pop / Math.max(TL.minTarget, target); return TL.growth * (P.breed ?? 1) * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * moodGrow(t, room < 0) * t.pop * room; };
 // the settlers of a town found a new one: `settlers.pop` of its people leave it with what its store can spare of
 // `settlers.goods`; the new town is of the same realm → the town, or null (no spot, or too few to leave)
 export function foundFrom(a, from, rnd, say) {
@@ -356,7 +357,7 @@ export function seasonTowns(a, say) {
   }
   seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
   for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
-  for (const t of a.towns) if (t.alive) keepWork(t);
+  for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t); }   // its works' strength kept; its people's mood (atlas/mood.js)
 }
 
 // a people that sells some goods as soon as it has them (data/peoples.js tradeUp: the greenskins) sells what its town's store
@@ -430,6 +431,7 @@ export function stepPeoples(a, rnd, say) {
     // a hungry year: what the land, the works and the net do not feed, the store's stores do (a store a man a year)
     const hungry = Math.min(t.stock?.stores || 0, Math.max(0, t.pop - feeds));
     if (hungry > 0) { t.stock.stores = Math.round((t.stock.stores - hungry) * 100) / 100; if (t.stock.stores < TOWN_MONEY.dust) delete t.stock.stores; feeds += hungry; t.ateStores = Math.round(hungry); } else delete t.ateStores;
+    t.fed = t.pop > 0 ? Math.round(Math.min(1, feeds / t.pop) * 1000) / 1000 : 1;   // how well it was fed this year (its mood reads it: atlas/mood.js)
     const target = Math.min(feeds, room(fx));
     // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
     // a town too few to hold is left — atlas/demography.js abandonEmpty); and they die of age and in brawls (lifeYear)
@@ -476,8 +478,7 @@ export function stepPeoples(a, rnd, say) {
   stepDiplomacy(a, rnd, say, overlap);
 }
 
-// × a town's growth by how its people's needs were met (atlas/treasury.js t.needs; TOWN_MONEY.needs)
-const needsGrow = t => { const N = TOWN_MONEY.needs; return t.needs ? (N.grow[0] + N.grow[1] * t.needs.basic) * (1 + N.comfortGrow * t.needs.comfort) : 1; };
+
 
 // a bridge (or a ferry, half as good) at a town takes the ford out of the roads' cost on the river
 // cells beside it (atlas/roads.js stepCost reads a.f.bridge)
