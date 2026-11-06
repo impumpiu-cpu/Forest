@@ -2,7 +2,7 @@
 // ended by whichever of the two thinks of it first; the attitude settles at `afterPeace`. The red lane: a weary realm
 // makes peace before it does anything else this season, and its armies on the march turn home (atlas/diplomacy.js armyDay).
 // A realm losing its war (DIPLOMACY.peace, after Emberfall's treaties: its might down to `ratio` of its foe's, or cornered in a
-// town or two) sues for peace: a truce of `truce` years, and it pays the winner tribute out of its surplus for `tribute` years.
+// town or two and the weaker — a small realm that is the stronger is not losing) sues for peace: a truce of `truce` years, and it pays the winner tribute out of its surplus for `tribute` years.
 import {cap1, plural} from '../../core/util.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {realmLabel} from '../realms.js';
@@ -25,7 +25,7 @@ export const makePeace = {
       // losing it: sue for peace
       if (years >= D.peace.minYears) {
         const [mine, n] = mightOf(a, realm.id), [theirs] = mightOf(a, other.id);
-        if (n > 0 && (mine <= D.peace.ratio * theirs || n <= D.peace.cornered)) out.push([{kk, other: other.id, lose: true}, 1, () => `проигрывают войну: ${realmLabel(a, other.id)} сильнее`]);
+        if (n > 0 && (mine <= D.peace.ratio * theirs || (n <= D.peace.cornered && mine < theirs))) out.push([{kk, other: other.id, lose: true}, 1, () => `проигрывают войну: ${realmLabel(a, other.id)} сильнее`]);
       }
     }
     return out.length ? out : null;

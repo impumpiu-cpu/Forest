@@ -202,7 +202,8 @@ function worksBuying(C, prep) {
     // (the purse: the makers', and the budget the realm gave the town for this good — atlas/townNeeds.js `metal.budget` — spent first)
     const B = b.budget?.[g], purse = Math.max(0, b.makersGold) + (B?.gold || 0);
     const price = priceAt(s, g) * k, carry = carriageOf(a, w.cost), unit = price * (1 + carry);
-    const room = w.pair ? Math.max(0, roomOf2(w.pair) - (w.pair.carried || 0)) : roomOfWay(w);
+    const pair = w.pair || (a.net ? a.net.links.get(linkKey(b, s)) || null : null);
+    const room = pair ? Math.max(0, roomOf2(pair) - (pair.carried || 0)) : roomOfWay(w);
     const n = Math.min(L[g], P[g] * w.c, purse / unit, room / price);
     const W = why.get(b.id); cut(W, g, 'route', Math.min(L[g], P[g]) - Math.min(L[g], P[g] * w.c, room / price)); cut(W, g, 'money', Math.min(L[g], P[g] * w.c, room / price) - Math.max(0, n));
     if (n < M.dust) return 0;
@@ -217,7 +218,7 @@ function worksBuying(C, prep) {
     }
     // the goods go down the pair's link: a seller more than a hop away gets a link of its own with the buyer (a trade route: the
     // net keeps it while the goods keep coming, atlas/sites.js stepNet, and its road wears, atlas/roads.js wearRoads)
-    if (!w.pair && a.net) { const key = linkKey(b, s); a.net.links.set(key, w.pair = {p: s, q: b, c: NET.start, flow: 0, cost: w.cost}); }
+    if (!w.pair && a.net) w.pair = pairLink(a, b, s, w.cost);
     if (w.pair) { w.pair.goods = (w.pair.goods || 0) + v; w.pair.carried = (w.pair.carried || 0) + v; const key = `${s.id}>${g}`; (w.pair.took ||= {})[key] = (w.pair.took[key] || 0) + n; }
     put(sold, s.id, g, n); put(got, b.id, g, n);
     add(b.trade, 'bought', v); add(s.trade, 'sold', v);
@@ -259,6 +260,14 @@ function worksBuying(C, prep) {
   for (const t of towns) t.econ.why = {works: reasons(why.get(t.id), lack.get(t.id))};
   return sold;
 }
+// the link of a buyer and a seller more than a hop apart, made when the goods first go (a trade route) — or the one the other
+// direction's buying made already this season: one link, one room, one memory for both
+export function pairLink(a, b, s, cost) {
+  const key = linkKey(b, s);
+  let l = a.net.links.get(key);
+  if (!l) a.net.links.set(key, l = {p: s, q: b, c: NET.start, flow: 0, cost});
+  return l;
+}
 // the carriage, as a share of the worth: `carry` for each step of the way's cost (a world of another size: × its scale)
 const carriageOf = (a, cost) => M.trade.carry * cost / scaleOf(a);
 // the cost of a link's way: what its road costs to walk (atlas/roads.js, worked out as its road is worn), else by its length
@@ -284,28 +293,44 @@ function reasons(W, left) {
 }
 
 // ── the province's pool: the towns of one realm that the net joins (an island of the realm is a pool of its own) are each
-// other's sellers — every seller of the province a buyer reaches by the net, by the way to it: the least conductance on the
-// path (a weak path carries less), its cost (the links' costs summed) and how well it is roaded (the least), and the pair's own
-// link if they have one (a neighbour, or a trade route made before) → Map buyer id → [[seller, way]]
-function realmPool(C) {
+// other's sellers — every seller of the province a buyer reaches by the net, by the cheapest way to it: its cost (the links'
+// costs summed), the least conductance on it (a weak path carries less) and how well it is roaded (the least), and the pair's
+// own link if they have one (a neighbour, or a trade route made before) → Map buyer id → [[seller, way]]
+export function realmPool(C) {
   const {a, towns, links} = C, adj = new Map(), out = new Map();
   for (const l of links) if (l.p.realm === l.q.realm) { (adj.get(l.p.id) || adj.set(l.p.id, []).get(l.p.id)).push([l.q, l]); (adj.get(l.q.id) || adj.set(l.q.id, []).get(l.q.id)).push([l.p, l]); }
   for (const t of towns) {
     if (!adj.has(t.id)) continue;
-    // a breadth-first walk over its province: the way to each town
-    const ways = new Map([[t.id, {c: 1, cost: 0, road: 1, hop: 0}]]), q = [t], W = [];
-    for (let k = 0; k < q.length; k++) {
-      const x = q[k], wx = ways.get(x.id);
-      for (const [o, l] of adj.get(x.id) || []) if (!ways.has(o.id)) { ways.set(o.id, {c: Math.min(wx.c, l.c), cost: wx.cost + costOfLink(a, l), road: Math.min(wx.road, l.road || 0), hop: wx.hop + 1}); q.push(o); }
+    // the cheapest way over its province to each town (by the links' costs: a long direct road may cost more than two short
+    // ones), its least conductance and road on that way
+    const ways = new Map([[t.id, {c: 1, cost: 0, road: 1, hop: 0}]]), done = new Set(), byId = new Map([[t.id, t]]);
+    for (;;) {
+      let x = null, wx = null;
+      for (const [id, w] of ways) if (!done.has(id) && (!wx || w.cost < wx.cost || (w.cost === wx.cost && id < x))) { x = id; wx = w; }
+      if (x == null) break;
+      done.add(x);
+      for (const [o, l] of adj.get(x) || []) {
+        if (done.has(o.id)) continue;
+        const cost = wx.cost + costOfLink(a, l), w = ways.get(o.id);
+        if (!w || cost < w.cost) { ways.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), hop: wx.hop + 1}); byId.set(o.id, o); }
+      }
     }
-    for (const o of q) if (o !== t) { const w = ways.get(o.id); w.pair = a.net?.links.get(linkKey(t, o)) || null; if (w.pair?.cost != null && w.hop > 1) w.cost = w.pair.cost; W.push([o, w]); }
+    const W = [];
+    for (const [id, w] of ways) {
+      if (id === t.id) continue;
+      const o = byId.get(id);
+      w.pair = a.net?.links.get(linkKey(t, o)) || null;
+      if (w.pair?.cost != null && w.hop > 1) w.cost = Math.min(w.cost, w.pair.cost);
+      W.push([o, w]);
+    }
+    W.sort((p, q) => p[0].id - q[0].id);
     out.set(t.id, W);
   }
   return out;
 }
 
 // ── the season's store: what was made, less what was used and sold; the gold of the works to the makers
-function seasonStore(towns, sold) {
+export function seasonStore(towns, sold) {
   for (const t of towns) {
     const e = t.econ, out = sold.get(t.id) || {};
     const works = ((e.made.gold || 0) - (e.used.gold || 0)) / S; t.makersGold = r2(t.makersGold + works); t.trade.works = r2(works); if (works > 0) earn(t, 'makers', works);
@@ -313,9 +338,10 @@ function seasonStore(towns, sold) {
     for (const g of new Set([...Object.keys(e.made), ...Object.keys(e.used), ...Object.keys(t.stock)])) {
       if (!stored(g)) continue;
       // what keeps only so long (TOWN_GOODS `keep`, seasons; after OpenTTD's cargo ageing): a share of what lay in the store rots
-      const k = TOWN_GOODS.get(g).keep, old = t.stock[g] || 0, rot = k > 0 ? old / k : 0;
+      // (it rots of what is left of the old store once the season's sale is taken out — never of what was sold)
+      const k = TOWN_GOODS.get(g).keep, old = t.stock[g] || 0, sold = out[g] || 0, rot = k > 0 ? Math.max(0, old - sold) / k : 0;
       if (rot > 0) add(t.trade, 'rotted', rot * goodPrice(g));
-      t.stock[g] = Math.max(0, old - rot + ((e.made[g] || 0) - (e.used[g] || 0)) / S - (out[g] || 0));
+      t.stock[g] = Math.max(0, old - rot + ((e.made[g] || 0) - (e.used[g] || 0)) / S - sold);
     }
   }
 }
@@ -672,7 +698,7 @@ export function realmKeep(a, realm, towns, war) {
 // `tribute.share` → [payee, gold] or null
 export function payTribute(a, realm, towns, mightOf, attitude) {
   const T = M.realm.tribute, pop = towns.reduce((s, t) => s + (t.pop || 0), 0), over = Math.max(0, (realm.gold || 0) - T.floor * pop / 100);
-  const owe = Object.values(a.rel || {}).find(r => r.owe?.from === realm.id && r.owe.until >= (a.hist?.year ?? 0));
+  const owe = Object.values(a.rel || {}).map(r => r.owe).find(o => o?.from === realm.id && o.until >= (a.hist?.year ?? 0));
   let best = null, share = 0;
   if (owe) { best = (a.realms || []).find(o => o.id === owe.to && o.fallen == null) || null; share = DIPLOMACY.peace.share; }
   if (!best) {
