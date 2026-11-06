@@ -428,6 +428,9 @@ export function stepPeoples(a, rnd, say) {
     feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too
   }
   stepNet(a, feedsOf);
+  // the links of each town that carried food or goods this year (the net's flow: atlas/sites.js)
+  const linksBusy = new Map();
+  for (const l of a.net?.links.values() || []) if (l.flow > 0) for (const x of [l.p, l.q]) linksBusy.set(x.id, (linksBusy.get(x.id) || 0) + 1);
   for (const [t, o, by] of fedTowns(a)) say(`${cap1(townLabel(t, 0))} ${t.name} живёт привозным хлебом: ${Math.round(by * 100)}% еды везут из ${townLabel(o, 2)} ${o.name}.`);
   // towns grow towards what they are fed — their land, their works, the supply down the links, less
   // what they send away — within the room their houses give; and build as they grow
@@ -444,6 +447,8 @@ export function stepPeoples(a, rnd, say) {
     // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
     // a town too few to hold is left — atlas/demography.js abandonEmpty); and they die of age and in brawls (lifeYear)
     let grow = bornOf(t, pe.P, fx, target);
+    // its links that carried this year (TOWN_LIFE.links): a town that trades grows the faster
+    if (grow > 0) { const LK = TL.links, n = Math.min(LK.max, linksBusy.get(t.id) || 0); grow *= (1 + LK.bonus * n) / (1 + LK.bonus * LK.ref); }
     // a gate shut (TOWN_LIFE.gates: no fuel last winter in a cold land): no growth this year
     t.gated = t.gates ? Object.keys(t.gates)[0] : null; if (!t.gated) delete t.gated;
     if (t.gated && grow > 0) grow = 0;
