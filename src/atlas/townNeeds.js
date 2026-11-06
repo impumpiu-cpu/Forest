@@ -223,10 +223,13 @@ export function stepNeeds(a) {
     let pick = null;
     for (const o of opts) {
       if (!(o.score > NEED.floor)) break;
-      const tg = o.target;
+      let tg = o.target;
+      // (its target taken meanwhile by a stronger council: the next best target of the same answer, once — the best target
+      // within an answer first, then the answers compared)
+      if (tg.b && ctx.taken.has(`${tg.town}:${tg.b}`)) { const T = TARGET[o.answer](a, t, st, ctx); if (T.target) { tg = o.target = T.target; o.note = T.note; o.expect = T.expect; } }
       if (tg.b) {
         const key = `${tg.town}:${tg.b}`;
-        if (ctx.taken.has(key)) { o.why = 'цель уже взята другим советом'; continue; }
+        if (ctx.taken.has(key)) { o.why = 'цель уже взята другим советом, другой нет'; continue; }
         ctx.taken.add(key);
         const x = (a.towns || []).find(q => q.id === tg.town);
         x.goal = {b: tg.b, need: st.id, from: t.id};
