@@ -386,13 +386,22 @@ function payUpkeep(t, R) {
   t.trade.upkeep = r2(cost);
   t.unpaid = cost > 0 ? Math.round(owe / cost * 1000) / 1000 : 0;
 }
-// the season's prices of its market (saved): a good its works or its people lack dearer, one it has in plenty cheaper
+// the season's prices of its market (saved; after Project Alice): each good's price × (t.market) lives in the town and moves a
+// share of the way to where the season's pressure on it points. The pressure is how sure a seller is to sell less how sure a
+// buyer is to buy: sell = min(D / S, 1), buy = min(S / D, 1) — S what the town has of it a year (made and in store), D what
+// its works and its people want of it a year (each + `smooth`, so a good nobody has nor wants stands at 1). Where it points:
+// 1 + `gain` × p(sell − buy), p(x) = x + x²/2 + x³/6 — a want drives the price up further (≈ +0.83 at the most) than plenty
+// drives it down (≈ −0.33); it goes `rise` of the way up a season and `fall` of the way down, within lo … hi
+const pull = x => x + x * x / 2 + x * x * x / 6;
 function setPrices(t) {
-  const e = t.econ, P = M.price, mk = {}, plenty = (e.why ||= {}).plenty = {};   // (the store's fullness the price saw: for the probes)
-  for (const g of new Set([...Object.keys(e.short), ...Object.keys(t.stock), ...Object.keys(t.needs.lack)])) {
-    plenty[g] = Math.min(1, (t.stock[g] || 0) / roomOf(t, g));
-    const k = Math.max(P.lo, Math.min(P.hi, 1 + P.short * (e.short[g] || 0) + P.need * (t.needs.lack[g] || 0) - P.plenty * plenty[g]));
-    if (Math.abs(k - 1) >= M.dust) mk[g] = r2(k);
+  const e = t.econ, P = M.price, mk = {}, seen = (e.why ||= {}).price = {}, want = e.people || {};   // (what the price saw: for the probes)
+  for (const g of new Set([...Object.keys(t.market || {}), ...Object.keys(e.dem), ...Object.keys(e.made), ...Object.keys(t.stock), ...Object.keys(want)])) {
+    if (!stored(g)) continue;
+    const has = (e.made[g] || 0) + (t.stock[g] || 0) * S + P.smooth, wish = (e.dem[g] || 0) + (want[g]?.want || 0) * S + P.smooth;
+    const x = Math.min(1, wish / has) - Math.min(1, has / wish), to = Math.max(P.lo, Math.min(P.hi, 1 + P.gain * pull(x)));
+    const k0 = t.market?.[g] ?? 1, k = k0 + (to - k0) * (to > k0 ? P.rise : P.fall);
+    seen[g] = {x: r2(x), to: r2(to)};
+    if (Math.abs(k - 1) >= M.dust) mk[g] = Math.round(k * 1000) / 1000;
   }
   t.market = mk;
 }

@@ -6,13 +6,13 @@
 //   the reasons — what the people (basic, comfort) and the works were left lacking, in gold at the goods' prices, laid on: money
 //     (the seller had it, the buyer could not pay), route (a weak link did not carry it), goods (nobody it deals with had it)
 //     (atlas/treasury.js t.econ.why); the people's purse against what their basic needs cost at home
-//   the prices — the market's price as it is (atlas/treasury.js setPrices) against the same price with only the lack of goods and
-//     routes in it (what a lack for want of money added taken out): how much of the dearness is poverty
+//   the prices — the market's prices as they stand (atlas/treasury.js setPrices): how many goods stand off 1, how dear, how many
+//     at the bounds, and how far they still are from where the season's pressure points (gap)
 // `node tools/money-probe.mjs [seed] [size] [std|start]` → JSON on stdout, a summary on stderr
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {TOWN_MONEY as M, goodPrice} from '../src/data/townBuildings.js';
-import {MONEY, resetMoney, roomOf} from '../src/atlas/treasury.js';
+import {MONEY, resetMoney} from '../src/atlas/treasury.js';
 
 const seed = process.argv[2] || 'start376615', size = process.argv[3] || 'small', mode = process.argv[4] || 'std';
 if (mode === 'start') for (const P of WORLD_PEOPLES.all()) P.era = 'elder';
@@ -40,11 +40,6 @@ const ledger = () => ({in: {...MONEY.in}, out: {...MONEY.out}});
 const delta = (A, B) => { const o = {}; for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) o[k] = (B[k] || 0) - (A[k] || 0); return o; };
 const sum = o => Object.values(o).reduce((s, v) => s + v, 0);
 
-// ── the market's price of a good at a town, as setPrices makes it, with the lack it is given
-// (the store's fullness as the price saw it, at the season's close — t.econ.why.plenty; building and the realm's tax take from the
-// store after it)
-const kOf = (t, g, short, need) => { const P = M.price; return Math.max(P.lo, Math.min(P.hi, 1 + P.short * short + P.need * need - P.plenty * (t.econ.why.plenty?.[g] ?? Math.min(1, (t.stock[g] || 0) / roomOf(t, g))))); };
-
 // ── a season's reasons and prices, summed into the year's tally by people
 const zero = () => Object.fromEntries([...PE, 'all'].map(p => [p, {}]));
 let acc = zero(), seasons = 0;
@@ -63,19 +58,10 @@ function seasonTally() {
     // the people's purse against what their basic needs cost at home: a town whose people could not pay for them all
     const B = W.people?.basic;
     if (B?.cost > 0) { put('poorTowns', B.gold < B.cost ? 1 : 0); put('purseCover', Math.min(3, B.gold / B.cost)); put('coverN', 1); }
-    // the prices: as they are, and with the lack for want of money taken out
-    const lackNoMoney = {};
-    for (const kind of ['basic', 'comfort']) {
-      const R = W.people?.[kind]?.by || {};
-      for (const [g, r] of Object.entries(R)) if (r.want > 0) { const s = (r.left - r.money) / r.want; if (s > M.needs.unmet) lackNoMoney[g] = Math.max(lackNoMoney[g] || 0, Math.min(1, s)); }
-    }
-    for (const g of Object.keys(W.plenty || {})) {
-      const short = e.short[g] || 0, wr = W.works?.by?.[g], shortNoMoney = wr && wr.left > 0 ? short * (wr.left - wr.money) / wr.left : short;
-      const k = kOf(t, g, short, t.needs?.lack?.[g] || 0), k0 = kOf(t, g, shortNoMoney, lackNoMoney[g] || 0);
-      if (Math.abs(k - 1) < M.dust && Math.abs(k0 - 1) < M.dust) continue;
-      put('prices', 1); put('pk', k); put('pk0', k0); put('pgap', k - k0);
-      if (k > 1 + 1e-9 && k0 <= 1 + 1e-9) put('poorDear', 1);   // dear only because the buyers could not pay
-      if (Math.abs((t.market?.[g] ?? 1) - k) > 0.011) put('pmismatch', 1);   // (the probe's formula against the game's)
+    // the prices: how many goods stand off 1, how dear they stand, how many at the bounds, and how far each still has to go
+    for (const [g, k] of Object.entries(t.market || {})) {
+      put('prices', 1); put('pk', k); if (k >= M.price.hi - 1e-9) put('phi', 1); if (k <= M.price.lo + 1e-9) put('plo', 1);
+      const to = W.price?.[g]?.to; if (to != null) put('pgap', Math.abs(to - k));
     }
   }
 }
@@ -91,8 +77,8 @@ function yearRow() {
       circuit: Object.fromEntries(['people', 'imported', 'sold', 'bought', 'merchants', 'works', 'wages', 'owed', 'tax', 'upkeep'].map(k => [k, r1((o['$' + k] || 0) / Math.max(1, pop) * 100)])),
       basic: part('b.'), comfort: part('c.'), works: part('w.'),
       poorTowns: r3((o.poorTowns || 0) / Math.max(1, o.coverN || 0)), purseCover: r3((o.purseCover || 0) / Math.max(1, o.coverN || 0)),
-      prices: {n: Math.round((o.prices || 0) / S), k: r3((o.pk || 0) / Math.max(1, o.prices || 0)), k0: r3((o.pk0 || 0) / Math.max(1, o.prices || 0)), gap: r3((o.pgap || 0) / Math.max(1, o.prices || 0)),
-        poorDear: r3((o.poorDear || 0) / Math.max(1, o.prices || 0)), mismatch: o.pmismatch || 0}};
+      prices: {n: Math.round((o.prices || 0) / S), k: r3((o.pk || 0) / Math.max(1, o.prices || 0)), hi: r3((o.phi || 0) / Math.max(1, o.prices || 0)), lo: r3((o.plo || 0) / Math.max(1, o.prices || 0)),
+        gap: r3((o.pgap || 0) / Math.max(1, o.prices || 0))}};
   }
   return out;
 }
@@ -132,7 +118,6 @@ const summary = {years: years.length, driftMax: r3(driftMax), drift: r1(years.re
     pop: Math.round(mean(y => y[p]?.pop)), gold100: r1(mean(y => y[p]?.gold100)), poorTowns: r3(mean(y => y[p]?.poorTowns)), purseCover: r3(mean(y => y[p]?.purseCover)),
     ...Object.fromEntries(['basic', 'comfort', 'works'].map(k => [k, Object.fromEntries(['left', 'money', 'route', 'goods'].map(q => [q, r3(mean(y => y[p]?.[k]?.[q]))]))])),
     circuit: Object.fromEntries(Object.keys(years.at(-1)?.[p]?.circuit || {}).map(k => [k, r1(mean(y => y[p]?.circuit?.[k]))])),
-    prices: Object.fromEntries(['k', 'k0', 'gap', 'poorDear'].map(q => [q, r3(mean(y => y[p]?.prices?.[q]))])),
-    mismatch: tail.reduce((s, y) => s + (y[p]?.prices?.mismatch || 0), 0)}]))};
+    prices: Object.fromEntries(['n', 'k', 'hi', 'lo', 'gap'].map(q => [q, r3(mean(y => y[p]?.prices?.[q]))]))}]))};
 process.stdout.write(JSON.stringify({seed, size, mode, summary, years}));
 process.stderr.write(JSON.stringify(summary, null, 1) + '\n');

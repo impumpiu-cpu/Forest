@@ -356,9 +356,9 @@ function flowScore(t, b, P, need, E, inRealm, facts, v, sit = null) {
   // a work that earns the town its next step (data/peoples.js TIERS needsAny), once it has nearly the people for it
   const next = TIERS[(t.tier || 0) + 1];
   if (next && t.pop >= next.pop * TF.flow.tierAt && next.needsAny.includes(b.id) && !next.needsAny.some(id => lineHas(t.built, id))) v += TF.flow.tierUp;
-  // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
+  // it gives what fills the store already and nobody buys (the market's price of it down at `glutAt`): worth the less
   const outs = Object.keys(bout).filter(g => g !== 'food' && g !== 'raw' && g !== 'gold');
-  if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
+  if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.glutAt)) v *= TF.flow.glut;
   // as much as it feeds — and a booster (the compost heap) as much as the more it makes the town's fields give
   const wf = P.workFlows || {}, fed = foodNet(b, lit, wf[b.id]) + Object.entries(b.boost || {}).reduce((s, [id, k]) => s + k * foodNet(TOWN_BUILDINGS.get(id), lit, wf[id]) * t.built.filter(x => x === id).length, 0);
   if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);
