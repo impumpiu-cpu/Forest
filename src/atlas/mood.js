@@ -23,7 +23,11 @@ export function moodAim(t, a = null) {
 }
 export function moodStep(t, a = null) {
   const m = moodOf(t), to = moodAim(t, a);
-  t.mood = Math.round((m + (to - m) * T().pace) * 10) / 10;
+  let v = m + (to - m) * T().pace;
+  // the last stand (TOWN_LIFE.grace, after Emberfall): a realm down to its last towns does not despair of them
+  const G = TOWN_LIFE.grace;
+  if (a && t.realm != null && v < G.moodFloor && (a.towns || []).filter(x => x.alive && x.realm === t.realm).length <= G.lastStand) v = G.moodFloor;
+  t.mood = Math.round(v * 10) / 10;
   return t.mood;
 }
 // × a town's growth by its mood: 1 + `grow` × (mood − `mid`) / 50 — a content town grows the faster, a sore one the slower; a town

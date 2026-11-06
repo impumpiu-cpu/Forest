@@ -2,6 +2,7 @@
 // has met and dislikes within DIPLOMACY.raidReach — a few times a year for the realm (raidsPerYear), each town with the
 // year's chance spread over the seasons. The loot grows the raiders' town, the beaten town loses `raidLoss`; either way
 // the standing between the two sinks by `raid`.
+import {graced} from './raid.js';
 import {cap1} from '../../core/util.js';
 import {plunder, plunderWords, lootOf, driveOff} from '../treasury.js';
 import {killHeads, takeHeads, addGroup, killShare} from '../population.js';
@@ -32,7 +33,7 @@ export const raidTown = {
       // the nearest; the cult of war weighs what it would carry off against how likely it is to win (atlas/treasury.js lootOf)
       const cult = cultOf(realm), mt = cult ? might(t, townFx(t)) : 0;
       let bv = 0;
-      for (const o of towns) if (o.realm !== realm.id && relation(a, realm.id, o.realm) && (cult || attitude(a, realm.id, o.realm) < 0)) {
+      for (const o of towns) if (o.realm !== realm.id && !graced(a, o) && relation(a, realm.id, o.realm) && (cult || attitude(a, realm.id, o.realm) < 0)) {   // (a young hamlet in its years of grace: not raided — raid.js graced)
         const d = Math.hypot(t.x - o.x, t.y - o.y); if (d >= D.raidReach * k) continue;
         if (!cult) { if (d < bd) { bd = d; target = o; } continue; }
         const v = (lootOf(o) + o.pop) * Math.min(TOWN_MONEY.plunder.dare, mt / Math.max(1, might(o, townFx(o)))); if (v > bv) { bv = v; target = o; }

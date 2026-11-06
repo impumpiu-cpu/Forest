@@ -456,9 +456,9 @@ export function stepPeoples(a, rnd, say) {
     let grow = bornOf(t, pe.P, fx, target);
     // its links that carried this year (TOWN_LIFE.links): a town that trades grows the faster
     if (grow > 0) { const LK = TL.links, n = Math.min(LK.max, linksBusy.get(t.id) || 0); grow *= (1 + LK.bonus * n) / (1 + LK.bonus * LK.ref); }
-    // a gate shut (TOWN_LIFE.gates: no fuel last winter in a cold land): no growth this year
+    // a gate half shut (TOWN_LIFE.gates: too little fuel last winter in a cold land): it grows by the share it got
     t.gated = t.gates ? Object.keys(t.gates)[0] : null; if (!t.gated) delete t.gated;
-    if (t.gated && grow > 0) grow = 0;
+    if (t.gated && grow > 0) { const G = TL.gates.find(x => x.id === t.gated); grow *= Math.max(0, Math.min(1, t.gates[t.gated] / G.least)); }
     lifeYear(a, t, Math.max(0, grow), Math.max(0, -grow), fx);
     t.target = Math.round(target);   // what feeds and houses it: its settlers go when it is full (sendSettlers)
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
