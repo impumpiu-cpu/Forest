@@ -311,7 +311,10 @@ function seasonStore(towns, sold) {
     comeIn('works', works); goOut('works', -works);
     for (const g of new Set([...Object.keys(e.made), ...Object.keys(e.used), ...Object.keys(t.stock)])) {
       if (!stored(g)) continue;
-      t.stock[g] = Math.max(0, (t.stock[g] || 0) + ((e.made[g] || 0) - (e.used[g] || 0)) / S - (out[g] || 0));
+      // what keeps only so long (TOWN_GOODS `keep`, seasons; after OpenTTD's cargo ageing): a share of what lay in the store rots
+      const k = TOWN_GOODS.get(g).keep, old = t.stock[g] || 0, rot = k > 0 ? old / k : 0;
+      if (rot > 0) add(t.trade, 'rotted', rot * goodPrice(g));
+      t.stock[g] = Math.max(0, old - rot + ((e.made[g] || 0) - (e.used[g] || 0)) / S - (out[g] || 0));
     }
   }
 }

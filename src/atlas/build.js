@@ -72,18 +72,24 @@ function pickProject(a, t, rnd) {
   return null;
 }
 
-// a town at its slots (data/townBuildings.js TOWN_SLOTS) razes a work of its own in it that has worked below `raze` for `years`
-// years running — the worst of them, one a season — to make room (its seasons below are counted in t.idle) → its id, or null.
-// The decision point `town.raze` (data/commands.js): the count goes on whatever the run's profile; only the razing is the
-// command `town.raze.idle`
+// a town at its slots (data/townBuildings.js TOWN_SLOTS) razes a work of its own in it whose mean strength has fallen below `raze`
+// (t.workAvg: each season `avgKeep` of the old mean and the rest of its work, after Widelands' productivity — a work that flickers
+// about the line is judged by its mean, not by an unbroken run) — the worst of them, one a season — to make room → its id, or
+// null. A work starts at 1, so a new one is not razed before its mean has had time to fall. The decision point `town.raze`
+// (data/commands.js): the mean goes on whatever the run's profile; only the razing is the command `town.raze.idle`
 export function razeIdle(t, a = null) {
-  const S = TOWN_SLOTS, idle = t.idle ||= {};
-  for (const id of Object.keys(idle)) if (!t.built.includes(id)) delete idle[id];
-  for (const id of new Set(t.built)) { if (slotKind(TOWN_BUILDINGS.get(id)) !== 'town') continue; if ((t.work?.[id] ?? 1) < S.raze) idle[id] = (idle[id] || 0) + 1; else delete idle[id]; }
+  const S = TOWN_SLOTS, avg = t.workAvg ||= {};
+  delete t.idle;   // (the old count of seasons below the line, of a world saved before the mean)
+  for (const id of Object.keys(avg)) if (!t.built.includes(id)) delete avg[id];
+  for (const id of new Set(t.built)) {
+    if (slotKind(TOWN_BUILDINGS.get(id)) !== 'town') continue;
+    const v = (avg[id] ?? 1) * S.avgKeep + Math.min(1, t.work?.[id] ?? 1) * (1 - S.avgKeep);
+    if (v < 1 - 1e-3) avg[id] = r3(v); else delete avg[id];
+  }
   if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.idle'))) return null;
-  const worst = Object.entries(idle).filter(([, n]) => n >= S.years * SEASONS_PER_YEAR).sort((p, q) => (t.work?.[p[0]] ?? 1) - (t.work?.[q[0]] ?? 1) || q[1] - p[1] || (p[0] < q[0] ? -1 : 1))[0];
+  const worst = Object.entries(avg).filter(([, v]) => v < S.raze).sort((p, q) => p[1] - q[1] || (p[0] < q[0] ? -1 : 1))[0];
   if (!worst) return null;
-  t.built.splice(t.built.indexOf(worst[0]), 1); delete idle[worst[0]];
+  t.built.splice(t.built.indexOf(worst[0]), 1); if (!t.built.includes(worst[0])) delete avg[worst[0]];
   if (a) noteRaze(a, t, 'town.raze.idle', worst[0]);
   return worst[0];
 }
@@ -95,7 +101,7 @@ export function razeWorst(t, a = null) {
   if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.worst'))) return null;
   const worst = [...new Set(t.built)].filter(id => slotKind(TOWN_BUILDINGS.get(id)) === 'town' && (t.work?.[id] ?? 1) < S.idle).sort((p, q) => (t.work?.[p] ?? 1) - (t.work?.[q] ?? 1) || (p < q ? -1 : 1))[0];
   if (!worst) return null;
-  t.built.splice(t.built.indexOf(worst), 1); if (t.idle) delete t.idle[worst];
+  t.built.splice(t.built.indexOf(worst), 1); if (t.workAvg && !t.built.includes(worst)) delete t.workAvg[worst];
   if (a) noteRaze(a, t, 'town.raze.worst', worst);
   return worst;
 }

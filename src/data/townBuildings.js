@@ -102,24 +102,25 @@ export const CATEGORIES = {
 // and raw food go down the net as people, brushwood is burnt where it is gathered: atlas/treasury.js).
 // `stock` — the realm's wanted store of a good a head (after Widelands' target quantity): while the towns of the realm and its
 // treasury hold less, the realm wants it (the fact `want`, atlas/requirements.js), and a recipe that asks `want` runs; a good with
-// no `stock` is always wanted (what nothing makes of anything: logs, grain).
+// no `stock` is always wanted (what nothing makes of anything: logs, grain). `keep` — the seasons a good keeps in the store: each
+// season 1/keep of what lay there rots (atlas/treasury.js seasonStore); none — it keeps.
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   {id: 'food', label: 'готовая еда', unit: 'чел.-год', feeds: 'ready', local: true, get price() { return CAMPAIGN.ration * 365; }},
   {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, feeds: 'raw', local: true, get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд — всё одно: на кухню, в заготовки, в брагу'},
   {id: 'stores', label: 'заготовки', unit: 'чел.-год', feeds: 'ready', price: 150, stock: 0.08, note: 'вяленое и копчёное: не портится'},
-  {id: 'drink', label: 'брага', unit: 'шт.', res: 'braga', soft: true, note: 'одна брага из любого сбраживаемого сырья'},
+  {id: 'drink', label: 'брага', unit: 'шт.', res: 'braga', soft: true, keep: 12, note: 'одна брага из любого сбраживаемого сырья'},
   {id: 'wood', label: 'древесина', unit: 'шт.', res: 'wood'},
   {id: 'fuel', label: 'топливо', unit: 'заряд', price: 0.1, note: 'древесный и каменный уголь, кизяк — заряды одного топлива (FUEL)'},
   {id: 'brush', label: 'хворост', unit: 'вязанок', price: 0.02, local: true, note: 'жители собирают руками, без построек (TOWN_FLOW.gather): топливо бедного жилья, ползаряда; не копится'},
   {id: 'stone', label: 'камень', unit: 'шт.', res: 'stone'},
   {id: 'beasts', label: 'скот', unit: 'голов', get price() { return CAMPAIGN.beasts.mule; }, note: 'прирост стада сверх того, что загоны режут сами: тягло, конница, караван'},
-  {id: 'hide', label: 'шкуры', unit: 'шт.', res: 'hide'},
+  {id: 'hide', label: 'шкуры', unit: 'шт.', res: 'hide', keep: 12},
   {id: 'leather', label: 'кожа', unit: 'шт.', res: 'leather'},
-  {id: 'fiber', label: 'волокно', unit: 'шт.', price: 0.5, note: 'лён, шерсть, лыко, паучий шёлк'},
+  {id: 'fiber', label: 'волокно', unit: 'шт.', price: 0.5, keep: 24, note: 'лён, шерсть, лыко, паучий шёлк'},
   {id: 'cloth', label: 'ткань', unit: 'шт.', res: 'cloth'},
-  {id: 'herbs', label: 'травы', unit: 'шт.', res: 'herbs', soft: true},
-  {id: 'potions', label: 'зелья', unit: 'шт.', res: 'potion', soft: true},
+  {id: 'herbs', label: 'травы', unit: 'шт.', res: 'herbs', soft: true, keep: 12},
+  {id: 'potions', label: 'зелья', unit: 'шт.', res: 'potion', soft: true, keep: 16},
   // the metals: a mine gives them ready to work (digging, dressing and the first melt are one work — «Металлы»); steel is made of iron
   {id: 'bronze', label: 'бронза', unit: 'шт.', res: 'bronze'},
   {id: 'iron', label: 'железо', unit: 'шт.', res: 'iron'},
@@ -506,8 +507,9 @@ export const takesOf = b => [...new Set([...Object.keys(b.in || {}), ...recipesO
 
 // Slots (docs/WORLD.md «Слоты»): a town holds at most `town[step]` works of its own in it — not the works on the map (`site`), not
 // housing; two of a kind take two; a tier takes its base's place. Upgrades have slots of their own (`upgrades[step]`). A town at its
-// slots razes a work of its own that works below `raze` for `years` years running, to make room (atlas/build.js)
-export const TOWN_SLOTS = {town: [8, 16, 24], upgrades: [1, 2, 4], raze: 0.25, years: 2, idle: 0.5};   // (idle: a town whose council finds nothing to build razes its worst work below this, one a season: atlas/build.js)
+// slots razes a work of its own whose mean strength (each season `avgKeep` of the old mean, the rest of its work) is below `raze`,
+// to make room (atlas/build.js)
+export const TOWN_SLOTS = {town: [8, 16, 24], upgrades: [1, 2, 4], raze: 0.25, avgKeep: 0.75, idle: 0.5};   // (idle: a town whose council finds nothing to build razes its worst work below this, one a season: atlas/build.js)
 export const slotKind = b => (b.kind === 'upgrade' ? 'upgrades' : b.site || b.cat === 'housing' || b.kind === 'tier' ? null : 'town');
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier']},
