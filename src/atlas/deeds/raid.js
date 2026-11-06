@@ -29,8 +29,9 @@ export const raider = (L, t) => {
 };
 
 // the nearest town within reach the lair would raid — not a young hamlet in its years of grace (TOWN_LIFE.grace, after Emberfall:
-// a town of step `tierMax` or less younger than `years` is beneath a lair's notice, and a raiding people's: raidTown.js)
-export const graced = (a, t) => (t.tier || 0) <= TOWN_LIFE.grace.tierMax && (a.hist?.year ?? 0) - (t.founded ?? -Infinity) < TOWN_LIFE.grace.years;
+// a town its settlers founded, of step `tierMax` or less and younger than `years`, is beneath a lair's notice, and a raiding
+// people's: raidTown.js; a people's first town, landed on the world, is not)
+export const graced = (a, t) => t.from != null && (t.tier || 0) <= TOWN_LIFE.grace.tierMax && (a.hist?.year ?? 0) - (t.founded ?? -Infinity) < TOWN_LIFE.grace.years;
 function nearestTown(a, l, L, reach) {
   let town = null, td = reach;
   for (const t of a.towns || []) if (t.alive && raider(L, t) && !graced(a, t)) { const d = dist(l, t); if (d < td) { td = d; town = t; } }

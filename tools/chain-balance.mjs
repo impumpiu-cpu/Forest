@@ -40,8 +40,8 @@ function measure(worlds) {
 }
 // the fast stage: the worlds' towns run their seasons again from the stores and treasuries they had
 // (everything a season changes: the stores and purses — the realm's budgets for buying too (atlas/townNeeds.js) — the market's
-// prices, the people's needs, the realms' treasuries)
-function snapshot(a) { return [...a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid, market: t.market || {}, needs: t.needs || null, grant: t.grant || 0, carry: t.carry || null, budget: t.budget || null})]), ...(a.realms || []).map(r => [r, JSON.stringify({gold: r.gold || 0})])]; }
+// prices and how much they moved, the works' load, the people's needs, the realms' treasuries; the links' memory of who bought what)
+function snapshot(a) { return [...a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid, market: t.market || {}, needs: t.needs || null, grant: t.grant || 0, carry: t.carry || null, budget: t.budget || null, swing: t.swing || null, load: t.load || null})]), ...(a.realms || []).map(r => [r, JSON.stringify({gold: r.gold || 0})])]; }
 function rerun(worlds, snaps, m) {
   apply(m);
   worlds.forEach((a, k) => {
@@ -49,7 +49,8 @@ function rerun(worlds, snaps, m) {
     const T = a.towns.filter(t => t.alive);
     // (the links as they were: the buying adds trade routes to the net — atlas/treasury.js realmPool — and a rerun starts without them)
     a.netKeys ||= new Set(a.net?.links.keys() || []);
-    for (const [key, l] of a.net?.links || []) { if (!a.netKeys.has(key)) a.net.links.delete(key); else l.goods = 0; }
+    a.netVol ||= new Map([...(a.net?.links || [])].map(([key, l]) => [key, JSON.stringify(l.vol || null)]));
+    for (const [key, l] of a.net?.links || []) { if (!a.netKeys.has(key)) a.net.links.delete(key); else { l.goods = 0; const v = JSON.parse(a.netVol.get(key)); if (v) l.vol = v; else delete l.vol; } }
     for (let q = 0; q < SEASONS; q++) seasonMoney(a, T);
   });
   const M = measure(worlds);

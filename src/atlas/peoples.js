@@ -209,7 +209,7 @@ export function foundFrom(a, from, rnd, say) {
   // on an old ruin: they build anew where a town stood, and the ruin is gone
   const ru = ripeRuinAt(a, i % a.w, (i / a.w) | 0);
   if (ru) {
-    a.ruins.splice(a.ruins.indexOf(ru), 1); t.onRuin = {name: ru.name, people: ru.people, year: ru.year};
+    a.ruins.splice(a.ruins.indexOf(ru), 1); a.ruinsGone = (a.ruinsGone || 0) + 1; t.onRuin = {name: ru.name, people: ru.people, year: ru.year};
     say(`Поселенцы ${townLabel(from, 2)} ${from.name} отстроили ${townLabel(t, 1)} ${t.name} на пепелище «${ru.name}», ${ru.how === 'опустел' ? 'покинутом' : 'сожжённом'} в ${ru.year} году, ${wherePhrase(a, i)}.`);
   } else say(`Поселенцы ${townLabel(from, 2)} ${from.name} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
   return t;
@@ -482,7 +482,7 @@ export function stepPeoples(a, rnd, say) {
     }
   }
   sendSettlers(a, rnd, say);   // the full towns found new ones
-  if ((a.ruins?.length || 0) > TL.ruins.max) a.ruins.splice(0, a.ruins.length - TL.ruins.max);   // the oldest ruins overgrow (TOWN_LIFE.ruins.max)
+  if ((a.ruins?.length || 0) > TL.ruins.max) { a.ruinsGone = (a.ruinsGone || 0) + a.ruins.length - TL.ruins.max; a.ruins.splice(0, a.ruins.length - TL.ruins.max); }   // the oldest ruins overgrow (TOWN_LIFE.ruins.max); a.ruinsGone — how many are gone, built over or overgrown
   abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other

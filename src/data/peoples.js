@@ -355,7 +355,7 @@ export const ELDER_YEARS = [
 //   ruins:     a ruin left `ripe` years or more draws settlers (after Emberfall: cleared land, a known well): a spot within `reach`
 //              cells of it counts `bonus` more; a town founded there clears the ruin. The world keeps at most `max` ruins, the oldest
 //              go first (atlas/peoples.js)
-//   grace:     the years of grace (after Emberfall): a town of step `tierMax` or less younger than `years` is not raided by
+//   grace:     the years of grace (after Emberfall): a town founded by settlers, of step `tierMax` or less, younger than `years`, is not raided by
 //              the lairs; a realm of `lastStand` towns or fewer keeps its towns' mood at `moodFloor` or more (atlas/mood.js)
 export const TOWN_LIFE = {grace: {years: 5, tierMax: 0, lastStand: 2, moodFloor: 50}, ruins: {ripe: 15, reach: 2, bonus: 0.15, max: 40}, links: {bonus: 0.03, ref: 0, max: 5}, gates: [{id: 'fuel', label: 'зимой не хватило топлива', season: 'winter', cold: -2, tier: 2, pool: 'fuel', least: 0.5}], mood: {start: 85, pace: 0.25, w: [{food: 1}, {basic: 2, food: 3}, {basic: 3, comfort: 1, food: 3}], mid: 85, grow: 0.3, tierUp: 60, tierDown: 30}, hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], apart: {own: 0.25, others: 0.25}, siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, moveLeast: 0.5, abandon: 10,

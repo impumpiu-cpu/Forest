@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {headsOf} from '../src/atlas/population.js';
 import {planBuild, doBuild, seasonMoney, goodsFor} from '../src/atlas/treasury.js';
-import {TOWN_MONEY} from '../src/data/townBuildings.js';
+import {TOWN_MONEY, TOWN_GOODS} from '../src/data/townBuildings.js';
 import {sendArmy, armyLosses, returnArmy} from '../src/atlas/army.js';
 import {stepWarBeasts} from '../src/atlas/beasts.js';
 import {stepGolems} from '../src/atlas/golems.js';
@@ -39,7 +39,8 @@ check('стройка объединяет дерево и заменённые 
 check('запас базовых нужд учитывает кость вместо горшков и меньшие нужды орды', () => {
   const s = town({people: 'orcs', pop: 100, peopleGold: 0, stock: {hide: 0.2}}), b = town({id: 2, people: 'orcs', pop: 100}), a = world([s, b]);
   a.net.links.set('1:2', {p: s, q: b, c: 1}); seasonMoney(a, [s, b]);
-  assert.ok(s.stock.hide >= 0.19); assert.equal(b.econ.people?.hide?.got || 0, 0);
+  const keep = TOWN_GOODS.get('hide').keep, kept = 0.2 * (keep ? 1 - 1 / keep : 1);   // (what rots in a season: TOWN_GOODS `keep`)
+  assert.ok(s.stock.hide >= kept - 0.01); assert.equal(b.econ.people?.hide?.got || 0, 0);
 });
 check('загоны дают мясо, шкуры и прирост стада; скот со склада не трогают; боевые звери целы', () => {
   const t = town({built: ['pen'], stock: {beasts: 10}, warBeasts: {list: {varg: 2}, men: 100}}), a = world([t]);

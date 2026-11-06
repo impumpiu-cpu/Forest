@@ -147,7 +147,7 @@ function townsCheck(a, tag) {
   }
   if (warsTold !== wars) relBad ||= `войн ${wars}, в летописи ${warsTold}`;
   const razed = a.towns.filter(t => !t.alive).length;
-  if (razed !== (a.ruins || []).length) relBad ||= `сожжено ${razed}, пепелищ ${(a.ruins || []).length}`;
+  if (razed !== (a.ruins || []).length + (a.ruinsGone || 0)) relBad ||= `сожжено ${razed}, пепелищ ${(a.ruins || []).length}, отстроено и заросло ${a.ruinsGone || 0}`;   // (atlas/peoples.js: a ruin built over or overgrown)
   const battles = Object.values(a.rel || {}).reduce((x, r) => x + (r.war?.battles || 0), 0) + a.chronicle.filter(c => /Битва под|сожгли/.test(c.text)).length;
   if (battles && !(a.f.barrows && a.f.barrows.some(v => v > 0))) relBad ||= 'битвы были, курганов нет';
   // the strangers of a town — the races of other peoples among its people (atlas/population.js) — come by trade and moving up to
