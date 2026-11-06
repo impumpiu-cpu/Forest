@@ -529,9 +529,9 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
   rounds: 5, settle: 0.002, soft: 0.5, captured: 0.5, rawFood: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]},
   // load — a work's share of its hands and strength (t.load: atlas/treasury.js loadStep; after OpenTTD): each season, as much as `up`
-  // of what its goods are worth found a taker (not the merchants of the overflow nor the rot) — `step` up, `down` or less — `step`
-  // down, never below `least`; a work whose mean strength falls below the line is razed for its slot as any idle one (TOWN_SLOTS)
-  load: {up: 0.8, down: 0.6, step: 0.15, least: 0.2}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
+  // of what its goods are worth found a taker (not the merchants of the overflow nor the rot) — `step` up, `down` or less —
+  // `stepDown` down, never below `least`; a work whose mean strength falls below the line is razed for its slot as any idle one (TOWN_SLOTS)
+  load: {up: 0.8, down: 0.6, step: 0.15, stepDown: 0.15, least: 0.2}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
 
 // The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a
 // treasury (t.gold); each realm a treasury (realm.gold).

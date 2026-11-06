@@ -470,7 +470,7 @@ export function loadStep(t, wanted = {}) {
     const was = t.load?.[id] ?? 1, o = got[id];
     let v = was;
     if (!o || !(o.kept > M.dust)) v = Math.min(1, was + L.step);
-    else { const taken = 1 - o.lost / o.all; if (taken >= L.up) v = Math.min(1, was + L.step); else if (taken <= L.down) v = Math.max(L.least, was - L.step); }
+    else { const taken = 1 - o.lost / o.all; if (taken >= L.up) v = Math.min(1, was + L.step); else if (taken <= L.down) v = Math.max(L.least, was - (L.stepDown ?? L.step)); }
     if (v < 1 - 1e-9) out[id] = Math.round(v * 1000) / 1000;
   }
   if (Object.keys(out).length) t.load = out; else delete t.load;
