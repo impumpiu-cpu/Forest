@@ -1,6 +1,7 @@
 // The needs of the towns and their councils' answers (docs/WORLD.md «Нужды совета»; data/townNeeds.js — the needs, the answers,
 // the numbers). A season, after the towns' economies and before their building (atlas/history.js):
-//   1. each town senses its needs (room: its people against its houses; metal: what its works lacked of metal, by value) and
+//   1. each town senses its needs (room: its people against its houses; metal: what its works lacked of metal, by value; food:
+//      its people against what feeds them) and
 //      lights or puts out each by its two thresholds;
 //   2. its plans are judged: done (the house stands, the metal came, the settlers went), cancelled (the target is gone, the
 //      need is out), or failed (nothing came by its review: the answer is not offered again for NEED.block seasons);
@@ -16,7 +17,7 @@
 // t.budget = {good: {gold, got}}. Every sitting goes to the trace (core/decide.js) as the point `town.need`, the answers it
 // could not give with their reasons.
 import {NEEDS, ANSWERS, NEED, LEAN} from '../data/townNeeds.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, METALS, makesOf, goodPrice} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, METALS, makesOf, goodPrice, foodNet} from '../data/townBuildings.js';
 import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {MIND, VECTOR_IDS, normVec, along} from '../data/mind.js';
 import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
@@ -38,8 +39,14 @@ const gName = g => (TOWN_GOODS.has(g) ? TOWN_GOODS.get(g).label : g);
 const SENSE = {
   // its people against its houses: lit as they fill them (x 0.72 at `on`), a crisis when they overflow
   room(a, t) {
-    const x = t.pop / Math.max(1, room(townFx(t)));
-    return {x: r3(x), s: clamp01((x - 0.6) / 0.4)};
+    const D = NEEDS.get('room'), x = t.pop / Math.max(1, room(townFx(t)));
+    return {x: r3(x), s: clamp01((x - D.from) / D.span)};
+  },
+  // its people against what feeds them (its land, works and the net, last spring: t.wants.feeds): lit as they come near it,
+  // a crisis when they outgrow it (a hungry year)
+  food(a, t) {
+    const D = NEEDS.get('food'), x = t.pop / Math.max(1, t.wants?.feeds ?? t.pop * 2);
+    return {x: r3(x), s: clamp01((x - D.from) / D.span)};
   },
   // what its works lacked of metal after the season's buying, against what they asked of it, by value; the cause — the larger
   // part of what was left: money (a seller had it), route (a weak link), goods (nobody it deals with had it)
@@ -77,6 +84,15 @@ const TARGET = {
     if (!B.length) return {why: 'жильё не поставить: нет слота, ступени или места'};
     return {target: {town: t.id, b: B[0].id}, expect: {room: B[0].house}, note: `${B[0].name} на ${B[0].house} жителей`};
   },
+  'food.build'(a, t) {
+    const pj = t.project && TOWN_BUILDINGS.has(t.project) ? TOWN_BUILDINGS.get(t.project) : null, wf = WORLD_PEOPLES.get(t.people)?.workFlows || {};
+    if (pj && foodNet(pj, null, wf[pj.id]) > 0) return {why: `то, что кормит, уже строится: ${pj.name}`};
+    const inR = realmBuilt(a, t), facts = townFacts(a, t, {inRealm: inR});
+    const B = TOWN_BUILDINGS.all().map(b => [b, foodNet(b, null, wf[b.id])]).filter(([b, f]) => f > 0 && canBuild(a, t, b, inR, facts)).sort((p, q) => q[1] - p[1] || (p[0].id < q[0].id ? -1 : 1));
+    if (!B.length) return {why: 'нечего поставить: нет слота, места или ступени'};
+    return {target: {town: t.id, b: B[0][0].id}, expect: {food: r2(B[0][1])}, note: `${B[0][0].name}: еды на ${Math.round(B[0][1])}`};
+  },
+  'food.settle'(a, t) { return TARGET['room.settle'](a, t); },
   'room.settle'(a, t) {
     const S0 = WORLD_PEOPLES.get(t.people)?.settlers, Z = TL.settle;
     if (!S0) return {why: 'народ не шлёт поселенцев'};
@@ -124,7 +140,7 @@ const TARGET = {
 // ── 2. the plans judged → null (goes on) or {outcome, why}
 function judge(a, t, st, A, p) {
   const age = stepOf(a) - p.since;
-  if (A.id === 'room.build' || A.id === 'metal.build') {
+  if (A.id === 'room.build' || A.id === 'metal.build' || A.id === 'food.build') {
     const x = (a.towns || []).find(o => o.id === p.target.town), b = TOWN_BUILDINGS.get(p.target.b);
     if (!x?.alive) return {outcome: 'cancel', why: 'город пал'};
     if (x.built.filter(id => id === b.id).length > p.had) return {outcome: 'done', why: `построено: ${b.name}`};
@@ -134,7 +150,7 @@ function judge(a, t, st, A, p) {
     if (age >= A.review) return {outcome: 'fail', why: 'не начали: не по карману'};
     return null;
   }
-  if (A.id === 'room.settle') {
+  if (A.id === 'room.settle' || A.id === 'food.settle') {
     if ((t.settled ?? -Infinity) >= p.year) return {outcome: 'done', why: 'поселенцы ушли'};
     if (!st.on) return {outcome: 'cancel', why: 'нужда снята'};
     if (age >= A.review) return {outcome: 'fail', why: 'поселенцы не ушли: нет места или людей'};

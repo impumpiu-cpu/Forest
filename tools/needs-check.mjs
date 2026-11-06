@@ -30,11 +30,12 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
   const a = copy(); quiet(a);
   const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
   const R = room(townFx(t)), D = NEEDS.get('room');
-  t.pop = R * (0.6 + 0.4 * D.on) + 1; stepNeeds(a);
+  const eps = Math.max(1, R * 0.002);   // (past the rounding of the strength to 0.001, whatever the town's room)
+  t.pop = R * (D.from + D.span * D.on) + eps; stepNeeds(a);
   const lit = t.need?.room?.on;
-  t.pop = R * (0.6 + 0.4 * (D.on + D.off) / 2); stepNeeds(a);
+  t.pop = R * (D.from + D.span * (D.on + D.off) / 2); stepNeeds(a);
   const holds = t.need?.room?.on;
-  t.pop = R * (0.6 + 0.4 * D.off) - 1; stepNeeds(a);
+  t.pop = R * (D.from + D.span * D.off) - eps; stepNeeds(a);
   check('теснота зажигается на пороге «зажечь», держится между порогами, гаснет ниже «погасить»', lit && holds && !t.need?.room?.on, `${lit} → ${holds} → ${!!t.need?.room?.on}`);
 }
 // ── room: the house is answered with a goal; the town that builds a house already is not given another
@@ -97,6 +98,18 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
     const st = t.need?.metal, p = st?.plans?.['metal.build'], o = opt(st, 'metal.build');
     check('железа ни у кого нет: цель — рудник в городе державы, или названо, почему его не поставить', (!!p && !!a.towns.find(x => x.id === p.target.town)?.goal) || /не может поставить/.test(o?.why || ''), JSON.stringify(st?.last));
   }
+}
+
+// ── food: its people near what feeds them → lit; the council raises what feeds (a goal) or sends settlers; out once it is fed
+{
+  const a = copy(); quiet(a);
+  const t = towns(a).find(x => x.wants?.feeds > 0) || towns(a)[0], D = NEEDS.get('food');
+  t.wants = {...(t.wants || {}), feeds: t.pop / (D.from + D.span * 0.8)}; stepNeeds(a);
+  const st = t.need?.food, pick = st?.last?.pick;
+  check('голод зажигается, когда жители подходят к тому, что их кормит, и совет отвечает: кормит или шлёт поселенцев', !!st?.on && (pick === 'food.build' ? t.goal?.need === 'food' : pick === 'food.settle' || st.last.opts.every(o => o.why)),
+    `сила ${st?.s}, выбор ${pick || '—'}${pick ? '' : ': ' + st?.last?.opts.map(o => o.why).join('; ')}`);
+  t.wants.feeds = t.pop * 2; stepNeeds(a);
+  check('сытый город гасит голод', !t.need?.food?.on, `сила ${t.need?.food?.s ?? 0}`);
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

@@ -219,7 +219,7 @@ function sendSettlers(a, rnd, say) {
     if (!S) continue;
     const fill = t => Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, t.target || t.pop) - Z.full) / Z.span, (t.pop - S.from) / (S.from * Z.big))));
     // (a town whose council answered its crowding with settlers — atlas/townNeeds.js — sends them whatever its fill and its chance)
-    const asked = t => !!t.need?.room?.plans?.['room.settle'] && allowed(a.cfg, 'town.need.settle');
+    const asked = t => !!(t.need?.room?.plans?.['room.settle'] || t.need?.food?.plans?.['food.settle']) && allowed(a.cfg, 'town.need.settle');
     const towns = a.towns.filter(t => t.alive && t.people === pe.id && t.pop >= S.from && (fill(t) > 0 || asked(t)) && !(a.hist.year - (t.settled ?? -Infinity) < Z.every))
       .sort((p, q) => fill(q) - fill(p) || p.id - q.id);
     let made = 0;

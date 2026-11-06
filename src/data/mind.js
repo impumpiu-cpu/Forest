@@ -32,7 +32,8 @@ export const DEED_VEC = {
 //   pull        how hard the realm pulls toward its rose: rose + pull × (rose − course), no less than nothing
 //   needs       how hard the season's needs blow (× each flag) beside the rose
 //   smooth      the wind keeps this share of the last season's (a council does not turn each month)
-//   flags       the season's needs, 0 … 1: want — the people's basic needs met below `fed` (full at fed − fedSpan); crowding
+//   flags       the season's needs, 0 … 1: hunger — how well its towns are fed (1 less their need of food, atlas/townNeeds.js)
+//               below `fed` (full at fed − fedSpan); crowding
 //               above `crowd` (full at crowd + crowdSpan); threat — a war is 1, else the towns' threat; shortages — goods the
 //               realm's towns lack, full at `short`; hoard — the realm's gold below `hoard` per 100 of its people (empty: 1)
 //   hoard       gold per 100 people the treasury would hold before the council is easy
