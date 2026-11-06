@@ -1,6 +1,6 @@
 // The mechanics taken from the donor games (docs/WORLD.md; the project's «Доноры механик»): small scenes, each a rule that must hold.
 import assert from 'node:assert/strict';
-import {payTribute, realmPool, seasonStore, pairLink, loadStep} from '../src/atlas/treasury.js';
+import {payTribute, realmPool, seasonStore, pairLink, loadStep, orderOf, takenStep, sellOver} from '../src/atlas/treasury.js';
 import {TOWN_FLOW} from '../src/data/townBuildings.js';
 import {moodStep} from '../src/atlas/mood.js';
 import {TOWN_LIFE} from '../src/data/peoples.js';
@@ -61,13 +61,35 @@ check('малая, но сильная держава мира не просит
   assert.equal(lose(mk(false)), true, 'слабый один город мира не просит');
 });
 
-check('загрузка по сбыту: лишнее, которого ждёт покупатель, способный заплатить, но не довезённое, выпуск не режет', () => {
-  const mk = () => town({built: ['mineshaft'], load: {mineshaft: 0.5}, econ: {rows: [{id: 'mineshaft', gave: {iron: 8}}], recipes: [], made: {iron: 8}, used: {}, over: {iron: 8}}});
-  const t1 = mk(); loadStep(t1, new Set(['iron']));
-  const t2 = mk(); loadStep(t2, null);
-  const L = TOWN_FLOW.load;
-  assert.ok(Math.abs((t1.load?.mineshaft ?? 1) - (0.5 + L.step)) < 1e-9, `ждут — загрузка ${t1.load?.mineshaft ?? 1}`);
-  assert.ok(Math.abs((t2.load?.mineshaft ?? 1) - (0.5 - L.step)) < 1e-9, `никто не ждёт — загрузка ${t2.load?.mineshaft ?? 1}`);
+check('оплачиваемый спрос — заказ: не больше нехватки и того, что кошелёк покупает по полной цене с доставкой, разложен по продавцам', () => {
+  // кошелёк 2, цена с доставкой 4: покупатель берёт 0,5 единицы, а не по 100 у каждого из двух продавцов
+  const o = orderOf(100, 2, [[7, 4, 60], [8, 5, 60]]);
+  assert.deepEqual(o.map(x => x[0]), [7]); assert.ok(Math.abs(o[0][1] - 0.5) < 1e-9, `заказ ${JSON.stringify(o)}`);
+  // денег на 80 единиц: первый продавец отдаёт свои 60, второй — 20
+  const o2 = orderOf(100, 320, [[7, 4, 60], [8, 5, 60]]);
+  assert.deepEqual(o2, [[7, 60], [8, 20]]);
+});
+
+check('загрузка по сбыту: лишнее, которого ждёт покупатель, не режет выпуск — ровно на сколько ждут', () => {
+  const mk = () => town({built: ['mineshaft'], load: {mineshaft: 0.5}, econ: {rows: [{id: 'mineshaft', gave: {iron: 8}}], recipes: [], made: {iron: 8}, used: {}, over: {iron: 2}}});
+  const L = TOWN_FLOW.load, at = w => { const t = mk(); loadStep(t, w); return t.load?.mineshaft ?? 1; };
+  assert.ok(Math.abs(at({iron: 2}) - (0.5 + L.step)) < 1e-9, 'ждут всё лишнее — выпуск растёт');
+  assert.ok(Math.abs(at({}) - (0.5 - L.step)) < 1e-9, 'никто не ждёт — выпуск падает');
+});
+
+check('склад не сжимается вслед за выпуском: при постоянном спросе 30 за сезон выпуск не падает ниже спроса', () => {
+  const S = 4, t = town({pop: 1000, built: ['mineshaft'], stock: {}, taken: {}});
+  const rows = [];
+  for (let k = 0; k < 40; k++) {
+    const L0 = t.load?.mineshaft ?? 1, made = 100 * L0;
+    t.econ = {rows: [{id: 'mineshaft', gave: {iron: made * S}}], recipes: [], made: {iron: made * S}, used: {}, dem: {}, people: {}};
+    const sold = Math.min(30, (t.stock.iron || 0) + made);
+    t.stock.iron = (t.stock.iron || 0) + made - sold;
+    takenStep(t, {iron: sold}); sellOver(t); loadStep(t, {});
+    rows.push(made);
+  }
+  const last = rows.slice(-12);
+  assert.ok(Math.min(...last) >= 30 - 1e-9, `выпуск за последние сезоны: ${last.map(x => Math.round(x)).join(', ')}`);
 });
 
 check('довольство в кризисе: город большой державы падает ниже порога спуска ступени, у державы последних городов держится на полу', () => {

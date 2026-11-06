@@ -551,7 +551,9 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               (that gold goes to nobody: their hours), taking `gather.hands` free hands a unit for the season. Paid, it is raised
 //               as the town's one project (atlas/build.js): `days` work-days by its step × (1 + jobs / jobsPer) × (1 + house /
 //               housePer), its builders `crew` of the town's people each day
-//   store     — a good's room in the store: × a year of what the town makes and takes of it (at least `least`); food is not
+//   store     — a good's room in the store: × a year of what is taken of it (its works, its people, the buyers elsewhere: the mean
+//               of the seasons, `takenKeep` of the old a season) and of what its works ask (at least `least`) — not of what it
+//               makes, so a work set down does not shrink its own room; food is not
 //               stored here (it goes by the net, atlas/sites.js) — the granary of the ration's price is the town's surplus; stores
 //               (заготовки) are: they keep, are sold and bought as any good, and a town eats them in a hungry year (atlas/peoples.js)
 //   keep      — the seasons of what its works take a town keeps for them; safety — the seasons of its people's basic needs it
@@ -594,7 +596,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               before the road is walked) × (1 − `bond` × the share of its want it took from that seller lately: l.vol, `keep`
 //               of the old a season); the carriage goes to the seller's people; a pair's link carries at most `room` +
 //               `roomRoad` × how well its way is roaded gold of goods a season
-export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, keep: 1, safety: 1, buy: 1, foreign: 1.25,
+export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, takenKeep: 0.75, keep: 1, safety: 1, buy: 1, foreign: 1.25,
   merchants: {cheap: 0.4, fair: 0.7, purse: 0.03, at: ['market', 'tradepost', 'inn', 'caravanserai', 'harbor']},
   needs: {basic: {wood: 0.05, cloth: 0.01, leather: 0.004, drink: 0.02, tools: 0.002},
     comfort: {lux: 0.001, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.008}, rich: 1, unmet: 0.1},

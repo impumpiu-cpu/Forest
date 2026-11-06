@@ -69,7 +69,9 @@ const peopleOf = id => (WORLD_PEOPLES.has(id) ? WORLD_PEOPLES.get(id) : null);
 // what the store and the treasury lend the buildings this season, as a year's rate (the mint coins from the treasury)
 const fromStore = t => { const o = {}; for (const [g, v] of Object.entries(t.stock || {})) o[g] = v * S; if (t.gold > 0) o.gold = t.gold * S; return o; };
 // a good's room in a town's store
-export const roomOf = (t, g) => Math.max(M.least, ((t.econ?.made[g] || 0) + (t.econ?.dem[g] || 0)) * M.store);
+// — a year of what is taken of it (t.taken: the season's works, people and buyers elsewhere, smoothed) and of what its works ask,
+// not of what it makes: a work set down for want of takers does not shrink the room it is judged by (atlas/treasury.js loadStep)
+export const roomOf = (t, g) => Math.max(M.least, ((t.taken?.[g] || 0) * S + (t.econ?.dem[g] || 0)) * M.store);
 // what a town keeps of a good for its works (a season of what they take), and for its people's basic needs
 const keepOf = (t, g) => (t.econ?.dem[g] || 0) / S * M.keep;
 // (the basket of the safety is asked for every good of every link each season: kept per town while its people, its size and the
@@ -154,7 +156,7 @@ export function seasonMoney(a, towns) {
   // the demand each town could not meet: buyers — of its realm or another — who reached it, could pay for the good and still
   // wanted it once the ways had carried what they could (worksBuying C.wanted): a want of carriage, not of buyers, so loadStep
   // does not cut its makers for it
-  for (const t of towns) { const W = C.wanted?.get(t.id); t.econ.wanted = W ? Object.fromEntries(Object.entries(W).map(([g, v]) => [g, r2(v)])) : {}; closeSeason(a, t, W ? new Set(Object.keys(W)) : null); }
+  for (const t of towns) { const W = C.wanted?.get(t.id) || {}; t.econ.wanted = Object.fromEntries(Object.entries(W).map(([g, v]) => [g, r2(v)])); closeSeason(a, t, W, sold.get(t.id) || {}); }
 }
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
@@ -243,9 +245,11 @@ function worksBuying(C, prep) {
         for (const [s, w] of by) { if (!(L[g] > M.dust)) break; buyGood(t, s, w, g); }
         // what it still wants of a seller that had it and that it could pay — what the way did not carry: the seller's demand it
         // could not meet (C.wanted: loadStep does not cut its makers for it)
+        // — an order no bigger than its lack and than its purse buys at the full delivered price of the cheapest such seller, laid
+        // on the sellers in the order it ranks them, each up to what it still has
         if (L[g] > M.dust) {
-          const purse = Math.max(0, t.makersGold) + (t.budget?.[g]?.gold || 0);
-          for (const [s] of by) if (spare.get(s.id)?.[g] > M.dust && purse >= priceAt(s, g) * deal(t, s)) put(wanted, s.id, g, L[g]);
+          const rest = by.filter(([s]) => spare.get(s.id)?.[g] > M.dust).map(([s, w]) => [s.id, priceAt(s, g) * deal(t, s) * (1 + carriageOf(a, w.cost)), spare.get(s.id)[g]]);
+          for (const [id, n] of orderOf(L[g], Math.max(0, t.makersGold) + (t.budget?.[g]?.gold || 0), rest)) put(wanted, id, g, n);
         }
       }
     }
@@ -272,6 +276,17 @@ export function pairLink(a, b, s, cost) {
   let l = a.net.links.get(key);
   if (!l) a.net.links.set(key, l = {p: s, q: b, c: NET.start, flow: 0, cost});
   return l;
+}
+// a buyer's order still wanting carriage: as much of its lack `L` as its `purse` buys at the full delivered price of the cheapest
+// seller, laid on the sellers (`rest`: [id, delivered unit, what it still has], in the buyer's order) each up to what it has
+// → [[seller id, how much]]
+export function orderOf(L, purse, rest) {
+  if (!rest.length) return [];
+  const unit = Math.min(...rest.map(x => x[1]));
+  let q = Math.min(L, unit > 0 ? purse / unit : 0);
+  const out = [];
+  for (const [id, , has] of rest) { if (!(q > M.dust)) break; const n = Math.min(q, has); out.push([id, n]); q -= n; }
+  return out;
 }
 // the carriage, as a share of the worth: `carry` for each step of the way's cost (a world of another size: × its scale)
 const carriageOf = (a, cost) => M.trade.carry * cost / scaleOf(a);
@@ -407,9 +422,10 @@ function peopleNeeds(C) {
 }
 
 // ── the season's close of a town: the merchants, the wages, the taxes, the upkeep, the market's prices
-function closeSeason(a, t, short) {
+function closeSeason(a, t, wanted, sold) {
+  takenStep(t, sold);
   sellOver(t);
-  loadStep(t, short);
+  loadStep(t, wanted);
   payWages(t);
   takeTaxes(t);
   payUpkeep(t, realmOf(a, t.realm));
@@ -417,7 +433,7 @@ function closeSeason(a, t, short) {
 }
 // the store: what is over its room goes to the merchants — the dearest first, as far as their purse goes (the town's people ×
 // its trade); the rest rots, is burnt or carried off for nothing
-function sellOver(t) {
+export function sellOver(t) {
   const fair = M.merchants.at.some(id => t.built.includes(id)) ? M.merchants.fair : M.merchants.cheap, over = [];
   for (const g of Object.keys(t.stock)) {
     let v = t.stock[g];
@@ -437,13 +453,13 @@ function sellOver(t) {
 // the load of each work (t.load, saved; after OpenTTD's smooth economy, without its dice): what of its goods found a taker this
 // season — the town's works, its people, other towns, its store — against what went over the store's room to the merchants and the
 // rot, by worth; at `up` or more of it taken its load goes up `step`, at `down` or less down, within `least` … 1 (TOWN_FLOW.load).
-// What is not stored (food, raw food, gold) always counts as taken, and so does a good a buyer who reached it and could pay still
-// wanted of it (`short`, t.econ.wanted: it wants carrying, not cutting); a work that gave no stored goods is not judged: its load
-// comes back up
-export function loadStep(t, short = null) {
+// What is not stored (food, raw food, gold) always counts as taken, and so does as much of the overflow as buyers who reached it and
+// could pay still wanted (`wanted`, t.econ.wanted, by quantity: it wants carrying, not cutting); a work that gave no stored goods is
+// not judged: its load comes back up
+export function loadStep(t, wanted = {}) {
   const e = t.econ, L = F.load, over = e.over || {}, got = {};
   // (what is not stored — food and raw food down the net, gold to the purse — always finds its taker)
-  const gave = (id, G) => { const o = got[id] ||= {all: 0, lost: 0, kept: 0}; for (const [g, v] of Object.entries(G || {})) { if (!(v > 0)) continue; const w = v * goodPrice(g), m = (e.made[g] || 0) / S; o.all += w; if (stored(g)) { o.kept += w; if (!short?.has(g)) o.lost += w * (m > 0 ? Math.min(1, (over[g] || 0) / m) : 0); } } };
+  const gave = (id, G) => { const o = got[id] ||= {all: 0, lost: 0, kept: 0}; for (const [g, v] of Object.entries(G || {})) { if (!(v > 0)) continue; const w = v * goodPrice(g), m = (e.made[g] || 0) / S; o.all += w; if (stored(g)) { o.kept += w; o.lost += w * (m > 0 ? Math.min(1, Math.max(0, (over[g] || 0) - (wanted[g] || 0)) / m) : 0); } } };
   for (const r of e.rows) gave(r.id, Object.fromEntries(Object.entries(r.gave).map(([g, v]) => [g, v / S])));
   for (const x of e.recipes || []) gave(x.of, Object.fromEntries(Object.entries(x.gave).map(([g, v]) => [g, v / S])));
   const out = {};
@@ -456,6 +472,17 @@ export function loadStep(t, short = null) {
     if (v < 1 - 1e-9) out[id] = Math.round(v * 1000) / 1000;
   }
   if (Object.keys(out).length) t.load = out; else delete t.load;
+}
+// what was taken of each good this season — by its works, its people and the buyers of other towns — into its smoothed mean
+// (t.taken, saved: `takenKeep` of the old mean and the rest of the season's); the store's room goes by it (roomOf)
+export function takenStep(t, sold) {
+  const e = t.econ, T = {}, P = e.people || {};
+  for (const g of new Set([...Object.keys(e.used), ...Object.keys(sold), ...Object.keys(P), ...Object.keys(t.taken || {})])) {
+    if (!stored(g)) continue;
+    const now = (e.used[g] || 0) / S + (sold[g] || 0) + (P[g]?.got || 0), v = (t.taken?.[g] || 0) * M.takenKeep + now * (1 - M.takenKeep);
+    if (v > M.dust / 10) T[g] = Math.round(v * 1000) / 1000;
+  }
+  if (Object.keys(T).length) t.taken = T; else delete t.taken;
 }
 // the wages: for the free hands at work (the slaves are not paid), as far as the makers' purse goes
 function payWages(t) {
