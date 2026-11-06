@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import {payTribute, realmPool, seasonStore, pairLink, loadStep} from '../src/atlas/treasury.js';
 import {TOWN_FLOW} from '../src/data/townBuildings.js';
+import {moodStep} from '../src/atlas/mood.js';
+import {TOWN_LIFE} from '../src/data/peoples.js';
 import {DOES} from '../src/atlas/deeds/index.js';
 import {TOWN_GOODS, TOWN_MONEY, goodPrice} from '../src/data/townBuildings.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
@@ -64,6 +66,19 @@ check('загрузка по сбыту: лишнее, которого ждёт
   const L = TOWN_FLOW.load;
   assert.ok(Math.abs((t1.load?.mineshaft ?? 1) - (0.5 + L.step)) < 1e-9, `ждут — загрузка ${t1.load?.mineshaft ?? 1}`);
   assert.ok(Math.abs((t2.load?.mineshaft ?? 1) - (0.5 - L.step)) < 1e-9, `никто не ждёт — загрузка ${t2.load?.mineshaft ?? 1}`);
+});
+
+check('довольство в кризисе: город большой державы падает ниже порога спуска ступени, у державы последних городов держится на полу', () => {
+  const run = n => {
+    const towns = Array.from({length: n}, (_, k) => town({id: k + 1, tier: 2, mood: 80, needs: {basic: 0, comfort: 0}, fed: 0}));
+    const a = {towns, realms: [{id: '1', people: 'humans', kingdom: {edicts: {taxes: 'high'}}}]};
+    for (let q = 0; q < 40; q++) moodStep(towns[0], a);
+    return towns[0].mood;
+  };
+  const G = TOWN_LIFE.grace, M = TOWN_LIFE.mood;
+  const big = run(G.lastStand + 1), small = run(G.lastStand);
+  assert.ok(big < M.tierDown, `город большой державы: довольство ${big}, порог спуска ${M.tierDown}`);
+  assert.ok(Math.abs(small - G.moodFloor) < 1e-6, `последний рубеж: довольство ${small}, пол ${G.moodFloor}`);
 });
 
 if (failed) { console.log(`\nНе прошло: ${failed}`); process.exit(1); }
