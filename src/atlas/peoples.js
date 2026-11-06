@@ -18,7 +18,7 @@ import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from
 import {takeHeads, sync, foundHeads} from './population.js';
 import {townFx, room, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
-import {moodStep, moodGrow} from './mood.js';
+import {moodStep, moodGrow, moodOf} from './mood.js';
 import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
@@ -358,7 +358,7 @@ export function seasonTowns(a, say) {
   }
   seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
   for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
-  for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t); }   // its works' strength kept; its people's mood (atlas/mood.js)
+  for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t, a); }   // its works' strength kept; its people's mood (atlas/mood.js)
   // the gates of growth (TOWN_LIFE.gates): what a town of a cold land got of its fuel in the winter, kept for the spring (t.gates)
   const sid = SEASONS.all()[a.hist?.season ?? 0]?.id;
   for (const G of TL.gates) if (G.season === sid) for (const t of a.towns) {
@@ -460,11 +460,17 @@ export function stepPeoples(a, rnd, say) {
     t.wants = {feeds, threat};   // what the town needs, for its realm's council (atlas/mind.js)
     // (what it builds: one project at a time, raised by its builders season by season — atlas/build.js)
     // the step the town has earned by its people and buildings; it falls one when the people are gone
-    const tier = tierOf(t), fall = t.tier > 0 && t.pop < TIERS[t.tier].pop * TIER_FALL;
+    // (and by its mood, after Unknown Horizons: a town rises only while its people are content enough — TOWN_LIFE.mood.tierUp —
+    // and a sore one falls a step — below tierDown)
+    const MD = TL.mood, sore = t.tier > 0 && moodOf(t) < MD.tierDown;
+    let tier = tierOf(t);
+    if (tier > t.tier && moodOf(t) < MD.tierUp) tier = t.tier;
+    if (sore) tier = Math.min(tier, t.tier - 1);
+    const fall = sore || (t.tier > 0 && t.pop < TIERS[t.tier].pop * TIER_FALL);
     if (tier > t.tier || (fall && tier < t.tier)) {
       const T = TIERS[tier], was = TIERS[t.tier];
       if (tier > t.tier) say(`${cap1(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T.label[t.people][1]}: ${Math.round(t.pop)} жителей.`);
-      else say(`${cap1(was.label[t.people][0])} ${t.name} ${SHRANK[was.gender[t.people]]} ${T.label[t.people][2]}: осталось ${Math.round(t.pop)} жителей.`);
+      else say(`${cap1(was.label[t.people][0])} ${t.name} ${SHRANK[was.gender[t.people]]} ${T.label[t.people][2]}: ${sore ? 'жители недовольны своей жизнью и забросили её дела' : `осталось ${Math.round(t.pop)} жителей`}.`);
       t.tier = tier;
     }
   }

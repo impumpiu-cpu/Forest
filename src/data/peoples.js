@@ -344,14 +344,15 @@ export const ELDER_YEARS = [
 //   mood:      a town's content, 0 … 100 (atlas/mood.js): each season `pace` of the way to 100 × the weighted share of its
 //              people's basic needs met, their comfort and how well it was fed last spring — the weights by its step (`w[step]`: a
 //              hamlet asks only to be fed, as Unknown Horizons' sailors); a new town starts at `start`. Its growth
-//              × 1 + grow × (mood − mid) / 50 (a town over its target dies off by 2 − that)
+//              × 1 + grow × (mood − mid) / 50 (a town over its target dies off by 2 − that); it rises a step only at `tierUp` or
+//              more, and falls one below `tierDown`
 //   gates:     what a town of a land must have to grow at all (after OpenTTD's towns in the snow): a town of step `tier` or
 //              more whose land is no warmer than `cold` °C a year (atlas/peoples.js) that got less than `least` of its `pool`
 //              in the `season` does not grow the next spring (it still dies of age and want)
 //   links:     a town that trades grows faster (after OpenTTD's towns by their stations): its growth × (1 + bonus × n) / (1 + bonus
 //              × ref), n — its links of the net that carried food or goods this year, at most `max` (ref 0: a lonely town — a
 //              new one on the frontier — grows as before; with ref above 0 it grows slower, and the peoples spread the less)
-export const TOWN_LIFE = {links: {bonus: 0.03, ref: 0, max: 5}, gates: [{id: 'fuel', label: 'зимой не хватило топлива', season: 'winter', cold: -2, tier: 1, pool: 'fuel', least: 0.5}], mood: {start: 85, pace: 0.25, w: [{food: 1}, {basic: 2, food: 3}, {basic: 3, comfort: 1, food: 3}], mid: 85, grow: 0.3}, hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], apart: {own: 0.25, others: 0.25}, siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
+export const TOWN_LIFE = {links: {bonus: 0.03, ref: 0, max: 5}, gates: [{id: 'fuel', label: 'зимой не хватило топлива', season: 'winter', cold: -2, tier: 1, pool: 'fuel', least: 0.5}], mood: {start: 85, pace: 0.25, w: [{food: 1}, {basic: 2, food: 3}, {basic: 3, comfort: 1, food: 3}], mid: 85, grow: 0.3, tierUp: 60, tierDown: 30}, hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], apart: {own: 0.25, others: 0.25}, siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25, settle: {full: 0.75, span: 0.25, big: 2, chance: 0.6, every: 3, max: 2, near: 0.2}, abroad: 0.6, moveReach: 3, overflow: 0.5, moveLeast: 0.5, abandon: 10,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.22, prestige: 0.6, minTarget: 60,
