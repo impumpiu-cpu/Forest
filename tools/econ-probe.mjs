@@ -11,6 +11,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, goodPrice} from '../src/data/townBuildings.j
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {slotsUsed, slotsOf} from '../src/atlas/towns.js';
 import {offers} from '../src/campaign/town.js';
+import {SEASONS_PER_YEAR as S} from '../src/data/atlas.js';
 
 const seed = process.argv[2] || 'start376615', size = process.argv[3] || 'small', mode = process.argv[4] || 'std';
 if (mode === 'start') for (const P of WORLD_PEOPLES.all()) P.era = 'elder';
@@ -26,8 +27,9 @@ const zero = () => Object.fromEntries([...PE, 'all'].map(p => [p, {}]));
 // the season's ledger, summed over the year
 let acc = zero(), seasons = 0;
 // (wasted — the worth of what went over the store's room and nobody took; dumped — the worth of what the merchants took of it,
-// at its own price; rotted — the worth of what rotted in store; carry — what the buyers paid the carters)
-const KEYS = ['bought', 'sold', 'imported', 'merchants', 'wasted', 'dumped', 'rotted', 'carry', 'people', 'works', 'upkeep', 'recycled'];
+// at its own price; rotted — the worth of what rotted in store; carry — what the buyers paid the carters; boughtN — the goods
+// bought from other towns themselves, a count of units of every kind)
+const KEYS = ['bought', 'boughtN', 'sold', 'imported', 'merchants', 'wasted', 'dumped', 'rotted', 'carry', 'people', 'works', 'upkeep', 'recycled'];
 function seasonTally() {
   seasons++;
   for (const t of live()) for (const k of KEYS) { const v = t.trade?.[k] || 0; for (const p of [t.people, 'all']) acc[p][k] = (acc[p][k] || 0) + v; }
@@ -67,18 +69,24 @@ function yearRow(ms) {
     o.made = r1(made / Math.max(1, pop) * 100); o.spare = r1(spare / Math.max(1, pop) * 100);   // (gold a year for 100 people)
     o.spareBy = Object.fromEntries(Object.entries(spareBy).map(([g, v]) => [g, r1(v / Math.max(1, pop) * 100)]));
     // works: idle below half, the mean strength
-    // (and why a work is below half: cut — its load set down for want of takers, t.load below 0.9; starved — at full load, short
-    // of hands or of what it takes)
+    // (and where the strength the works did not give went, as shares of all their strength: cut — the load this reckoning worked
+    // at was set down for want of takers, 1 − load; starved — within that load, short of hands or of what they take, load − eff;
+    // a work can be both)
     let rows = 0, idle = 0, eff = 0, cut = 0, starved = 0;
     for (const t of E) for (const r of t.econ.rows || []) {
       const b = TOWN_BUILDINGS.has(r.id) ? TOWN_BUILDINGS.get(r.id) : null; if (!b || b.cat === 'housing' || !b.jobs) continue;
-      rows += r.n; eff += Math.min(1, r.eff) * r.n;
-      if (r.eff < 0.5) { idle += r.n; if ((t.load?.[r.id] ?? 1) < 0.9) cut += r.n; else starved += r.n; }
+      const L = r.load ?? 1, e = Math.min(1, r.eff);
+      rows += r.n; eff += e * r.n; if (r.eff < 0.5) idle += r.n;
+      cut += (1 - L) * r.n; starved += Math.max(0, L - e) * r.n;
     }
     o.idle = r3(rows ? idle / rows : 0); o.cut = r3(rows ? cut / rows : 0); o.starved = r3(rows ? starved / rows : 0); o.eff = r3(rows ? eff / rows : 0); o.works = r1(rows / E.length);
     o.tools = r3(E.reduce((s, t) => s + (t.econ.tools ?? (1 - 0.5 * (t.econ.short.tools || 0))) * w(t), 0));
     o.slotsFull = r3(E.filter(t => slotsUsed(t).town >= slotsOf(t).town).length / E.length);
     o.stock = r1(E.reduce((s, t) => s + Object.entries(t.stock || {}).reduce((q, [g, v]) => q + (TOWN_GOODS.has(g) ? v * price(g) : 0), 0), 0) / Math.max(1, pop) * 100);
+    // what the works were left lacking, by why, in gold a year for 100 people: no money, a weak way, a full way (its room), nobody had it
+    const why = {money: 0, route: 0, room: 0, goods: 0};
+    for (const t of E) for (const [g, r] of Object.entries(t.econ.why?.works?.by || {})) for (const k of Object.keys(why)) why[k] += (r[k] || 0) * price(g) * S;
+    for (const [k, v] of Object.entries(why)) o['no' + k[0].toUpperCase() + k.slice(1)] = r1(v / Math.max(1, pop) * 100);
     o.gold = r1(E.reduce((s, t) => s + (t.gold || 0) + (t.makersGold || 0) + (t.peopleGold || 0), 0) / Math.max(1, pop) * 100);
     o.spread = r3(E.reduce((s, t) => { const k = Object.values(t.market || {}); return s + (k.length ? Math.max(...k) / Math.min(...k) : 1); }, 0) / E.length);
     for (const k of [...KEYS, 'rows']) o[k] = r1((acc[p][k] || 0) / Math.max(1, pop) * 100);   // (gold a year for 100 people; rows — per 100 people a year)

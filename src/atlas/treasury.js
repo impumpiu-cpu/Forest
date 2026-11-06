@@ -191,7 +191,7 @@ function worksBuying(C, prep) {
   }
   // (the reasons — for the probes, never read by the game: what of a lack a seller had and the buyer could not pay for, what a
   // weak link did not carry; the rest nobody it deals with had → t.econ.why.works, at the buying's end)
-  const why = new Map(towns.map(t => [t.id, {gold: r2(Math.max(0, t.makersGold)), want: {...lack.get(t.id)}, money: {}, route: {}}]));
+  const why = new Map(towns.map(t => [t.id, {gold: r2(Math.max(0, t.makersGold)), want: {...lack.get(t.id)}, money: {}, route: {}, room: {}}]));
   const cut = (W, g, k, v) => { if (v > M.dust) W[k][g] = (W[k][g] || 0) + v; };
   const sold = new Map(), got = new Map(), wanted = C.wanted = new Map();
   const put = (m, id, g, n) => { const o = m.get(id) || {}; o[g] = (o[g] || 0) + n; m.set(id, o); };
@@ -206,7 +206,9 @@ function worksBuying(C, prep) {
     const pair = w.pair || (a.net ? a.net.links.get(linkKey(b, s)) || null : null);
     const room = pair ? Math.max(0, roomOf2(pair) - (pair.carried || 0)) : roomOfWay(w);
     const n = Math.min(L[g], P[g] * w.c, purse / unit, room / price);
-    const W = why.get(b.id); cut(W, g, 'route', Math.min(L[g], P[g]) - Math.min(L[g], P[g] * w.c, room / price)); cut(W, g, 'money', Math.min(L[g], P[g] * w.c, room / price) - Math.max(0, n));
+    // (what of it the way did not carry: a weak way — `route`; a full one, its room spent this season — `room`; the purse — `money`)
+    const W = why.get(b.id), byWay = Math.min(L[g], P[g], P[g] * w.c), byRoom = Math.min(byWay, room / price);
+    cut(W, g, 'route', Math.min(L[g], P[g]) - byWay); cut(W, g, 'room', byWay - byRoom); cut(W, g, 'money', byRoom - Math.max(0, n));
     if (n < M.dust) return 0;
     const v = n * price, c = n * price * carry;
     const fromB = Math.min(v + c, B?.gold || 0);
@@ -222,7 +224,7 @@ function worksBuying(C, prep) {
     if (!w.pair && a.net) w.pair = pairLink(a, b, s, w.cost);
     if (w.pair) { w.pair.goods = (w.pair.goods || 0) + v; w.pair.carried = (w.pair.carried || 0) + v; const key = `${s.id}>${g}`; (w.pair.took ||= {})[key] = (w.pair.took[key] || 0) + n; }
     put(sold, s.id, g, n); put(got, b.id, g, n);
-    add(b.trade, 'bought', v); add(s.trade, 'sold', v);
+    add(b.trade, 'bought', v); add(s.trade, 'sold', v); add(b.trade, 'boughtN', n);   // (boughtN — the goods themselves, for the probes)
     return n;
   };
   // the delivered price of a unit of `g` from `s` down the way `w` (the buyer's ranking of its sellers)
@@ -306,8 +308,8 @@ function reasons(W, left) {
   const by = {};
   for (const [g, want] of Object.entries(W.want)) {
     if (!(want > M.dust)) continue;
-    const l = Math.max(0, Math.min(want, left?.[g] || 0)), money = Math.min(l, W.money[g] || 0), route = Math.min(l - money, W.route[g] || 0);
-    by[g] = {want: r2(want), left: r2(l), money: r2(money), route: r2(route), goods: r2(l - money - route)};
+    const l = Math.max(0, Math.min(want, left?.[g] || 0)), money = Math.min(l, W.money[g] || 0), route = Math.min(l - money, W.route[g] || 0), room = Math.min(l - money - route, W.room?.[g] || 0);
+    by[g] = {want: r2(want), left: r2(l), money: r2(money), route: r2(route), room: r2(room), goods: r2(l - money - route - room)};
   }
   return {gold: W.gold, by};
 }
