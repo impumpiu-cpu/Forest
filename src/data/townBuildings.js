@@ -100,11 +100,14 @@ export const CATEGORIES = {
 // (`brush`: not kept, not traded). `feeds` — how a good counts as food for the town's choice (foodNet): 'ready' as it is, 'raw' at
 // what a kitchen makes of it; none — not food. `local` — a good that stays where it is made, never in the store nor traded (ready
 // and raw food go down the net as people, brushwood is burnt where it is gathered: atlas/treasury.js).
+// `stock` — the realm's wanted store of a good a head (after Widelands' target quantity): while the towns of the realm and its
+// treasury hold less, the realm wants it (the fact `want`, atlas/requirements.js), and a recipe that asks `want` runs; a good with
+// no `stock` is always wanted (what nothing makes of anything: logs, grain).
 export const TOWN_GOODS = new Registry('townGood');
 TOWN_GOODS.registerAll([
   {id: 'food', label: 'готовая еда', unit: 'чел.-год', feeds: 'ready', local: true, get price() { return CAMPAIGN.ration * 365; }},
   {id: 'raw', label: 'сырая еда', unit: 'чел.-год', raw: true, feeds: 'raw', local: true, get price() { return CAMPAIGN.ration * 365 * 0.7; }, note: 'зерно, мясо, рыба, плоды, грибы, мёд — всё одно: на кухню, в заготовки, в брагу'},
-  {id: 'stores', label: 'заготовки', unit: 'чел.-год', feeds: 'ready', price: 150, note: 'вяленое и копчёное: не портится'},
+  {id: 'stores', label: 'заготовки', unit: 'чел.-год', feeds: 'ready', price: 150, stock: 0.08, note: 'вяленое и копчёное: не портится'},
   {id: 'drink', label: 'брага', unit: 'шт.', res: 'braga', soft: true, note: 'одна брага из любого сбраживаемого сырья'},
   {id: 'wood', label: 'древесина', unit: 'шт.', res: 'wood'},
   {id: 'fuel', label: 'топливо', unit: 'заряд', price: 0.1, note: 'древесный и каменный уголь, кизяк — заряды одного топлива (FUEL)'},
@@ -126,8 +129,8 @@ TOWN_GOODS.registerAll([
   {id: 'mithril', label: 'мифрил', unit: 'шт.', price: 40, note: 'только глубокие шахты дварфов у магмы'},
   {id: 'gems', label: 'самоцветы', unit: 'шт.', res: 'gems'},
   {id: 'tools', label: 'инструмент', unit: 'шт.', price: 3, soft: true, note: 'один запас на город: TOWN_FLOW.tools штук на работника в год; без него все работы вполсилы, при нехватке — по доле'},
-  {id: 'arms', label: 'оружие', unit: 'шт.', price: 6, soft: true},
-  {id: 'armor', label: 'броня', unit: 'шт.', price: 15, soft: true},
+  {id: 'arms', label: 'оружие', unit: 'шт.', price: 6, soft: true, stock: 0.02},
+  {id: 'armor', label: 'броня', unit: 'шт.', price: 15, soft: true, stock: 0.01},
   {id: 'lux', label: 'роскошь', unit: 'шт.', price: 10, soft: true},
   {id: 'gold', label: 'золото', unit: 'зол.', res: 'gold', note: 'деньги: доход построек — в кошелёк'},
 ]);
@@ -217,9 +220,10 @@ const scaledRec = (recs, k) => recs.map(q => ({...q, in: k_(q.in, k), out: k_(q.
 const ALL = null, E = ['elves'], D = ['dwarves'], H = ['humans'], O = ['orcs'];
 // the kitchens: the ogres' meat pot; the greenskins brew their own at the fire from the first step (a little raw food into brew)
 const KITCHEN_REC = [R('ogrepot', 'мясной котёл', ['kin:ogre'], {in: {raw: 40}, fire: 30, out: {food: 48}}), R('brew', 'своя брага', ['people:orcs'], {in: {raw: 4}, fire: 10, out: {drink: 40}})];
-const LARDER_REC = [R('dry', 'сушка', [], {in: {raw: 12}, out: {stores: 6}}), R('smoke', 'копчение', [], {in: {raw: 20}, fire: 40, out: {stores: 28}})];
-const SHOP_REC = [R('bows', 'луки', ['people:elves|people:humans'], {in: {wood: 30, fiber: 16}, out: {arms: 20}, wares: ['bow']}),
-  R('bark', 'корьевая броня', ['people:elves'], {in: {wood: 40, fiber: 20, leather: 10}, out: {armor: 4}})];
+// (the larder puts up stores only while the realm wants them: `need` — the fact `want`, its share of the target store still lacking)
+const LARDER_REC = [R('dry', 'сушка', [], {in: {raw: 12}, out: {stores: 6}, need: {fact: 'want', arg: 'stores', op: '>', value: 0}}), R('smoke', 'копчение', [], {in: {raw: 20}, fire: 40, out: {stores: 28}, need: {fact: 'want', arg: 'stores', op: '>', value: 0}})];
+const SHOP_REC = [R('bows', 'луки', ['people:elves|people:humans'], {in: {wood: 30, fiber: 16}, out: {arms: 20}, wares: ['bow'], need: {fact: 'want', arg: 'arms', op: '>', value: 0}}),
+  R('bark', 'корьевая броня', ['people:elves'], {in: {wood: 40, fiber: 20, leather: 10}, out: {armor: 4}, need: {fact: 'want', arg: 'armor', op: '>', value: 0}})];
 // The forge: one rule over the metals (docs/WORLD.md «Металлы»): 50 of a metal and 10 of leather a year into tools, arms and armour —
 // a better metal gives more, for they are spent by their worth; mithril, the dwarves' alone, by the handful. A recipe for each metal
 // of the table, run while the store holds it; the wares a running one puts on the caravan's market

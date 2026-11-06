@@ -31,17 +31,18 @@ FACTS.registerAll([
   {id: 'tier', label: 'ступень', type: 'num', note: 'ступень города: 0, 1, 2 (data/peoples.js TIERS)'},
   {id: 'capital', label: 'столица', type: 'bool'},
   {id: 'ruler', label: 'правитель жив', type: 'bool', note: 'есть ли у державы города живой правитель (atlas/persons.js)'},
+  {id: 'want', label: 'держава хочет', type: 'num', arg: 'good', note: 'какой доли запаса блага (TOWN_GOODS stock на жителя) державе не хватает, 0…1: склады её городов и казны против цели; у блага без цели — 1'},
 ]);
 
 // what an `arg` of a fact must be — a known id of its kind — and what an enum fact's value may be (core/requirements.js reqErrors):
 // a race of the species, a building of the catalogue, a place need; a people, an uklad. A typo is an error of data, never a
 // share of zero
 import {SPECIES} from './species.js';
-import {TOWN_BUILDINGS, PLACE_NEEDS} from './townBuildings.js';
+import {TOWN_BUILDINGS, PLACE_NEEDS, TOWN_GOODS} from './townBuildings.js';
 import {WORLD_PEOPLES} from './peoples.js';
 import {POLITIES} from './polities.js';
 export const ARG_KNOWN = {
-  race: id => SPECIES.has(id), building: id => TOWN_BUILDINGS.has(id), need: id => id in PLACE_NEEDS,
+  race: id => SPECIES.has(id), building: id => TOWN_BUILDINGS.has(id), need: id => id in PLACE_NEEDS, good: id => TOWN_GOODS.has(id),
 };
 export const VALUE_KNOWN = {people: v => WORLD_PEOPLES.has(v), polity: v => POLITIES.has(v)};
 

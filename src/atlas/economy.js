@@ -291,6 +291,9 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
     const avail = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : (sup[g] || 0) > TOWN_MONEY.dust ? 1 : 0);
     const by = new Map();
     for (const x of recRows) {
+      // a recipe of `need` (data/townBuildings.js: the larder while the realm wants stores — the fact `want`) runs only while it is
+      // met; not met, it stands and asks for nothing (Widelands' «skipped unless the economy needs it»)
+      if (x.q.need && !meets(workNeeds(x.q, true), facts)) { x.w = 0; x.ask = false; by.set(x.of, by.get(x.of) || 0); continue; }
       let w = 1; for (const g of x.hard) w = Math.min(w, avail(g));
       x.w = w; x.ask = w <= 0 && known(x);
       by.set(x.of, (by.get(x.of) || 0) + x.w);

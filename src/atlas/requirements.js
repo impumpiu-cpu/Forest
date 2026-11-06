@@ -8,13 +8,29 @@
 import {personOf} from './persons.js';
 import {WORLD_PEOPLES, placeNeed} from '../data/peoples.js';
 import {POLITIES} from '../data/polities.js';
-import {lineHas} from '../data/townBuildings.js';
+import {lineHas, TOWN_GOODS} from '../data/townBuildings.js';
 import {FACTS} from '../data/requirements.js';
 import {explain, reqText} from '../core/requirements.js';
 import {realmBuilt, placeHas} from './towns.js';
 import {headsOf} from './population.js';
 import {SPECIES} from '../data/species.js';
 
+// how much of a good's wanted store the realm still lacks (data/townBuildings.js TOWN_GOODS `stock` a head; after Widelands'
+// target quantity): 1 − (what its towns' stores and its treasury hold) / (stock × its people), 0 … 1; a good with no target — 1.
+// Once a realm, good and step (a scratch, not saved: read from the stores, so a world loaded goes on as it would have)
+export function realmWant(a, t, g) {
+  const k = TOWN_GOODS.has(g) ? TOWN_GOODS.get(g).stock : null;
+  if (!(k > 0)) return 1;
+  const key = `${a?.hist?.step ?? -1}:${t.realm ?? 't' + t.id}:${g}`, W = a ? (a.realmWant ||= new Map()) : new Map();
+  if (W.has(key)) return W.get(key);
+  if (W.size > 512) W.clear();
+  const towns = t.realm == null || !a?.towns ? [t] : a.towns.filter(x => x.alive && x.realm === t.realm);
+  const R = t.realm == null ? null : (a?.realms || []).find(r => r.id === t.realm);
+  const has = towns.reduce((s, x) => s + (x.stock?.[g] || 0), 0) + (R?.stock?.[g] || 0), want = k * towns.reduce((s, x) => s + (x.pop || 0), 0);
+  const v = want > 0 ? Math.max(0, 1 - has / want) : 0;
+  W.set(key, v);
+  return v;
+}
 export function townFacts(a, t, {inRealm = null} = {}) {
   let realmSet = inRealm;
   const realm = () => realmSet || (realmSet = realmBuilt(a, t));
@@ -35,6 +51,7 @@ export function townFacts(a, t, {inRealm = null} = {}) {
         case 'tier': return t.tier || 0;
         case 'capital': return !!t.capital;
         case 'ruler': { const r = (a?.realms || []).find(x => x.id === t.realm); const h = r?.kingdom?.court?.ruler; return !!h && !!personOf(a, h.person)?.alive; }
+        case 'want': return realmWant(a, t, arg);
       }
       if (!FACTS.has(fact)) throw new Error(`requirements: unknown fact «${fact}»`);
       return undefined;
@@ -44,7 +61,7 @@ export function townFacts(a, t, {inRealm = null} = {}) {
 // the words for the cards: a race by its plural, a building by its name
 import {TOWN_BUILDINGS, PLACE_NEEDS, PEOPLE_WORDS} from '../data/townBuildings.js';
 export const WORDS = {
-  arg: (fact, arg) => (fact === 'kinShare' || fact === 'kinCount' || fact === 'kinHands' ? (SPECIES.has(arg) ? SPECIES.get(arg).plural : arg) + (fact === 'kinCount' ? ' (число)' : fact === 'kinHands' ? ' (руки)' : '')
+  arg: (fact, arg) => (fact === 'want' ? (TOWN_GOODS.has(arg) ? TOWN_GOODS.get(arg).label : arg) : fact === 'kinShare' || fact === 'kinCount' || fact === 'kinHands' ? (SPECIES.has(arg) ? SPECIES.get(arg).plural : arg) + (fact === 'kinCount' ? ' (число)' : fact === 'kinHands' ? ' (руки)' : '')
     : fact === 'built' || fact === 'exact' ? (TOWN_BUILDINGS.has(arg) ? TOWN_BUILDINGS.get(arg).name : arg)
     : fact === 'place' ? (PLACE_NEEDS[arg] || arg) : null),
   value: (fact, v) => (fact === 'people' ? PEOPLE_WORDS[v] || v : fact === 'polity' ? (POLITIES.has(v) ? POLITIES.get(v).label : v) : v),

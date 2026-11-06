@@ -469,7 +469,8 @@ export const TABLES = [
     columns: [
       col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('feeds', 'Кормит как', 'enum', {values: {ready: 'готовая еда', raw: 'сырьё кухни'}, nullable: true}), col('local', 'На месте', 'bool', {note: 'не лежит на складе и не продаётся: готовая и сырая еда идут по сети людьми, хворост сжигают, где собрали (atlas/treasury.js)'}), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
       col('raw', 'Сырое', 'bool', {note: 'сырую еду не едят (кроме народов с «Ест сырым»): её варят кухни, заготавливает двор, сбраживает пивоварня'}),
-      col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
+      col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}),
+      col('stock', 'Запас на жителя', 'num', {min: 0, nullable: true, note: 'сколько блага на жителя держава хочет держать на складах; пока меньше — рецепты, что просят «держава хочет», работают (atlas/requirements.js realmWant); пусто — хочет всегда'}), col('note', 'Заметка'),
     ]},
 
   // ── Караван
