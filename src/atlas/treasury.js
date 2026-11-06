@@ -411,16 +411,12 @@ function loadStep(t, short = null) {
   const gave = (id, G) => { const o = got[id] ||= {all: 0, lost: 0, kept: 0}; for (const [g, v] of Object.entries(G || {})) { if (!(v > 0)) continue; const w = v * goodPrice(g), m = (e.made[g] || 0) / S; o.all += w; if (stored(g)) { o.kept += w; if (!short?.has(g)) o.lost += w * (m > 0 ? Math.min(1, (over[g] || 0) / m) : 0); } } };
   for (const r of e.rows) gave(r.id, Object.fromEntries(Object.entries(r.gave).map(([g, v]) => [g, v / S])));
   for (const x of e.recipes || []) gave(x.of, Object.fromEntries(Object.entries(x.gave).map(([g, v]) => [g, v / S])));
-  // (and its hands, after Project Alice's hiring: a work that got less than `caution` of what it takes — its strength against its
-  // hands — lets its hands go `step` a season, whatever its goods; it takes them back only once it gets at least that)
-  const fed = new Map(e.rows.map(r => [r.id, r.staff * r.own > M.dust ? r.eff / (r.staff * r.own) : 1]));
   const out = {};
   for (const id of new Set(t.built)) {
     if (TOWN_BUILDINGS.get(id)?.cat === 'housing') continue;
-    const was = t.load?.[id] ?? 1, o = got[id], starved = (fed.get(id) ?? 1) < L.caution;
+    const was = t.load?.[id] ?? 1, o = got[id];
     let v = was;
-    if (starved) v = Math.max(L.least, was - L.step);
-    else if (!o || !(o.kept > M.dust)) v = Math.min(1, was + L.step);
+    if (!o || !(o.kept > M.dust)) v = Math.min(1, was + L.step);
     else { const taken = 1 - o.lost / o.all; if (taken >= L.up) v = Math.min(1, was + L.step); else if (taken <= L.down) v = Math.max(L.least, was - L.step); }
     if (v < 1 - 1e-9) out[id] = Math.round(v * 1000) / 1000;
   }

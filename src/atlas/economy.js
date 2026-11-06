@@ -373,7 +373,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   for (const r of own) if (recipesOf(r.b).length && !Object.keys(r.out).length && !r.b.yields) r.eff = Math.min(r.eff, recRows.filter(x => x.of === r).reduce((s, x) => s + x.eff, 0));
   return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, asked, food, dem, pools: pgot, tools: toolK, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, lit: [...lit0].sort(),
-    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, own: r.own, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
+    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
     recipes: recRows.map(x => ({id: x.b.id, of: x.of.b.id, name: x.q.name, on: x.w > 0 || !!x.ask, share: x.share, eff: x.eff, gave: Object.fromEntries(Object.entries(x.out).map(([g, v]) => [g, v * x.eff]))}))};
 }
 
