@@ -25,7 +25,9 @@ const zero = () => Object.fromEntries([...PE, 'all'].map(p => [p, {}]));
 
 // the season's ledger, summed over the year
 let acc = zero(), seasons = 0;
-const KEYS = ['bought', 'sold', 'imported', 'merchants', 'wasted', 'people', 'works', 'upkeep', 'recycled'];
+// (wasted — the worth of what went over the store's room and nobody took; dumped — the worth of what the merchants took of it,
+// at its own price; rotted — the worth of what rotted in store; carry — what the buyers paid the carters)
+const KEYS = ['bought', 'sold', 'imported', 'merchants', 'wasted', 'dumped', 'rotted', 'carry', 'people', 'works', 'upkeep', 'recycled'];
 function seasonTally() {
   seasons++;
   for (const t of live()) for (const k of KEYS) { const v = t.trade?.[k] || 0; for (const p of [t.people, 'all']) acc[p][k] = (acc[p][k] || 0) + v; }
@@ -65,9 +67,15 @@ function yearRow(ms) {
     o.made = r1(made / Math.max(1, pop) * 100); o.spare = r1(spare / Math.max(1, pop) * 100);   // (gold a year for 100 people)
     o.spareBy = Object.fromEntries(Object.entries(spareBy).map(([g, v]) => [g, r1(v / Math.max(1, pop) * 100)]));
     // works: idle below half, the mean strength
-    let rows = 0, idle = 0, eff = 0;
-    for (const t of E) for (const r of t.econ.rows || []) { const b = TOWN_BUILDINGS.has(r.id) ? TOWN_BUILDINGS.get(r.id) : null; if (!b || b.cat === 'housing' || !b.jobs) continue; rows += r.n; eff += Math.min(1, r.eff) * r.n; if (r.eff < 0.5) idle += r.n; }
-    o.idle = r3(rows ? idle / rows : 0); o.eff = r3(rows ? eff / rows : 0); o.works = r1(rows / E.length);
+    // (and why a work is below half: cut — its load set down for want of takers, t.load below 0.9; starved — at full load, short
+    // of hands or of what it takes)
+    let rows = 0, idle = 0, eff = 0, cut = 0, starved = 0;
+    for (const t of E) for (const r of t.econ.rows || []) {
+      const b = TOWN_BUILDINGS.has(r.id) ? TOWN_BUILDINGS.get(r.id) : null; if (!b || b.cat === 'housing' || !b.jobs) continue;
+      rows += r.n; eff += Math.min(1, r.eff) * r.n;
+      if (r.eff < 0.5) { idle += r.n; if ((t.load?.[r.id] ?? 1) < 0.9) cut += r.n; else starved += r.n; }
+    }
+    o.idle = r3(rows ? idle / rows : 0); o.cut = r3(rows ? cut / rows : 0); o.starved = r3(rows ? starved / rows : 0); o.eff = r3(rows ? eff / rows : 0); o.works = r1(rows / E.length);
     o.tools = r3(E.reduce((s, t) => s + (t.econ.tools ?? (1 - 0.5 * (t.econ.short.tools || 0))) * w(t), 0));
     o.slotsFull = r3(E.filter(t => slotsUsed(t).town >= slotsOf(t).town).length / E.length);
     o.stock = r1(E.reduce((s, t) => s + Object.entries(t.stock || {}).reduce((q, [g, v]) => q + (TOWN_GOODS.has(g) ? v * price(g) : 0), 0), 0) / Math.max(1, pop) * 100);

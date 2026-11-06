@@ -151,11 +151,10 @@ export function seasonMoney(a, towns) {
   const sold = worksBuying(C, prep);
   seasonStore(towns, sold);
   peopleNeeds(C);
-  // what the works of each realm were still left lacking after the buying: a good one of its towns has over its room while
-  // another of the realm lacks it is a want of carriage, not of buyers (loadStep does not cut its makers for it)
-  const short = new Map();
-  for (const t of towns) for (const [g, r] of Object.entries(t.econ.why?.works?.by || {})) if (r.left > M.dust) (short.get(t.realm) || short.set(t.realm, new Set()).get(t.realm)).add(g);
-  for (const t of towns) closeSeason(a, t, short.get(t.realm));
+  // the demand each town could not meet: buyers — of its realm or another — who reached it, could pay for the good and still
+  // wanted it once the ways had carried what they could (worksBuying C.wanted): a want of carriage, not of buyers, so loadStep
+  // does not cut its makers for it
+  for (const t of towns) { const W = C.wanted?.get(t.id); t.econ.wanted = W ? Object.fromEntries(Object.entries(W).map(([g, v]) => [g, r2(v)])) : {}; closeSeason(a, t, W ? new Set(Object.keys(W)) : null); }
 }
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
@@ -192,7 +191,7 @@ function worksBuying(C, prep) {
   // weak link did not carry; the rest nobody it deals with had → t.econ.why.works, at the buying's end)
   const why = new Map(towns.map(t => [t.id, {gold: r2(Math.max(0, t.makersGold)), want: {...lack.get(t.id)}, money: {}, route: {}}]));
   const cut = (W, g, k, v) => { if (v > M.dust) W[k][g] = (W[k][g] || 0) + v; };
-  const sold = new Map(), got = new Map();
+  const sold = new Map(), got = new Map(), wanted = C.wanted = new Map();
   const put = (m, id, g, n) => { const o = m.get(id) || {}; o[g] = (o[g] || 0) + n; m.set(id, o); };
   // a good from one seller: `w` — the way (its least conductance `c`, its cost, the pair's link `pair` — null until the goods
   // first go: then a trade route is made), the most that comes at the delivered price
@@ -242,6 +241,12 @@ function worksBuying(C, prep) {
         if (!(L[g] > 0)) continue;
         const by = W.filter(([s]) => spare.get(s.id)?.[g] > 0).map(([s, w]) => [s, w, offer(t, s, w, g)]).filter(x => x[2] < Infinity).sort((p, q) => p[2] - q[2] || p[0].id - q[0].id);
         for (const [s, w] of by) { if (!(L[g] > M.dust)) break; buyGood(t, s, w, g); }
+        // what it still wants of a seller that had it and that it could pay — what the way did not carry: the seller's demand it
+        // could not meet (C.wanted: loadStep does not cut its makers for it)
+        if (L[g] > M.dust) {
+          const purse = Math.max(0, t.makersGold) + (t.budget?.[g]?.gold || 0);
+          for (const [s] of by) if (spare.get(s.id)?.[g] > M.dust && purse >= priceAt(s, g) * deal(t, s)) put(wanted, s.id, g, L[g]);
+        }
       }
     }
   }
@@ -423,15 +428,17 @@ function sellOver(t) {
   for (const [g, n] of over.sort((p, q) => goodPrice(q[0]) - goodPrice(p[0]))) {
     const unit = goodPrice(g) * fair, k = Math.min(n, purse / unit), m = k * unit;
     purse -= m; t.makersGold = r2(t.makersGold + m); add(t.trade, 'merchants', m); if (m > 0) earn(t, 'makers', m); comeIn('merchants', m);
+    add(t.trade, 'dumped', k * goodPrice(g));   // (the worth of what the merchants took, at its own price: for the probes)
     if (n > k) add(t.trade, 'wasted', (n - k) * goodPrice(g));
   }
 }
 // the load of each work (t.load, saved; after OpenTTD's smooth economy, without its dice): what of its goods found a taker this
 // season — the town's works, its people, other towns, its store — against what went over the store's room to the merchants and the
 // rot, by worth; at `up` or more of it taken its load goes up `step`, at `down` or less down, within `least` … 1 (TOWN_FLOW.load).
-// What is not stored (food, raw food, gold) always counts as taken, and so does a good another town of the realm was left lacking
-// (`short`: it wants carrying, not cutting); a work that gave no stored goods is not judged: its load comes back up
-function loadStep(t, short = null) {
+// What is not stored (food, raw food, gold) always counts as taken, and so does a good a buyer who reached it and could pay still
+// wanted of it (`short`, t.econ.wanted: it wants carrying, not cutting); a work that gave no stored goods is not judged: its load
+// comes back up
+export function loadStep(t, short = null) {
   const e = t.econ, L = F.load, over = e.over || {}, got = {};
   // (what is not stored — food and raw food down the net, gold to the purse — always finds its taker)
   const gave = (id, G) => { const o = got[id] ||= {all: 0, lost: 0, kept: 0}; for (const [g, v] of Object.entries(G || {})) { if (!(v > 0)) continue; const w = v * goodPrice(g), m = (e.made[g] || 0) / S; o.all += w; if (stored(g)) { o.kept += w; if (!short?.has(g)) o.lost += w * (m > 0 ? Math.min(1, (over[g] || 0) / m) : 0); } } };

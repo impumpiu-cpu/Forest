@@ -1,6 +1,7 @@
 // The mechanics taken from the donor games (docs/WORLD.md; the project's «Доноры механик»): small scenes, each a rule that must hold.
 import assert from 'node:assert/strict';
-import {payTribute, realmPool, seasonStore, pairLink} from '../src/atlas/treasury.js';
+import {payTribute, realmPool, seasonStore, pairLink, loadStep} from '../src/atlas/treasury.js';
+import {TOWN_FLOW} from '../src/data/townBuildings.js';
 import {DOES} from '../src/atlas/deeds/index.js';
 import {TOWN_GOODS, TOWN_MONEY, goodPrice} from '../src/data/townBuildings.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
@@ -54,6 +55,15 @@ check('малая, но сильная держава мира не просит
   const lose = a => (DOES.makePeace.want(a, a.realms[0]) || []).some(([plan]) => plan.lose);
   assert.equal(lose(mk(true)), false, 'один сильный город просит мира как проигравший');
   assert.equal(lose(mk(false)), true, 'слабый один город мира не просит');
+});
+
+check('загрузка по сбыту: лишнее, которого ждёт покупатель, способный заплатить, но не довезённое, выпуск не режет', () => {
+  const mk = () => town({built: ['mineshaft'], load: {mineshaft: 0.5}, econ: {rows: [{id: 'mineshaft', gave: {iron: 8}}], recipes: [], made: {iron: 8}, used: {}, over: {iron: 8}}});
+  const t1 = mk(); loadStep(t1, new Set(['iron']));
+  const t2 = mk(); loadStep(t2, null);
+  const L = TOWN_FLOW.load;
+  assert.ok(Math.abs((t1.load?.mineshaft ?? 1) - (0.5 + L.step)) < 1e-9, `ждут — загрузка ${t1.load?.mineshaft ?? 1}`);
+  assert.ok(Math.abs((t2.load?.mineshaft ?? 1) - (0.5 - L.step)) < 1e-9, `никто не ждёт — загрузка ${t2.load?.mineshaft ?? 1}`);
 });
 
 if (failed) { console.log(`\nНе прошло: ${failed}`); process.exit(1); }
