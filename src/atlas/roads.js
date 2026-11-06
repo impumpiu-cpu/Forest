@@ -102,6 +102,8 @@ export function wearRoads(a) {
     const key = linkKey(t, o);
     const path = findPath(a, t.i, o.i, t.people, scratch);
     if (!path) continue;
+    // the way's cost and how well it is roaded, as the trade reads them (atlas/treasury.js: the carriage, the link's room)
+    if (l) { const base = baseCosts(a, t.people); let c = 0, r = 0; for (const cell of path) { c += stepCost(a, base, cell); r += Math.min(1, f.road[cell] / ROADS.levels[1].wear); } l.cost = Math.round(c * 10) / 10; l.road = Math.round(r / path.length * 1000) / 1000; }
     const flow = l?.flow || 0;
     const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
     for (const c of path) if (!f.scourge || f.scourge[c] <= ARMY.scourged) f.road[c] += amt;   // no caravan goes where an army's foragers are

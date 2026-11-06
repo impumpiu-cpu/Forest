@@ -577,6 +577,12 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               p(x) = x + x²/2 + x³/6, a want pulls further up than plenty down), within lo … hi (atlas/treasury.js setPrices);
 //               a work whose goods all stand at or below `glutAt` is worth the less (atlas/towns.js);
 //               a ration cheaper by the town's surplus of food (its feeds over its people, at most `food` off)
+//   trade     — how a buyer picks its seller (atlas/treasury.js worksBuying): the cheapest delivered — the seller's price ÷ how
+//               sure it stands (1 − `sure` × how much it moved lately, t.swing: `swingKeep` of the old move a season; at least
+//               `sureFloor`) × (1 + the carriage: `carry` of the worth a step of the way's cost — atlas/roads.js, `step` a cell
+//               before the road is walked) × (1 − `bond` × the share of its want it took from that seller lately: l.vol, `keep`
+//               of the old a season); the carriage goes to the seller's people; a pair's link carries at most `room` +
+//               `roomRoad` × how well its way is roaded gold of goods a season
 export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, keep: 1, safety: 1, buy: 1, foreign: 1.25,
   merchants: {cheap: 0.4, fair: 0.7, purse: 0.03, at: ['market', 'tradepost', 'inn', 'caravanserai', 'harbor']},
   needs: {basic: {wood: 0.05, cloth: 0.01, leather: 0.004, drink: 0.02, tools: 0.002},
@@ -585,7 +591,8 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
   plunder: {raid: 0.25, storm: 0.5, cult: 3, chief: 0.3, dare: 1.5, slaves: 0.4},
   build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
   upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, kind: {stores: 5, arms: 1, armor: 0.5, herbs: 0.3}, man: 3, build: 400, hoard: 3, corrupt: 0.03, corruptMax: 0.35, court: 3, wage: 0.2, desert: 0.3, duty: 0.05, seat: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05}}, tax: {keep: 0.02, rate: {high: 0.3, need: 0.3, usual: 0.15, light: 0.05, rich: 0.05}},
-  price: {gain: 0.5, rise: 0.5, fall: 0.25, smooth: 1, lo: 0.6, hi: 1.8, glutAt: 0.75, food: 0.4}};
+  price: {gain: 0.5, rise: 0.5, fall: 0.25, smooth: 1, lo: 0.6, hi: 1.8, glutAt: 0.75, food: 0.4},
+  trade: {carry: 0.01, step: 1.5, bond: 0.2, keep: 0.7, room: 15, roomRoad: 150, sure: 3, sureFloor: 0.6, swingKeep: 0.75}};
 
 // The golems of a golem forge (atlas/golems.js): a season after the forge stands, a golem each season — of the best metal
 // its realm works (`tiers`, data/townBuildings.js `metals`). First it takes over a unit of work (`order`: the mine first),
