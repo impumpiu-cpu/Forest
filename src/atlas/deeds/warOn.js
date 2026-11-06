@@ -16,7 +16,7 @@ export const warOn = {
   want(a, realm, ctx = {}) {
     const out = [], C = cultOf(realm);
     for (const {kk, r, other} of relationsOf(a, realm)) {
-      if (r.war || !r.border) continue;
+      if (r.war || !r.border || (r.truce ?? -Infinity) > a.hist.year) continue;   // (a truce of a peace sued for holds: makePeace.js)
       // the greenskins' cult of war: a fight for its own sake, rested or not, liked or not
       if (C && a.hist.year - (r.peaceAt ?? -Infinity) >= C.rest && ctx.r && ctx.r() < C.chance / SEASONS_PER_YEAR) { out.push([{kk, other: other.id, cult: true}, 1, () => `${realmLabel(a, other.id)}: давно не дрались`]); continue; }
       if (r.att > D.warAt) continue;
@@ -28,7 +28,7 @@ export const warOn = {
       if (kin.length && !kin.some(x => x.r.border || x.r.war)) {
         const mine = a.towns.filter(t => t.alive && t.realm === realm.id), dist = o => { let d = Infinity; for (const t of mine) for (const u of a.towns) if (u.alive && u.realm === o.id) d = Math.min(d, Math.hypot(t.x - u.x, t.y - u.y)); return d; };
         const near = kin.map(x => [x, dist(x.other)]).filter(([, d]) => d < Infinity).sort((p, q) => p[1] - q[1])[0]?.[0];
-        if (near && a.hist.year - (near.r.peaceAt ?? -Infinity) >= C.rest && ctx.r() < C.chance / SEASONS_PER_YEAR) out.push([{kk: near.kk, other: near.other.id, cult: true, far: true}, 1, () => `${realmLabel(a, near.other.id)}: свои, ближе всех`]);
+        if (near && !((near.r.truce ?? -Infinity) > a.hist.year) && a.hist.year - (near.r.peaceAt ?? -Infinity) >= C.rest && ctx.r() < C.chance / SEASONS_PER_YEAR) out.push([{kk: near.kk, other: near.other.id, cult: true, far: true}, 1, () => `${realmLabel(a, near.other.id)}: свои, ближе всех`]);
       }
     }
     return out.length ? out : null;

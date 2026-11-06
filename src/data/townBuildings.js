@@ -581,7 +581,8 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               for each office filled, for each 1000 of the realm's people (atlas/treasury.js realmDuties); customs take
 //               `duty` of what a town buys of another realm, for the buyer's realm;
 //               storming a seat carries off `seat` of the beaten realm's treasury; a realm that hates a neighbour `ratio`
-//               times mightier (attitude below `tribute.below`) pays it `tribute.share` of its gold a year
+//               times mightier (attitude below `tribute.below`) pays it `tribute.share` of its gold a year — of its gold over
+//               `tribute.floor` for each 100 of its people (and so the loser of a war it sued for peace in: DIPLOMACY.peace)
 //   price     — the market's price of a good lives in the town (t.market, saved) and moves each season a share of the way —
 //               `rise` up, `fall` down — to 1 + `gain` × p(sell − buy): sell = min(want / have, 1), buy = min(have / want, 1)
 //               (have — made and in store a year, want — what its works and its people want a year, each + `smooth`;
@@ -601,7 +602,7 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
   plunder: {raid: 0.25, storm: 0.5, cult: 3, chief: 0.3, dare: 1.5, slaves: 0.4},
   build: {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 30}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
-  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, kind: {stores: 5, arms: 1, armor: 0.5, herbs: 0.3}, man: 3, build: 400, hoard: 3, corrupt: 0.03, corruptMax: 0.35, court: 3, wage: 0.2, desert: 0.3, duty: 0.05, seat: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05}}, tax: {keep: 0.02, rate: {high: 0.3, need: 0.3, usual: 0.15, light: 0.05, rich: 0.05}, mood: {high: -15, need: -12, usual: 0, light: 5, rich: 5}},
+  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, kind: {stores: 5, arms: 1, armor: 0.5, herbs: 0.3}, man: 3, build: 400, hoard: 3, corrupt: 0.03, corruptMax: 0.35, court: 3, wage: 0.2, desert: 0.3, duty: 0.05, seat: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05, floor: 2}}, tax: {keep: 0.02, rate: {high: 0.3, need: 0.3, usual: 0.15, light: 0.05, rich: 0.05}, mood: {high: -15, need: -12, usual: 0, light: 5, rich: 5}},
   price: {gain: 0.5, rise: 0.5, fall: 0.25, smooth: 1, lo: 0.6, hi: 1.8, glutAt: 0.75, food: 0.4},
   trade: {carry: 0.01, step: 1.5, bond: 0.2, keep: 0.7, room: 15, roomRoad: 150, sure: 3, sureFloor: 0.6, swingKeep: 0.75}};
 

@@ -29,6 +29,11 @@
 // needs the same: a border.
 export const DIPLOMACY = {
   drift: 0.2, pressure: 1.2, trade: 0.1, tradeMax: 0.35, tradeCeil: 2.5, raid: 0.8, warAt: -3.2, weariness: 0.5, peaceAt: -1.8, longest: 12, afterPeace: -1.2,
+  // peace by exhaustion (after Emberfall's treaties): a realm at war `minYears` or more whose might has fallen to `ratio` of its
+  // foe's, or that holds `cornered` towns or fewer, sues for peace; the peace is a truce of `truce` years (no new war between the
+  // two, the cult's neither) and the loser's tribute to the winner for `tribute` years: `share` of its treasury over its floor
+  // (TOWN_MONEY.realm.tribute.floor) a year (atlas/deeds/makePeace.js, atlas/treasury.js payTribute)
+  peace: {minYears: 1, ratio: 0.5, cornered: 2, truce: 3, tribute: 2, share: 0.1},
   compete: {war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02},
   mingle: 0.012, mingleMax: 0.3, strangersSeen: 0.1,   // (strangersSeen: the share of a town's people of strangers the chronicle tells of)
   front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,

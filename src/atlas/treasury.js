@@ -42,6 +42,7 @@ import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
 import {ARMY} from '../data/parties.js';
 import {townEconomy, prepEconomy, heatFactor} from './economy.js';
 import {trades} from './diplomacy.js';
+import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
 import {allowed} from '../data/commands.js';
@@ -668,18 +669,28 @@ export function realmKeep(a, realm, towns, war) {
   return (realm.keep = {garrison: r2(garrison), men: r2(men), wages: r2(paid), food: r2(food), short: r2(eat - food)});
 }
 
-// ── tribute (atlas/kingdom.js, once a year; from the branch Elves): a realm that hates a neighbour (attitude below
-// `tribute.below`) and is `tribute.ratio` times weaker than it pays it `tribute.share` of its gold → [payee, gold] or null
+// ── tribute (atlas/kingdom.js, once a year): what a realm pays out of its surplus — `share` of its treasury over its floor
+// (TOWN_MONEY.realm.tribute.floor gold for each 100 of its people, after Emberfall: the payer is never bled dry): to the winner of a
+// war it sued for peace in, while the peace holds it to (r.owe: DIPLOMACY.peace.share; atlas/deeds/makePeace.js); else (from the
+// branch Elves) a realm that hates a neighbour (attitude below `tribute.below`) and is `tribute.ratio` times weaker pays it
+// `tribute.share` → [payee, gold] or null
 export function payTribute(a, realm, towns, mightOf, attitude) {
-  const T = M.realm.tribute, mine = mightOf(realm.id);
-  let best = null, bm = 0;
-  for (const o of a.realms || []) {
-    if (o === realm || o.fallen != null || attitude(a, realm.id, o.id) >= T.below) continue;
-    const m = mightOf(o.id);
-    if (m >= T.ratio * Math.max(1e-9, mine) && m > bm) { bm = m; best = o; }
+  const T = M.realm.tribute, pop = towns.reduce((s, t) => s + (t.pop || 0), 0), over = Math.max(0, (realm.gold || 0) - T.floor * pop / 100);
+  const owe = Object.values(a.rel || {}).find(r => r.owe?.from === realm.id && r.owe.until >= (a.hist?.year ?? 0));
+  let best = null, share = 0;
+  if (owe) { best = (a.realms || []).find(o => o.id === owe.to && o.fallen == null) || null; share = DIPLOMACY.peace.share; }
+  if (!best) {
+    const mine = mightOf(realm.id);
+    let bm = 0;
+    for (const o of a.realms || []) {
+      if (o === realm || o.fallen != null || attitude(a, realm.id, o.id) >= T.below) continue;
+      const m = mightOf(o.id);
+      if (m >= T.ratio * Math.max(1e-9, mine) && m > bm) { bm = m; best = o; }
+    }
+    share = T.share;
   }
-  if (!best || !((realm.gold || 0) > M.dust)) return null;
-  const v = realm.gold * T.share;
+  if (!best || !(over > M.dust)) return null;
+  const v = over * share;
   realm.gold = r2(realm.gold - v); best.gold = r2((best.gold || 0) + v);
   fiscOf(realm).tribute = r2(fiscOf(realm).tribute - v); fiscOf(best).tribute = r2(fiscOf(best).tribute + v);
   return [best, v];
