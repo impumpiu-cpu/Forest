@@ -103,6 +103,7 @@
 | `town.raze` | город | сезон | правило | `town.raze.idle`, `town.raze.worst` | `atlas/build.js` |
 | `town.buy` | город | сезон | правило | `town.buy.works` | `atlas/treasury.js worksBuying` |
 | `town.settle` | город | год | правило | `town.settle.send` | `atlas/peoples.js sendSettlers` |
+| `town.need` | город | сезон | наибольший вес выше `NEED.floor`, затем утверждение державой (сильные первыми, цель и казна резервируются) | `town.need.build`, `town.need.settle`, `town.need.budget` — ответы на нужду ([Нужды совета](WORLD.md#нужды-совета)) | `atlas/townNeeds.js stepNeeds` |
 | `caravan.visit` | караван | вечер | жребий по весу в первой полосе | `caravan.visit.winter`, `.food`, `.heal` (нужда), `.smith`, `.shop` (выбор) | `campaign/visit.js wantVisit` |
 | `caravan.camp` | караван | вечер | жребий по весу в первой полосе | `caravan.camp.food`, `.heal` (нужда), `.build`, `.tame`, `.mine`, `.goOn` (выбор) | `campaign/march.js evening` |
 | `caravan.quest` | караван | вечер | первое по порядку поиска | `caravan.quest.home` (обязательна), `.crown`, `.clue`, `.search`, `.back` | `campaign/quest.js questTarget` |

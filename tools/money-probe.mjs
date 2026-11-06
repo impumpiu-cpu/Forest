@@ -25,11 +25,12 @@ const add = (o, k, v) => { o[k] = (o[k] || 0) + v; };
 
 // ── the purses of the world, by holder
 function purses() {
-  const o = {treasury: 0, people: 0, makers: 0, grants: 0, realms: 0, fallen: 0};
+  const o = {treasury: 0, people: 0, makers: 0, grants: 0, budgets: 0, realms: 0, fallen: 0};
   for (const t of a.towns || []) {
-    const v = (t.gold || 0) + (t.peopleGold || 0) + (t.makersGold || 0) + (t.grant || 0);
+    const bud = Object.values(t.budget || {}).reduce((s, B) => s + (B.gold || 0), 0);   // (the realm's gold given for buying: atlas/townNeeds.js)
+    const v = (t.gold || 0) + (t.peopleGold || 0) + (t.makersGold || 0) + (t.grant || 0) + bud;
     if (!t.alive) { o.fallen += v; continue; }
-    o.treasury += t.gold || 0; o.people += t.peopleGold || 0; o.makers += t.makersGold || 0; o.grants += t.grant || 0;
+    o.treasury += t.gold || 0; o.people += t.peopleGold || 0; o.makers += t.makersGold || 0; o.grants += t.grant || 0; o.budgets += bud;
   }
   for (const r of a.realms || []) { if (r.fallen != null) o.fallen += r.gold || 0; else o.realms += r.gold || 0; }
   o.all = Object.values(o).reduce((s, v) => s + v, 0);

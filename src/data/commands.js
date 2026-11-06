@@ -41,6 +41,7 @@ POINTS.registerAll([
   {id: 'town.raze', level: 'town', label: 'освободить место', clock: 'сезон', policy: 'rule', code: 'atlas/build.js'},
   {id: 'town.buy', level: 'town', label: 'закупки мастерских', clock: 'сезон', policy: 'rule', code: 'atlas/treasury.js worksBuying'},
   {id: 'town.settle', level: 'town', label: 'поселенцы', clock: 'год', policy: 'rule', code: 'atlas/peoples.js sendSettlers'},
+  {id: 'town.need', level: 'town', label: 'ответ на нужду', clock: 'сезон', policy: 'max', code: 'atlas/townNeeds.js stepNeeds'},
   {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'draw', code: 'campaign/visit.js wantVisit'},
   {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'draw', code: 'campaign/march.js evening'},
   {id: 'caravan.quest', level: 'caravan', label: 'куда идти по квесту', clock: 'вечер', policy: 'first', code: 'campaign/quest.js questTarget'},
@@ -60,6 +61,10 @@ const OWN = [
   {id: 'town.raze.worst', point: 'town.raze', label: 'снести худшее', note: 'строить нечего, места полны: худшая работа ниже половины'},
   {id: 'town.buy.works', point: 'town.buy', label: 'купить для мастерских', note: 'нехватку мастерских — у городов по связям'},
   {id: 'town.settle.send', point: 'town.settle', label: 'послать поселенцев', note: 'людный город шлёт поселенцев на новое место'},
+  // the councils' answers to their needs (atlas/townNeeds.js; data/townNeeds.js): each a plan for a point already there
+  {id: 'town.need.build', point: 'town.need', label: 'цель стройки', note: 'жильё тесному городу, рудник или сталеварня — металлу державы: строится раньше выбора совета'},
+  {id: 'town.need.settle', point: 'town.need', label: 'выслать поселенцев', note: 'тесный город шлёт поселенцев, не дожидаясь своего жребия'},
+  {id: 'town.need.budget', point: 'town.need', label: 'казна на привоз', note: 'держава даёт мастерам города золото на металл, которого им не хватило из-за денег'},
   // the caravan's council (policy draw, as a realm's court): the first lane with anything on offer, a draw by weight in it —
   // data/campaign.js COUNCIL.want, × the caravan's mission (COUNCIL.mission); the order is the old one
   {id: 'caravan.visit.winter', point: 'caravan.visit', band: 'yellow', label: 'перезимовать', note: 'тощее время года и мороз: в город на зимовку'},
@@ -103,7 +108,7 @@ export const MARKS = {
   hostile: ['local.behaviour.maul', 'local.behaviour.raid', 'local.behaviour.capture', 'local.behaviour.bind',
     'world.deed.raid', 'world.deed.captives', 'world.deed.subdue', 'world.deed.rival', 'world.deed.strike',
     'world.deed.warOn', 'world.deed.march', 'world.deed.raidTown', 'world.deed.clearLair', 'world.deed.liberate'],
-  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'caravan.visit.smith', 'caravan.visit.shop',
+  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'town.need.budget', 'caravan.visit.smith', 'caravan.visit.shop',
     'caravan.buy.tool', 'caravan.buy.pack', 'caravan.buy.pots', 'caravan.buy.herd', 'caravan.buy.cart', 'caravan.buy.mount', 'caravan.buy.golem',
     'caravan.buy.wagon', 'caravan.buy.building', 'caravan.buy.armor', 'caravan.buy.weapon', 'caravan.buy.potion', 'caravan.buy.bonds'],
   side: ['caravan.camp.build', 'caravan.camp.tame', 'caravan.camp.mine'],

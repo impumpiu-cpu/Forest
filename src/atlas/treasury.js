@@ -187,11 +187,15 @@ function worksBuying(C, prep) {
     if (!L || !P || !k) return;
     for (const g of Object.keys(L)) {
       if (!(L[g] > 0) || !(P[g] > 0)) continue;
-      const price = priceAt(s, g) * k, n = Math.min(L[g], P[g] * l.c, Math.max(0, b.makersGold) / price);
+      // (the purse: the makers', and the budget the realm gave the town for this good — atlas/townNeeds.js `metal.budget` — spent first)
+      const B = b.budget?.[g], purse = Math.max(0, b.makersGold) + (B?.gold || 0);
+      const price = priceAt(s, g) * k, n = Math.min(L[g], P[g] * l.c, purse / price);
       const W = why.get(b.id); cut(W, g, 'route', Math.min(L[g], P[g]) - Math.min(L[g], P[g] * l.c)); cut(W, g, 'money', Math.min(L[g], P[g] * l.c) - Math.max(0, n));
       if (n < M.dust) continue;
       const v = n * price;
-      L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - v); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
+      const fromB = Math.min(v, B?.gold || 0);
+      if (fromB > 0) { B.gold = r2(B.gold - fromB); B.got = r2(B.got + n * fromB / v); }
+      L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - (v - fromB)); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
       if (b.realm !== s.realm) {   // customs: the buyer's realm takes `duty` of it, of the buyer's makers (from the branch Elves)
         const R = realmBy.get(b.realm), d = Math.min(Math.max(0, b.makersGold), v * M.realm.duty);
         if (R && d > 0) { b.makersGold = r2(b.makersGold - d); R.gold = r2((R.gold || 0) + d); fiscOf(R).duty = r2(fiscOf(R).duty + d); }

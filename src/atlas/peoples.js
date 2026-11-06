@@ -217,16 +217,18 @@ function sendSettlers(a, rnd, say) {
     const S = pe.P.settlers;
     if (!S) continue;
     const fill = t => Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, t.target || t.pop) - Z.full) / Z.span, (t.pop - S.from) / (S.from * Z.big))));
-    const towns = a.towns.filter(t => t.alive && t.people === pe.id && t.pop >= S.from && fill(t) > 0 && !(a.hist.year - (t.settled ?? -Infinity) < Z.every))
+    // (a town whose council answered its crowding with settlers — atlas/townNeeds.js — sends them whatever its fill and its chance)
+    const asked = t => !!t.need?.room?.plans?.['room.settle'] && allowed(a.cfg, 'town.need.settle');
+    const towns = a.towns.filter(t => t.alive && t.people === pe.id && t.pop >= S.from && (fill(t) > 0 || asked(t)) && !(a.hist.year - (t.settled ?? -Infinity) < Z.every))
       .sort((p, q) => fill(q) - fill(p) || p.id - q.id);
     let made = 0;
     for (const t of towns) {
       if (made >= Z.max) break;
-      if (rnd() > Z.chance * fill(t)) continue;
+      if (!asked(t) && rnd() > Z.chance * fill(t)) continue;
       const sent = foundFrom(a, t, rnd, say);
       if (sent) { made++; t.settled = a.hist.year; }
       if (tracing()) noteDecision({point: 'town.settle', who: `town:${t.id}`, at: a.hist.year * 4 + a.hist.season, band: 'routine', policy: 'rule',
-        opts: [{cmd: 'town.settle.send', key: 'town.settle.send', score: r3(Z.chance * fill(t))}], pick: 'town.settle.send', found: !!sent});
+        opts: [{cmd: 'town.settle.send', key: 'town.settle.send', score: r3(asked(t) ? 1 : Z.chance * fill(t))}], pick: 'town.settle.send', found: !!sent, asked: asked(t)});
     }
   }
 }

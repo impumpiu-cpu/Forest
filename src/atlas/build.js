@@ -43,6 +43,21 @@ function pickProject(a, t, rnd) {
   if (!pe || !t.wants) return null;
   const ctx = {...t.wants, road: roadAccess(a, t.i), econ: t.econ, skip: new Set(), lean: leanOf(a, t)};
   t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: what it may build by its people (atlas/towns.js unitsMax) holds after
+  // the goal a council's answer set (atlas/townNeeds.js: a house for the crowded, the works of a metal the realm lacks) is built
+  // first, if the town may build it and can pay; otherwise the council chooses as ever and the goal waits for its review
+  const G = t.goal && TOWN_BUILDINGS.has(t.goal.b) ? TOWN_BUILDINGS.get(t.goal.b) : null;
+  if (G && allowed(a.cfg, 'town.need.build') && (t.works?.[G.id]?.paid || canBuild(a, t, G))) {
+    if (t.works?.[G.id]?.paid) return G;
+    const plan = planBuild(a, t, G);
+    if (tracing()) noteDecision({point: 'town.project', who: `town:${t.id}`, at: a.hist ? a.hist.year * 4 + a.hist.season : 0, band: 'routine', policy: 'rule',
+      opts: [{cmd: 'town.need.build', key: `town.need.build(${G.id})`, score: 1}], pick: plan ? `town.need.build(${G.id})` : null, goal: t.goal.need});
+    if (plan) {
+      doBuild(plan); note(a, t.realm, vectorOf(G), plan.cost);
+      (t.works ||= {})[G.id] = {done: 0, paid: true};
+      return G;
+    }
+    t.goal.unpaid = (t.goal.unpaid || 0) + 1;   // (not to be paid this season: the council's own choice goes on)
+  }
   for (let k = 0; k < B().tries; k++) {
     const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), ctx, rnd);
     if (!b) return null;
