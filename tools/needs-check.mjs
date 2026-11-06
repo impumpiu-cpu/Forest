@@ -23,7 +23,8 @@ function lackIron(t, cause) {
   t.econ.dem = {...t.econ.dem, iron: 40 * S};
   t.econ.why = {...(t.econ.why || {}), works: {gold: 0, by: {iron: {want: 40, left: 40, money: cause === 'money' ? 40 : 0, route: cause === 'route' ? 40 : 0, goods: cause === 'goods' ? 40 : 0}}}};
 }
-const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.budget = null; if (t.econ) t.econ.why = {works: {by: {}}}; } };
+// (every need out: no lack, no goals, no budgets, food in plenty — a scene lights only what it sets)
+const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.budget = null; t.wants = {...(t.wants || {}), feeds: 1e12}; if (t.econ) t.econ.why = {works: {by: {}}}; } };
 
 // ── room: lit at its threshold, out below the lower one
 {
@@ -110,6 +111,45 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
     `сила ${st?.s}, выбор ${pick || '—'}${pick ? '' : ': ' + st?.last?.opts.map(o => o.why).join('; ')}`);
   t.wants.feeds = t.pop * 2; stepNeeds(a);
   check('сытый город гасит голод', !t.need?.food?.on, `сила ${t.need?.food?.s ?? 0}`);
+}
+
+// ── the plans' bookkeeping (the expert's scenes): one builder a town; a town fallen gives its budget back; a paid work that does
+// not move fails; brought a little while the lack stands is a plan carried out that did not help
+{
+  const a = copy(); quiet(a);
+  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  t.pop = room(townFx(t)) * 0.98; lackIron(t, 'goods'); stepNeeds(a);
+  const builds = Object.values(t.need || {}).flatMap(st => Object.keys(st.plans || {})).filter(id => /\.build$/.test(id)).filter(id => (t.need[id.split('.')[0]].plans[id].target.town === t.id));
+  check('тесно и нужен металл: у города одна цель стройки, вторая стройка в нём же не утверждена', builds.length <= 1 && (!builds.length || t.goal?.need === builds[0].split('.')[0]), `${builds.join(', ')}, цель ${JSON.stringify(t.goal)}`);
+}
+{
+  const a = copy(); quiet(a);
+  const t = towns(a)[0], R = a.realms.find(r => r.id === t.realm);
+  R.gold = 1000; lackIron(t, 'money'); stepNeeds(a);
+  const given = t.budget?.iron?.gold || 0, g1 = R.gold;
+  t.alive = false; a.hist.step++; stepNeeds(a);
+  check('город с казной на привоз пал: план закрыт, остаток казны вернулся державе', given > 0 && !t.budget && Math.abs(R.gold - (g1 + given)) < 0.05, `дано ${given}, казна ${g1} → ${R.gold}`);
+}
+{
+  const a = copy(); quiet(a);
+  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  t.pop = room(townFx(t)) * 0.98; stepNeeds(a);
+  const p = t.need?.room?.plans?.['room.build'];
+  if (p) {
+    (t.works ||= {})[p.target.b] = {done: 0, paid: true}; t.project = null;   // paid, and no work goes on it
+    let k = 0; for (; k < 100 && t.need.room.plans['room.build']; k++) { a.hist.step++; stepNeeds(a); }
+    const log = t.need.room.log?.at(-1);
+    check('оплаченная стройка не движется: план проваливается к сроку пересмотра, а не держится вечно', !t.need.room.plans['room.build'] && log?.outcome === 'fail', `через ${k} сезонов: ${JSON.stringify(log)}`);
+  } else check('оплаченная стройка не движется: план проваливается к сроку пересмотра', false, 'план жилья не взят');
+}
+{
+  const a = copy(); quiet(a);
+  const t = towns(a)[0], R = a.realms.find(r => r.id === t.realm);
+  R.gold = 1000; lackIron(t, 'money'); stepNeeds(a);
+  const st = t.need.metal;
+  for (let k = 0; k < 4; k++) { if (t.budget?.iron) t.budget.iron.got = 0.01; lackIron(t, 'money'); a.hist.step++; stepNeeds(a); }
+  const log = st.log?.at(-1);
+  check('привезли 0,01 металла при той же нехватке: поручение исполнено, но нужда не спала — план не помог', log?.outcome === 'fail' && log.executed === true && log.eased === false, JSON.stringify(log));
 }
 
 if (fail.length) { console.log(`\nНе прошло: ${fail.length}`); process.exit(1); }

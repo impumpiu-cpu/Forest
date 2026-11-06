@@ -44,7 +44,9 @@ ANSWERS.registerAll([
   {id: 'food.settle', need: 'food', cmd: 'town.need.settle', label: 'выслать поселенцев на новые земли', vec: {grow: 1}, power: 0.6, long: true, causes: [], review: 8},
 ]);
 
-export const NEED = {k: 1.5, hint: 1.5, floor: 0.02, block: 8, budget: {share: 0.25, seasons: 4, least: 1}};
+// eased — how far a need's strength must fall from where it stood when the plan was taken for the plan to have helped: a plan
+//          carried out (built, the settlers gone, the goods brought) is one thing, the need eased another (atlas/townNeeds.js judge)
+export const NEED = {k: 1.5, hint: 1.5, floor: 0.02, block: 8, eased: 0.1, budget: {share: 0.25, seasons: 4, least: 1}};
 
 export const LEAN = {
   humans: {'room.settle': 1.2, 'food.settle': 1.2, 'metal.budget': 1.2},   // the people of the roads: they move readily (migrate 0.02), they trade (taste 1.3)

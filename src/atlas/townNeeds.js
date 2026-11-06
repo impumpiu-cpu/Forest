@@ -112,7 +112,7 @@ const TARGET = {
         if (x.goal) continue;   // (a town builds one goal at a time)
         const inR = realmBuilt(a, x), facts = townFacts(a, x, {inRealm: inR}), known = realmMetals(a, x);
         for (const b of makers) {
-          if (ctx.taken.has(`${x.id}:${b.id}`)) continue;
+          if (ctx.taken.has(x.id)) continue;   // (a town has one builder: one goal at a time)
           if (b.dig && !(digOf(a, x, b)[g] > 0)) continue;
           if (Object.keys(b.in || {}).some(h => METAL.has(h) && !known.has(h))) continue;   // (a steelworks with no iron in the realm)
           if (!canBuild(a, x, b, inR, facts)) continue;
@@ -143,26 +143,36 @@ function judge(a, t, st, A, p) {
   if (A.id === 'room.build' || A.id === 'metal.build' || A.id === 'food.build') {
     const x = (a.towns || []).find(o => o.id === p.target.town), b = TOWN_BUILDINGS.get(p.target.b);
     if (!x?.alive) return {outcome: 'cancel', why: 'город пал'};
-    if (x.built.filter(id => id === b.id).length > p.had) return {outcome: 'done', why: `построено: ${b.name}`};
+    if (x.built.filter(id => id === b.id).length > p.had) return {outcome: 'done', why: `построено: ${b.name}`, executed: true, eased: eased(st, p)};
     if (!st.on && !x.works?.[b.id]?.paid) return {outcome: 'cancel', why: 'нужда снята'};
-    if (x.project === b.id || x.works?.[b.id]?.paid) return null;
+    // begun: it goes on while the work moves; a work paid and standing `review` seasons since it last moved has failed
+    const W = x.works?.[b.id];
+    if (W?.paid) {
+      if (W.done > (p.done ?? -1)) { p.done = W.done; p.moved = stepOf(a); }
+      return stepOf(a) - (p.moved ?? p.since) >= A.review ? {outcome: 'fail', why: 'стройка встала'} : null;
+    }
+    if (x.project === b.id) return null;
     if (!canBuild(a, x, b)) return {outcome: 'cancel', why: 'цель больше не годится'};
     if (age >= A.review) return {outcome: 'fail', why: 'не начали: не по карману'};
     return null;
   }
   if (A.id === 'room.settle' || A.id === 'food.settle') {
-    if ((t.settled ?? -Infinity) >= p.year) return {outcome: 'done', why: 'поселенцы ушли'};
+    if ((t.settled ?? -Infinity) >= p.year) return {outcome: 'done', why: 'поселенцы ушли', executed: true, eased: eased(st, p)};
     if (!st.on) return {outcome: 'cancel', why: 'нужда снята'};
     if (age >= A.review) return {outcome: 'fail', why: 'поселенцы не ушли: нет места или людей'};
     return null;
   }
   if (A.id === 'metal.budget') {
-    const got = Object.keys(p.target.by).reduce((s, g) => s + (t.budget?.[g]?.got || 0), 0);
+    // carried out — something was brought on the budget; helped — the need eased. Brought and not eased is a plan that failed
+    const got = Object.keys(p.target.by).reduce((s, g) => s + (t.budget?.[g]?.got || 0), 0), e = eased(st, p);
     if (age < A.review && st.on) return null;
-    return got > 0 ? {outcome: 'done', why: `привезли ${r2(got)}`} : {outcome: st.on ? 'fail' : 'cancel', why: st.on ? 'не довезли' : 'нужда снята'};
+    if (got > 0) return e ? {outcome: 'done', why: `привезли ${r2(got)}, нехватка спала`, executed: true, eased: true} : {outcome: 'fail', why: `привезли ${r2(got)}, но нехватка не спала`, executed: true, eased: false};
+    return {outcome: st.on ? 'fail' : 'cancel', why: st.on ? 'не довезли' : 'нужда снята'};
   }
   return null;
 }
+// did the need ease since the plan was taken: it went out, or fell by NEED.eased from where it stood
+const eased = (st, p) => !st.on || st.s <= (p.s0 ?? st.s) - NEED.eased;
 // a plan closed: its goal let go, its budget's gold back to the treasury
 function close(a, t, st, A, p, res) {
   if (p.target.b) {
@@ -180,7 +190,7 @@ function close(a, t, st, A, p, res) {
   }
   delete st.plans[A.id];
   if (res.outcome === 'fail') st.blocked[A.id] = stepOf(a) + NEED.block;
-  (st.log ||= []).push({answer: A.id, outcome: res.outcome, why: res.why, at: stepOf(a)});
+  (st.log ||= []).push({answer: A.id, outcome: res.outcome, why: res.why, at: stepOf(a), ...(res.executed != null ? {executed: res.executed, eased: res.eased} : {})});
   if (st.log.length > 6) st.log.shift();
 }
 
@@ -213,7 +223,12 @@ export function stepNeeds(a) {
   const now = stepOf(a), towns = (a.towns || []).filter(t => t.alive && t.econ && WORLD_PEOPLES.has(t.people));
   // the realms' purses for the season's budgets: a share of each treasury (reserved as the budgets are given)
   const ctx = {taken: new Set(), purse: new Map((a.realms || []).filter(r => r.fallen == null).map(r => [r.id, Math.max(0, (r.gold || 0) * NEED.budget.share)]))};
-  for (const x of a.towns || []) if (x.alive && x.goal) ctx.taken.add(`${x.id}:${x.goal.b}`);
+  for (const x of a.towns || []) if (x.alive && x.goal) ctx.taken.add(x.id);   // (a town builds one goal at a time: its builder is taken)
+  // a town fallen with plans: they close, its budgets' gold back to the realm (close), its goal on another town let go
+  for (const t of a.towns || []) if (!t.alive && t.need) {
+    for (const st of Object.values(t.need)) for (const [id, p] of Object.entries(st.plans || {})) close(a, t, st, ANSWERS.get(id), p, {outcome: 'cancel', why: 'город пал'});
+    delete t.need; delete t.budget;
+  }
   const asks = [];
   for (const t of towns) {
     const N = t.need ||= {};
@@ -242,14 +257,13 @@ export function stepNeeds(a) {
       let tg = o.target;
       // (its target taken meanwhile by a stronger council: the next best target of the same answer, once — the best target
       // within an answer first, then the answers compared)
-      if (tg.b && ctx.taken.has(`${tg.town}:${tg.b}`)) { const T = TARGET[o.answer](a, t, st, ctx); if (T.target) { tg = o.target = T.target; o.note = T.note; o.expect = T.expect; } }
+      if (tg.b && ctx.taken.has(tg.town)) { const T = TARGET[o.answer](a, t, st, ctx); if (T.target) { tg = o.target = T.target; o.note = T.note; o.expect = T.expect; } }
       if (tg.b) {
-        const key = `${tg.town}:${tg.b}`;
-        if (ctx.taken.has(key)) { o.why = 'цель уже взята другим советом, другой нет'; continue; }
-        ctx.taken.add(key);
+        if (ctx.taken.has(tg.town)) { o.why = 'город уже строит другую цель, другого нет'; continue; }
+        ctx.taken.add(tg.town);
         const x = (a.towns || []).find(q => q.id === tg.town);
         x.goal = {b: tg.b, need: st.id, from: t.id};
-        st.plans[o.answer] = {target: tg, since: now, had: x.built.filter(id => id === tg.b).length, expect: o.expect};
+        st.plans[o.answer] = {target: tg, since: now, had: x.built.filter(id => id === tg.b).length, expect: o.expect, s0: st.s};
       } else if (o.answer === 'metal.budget') {
         const free = ctx.purse.get(tg.realm) ?? 0, R = (a.realms || []).find(r => r.id === tg.realm);
         const gold = r2(Math.min(tg.gold, free, R?.gold || 0));
@@ -259,9 +273,9 @@ export function stepNeeds(a) {
         const by = Object.fromEntries(Object.entries(tg.by).map(([g, v]) => [g, r2(v * k)]));
         t.budget ||= {};
         for (const [g, v] of Object.entries(by)) { const B = t.budget[g] ||= {gold: 0, got: 0}; B.gold = r2(B.gold + v); }
-        st.plans[o.answer] = {target: {...tg, gold, by}, since: now, expect: {gold}};
+        st.plans[o.answer] = {target: {...tg, gold, by}, since: now, expect: {gold}, s0: st.s};
       } else {
-        st.plans[o.answer] = {target: tg, since: now, year: a.hist.year, expect: o.expect};
+        st.plans[o.answer] = {target: tg, since: now, year: a.hist.year, expect: o.expect, s0: st.s};
       }
       pick = o; break;
     }
