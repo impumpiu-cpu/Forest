@@ -199,16 +199,19 @@ export function prepEconomy(a, t, heatK = heatFactor(a, t)) {
   // hands: slaves first, in at most `share` of the places; free ones for the rest
   // the dwarves' golems (atlas/golems.js): a unit a golem took over needs fewer hands and gives more by its metal
   for (const r of rows) { const l = (t.golems?.auto?.[r.b.id] || []).slice(0, r.n); r.golems = l.length; r.golemBonus = l.reduce((s, m) => s + (GOLEMS.bonus[m] || 0), 0) / r.n; }
+  // the load of a work (t.load, after OpenTTD: what its goods found buyers for — atlas/treasury.js loadStep): it takes that share
+  // of its hands and works at most at it; the hands it leaves go to the works after it
   let jobs = 0;
   for (const r of rows) {
-    const need = (r.b.jobs || 0) * (r.n - r.golems * (1 - GOLEMS.jobs)); jobs += need;
-    if (!need) { r.staff = 1; continue; }
+    const L = r.b.cat === 'housing' ? 1 : t.load?.[r.b.id] ?? 1;
+    const full = (r.b.jobs || 0) * (r.n - r.golems * (1 - GOLEMS.jobs)), need = full * L; jobs += need;
+    if (!need) { r.staff = L; continue; }
     const bySlaves = Math.min(slaves * F.slaves.work, need * F.slaves.share);
     slaves -= bySlaves / F.slaves.work;
     const byFree = Math.min(free, need - bySlaves);
     free -= byFree;
-    r.staff = (bySlaves + byFree) / need;
-    r.slaveShare = need ? bySlaves / need : 0;
+    r.staff = (bySlaves + byFree) / full;
+    r.slaveShare = bySlaves / full;
   }
   // what a building takes (its people's swaps), of its pools (its `any`; heat × the climate and fire — the fuel) and gives
   // (× its people's flows)
@@ -370,7 +373,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
   for (const r of own) if (recipesOf(r.b).length && !Object.keys(r.out).length && !r.b.yields) r.eff = Math.min(r.eff, recRows.filter(x => x.of === r).reduce((s, x) => s + x.eff, 0));
   return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, asked, food, dem, pools: pgot, tools: toolK, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, lit: [...lit0].sort(),
-    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
+    rows: own.map(r => ({id: r.b.id, n: r.n, staff: r.staff, own: r.own, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems, gave: Object.fromEntries(Object.entries(r.out).map(([g, v]) => [g, v * r.eff * boat(r)]))})),
     recipes: recRows.map(x => ({id: x.b.id, of: x.of.b.id, name: x.q.name, on: x.w > 0 || !!x.ask, share: x.share, eff: x.eff, gave: Object.fromEntries(Object.entries(x.out).map(([g, v]) => [g, v * x.eff]))}))};
 }
 

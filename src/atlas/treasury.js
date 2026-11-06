@@ -35,7 +35,7 @@
 // it keeps its war host out of its treasury — realm.gold and its store realm.stock: garrisons, and its armies' pay, food and kit
 // (realmKeep).
 import {councilShares} from './mind.js';
-import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
+import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, TOWN_FLOW as F, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
@@ -150,7 +150,11 @@ export function seasonMoney(a, towns) {
   const sold = worksBuying(C, prep);
   seasonStore(towns, sold);
   peopleNeeds(C);
-  for (const t of towns) closeSeason(a, t);
+  // what the works of each realm were still left lacking after the buying: a good one of its towns has over its room while
+  // another of the realm lacks it is a want of carriage, not of buyers (loadStep does not cut its makers for it)
+  const short = new Map();
+  for (const t of towns) for (const [g, r] of Object.entries(t.econ.why?.works?.by || {})) if (r.left > M.dust) (short.get(t.realm) || short.set(t.realm, new Set()).get(t.realm)).add(g);
+  for (const t of towns) closeSeason(a, t, short.get(t.realm));
 }
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
@@ -366,8 +370,9 @@ function peopleNeeds(C) {
 }
 
 // ── the season's close of a town: the merchants, the wages, the taxes, the upkeep, the market's prices
-function closeSeason(a, t) {
+function closeSeason(a, t, short) {
   sellOver(t);
+  loadStep(t, short);
   payWages(t);
   takeTaxes(t);
   payUpkeep(t, realmOf(a, t.realm));
@@ -383,12 +388,39 @@ function sellOver(t) {
     if (v > room) { over.push([g, v - room]); v = room; }
     if (v >= M.dust) t.stock[g] = r2(v); else delete t.stock[g];
   }
+  t.econ.over = Object.fromEntries(over);   // (what went over the room, by good: loadStep reads it)
   let purse = M.merchants.purse * t.pop * (1 + townFx(t).trade);
   for (const [g, n] of over.sort((p, q) => goodPrice(q[0]) - goodPrice(p[0]))) {
     const unit = goodPrice(g) * fair, k = Math.min(n, purse / unit), m = k * unit;
     purse -= m; t.makersGold = r2(t.makersGold + m); add(t.trade, 'merchants', m); if (m > 0) earn(t, 'makers', m); comeIn('merchants', m);
     if (n > k) add(t.trade, 'wasted', (n - k) * goodPrice(g));
   }
+}
+// the load of each work (t.load, saved; after OpenTTD's smooth economy, without its dice): what of its goods found a taker this
+// season — the town's works, its people, other towns, its store — against what went over the store's room to the merchants and the
+// rot, by worth; at `up` or more of it taken its load goes up `step`, at `down` or less down, within `least` … 1 (TOWN_FLOW.load).
+// What is not stored (food, raw food, gold) always counts as taken, and so does a good another town of the realm was left lacking
+// (`short`: it wants carrying, not cutting); a work that gave no stored goods is not judged: its load comes back up
+function loadStep(t, short = null) {
+  const e = t.econ, L = F.load, over = e.over || {}, got = {};
+  // (what is not stored — food and raw food down the net, gold to the purse — always finds its taker)
+  const gave = (id, G) => { const o = got[id] ||= {all: 0, lost: 0, kept: 0}; for (const [g, v] of Object.entries(G || {})) { if (!(v > 0)) continue; const w = v * goodPrice(g), m = (e.made[g] || 0) / S; o.all += w; if (stored(g)) { o.kept += w; if (!short?.has(g)) o.lost += w * (m > 0 ? Math.min(1, (over[g] || 0) / m) : 0); } } };
+  for (const r of e.rows) gave(r.id, Object.fromEntries(Object.entries(r.gave).map(([g, v]) => [g, v / S])));
+  for (const x of e.recipes || []) gave(x.of, Object.fromEntries(Object.entries(x.gave).map(([g, v]) => [g, v / S])));
+  // (and its hands, after Project Alice's hiring: a work that got less than `caution` of what it takes — its strength against its
+  // hands — lets its hands go `step` a season, whatever its goods; it takes them back only once it gets at least that)
+  const fed = new Map(e.rows.map(r => [r.id, r.staff * r.own > M.dust ? r.eff / (r.staff * r.own) : 1]));
+  const out = {};
+  for (const id of new Set(t.built)) {
+    if (TOWN_BUILDINGS.get(id)?.cat === 'housing') continue;
+    const was = t.load?.[id] ?? 1, o = got[id], starved = (fed.get(id) ?? 1) < L.caution;
+    let v = was;
+    if (starved) v = Math.max(L.least, was - L.step);
+    else if (!o || !(o.kept > M.dust)) v = Math.min(1, was + L.step);
+    else { const taken = 1 - o.lost / o.all; if (taken >= L.up) v = Math.min(1, was + L.step); else if (taken <= L.down) v = Math.max(L.least, was - L.step); }
+    if (v < 1 - 1e-9) out[id] = Math.round(v * 1000) / 1000;
+  }
+  if (Object.keys(out).length) t.load = out; else delete t.load;
 }
 // the wages: for the free hands at work (the slaves are not paid), as far as the makers' purse goes
 function payWages(t) {
