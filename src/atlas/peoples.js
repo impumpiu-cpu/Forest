@@ -164,6 +164,8 @@ function foundTown(a, pe, i, rnd, pop, say) {
 // ── settlers (data/peoples.js `settlers`; docs/WORLD.md «Демография»): the only way a people founds a town after its
 // arrival. The best free spot within a town's reach — on the people's land, at least `spacing` from every town, worth a
 // band's settling (TL.siteBar); nearer is better
+// an old ruin near a cell (TOWN_LIFE.ruins: left `ripe` years or more, within `reach`): settlers like the spot → the ruin, or null
+export const ripeRuinAt = (a, x, y) => { const Z = TL.ruins, now = a.hist?.year ?? 0; return (a.ruins || []).find(r => now - r.year >= Z.ripe && Math.abs(r.x - x) <= Z.reach && Math.abs(r.y - y) <= Z.reach) || null; };
 export function settleSpot(a, t) {
   const pe = a.peoples?.find(p => p.id === t.people), S = pe?.P.settlers;
   if (!S) return -1;
@@ -174,7 +176,7 @@ export function settleSpot(a, t) {
     if (d > R || d < sp) continue;
     const i = y * a.w + x, v = pe.site[i];
     if (!(v > TL.siteBar) || (pe.K[faunaCell(a, i)] < TL.foundLand && !(S.oreLand != null && oreWealth(a, i) >= S.oreLand))) continue;   // (off its land: a vein — data/peoples.js oreLand)
-    cand.push([i, v - TL.settle.near * d / R]);
+    cand.push([i, v - TL.settle.near * d / R + (ripeRuinAt(a, x, y) ? TL.ruins.bonus : 0)]);
   }
   cand.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
   const far = (x, y) => !S.avoid || !a.towns.some(o => o.alive && S.avoid[o.people] && Math.hypot(o.x - x, o.y - y) < S.avoid[o.people] * sp);   // (avoid: never by such a people's towns)
@@ -204,7 +206,12 @@ export function foundFrom(a, from, rnd, say) {
     carry[g] = n;
   }
   if (Object.keys(carry).length) t.stock = carry;
-  say(`Поселенцы ${townLabel(from, 2)} ${from.name} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+  // on an old ruin: they build anew where a town stood, and the ruin is gone
+  const ru = ripeRuinAt(a, i % a.w, (i / a.w) | 0);
+  if (ru) {
+    a.ruins.splice(a.ruins.indexOf(ru), 1); t.onRuin = {name: ru.name, people: ru.people, year: ru.year};
+    say(`Поселенцы ${townLabel(from, 2)} ${from.name} отстроили ${townLabel(t, 1)} ${t.name} на пепелище «${ru.name}», ${ru.how === 'опустел' ? 'покинутом' : 'сожжённом'} в ${ru.year} году, ${wherePhrase(a, i)}.`);
+  } else say(`Поселенцы ${townLabel(from, 2)} ${from.name} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
   return t;
 }
 // a year of settling: each people's fullest towns (people against what feeds and houses them, from TL.settle.full, all
@@ -475,6 +482,7 @@ export function stepPeoples(a, rnd, say) {
     }
   }
   sendSettlers(a, rnd, say);   // the full towns found new ones
+  if ((a.ruins?.length || 0) > TL.ruins.max) a.ruins.splice(0, a.ruins.length - TL.ruins.max);   // the oldest ruins overgrow (TOWN_LIFE.ruins.max)
   abandonEmpty(a, rnd, say);   // a town left with too few people is left (atlas/demography.js)
   // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
