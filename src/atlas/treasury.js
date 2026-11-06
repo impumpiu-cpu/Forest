@@ -342,11 +342,13 @@ export function seasonStore(towns, sold) {
     comeIn('works', works); goOut('works', -works);
     for (const g of new Set([...Object.keys(e.made), ...Object.keys(e.used), ...Object.keys(t.stock)])) {
       if (!stored(g)) continue;
-      // what keeps only so long (TOWN_GOODS `keep`, seasons; after OpenTTD's cargo ageing): a share of what lay in the store rots
-      // (it rots of what is left of the old store once the season's sale is taken out — never of what was sold)
-      const k = TOWN_GOODS.get(g).keep, old = t.stock[g] || 0, sold = out[g] || 0, rot = k > 0 ? Math.max(0, old - sold) / k : 0;
+      // what keeps only so long (TOWN_GOODS `keep`, seasons; after OpenTTD's cargo ageing): a share of what lay in the store rots —
+      // of what is left of the old store once the season took from it all it took: the sale, and what its works used over what
+      // they made (never of what went out; the season's own making does not rot)
+      const k = TOWN_GOODS.get(g).keep, old = t.stock[g] || 0, sold = out[g] || 0, net = ((e.made[g] || 0) - (e.used[g] || 0)) / S;
+      const left = Math.max(0, old - sold - Math.max(0, -net)), rot = k > 0 ? left / k : 0;
       if (rot > 0) add(t.trade, 'rotted', rot * goodPrice(g));
-      t.stock[g] = Math.max(0, old - rot + ((e.made[g] || 0) - (e.used[g] || 0)) / S - sold);
+      t.stock[g] = Math.max(0, old - rot + net - sold);
     }
   }
 }

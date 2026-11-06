@@ -36,14 +36,16 @@ check('встречная торговля по новой связи: одна 
   assert.ok(l1 === l2, 'встречная покупка сделала вторую связь'); assert.equal(l2.carried, 10); assert.deepEqual(l2.took, {'3>wood': 2});
 });
 
-check('порча не берётся с проданного: сколько было — столько продано, сгнило и осталось', () => {
-  const keep = TOWN_GOODS.get('hide').keep;
-  for (const sold of [12, 6, 0]) {
-    const t = town({stock: {hide: 12}});
+check('порча берётся только с того, что осталось от старого запаса после всех расходов: продажа, работы, своё производство', () => {
+  const keep = TOWN_GOODS.get('hide').keep, S = 4;
+  // [продано, израсходовано работами за сезон, сделано за сезон] при старом запасе 12
+  for (const [sold, used, made] of [[12, 0, 0], [0, 12, 0], [6, 6, 0], [4, 3, 0], [0, 10, 10], [2, 10, 4], [0, 0, 0]]) {
+    const t = town({stock: {hide: 12}, econ: {made: {hide: made * S}, used: {hide: used * S}}});
     seasonStore([t], new Map([[t.id, {hide: sold}]]));
-    const rot = (t.trade.rotted || 0) / goodPrice('hide'), left = t.stock.hide || 0;
-    assert.ok(Math.abs(12 - sold - rot - left) < 1e-6, `продано ${sold}: сгнило ${rot}, осталось ${left}`);
-    assert.ok(Math.abs(rot - (12 - sold) / keep) < 1e-6, `продано ${sold}: сгнило ${rot}`);
+    const rot = (t.trade.rotted || 0) / goodPrice('hide'), left = t.stock.hide || 0, oldLeft = Math.max(0, 12 - sold - Math.max(0, used - made));
+    assert.ok(Math.abs(12 + made - used - sold - rot - left) < 0.01,   // (the ledger of the rotted keeps two places)
+     `продано ${sold}, израсходовано ${used}, сделано ${made}: сгнило ${rot}, осталось ${left} — баланс не сходится`);
+    assert.ok(Math.abs(rot - oldLeft / keep) < 0.01, `продано ${sold}, израсходовано ${used}, сделано ${made}: сгнило ${rot}, ждали ${oldLeft / keep}`);
   }
 });
 
