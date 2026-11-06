@@ -5,7 +5,7 @@ import {moodOf} from '../atlas/mood.js';
 import {DEEDS, DEED_BAND_LABELS, deedLabel} from '../data/deeds.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
@@ -215,6 +215,7 @@ function townHtml(a, t) {
     row('роль', t.realm != null ? roleLine(t) : null) +
     // the council's needs and its answers (atlas/townNeeds.js): what is lit, what is under way, what it could not do and why
     row('довольство', `${Math.round(moodOf(t))} из 100`) +
+    (t.gated ? row('рост', `стоит: ${esc(TOWN_LIFE.gates.find(G => G.id === t.gated)?.label || t.gated)}`) : '') +
     row('нужды', needsLine(a, t)) +
     row('строится', (P => (P ? `${esc(P.b.name)}: ${Math.min(99, Math.round(100 * P.done / P.days))}%, ещё ~${Math.max(1, Math.ceil((P.days - P.done) / Math.max(1e-9, crewDays(t))))} сез.` : null))(projectOf(t))) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));

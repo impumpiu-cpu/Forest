@@ -25,6 +25,7 @@ import {stepWarBeasts} from './beasts.js';
 import {stepWilds} from './wilds.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
+import {SEASONS} from '../data/seasons.js';
 import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY, goodPrice, METAL_ADJ} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
@@ -358,6 +359,13 @@ export function seasonTowns(a, say) {
   seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
   for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
   for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t); }   // its works' strength kept; its people's mood (atlas/mood.js)
+  // the gates of growth (TOWN_LIFE.gates): what a town of a cold land got of its fuel in the winter, kept for the spring (t.gates)
+  const sid = SEASONS.all()[a.hist?.season ?? 0]?.id;
+  for (const G of TL.gates) if (G.season === sid) for (const t of a.towns) {
+    if (!t.alive) continue;
+    const on = (t.tier || 0) >= G.tier && (a.f?.temp ? a.f.temp[t.i] : Infinity) <= G.cold, got = t.econ?.pools?.[G.pool] ?? 1;
+    if (on && got < G.least) (t.gates ||= {})[G.id] = Math.round(got * 1000) / 1000; else if (t.gates) { delete t.gates[G.id]; if (!Object.keys(t.gates).length) delete t.gates; }
+  }
 }
 
 // a people that sells some goods as soon as it has them (data/peoples.js tradeUp: the greenskins) sells what its town's store
@@ -435,7 +443,10 @@ export function stepPeoples(a, rnd, say) {
     const target = Math.min(feeds, room(fx));
     // born of its people towards what feeds and houses them; over it they die off the same way (no roll, no floor:
     // a town too few to hold is left — atlas/demography.js abandonEmpty); and they die of age and in brawls (lifeYear)
-    const grow = bornOf(t, pe.P, fx, target);
+    let grow = bornOf(t, pe.P, fx, target);
+    // a gate shut (TOWN_LIFE.gates: no fuel last winter in a cold land): no growth this year
+    t.gated = t.gates ? Object.keys(t.gates)[0] : null; if (!t.gated) delete t.gated;
+    if (t.gated && grow > 0) grow = 0;
     lifeYear(a, t, Math.max(0, grow), Math.max(0, -grow), fx);
     t.target = Math.round(target);   // what feeds and houses it: its settlers go when it is full (sendSettlers)
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
