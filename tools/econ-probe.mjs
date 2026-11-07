@@ -83,8 +83,9 @@ function yearRow(ms) {
     o.tools = r3(E.reduce((s, t) => s + (t.econ.tools ?? (1 - 0.5 * (t.econ.short.tools || 0))) * w(t), 0));
     o.slotsFull = r3(E.filter(t => slotsUsed(t).town >= slotsOf(t).town).length / E.length);
     o.stock = r1(E.reduce((s, t) => s + Object.entries(t.stock || {}).reduce((q, [g, v]) => q + (TOWN_GOODS.has(g) ? v * price(g) : 0), 0), 0) / Math.max(1, pop) * 100);
-    // what the works were left lacking, by why, in gold a year for 100 people: no money, a weak way, a full way (its room), nobody had it
-    const why = {money: 0, route: 0, room: 0, goods: 0};
+    // what the works were left lacking, by why, in gold a year for 100 people: no money, a weak way, a full way (its room), none of
+    // its sellers had it (goods) — and of that, what some town out of its reach still had (far)
+    const why = {money: 0, route: 0, room: 0, goods: 0, far: 0};
     for (const t of E) for (const [g, r] of Object.entries(t.econ.why?.works?.by || {})) for (const k of Object.keys(why)) why[k] += (r[k] || 0) * price(g) * S;
     for (const [k, v] of Object.entries(why)) o['no' + k[0].toUpperCase() + k.slice(1)] = r1(v / Math.max(1, pop) * 100);
     o.gold = r1(E.reduce((s, t) => s + (t.gold || 0) + (t.makersGold || 0) + (t.peopleGold || 0), 0) / Math.max(1, pop) * 100);
