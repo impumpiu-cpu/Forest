@@ -270,9 +270,13 @@ export function stepRot(a) {
       if (!t || !o || !t.alive || !o.alive) continue;
       for (const [from, to] of [[t, o], [o, t]]) {
         const jf = cell[from.i], jt = cell[to.i];
-        if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom) continue;
+        if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom || rot[jf] <= rot[jt]) continue;
+        // the rats carry the rot down its slope, from the thicker town to the thinner: by the difference, not by the
+        // source's whole — else every road out of a rotten town fed the rot as a grave would, regardless of what the
+        // other town had, the towns of a road net kept each other in the rot for good (fed more than the rot fades),
+        // and the rot ran over whole realms with no graves near
         const keep = 1 - ROT.ratsHealth * healthOf(to);
-        src[jt] += ROT.rats * rot[jf] * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
+        src[jt] += ROT.rats * (rot[jf] - rot[jt]) * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
         if (rot[jt] < ROT.ratsFrom && !to.ratsTold) { to.ratsTold = true; (a.ratsLines ||= []).push(`Крысы с обозами занесли гниль в ${townLabel(to, 1)} ${to.name}.`); }
       }
     }
