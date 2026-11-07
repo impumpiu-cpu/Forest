@@ -8,9 +8,12 @@
 //   season, i, text, kind}], track, stats, rng: {name → position}, party (id)}
 import {mulberry, seedNumber} from '../core/rng.js';
 import {rulerOf, rulerTitle} from '../atlas/polities.js';
-import {gearDef} from '../agents/equipment.js';
+import {gearDef, gearType} from '../agents/equipment.js';
 import {rollCreature} from '../agents/special.js';
-import {SPECIES} from '../data/species.js';
+import {personality} from '../agents/agent.js';
+import {SPECIES, isSentient} from '../data/species.js';
+import {CAMP} from '../data/camp.js';
+import {ensureSocial} from './social.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
 import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
@@ -56,8 +59,28 @@ export function makeMember(K, rnd, {race, role, gear, core = false, lean = null,
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
   m.gear = {hand: [...gear.hand], body: gear.body};
+  memberLocal(K, m);   // the working character, from the day one joins — not from the first camp (docs/CAMPAIGN.md «Живая команда: договор»)
   return m;
 }
+
+// The working character of a member (m.local: liked and disliked work, preferences, traits, taste, own extras, skills, leanings)
+// — the same as agents/agent.js personality() gives a colonist, rolled once, when one joins, of the member's own streams
+// (`personality` and `leans` by the campaign's seed and the member's id: no other stream of the campaign moves, and a save
+// from before gets the same character whenever it is filled in). What one already has is kept: a captive taken on the local
+// map brings its own (campaign/captives.js takeFromCamp); an old save keeps what its first camp gave. The ranks' skills and
+// a tool's own (data/camp.js CAMP.skills, CAMP.tools) come with it, as the first camp gave them before.
+export function memberLocal(K, m) {
+  if (m.local || !isSentient(SPECIES.get(m.race))) return m.local || null;
+  const rng = s => mulberry(seedNumber(`${K.seed}:campaign:${s}:${m.id}`));
+  const c = {special: m.special};
+  personality({rngs: {birth: rng('personality'), leans: rng('leans')}}, c);
+  for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) c.skill[id] = Math.max(c.skill[id] || 0, v);
+  for (const tok of m.gear?.hand || []) { const id = gearType(tok); if (CAMP.tools[id]) c.skill[CAMP.tools[id]] = Math.max(c.skill[CAMP.tools[id]] || 0, CAMP.toolSkill); }   // (a bought or forged piece is a word with marks: «ironaxe@dwarf»)
+  m.local = {likes: c.likes, dislikes: c.dislikes, prefs: c.prefs, traits: c.traits, food: c.food, own: c.own, skill: c.skill, leans: c.leans};
+  return m.local;
+}
+// a campaign of a save from before: every member gets the character it lacks (idempotent — memberLocal keeps what is there)
+export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) memberLocal(K, m); }
 
 // The core (data/campaign.js RETINUE): CAMPAIGN.fighters fighters of the realm's kinds — at most RETINUE.big.max of the great
 // ones — each of a fighting role drawn by its kind's weights; first the roles a core has at least (RETINUE.least: the line, a
@@ -102,7 +125,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
     seed: seed || `${a.cfg.seed}:${t.id}`, mode, started: {year: a.hist.year, season: a.hist.season}, day: 0,
     capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
     members: [], food: 0, gold: 0, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
-    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null,
+    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null, social: {version: 1, relations: {}, applied: {}, faded: {}},
     // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
     beasts: [], nextBeast: 1, vehicles: [], buildings: [...CAMP_KIT.start], cargo: {rope: CAPTIVE.campaign.startRope, pots: ALCHEMY.pots}, build: null, route: null,   // (pots for the healer's hut: data/market.js ALCHEMY)
   };

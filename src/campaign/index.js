@@ -5,6 +5,7 @@ import {stepHistory, startHistory} from '../atlas/history.js';
 import {caravanDay, ended, finished, alive, die} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/persons.js';
+import {upgradeMembers} from './start.js';
 
 export {newCampaign, capitals} from './start.js';
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
@@ -20,6 +21,7 @@ export function stepCampaign(a) {
     if (!K.epilogue.done) stepEpilogue(a, K);
     return !finished(K);
   }
+  upgradeMembers(K);   // a save from before the character came with the member (campaign/start.js memberLocal)
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
   K.track = []; K.seasonFrom = K.day;   // (the camps of this season are all kept for the screen: campaign/fight.js play)

@@ -1,11 +1,31 @@
 // The living company's contract (docs/CAMPAIGN.md «Живая команда: договор»; plan claude/caravan-ver_d.md), scene by scene.
 // Step 1 (D0): the fate of a member is read from what the campaign keeps, never «not alive = dead»; every way out of
 // the caravan leaves its reason; the settlement's council remembers the proposal that won the second round.
+// Step 2 (D1): the working character comes with the member, on every way in; the camp's map shows that character, not a
+// new roll; a captive taken on the map keeps its own; filling an old save in is the same however often it is done.
+// Step 3 (D1): the bonds live with the campaign by member id — laid onto the map's ids, taken back once per camp, kept for
+// those not on the map and for the fallen, faded once a day; the mood and the world view go and come back with the member.
+// Step 4 (D2): a fact — a wound dressed, one pulled back from death — is noted on the map with its doer, the one it was done
+// to and those who saw it; the campaign keeps it once, as memories of those who know it and as the reason of the bond.
+// Step 5 (D2): quarrels, work, a fight side by side, a defence, an escort, a bed given up — facts too, a long deed once a
+// camp; the fates — death, captivity, escape, sale, leaving — facts of the campaign, known by sight or by word, and the
+// loss weighs by the bond: a friend's death grieves, a hated one's eases; the last help before a death stays before it.
 //   node tools/social-check.mjs [worlds=2]
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
+import {memberLocal, upgradeMembers} from '../src/campaign/start.js';
+import {campSetup, openCamp, runCamp, campOutcome} from '../src/campaign/camp.js';
+import {takeFromCamp} from '../src/campaign/captives.js';
+import {applyCamp} from '../src/campaign/fight.js';
+import {ensureSocial, takeBonds, fadeDay, notedFade, moodOut, moodIn} from '../src/campaign/social.js';
+import {REL} from '../src/data/colony.js';
+import {giveAid} from '../src/settlement/together.js';
+import {reasonsOf, noteFate} from '../src/campaign/social.js';
+import {workTogether} from '../src/settlement/together.js';
+import {die} from '../src/campaign/march.js';
+import {SPECIES, isSentient} from '../src/data/species.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {newGame, step} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
@@ -25,7 +45,8 @@ check('живые отсутствующие не оплакиваются ка�
 
 // ── every way out of real walks leaves its reason (an old save may have «gone»; a new walk must not)
 const worlds = +(process.argv[2] || 2), seen = Object.fromEntries(FATES.map(f => [f, 0]));
-let lostEnds = 0, disbandedOk = true;
+let lostEnds = 0, disbandedOk = true, members = 0, noChar = 0;
+const roles = {};
 for (let s = 0; s < worlds; s++) {
   const base = generateAtlas({seed: String(777 + s * 13), size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
   const frozen = JSON.stringify(saveAtlas(base)), caps = capitals(base);
@@ -34,12 +55,140 @@ for (let s = 0; s < worlds; s++) {
     const a = loadAtlas(JSON.parse(frozen));
     newCampaign(a, c.town, {mode: 'auto'});
     const K = runCampaign(a);
-    for (const m of K.members) seen[fateOf(m)]++;
+    for (const m of K.members) { seen[fateOf(m)]++; members++; roles[m.role] = (roles[m.role] || 0) + 1; if (isSentient(SPECIES.get(m.race)) && !m.local?.traits) noChar++; }
     if (K.phase === 'lost') { lostEnds++; for (const id of K.lostWith || []) if (fateOf(K.members.find(m => m.id === id)) !== 'disbanded') disbandedOk = false; }
   }
 }
 check('у каждого ушедшего из похода есть причина (ни одного «gone» в новых походах)', seen.gone === 0, Object.entries(seen).filter(([, n]) => n).map(([f, n]) => `${f} ${n}`).join(', '));
+check('характер с рождения на всех путях в караван (ядро, наём, спутники, освобождённые, пленные, купленные) — и в быстром режиме', members > 0 && noChar === 0,
+  `участников ${members}, без характера ${noChar}; ${Object.entries(roles).map(([k, n]) => `${k} ${n}`).join(', ')}`);
 check('когда ядра не осталось, остальные отпущены живыми, а не записаны в павшие', disbandedOk, `походов с потерей ядра ${lostEnds}`);
+
+// ── the character on the camp's map: the member's own, shown — not rolled — and the same after the camp but for what it lived
+{
+  const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), c = capitals(a)[0];
+  const K = newCampaign(a, c.town, {mode: 'local'});
+  const before = K.members.map(m => JSON.stringify({likes: m.local.likes, dislikes: m.local.dislikes, traits: m.local.traits, food: m.local.food, leans: m.local.leans}));
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S);
+  const shown = K.members.map(m => { const ag = w.campaign.people.get(m.id); return JSON.stringify({likes: ag.likes, dislikes: ag.dislikes, traits: ag.traits, food: ag.food, leans: ag.leans}); });
+  check('на локальной карте — тот же характер, что у участника похода', shown.every((x, k) => x === before[k]));
+  const w2 = runCamp(S), o = campOutcome(w2), again = openCamp(S);
+  check('повтор стоянки показывает тот же характер (снимок не перебрасывается)', K.members.every(m => again.campaign.people.get(m.id).likes === m.local.likes));
+  check('стоянка возвращает характер того же участника', o.members.filter(x => x.alive).every(x => x.local.likes === K.members.find(m => m.id === x.id).local.likes));
+  // a captive taken on the map: its own character, as the map left it
+  const loc = {likes: 'chop', dislikes: 'cook', prefs: {}, traits: ['brave'], food: {}, own: {mul: {bravery: 1}}, skill: {melee: 0.4}, leans: {}};
+  const n0 = K.members.length;
+  takeFromCamp(a, K, {taken: [{name: 'Пленник', gender: 'm', race: K.members[0].race, hp: 0.5, special: {...K.members[0].special}, local: loc, bonds: 'rope', gear: {hand: [], body: null}}]}, () => {});
+  const cap = K.members[n0];
+  check('пленный с карты приходит со своим характером, не с новым', !!cap && cap.local.likes === 'chop' && cap.local.traits[0] === 'brave');
+  // an old save: the character filled in is the same whenever and however often
+  const m = K.members[1], keep = JSON.stringify(m.local);
+  delete m.local; upgradeMembers(K); const once = JSON.stringify(m.local); upgradeMembers(K); memberLocal(K, m);
+  check('старое сохранение: характер дополняется одинаково и один раз', once === keep && JSON.stringify(m.local) === once);
+}
+
+// ── the bonds between the maps
+{
+  const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), c = capitals(a)[1] || capitals(a)[0];
+  const K = newCampaign(a, c.town, {mode: 'local'}), [A, B, C] = K.members, R = ensureSocial(K).relations;
+  R[A.id] = {[B.id]: 2, [C.id]: -1.5}; R[B.id] = {[A.id]: -3};
+  const S1 = campSetup(a, K, {kind: 'stop', dayIn: 0}), w1 = openCamp(S1), g1 = w1.campaign.people;
+  const okIn = g1.get(A.id).grudge?.[g1.get(B.id).id] === 2 && g1.get(B.id).grudge?.[g1.get(A.id).id] === -3;
+  // the next camp with the members in another order: other map ids, the same people
+  K.members.reverse(); K.camps = [{day: K.day, kind: 'stop'}];
+  const S2 = campSetup(a, K, {kind: 'stop', dayIn: 0}), w2 = openCamp(S2), g2 = w2.campaign.people; K.members.reverse();
+  const moved = g1.get(A.id).id !== g2.get(A.id).id, okAgain = g2.get(A.id).grudge?.[g2.get(B.id).id] === 2 && g2.get(A.id).grudge?.[g2.get(C.id).id] === -1.5;
+  check('связи по id участника: на картах с другими локальными id благодарность и обида у тех же людей', okIn && moved && okAgain, `локальные id ${moved ? 'другие' : 'те же'}`);
+  // C is not on the map: the bond to C stays; what the map made of A → B is taken back
+  takeBonds(K, [A.id, B.id], {[A.id]: {[B.id]: 2.5}, [B.id]: {}});
+  check('отсутствующий на карте не стёрт из связей; итог карты заменяет связь присутствующих, а не прибавляется', R[A.id][C.id] === -1.5 && R[A.id][B.id] === 2.5 && !R[B.id]?.[A.id]);
+  // a camp taken back twice
+  const S3 = campSetup(a, K, {kind: 'night', dayIn: 0}), o3 = campOutcome(runCamp(S3));
+  const food0 = K.food, first = applyCamp(a, K, S3, o3, {kind: 'raiders', label: 'налётчики'}, 'night') !== false, food1 = K.food, rel1 = JSON.stringify(R);
+  const second = applyCamp(a, K, S3, o3, {kind: 'raiders', label: 'налётчики'}, 'night');
+  check('исход стоянки берётся один раз: повтор не меняет ни запасов, ни связей', first && second === false && K.food === food1 && JSON.stringify(R) === rel1, `еда ${food0} → ${food1}`);
+  // the old snapshot does not follow the bonds that changed after it
+  R[A.id][B.id] = -4;
+  check('снимок старой стоянки не меняется от новых связей (повтор на экране — тот же)', S1.bonds[A.id][B.id] === 2);
+  // a bond to one who fell on the map is kept (the map's day does not drop it)
+  const S4 = campSetup(a, K, {kind: 'stop', dayIn: 0}), w4 = openCamp(S4), p4 = w4.campaign.people, aa = p4.get(A.id), bb = p4.get(B.id);
+  aa.grudge = {[bb.id]: 3}; bb.dead = true; w4.agents = w4.agents.filter(x => x !== bb);
+  const o4 = campOutcome(w4);
+  check('связь с павшим на стоянке сохраняется для похода', o4.bonds[A.id]?.[B.id] === 3);
+  // the day's fading: once, by the map's day or by the campaign's
+  R[A.id] = {[B.id]: 2}; ensureSocial(K).faded = {};
+  fadeDay(K); const once = R[A.id][B.id];
+  K.day++; R[A.id][B.id] = 2; notedFade(K, 1); fadeDay(K); const mapDay = R[A.id][B.id];
+  check('связи затухают ровно раз в день: днём похода или днём карты, не обоими', Math.abs(once - 2 * REL.fadeGood) < 1e-9 && mapDay === 2, `без стоянки ${once.toFixed(3)}, после стоянки ${mapDay}`);
+  // the mood and the world view: out of one camp, into the next, with what is left of them
+  const mood = moodOut(10, 1000, [{t: 900, id: 'stoodUp', text: 'x', mood: 0.2, until: 1000 + DAY / 2}, {t: 0, id: 'old', text: 'y', mood: -0.1, until: 999}]);
+  const back = moodIn(10.25, 50, mood);
+  check('настроение переходит со стоянки на стоянку с остатком времени, истёкшее не переносится', mood.length === 1 && back.length === 1 && back[0].until === 50 + DAY / 4, JSON.stringify(back[0]));
+  const m0 = K.members.find(m => m.alive), S5 = campSetup(a, K, {kind: 'stop', dayIn: 0}), w5 = openCamp(S5), ag5 = w5.campaign.people.get(m0.id);
+  check('мировоззрение и его корень приходят на карту от участника', JSON.stringify(ag5.alignRoot) === JSON.stringify(m0.alignRoot) && JSON.stringify(ag5.align) === JSON.stringify(m0.align));
+  ag5.align = {...ag5.align, mercy: (ag5.align.mercy || 0) + 0.1};
+  const o5 = campOutcome(w5); K.camps = []; applyCamp(a, K, S5, o5, null, 'stop');
+  check('дрейф мировоззрения на стоянке возвращается в поход', Math.abs((m0.align.mercy || 0) - (ag5.align.mercy || 0)) < 1e-9 || !m0.alive);
+}
+
+// ── facts: who did what for whom, who saw it, kept once
+{
+  const base = generateAtlas({seed: '803', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), c = capitals(a)[0];
+  const K = newCampaign(a, c.town, {mode: 'local'}), [A, B, C, D] = K.members;
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S), P = w.campaign.people;
+  const ag = id => P.get(id), a1 = ag(A.id), b1 = ag(B.id), c1 = ag(C.id), d1 = ag(D.id);
+  for (const o of [b1, c1]) { o.x = a1.x + 1; o.y = a1.y; }
+  d1.x = a1.x; d1.y = a1.y + 2; d1.sleeping = true;   // asleep beside them: saw nothing
+  b1.hp = b1.hp * 0.3; giveAid(w, a1, b1);
+  const facts = w.campaign.facts || [], f = facts[0];
+  check('помощь — факт с исполнителем, получателем и очевидцами по id участника', facts.length === 1 && f.kind === 'aid' && f.by === A.id && f.to === B.id && f.saw.includes(C.id), JSON.stringify(f && {by: f.by, to: f.to, saw: f.saw}));
+  check('спящий рядом не очевидец', f && !f.saw.includes(D.id));
+  const o = campOutcome(w); K.camps = [];
+  applyCamp(a, K, S, o, null, 'stop'); applyCamp(a, K, S, o, null, 'stop');
+  const mB = K.members.find(m => m.id === B.id), mC = K.members.find(m => m.id === C.id), mD = K.members.find(m => m.id === D.id);
+  check('поход хранит факт один раз; получатель помнит, что пережил, очевидец — что видел, спящий — ничего',
+    K.social.facts.filter(x => x.id === f?.id).length === 1 && mB.social?.memory?.[0]?.how === 'lived' && mC.social?.memory?.[0]?.how === 'saw' && !(mD.social?.memory || []).some(x => x.fact === f?.id));
+  check('причина связи: почему B думает об A — эта помощь', reasonsOf(K, B.id, A.id)[0]?.id === f?.id && (K.social.relations[B.id]?.[A.id] || 0) > 0,
+    `связь ${Math.round((K.social.relations[B.id]?.[A.id] || 0) * 100) / 100}`);
+  // without the fact the bond would be the same: the fact is its reason, not a second sum
+  const w2 = openCamp(S), a2 = w2.campaign.people.get(A.id), b2 = w2.campaign.people.get(B.id);
+  b2.hp = b2.hp * 0.3; const before = b2.grudge?.[a2.id] || 0; giveAid(w2, a2, b2);
+  check('факт не добавляет к связи второй раз: прибавка — одна, где сделано дело', Math.abs((b2.grudge[a2.id] - before) - (w2.campaign.facts[0].params.bond.to)) < 1e-9);
+}
+
+// ── more facts; the fates and the losses
+{
+  const base = generateAtlas({seed: '816', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), c = capitals(a)[0];
+  const K = newCampaign(a, c.town, {mode: 'local'}), [A, B, C, D, E] = K.members;
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S), P = w.campaign.people, a1 = P.get(A.id), b1 = P.get(B.id);
+  a1.task = {id: 'job', job: b1.task?.job || 'chop'}; b1.task = {id: 'job', job: a1.task.job}; b1.x = a1.x + 1; b1.y = a1.y;
+  for (const ag of w.agents) if (ag !== a1 && ag !== b1 && ag.task?.id === 'job') ag.task = null;
+  workTogether(w); workTogether(w); workTogether(w);
+  const worked = (w.campaign.facts || []).filter(f => f.kind === 'workedWith');
+  check('работа рядом — один факт за стоянку на пару, хоть шла часами', worked.length === 1, `фактов ${worked.length}`);
+  // the last help before a death: the aid comes first, the death after it
+  b1.hp *= 0.2; giveAid(w, a1, b1);
+  const o = campOutcome(w); o.members.find(x => x.id === B.id).alive = false; o.members.find(x => x.id === B.id).cause = 'погиб'; K.camps = [];
+  applyCamp(a, K, S, o, null, 'stop');
+  const F = K.social.facts, iAid = F.findIndex(f => f.kind === 'aid' && f.to === B.id), iDied = F.findIndex(f => f.kind === 'died' && f.to === B.id);
+  check('последняя помощь погибшему остаётся в истории — раньше гибели', iAid >= 0 && iDied > iAid);
+  check('гибель на тихой стоянке — по рассказу, не на глазах', F[iDied]?.heard?.includes(A.id) && !F[iDied].saw.includes(A.id));
+  // the fates are different facts
+  const kinds = {};
+  noteFate(K, C, 'sold'); noteFate(K, D, 'left', {params: {why: 'deserted'}});
+  for (const f of K.social.facts) kinds[f.kind] = (kinds[f.kind] || 0) + 1;
+  check('смерть, продажа и уход — разные факты', kinds.died === 1 && kinds.sold === 1 && kinds.left === 1, JSON.stringify(kinds));
+  // the loss by the bond: E loved F, hated G
+  const [Fm, G] = K.members.filter(m => m.alive && m !== E).slice(-2), R = K.social.relations;
+  R[E.id] = {[Fm.id]: 3, [G.id]: -3};
+  die(a, K, Fm, 'пал'); const sad = E.social.mood.at(-1).mood;
+  die(a, K, G, 'пал'); const eased = E.social.mood.at(-1).mood;
+  check('утрата — по связи: смерть друга тяжела, ненавистного — облегчение', sad < 0 && eased > 0, `друг ${sad}, недруг ${eased}`);
+}
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)
 let councils = 0, round2 = 0, changed = 0, mismatched = 0;

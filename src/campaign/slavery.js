@@ -15,6 +15,7 @@ import {SPECIES} from '../data/species.js';
 import {relation} from '../atlas/diplomacy.js';
 import {held, bondsSets, mouths} from './captives.js';
 import {makeMember, draw} from './start.js';
+import {noteFate} from './social.js';
 import {bestBonds} from '../data/captives.js';
 import {assign} from './baggage.js';
 import {famed} from './road.js';
@@ -52,7 +53,7 @@ function deal(a, K, t, st, L, r, parts) {
     const p = gold(priceOf(m) * L.k * STANDING[st].sell);
     K.stats.slaveMarket = (K.stats.slaveMarket || 0) + 1;   // (a captive the caravan would sell here: the checks count the chances)
     if (townPurse(t) < p) { K.stats.slaveBroke = (K.stats.slaveBroke || 0) + 1; continue; }   // the town's makers have not the gold for one
-    m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true}; memberFate(a, m, 'sold', t);
+    m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true}; memberFate(a, m, 'sold', t); noteFate(K, m, 'sold', {params: {town: t.id}});
     K.gold = gold(K.gold + fromTown(t, p)); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);
     // where it is frowned on, the town's realm thinks less of the caravan's

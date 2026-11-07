@@ -8,6 +8,7 @@ import {assign} from './baggage.js';
 import {captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {alive, core, isCore, rank, say} from './march.js';
+import {noteFate} from './social.js';
 
 // those who are not the core: the hired go when their term is up, the joined may go any day
 export function people(a, K, r) {
@@ -57,6 +58,7 @@ function contractDay(a, K, m, r) {
 // why one leaves (social/fate.js): 'hunger', 'loyalty' (it never took to the company), 'deserted', 'noRoom', 'term'
 function leave(a, K, m, why, text) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, why};
+  noteFate(K, m, 'left', {params: {why}});
   say(a, K, text + '.', 'leave'); assign(K);
 }
 export const shake = (K, d) => {

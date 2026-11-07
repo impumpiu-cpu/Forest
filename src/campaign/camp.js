@@ -40,6 +40,7 @@ import {SEASON_DAYS} from '../data/seasons.js';
 import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
+import {bondsAmong, moodOut, moodIn} from './social.js';
 import {ITEMS} from '../data/items.js';
 import {SPECIES, isMindless} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -75,7 +76,8 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], effects: effectsOut(K, m), wounds: woundsOut(K, m), marks: m.marks ? [...m.marks] : null, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
-      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
+      align: m.align, alignRoot: m.alignRoot || null, values: m.values, mood: m.social?.mood?.length ? m.social.mood.map(e => ({...e})) : null, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
+    bonds: bondsAmong(K, alive(K).map(m => m.id)),   // what the members present feel for each other (campaign/social.js), by member id
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     food: K.food, cargo: {...K.cargo},
@@ -123,7 +125,7 @@ export function openCamp(S) {
     const [x, y] = ring(k, S.members.length, 2);
     const ag = createAgent(w, m.race, 'colony', x, y);
     ag.member = m.id; ag.place = m.role; ag.fightPref = m.fight || null; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;   // (ag.place: its place in the company, docs/BEHAVIOUR.md «Словарь»)
-    ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.values) ag.values = [...m.values];
+    ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.alignRoot) ag.alignRoot = {...m.alignRoot}; if (m.values) ag.values = [...m.values];
     const L = m.local;
     if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}, ...(L.leans ? {leans: {...L.leans}} : {})});
     else {
@@ -135,6 +137,7 @@ export function openCamp(S) {
     if (m.former) setStanding(ag, 'former', {since: w.tick, bond: m.loyalty ?? 0.6, fought: false});   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { setStanding(ag, 'captive', {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}); if (rec) rec.captive = true; }   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
+    if (m.mood?.length) ag.diary = [...moodIn(S.day, w.tick, m.mood), ...(ag.diary || [])];   // the fresh thoughts it brings (campaign/social.js)
     if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + e.ticks}));
     if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + x.ticks}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
@@ -148,6 +151,13 @@ export function openCamp(S) {
     if (S.kind === 'stop') ag.needs.food = 1;   // the day's meal is the campaign's: on the map they hunt and gather
   });
   w.founding = false;
+  // the bonds, once everyone is on the map: member ids → the map's agent ids (campaign/social.js); a member's own map id
+  // is known to the map's day, so a bond to one who falls here is not dropped (settlement/relations.js daily)
+  w.campaign.memberOf = new Map([...w.campaign.people].map(([id, ag]) => [ag.id, id]));
+  for (const [a, row] of Object.entries(S.bonds || {})) {
+    const ag = w.campaign.people.get(+a); if (!ag) continue;
+    for (const [b, v] of Object.entries(row)) { const o = w.campaign.people.get(+b); if (o) (ag.grudge ||= {})[o.id] = v; }
+  }
   // the beasts by the camp
   S.beasts.forEach((b, k) => {
     const [x, y] = ring(k + 0.5, Math.max(3, S.beasts.length), 4);
@@ -340,6 +350,8 @@ export function runCamp(S) {
 // ── what came out of it (the agents are kept by reference: the dead and the gone leave w.agents)
 export function campOutcome(w) {
   const C = w.campaign, S = C.S;
+  const bonds = {};   // what each member present came to feel for the others there, by member id (campaign/social.js takeBonds)
+  for (const m of S.members) { const ag = C.people.get(m.id), row = {}; for (const [id, v] of Object.entries(ag?.grudge || {})) { const b = C.memberOf?.get(+id); if (b != null) row[b] = v; } bonds[m.id] = row; }
   const members = S.members.map(m => {
     const ag = C.people.get(m.id);
     if (ag?.fugitive && !ag.dead) return {id: m.id, alive: false, escaped: true};   // a captive got away (settlement/escape.js)
@@ -350,7 +362,7 @@ export function campOutcome(w) {
     const wasDown = !!ag.downed; if (wasDown) bindFallen(w, ag);
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -393,7 +405,7 @@ export function campOutcome(w) {
   // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
   // taken, whatever it cost)
   const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
-  return {kind: S.kind, day: S.day, won, bossDead, members, beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
+  return {kind: S.kind, day: S.day, session: S.seed, won, bossDead, members, bonds, faded: C.faded || 0, facts: (C.facts || []).map(f => ({...f, saw: [...f.saw], params: {...f.params}})), beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
     foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length, species, boss, might: C.foeMight || 0, weight: C.weight ?? null}, ours: {might: C.ourMight || 0, kills}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 

@@ -18,6 +18,7 @@ import {log} from '../core/log.js';
 import {esc, clamp, weighted} from '../core/util.js';
 import {DAY, HOUR} from '../core/time.js';
 import {REL} from '../data/colony.js';
+import {noteFact} from './facts.js';
 
 export {REL};   // (data/colony.js)
 // ── settlers: who comes next
@@ -57,6 +58,7 @@ function quarrels(w) {
     // not now: raiders on the way, the camp on fire, a beast close by
     if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) { if (w.behave) w.behave.social.calm++; continue; }
     for (const [x, y] of [[a, b], [b, a]]) { (x.grudge ||= {})[y.id] = (x.grudge[y.id] || 0) - REL.grudge; think(w, x, 'quarrel', {name: y.name}); }
+    noteFact(w, 'quarrel', a, b, {over: reason(a, b), bond: {to: -REL.grudge, by: -REL.grudge}});   // (a caravan's camp: settlement/facts.js)
     w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
     log(w, `Склока: <b>${esc(a.name)}</b> и <b>${esc(b.name)}</b> сцепились — ${reason(a, b)}.`, 'people');
     return;   // one quarrel at a time is enough for the camp
@@ -65,8 +67,12 @@ function quarrels(w) {
 
 function daily(w) {
   const col = colonists(w);
+  // on a camp of the caravan (campaign/camp.js) a fallen member is still one of the company: what one felt for it is kept
+  // for the campaign (campaign/social.js), and the camp counts that its day faded the bonds
+  const member = w.campaign?.memberOf;
+  if (member) w.campaign.faded = (w.campaign.faded || 0) + 1;
   for (const a of col) {
-    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < 0.05 || !col.some(o => o.id === +id)) delete a.grudge[id]; }
+    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < REL.forget || (!col.some(o => o.id === +id) && !member?.has(+id))) delete a.grudge[id]; }
     let worst = null, wv = Infinity, best = null, bv = -Infinity;
     for (const b of col) {
       if (b === a) continue;

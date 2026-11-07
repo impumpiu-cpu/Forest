@@ -54,6 +54,7 @@ import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCar
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
+import {fadeDay, noteFate} from './social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 
 const SEASON_LIST = SEASONS.all();
@@ -120,10 +121,11 @@ export function pace(a, K, seasonId) {
   return v * paceOf(K).speed;   // the pace the council keeps (data/road.js PACES; normal — × 1)
 }
 
-export function die(a, K, m, why) {
+export function die(a, K, m, why, {heard = false} = {}) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
   memberFate(a, m, 'dead');   // (a person of the world dies with it — atlas/persons.js)
+  noteFate(K, m, 'died', {heard, params: {why}});   // the company's loss (campaign/social.js)
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
@@ -590,6 +592,7 @@ export function caravanDay(a, K, day) {
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
+  fadeDay(K);   // the bonds fade by the campaign's day, unless a map's day faded them today (campaign/social.js)
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId), mend = golemMend(K, town, camping);

@@ -13,6 +13,7 @@ export const REL = {
   grudge: 0.6,          // a quarrel adds this much to the grudge on both sides
   fade: 0.96,           // grudges shrink this much each day
   fadeGood: 0.985,      // good memories, this much
+  forget: 0.05,         // a grudge or a good memory faded below this is forgotten
   settlerFloor: -1,     // a race the colony dislikes worse than this does not come
 };
 
