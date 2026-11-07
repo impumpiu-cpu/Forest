@@ -6,7 +6,8 @@
 // the net joins, and the towns of another realm on a link of its own, while the realms trade — atlas/diplomacy.js trades):
 //   edge   — a town of its own realm in another part of its net (an island of the realm, a province cut off)
 //   foe    — a town of another realm on a link of the buyer's own, but the realms do not trade (war, or hate)
-//   apart  — a town of another realm the buyer has no link to, the realms trading
+//   apart  — a town of another realm the buyer has no link to, the realms trading, and no way to through the lands between
+//            (atlas/treasury.js farWays: too many realms, too far, or a realm on the way that does not trade)
 //   both   — a town of another realm, no link and no trade
 //   none   — what was lacking and no town of the world had left to spare
 // `node tools/reach-probe.mjs [seed] [size] [years]` → JSON on stdout: means over the last `years` (10) years, in gold a year
