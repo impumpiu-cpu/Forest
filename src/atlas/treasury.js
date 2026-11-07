@@ -280,9 +280,12 @@ function worksBuying(C, prep) {
       let W = ways.get(t.id);
       if (L && Object.keys(L).some(g => L[g] > 0 && abroad(g))) W = [...(W || []), ...farWays(C, adjT, t, new Set((W || []).map(([s]) => s.id)))];
       if (!L || !W?.length) continue;
+      const WS = W.map(([s, w]) => [s, w, spare.get(s.id)]).filter(x => x[2]);   // (each seller's spare, fetched once a buyer, not once a good)
       for (const g of Object.keys(L)) {
         if (!(L[g] > 0)) continue;
-        const by = W.filter(([s]) => spare.get(s.id)?.[g] > 0).map(([s, w]) => [s, w, offer(t, s, w, g)]).filter(x => x[2] < Infinity).sort((p, q) => p[2] - q[2] || p[0].id - q[0].id);
+        const by = [];
+        for (const [s, w, P] of WS) { if (!(P[g] > 0)) continue; const o = offer(t, s, w, g); if (o < Infinity) by.push([s, w, o]); }
+        by.sort((p, q) => p[2] - q[2] || p[0].id - q[0].id);
         for (const [s, w] of by) { if (!(L[g] > M.dust)) break; buyGood(t, s, w, g); }
         // what it still wants of a seller that had it and that it could pay — what the way did not carry: the seller's demand it
         // could not meet (C.wanted: loadStep does not cut its makers for it)
