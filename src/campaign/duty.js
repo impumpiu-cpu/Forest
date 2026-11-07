@@ -67,6 +67,7 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
   D.queue = D.queue.filter(id => ids.has(id)); for (const m of ms) if (!D.queue.includes(m.id)) D.queue.push(m.id);
   const byId = id => K.members.find(m => m.id === id), able = D.queue.map(byId).filter(mayWatch);
   let on = able.slice(0, Math.max(1, Math.min(DUTY.watch, Math.floor(able.length / DUTY.per))));
+  lapse(K);   // (first: a promise past its days or with a side gone is closed before any is kept — a lapsed one is never fulfilled)
   const {r, done} = draw(K, 'social');
   try {
     // the promises due tonight: the one who promised stands in for the other, or does not
@@ -84,13 +85,15 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
       }
       const f = campaignFact(K, 'asked', {by: m.id, to: to.m.id, saw: here, params: {answer: ans.say, v: Math.round(ans.v * 100) / 100, why: round(ans.why), chose: round(to.why)}});
       if (ans.say === 'no') { const friend = bondOf(K, m.id, to.m.id) >= DUTY.toldNo; bondBy(K, m.id, to.m.id, DUTY.bond.no, f); if (friend) say(`${m.name} просит подмены в дозоре — ${to.m.name} отказывает${tiredOf(to.m) >= DUTY.askAt ? ': ' + (fem(K, to.m.id) ? 'сама' : 'сам') + ' с ног валится' : ''}.`, [m.id, to.m.id]); continue; }
-      const c = {id: f.id, kind: 'watch', debtor: to.m.id, creditor: m.id, made: K.day, due: ans.say === 'yes' ? K.day : K.day + 1, until: K.day + DUTY.promiseDays, status: 'accepted', fact: f.id};
+      // «later» is «your next turn»: due from tomorrow, held till the watch has gone round once more (and DUTY.promiseDays
+      // over, for a night or two of the turn missed by the wounds)
+      const turn = Math.ceil(able.length / Math.max(1, on.length));
+      const c = {id: f.id, kind: 'watch', debtor: to.m.id, creditor: m.id, made: K.day, due: ans.say === 'yes' ? K.day : K.day + 1, until: K.day + (ans.say === 'yes' ? 0 : turn + DUTY.promiseDays), status: 'accepted', fact: f.id};
       S.commitments.push(c);
-      say(ans.say === 'yes' ? `${m.name} еле стоит на ногах; ${fem(K, m.id) ? 'её' : 'его'} дозор ${fem(K, to.m.id) ? 'взяла' : 'взял'} ${to.m.name}.` : `${m.name} просит подмены; ${to.m.name} обещает сменить в следующую ночь.`, [m.id, to.m.id]);
+      say(ans.say === 'yes' ? `${m.name} еле стоит на ногах; ${fem(K, m.id) ? 'её' : 'его'} дозор ${fem(K, to.m.id) ? 'взяла' : 'взял'} ${to.m.name}.` : `${m.name} просит подмены; ${to.m.name} обещает отстоять за ${fem(K, m.id) ? 'неё' : 'него'} ${fem(K, m.id) ? 'её' : 'его'} следующую смену.`, [m.id, to.m.id]);
       if (ans.say === 'yes') on = keepPromises(K, on, able, say);
     }
   } finally { done(); }
-  lapse(K);
   // the night: the watchmen tire, the others sleep
   for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch); L.watched++; L.lastWatch = K.day; } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
   // to the end of the queue go those who stood (or would have stood: the one relieved too — its turn is taken)
@@ -134,8 +137,15 @@ function keepPromises(K, on, able, say) {
 // the promises past their days: lapsed — the creditor's turn did not come while it held (it was relieved by the turn, or
 // hurt): nobody's fault, the bond is not moved
 function lapse(K) {
-  const S = ensureSocial(K);
-  for (const c of S.commitments) if (c.status === 'accepted' && K.day > c.until) close(K, c, 'lapsed');
+  const S = ensureSocial(K), byId = id => K.members.find(m => m.id === id);
+  for (const c of S.commitments) {
+    if (c.status !== 'accepted') continue;
+    // a side gone (dead, taken, sold, left): nobody's fault, closed at once, not on the turn that will not come
+    const db = byId(c.debtor), cr = byId(c.creditor);
+    if (!db || fateOf(db) !== 'in') close(K, c, 'impossible', fateOf(db || {}));
+    else if (!cr || fateOf(cr) !== 'in') close(K, c, 'impossible', `to:${fateOf(cr || {})}`);
+    else if (K.day > c.until) close(K, c, 'lapsed');
+  }
   S.commitments = S.commitments.filter(c => c.status === 'accepted' || K.day - (c.end ?? K.day) <= DUTY.promiseDays * 10);   // (the closed ones a while, for the cards)
 }
 function close(K, c, status, why = null) { c.status = status; c.why = why; c.end = K.day; }

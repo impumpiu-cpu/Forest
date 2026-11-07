@@ -22,7 +22,7 @@ import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
-import {takeOnce, takeBonds, notedFade, takeFacts, noteFate, welcome} from './social.js';
+import {takeOnce, takeBonds, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
 import {shake} from './people.js';
 import {afterFight} from './quest.js';
@@ -122,23 +122,28 @@ function play(K, S, how, label, d = null) {
 // the camp's outcome into the campaign
 export function applyCamp(a, K, S, o, d, how) {
   // a camp is taken back once (campaign/social.js): a second call with the same session changes nothing
-  if (!takeOnce(K, o.session ?? S.seed)) return false;
-  const hurt = [], fallen = [];
+  if (!takeOnce(K, o.session ?? S.seed, S.day ?? K.day)) return false;
+  const hurt = [], fallen = [], fates = [];
   const where = WHERE[how] || 'бою';
+  // taken back in stages, so the order of the company does not matter (the ids do): first each one's own state, then the
+  // bonds and the facts of the map, then the fates and what they mean to the others (a friend taken grieves the one whose
+  // mood the map just gave back, by the bonds the map came to)
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
-    if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
-    if (mo.taken) {   // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
-      m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken'); noteFate(K, m, 'taken', {heard: true});
-      say(a, K, `На стоянке ${m.name} ${m.gender === 'f' ? 'уведена' : 'уведён'} налётчиками в плен.`, 'leave', false, [m.id]); assign(K); continue;
-    }
+    if (mo.escaped || mo.taken) { fates.push([m, mo]); continue; }
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local; if (mo.align) m.align = mo.align; (m.social ||= {}).mood = mo.mood || []; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null; if (mo.effects) m.effects = effectsIn(K, mo.effects); if (mo.wounds) m.wounds = woundsIn(K, mo.wounds); if (mo.marks) m.marks = [...new Set([...(m.marks || []), ...mo.marks])];
   }
   // the bonds the camp came to, between those who were there (the fallen too: what was felt for them is kept)
-  takeBonds(K, S.members.map(m => m.id), o.bonds); notedFade(K, o.faded); takeFacts(K, o.facts);
+  takeBonds(K, S.members.map(m => m.id), o.bonds); takeFacts(K, o.facts);
+  for (const [m, mo] of fates) {
+    if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
+    // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
+    m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken'); noteFate(K, m, 'taken', {heard: true});
+    say(a, K, `На стоянке ${m.name} ${m.gender === 'f' ? 'уведена' : 'уведён'} налётчиками в плен.`, 'leave', false, [m.id]); assign(K);
+  }
   // the beasts: killed, bolted into the dark, led off by the thieves
   const lostB = [], stolenB = [];
   for (const bo of o.beasts) {

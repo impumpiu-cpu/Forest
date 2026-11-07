@@ -617,7 +617,7 @@ export function caravanDay(a, K, day) {
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
   tell(K);   // what one lived through, told at the fire to those who did not see it (campaign/social.js)
-  fadeDay(K);   // the bonds fade by the campaign's day, unless a map's day faded them today (campaign/social.js)
+  fadeDay(K);   // the bonds fade by the campaign's day, once (campaign/social.js)
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId), mend = golemMend(K, town, camping);

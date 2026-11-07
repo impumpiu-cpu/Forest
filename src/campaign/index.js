@@ -57,16 +57,24 @@ export function campaignHash(K) {
   return `${(h >>> 0).toString(16)} · ${alive(K).length}/${K.members.length}`;
 }
 
-// the company's story's fingerprint (plan claude/caravan-ver_d.md §4.3): the bonds, the facts, the promises, the meetings,
-// each one's character and tiredness — the model, not the words said about it; the same seed must give the same story
+// the company's story as a model (plan claude/caravan-ver_d.md §4.3): every part of it that decides what comes next — the
+// bonds and their reasons, the facts with who saw and heard them, each one's memory (what, how, from whom), mood, tiredness,
+// whole character (leanings too), world view, the promises with all their terms, the watch's turn, the council's meetings
+// with every voice, the states of the company's streams of chance — the model, not the words said about it. Keys sorted,
+// numbers to a thousandth: the same story, the same projection (tools/social-check.mjs compares it whole after a load)
+const sortKeys = v => (Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sortKeys(v[k])])) : typeof v === 'number' ? Math.round(v * 1000) / 1000 : v);
+const SOCIAL_STREAMS = ['social', 'council', 'day', 'town', 'quest', 'slaves', 'ferry'];
+export function socialModel(K) {
+  const S = K.social || {};
+  return sortKeys({relations: S.relations || {}, why: S.why || {}, facts: S.facts || [], commitments: S.commitments || [], meetings: S.meetings || [], told: S.told ?? null,
+    duty: K.duty ? {queue: K.duty.queue, on: K.duty.on, night: K.duty.night} : null,
+    members: K.members.map(m => ({id: m.id, alive: m.alive, local: m.local || null, align: m.align || null, alignRoot: m.alignRoot || null, social: m.social || null})),
+    rng: Object.fromEntries(SOCIAL_STREAMS.filter(k => K.rng?.[k] != null).map(k => [k, K.rng[k]]))});
+}
+// its fingerprint
 export function socialHash(K) {
   let h = 2166136261;
-  const mix = str => { for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); } };
-  const S = K.social || {}, r3 = v => Math.round(v * 1000);
-  for (const a of Object.keys(S.relations || {}).sort()) for (const b of Object.keys(S.relations[a]).sort()) mix(`${a}>${b}:${r3(S.relations[a][b])};`);
-  for (const f of S.facts || []) mix(`${f.id}|${f.kind}|${f.by}|${f.to}|${f.saw.join(',')};`);
-  for (const c of S.commitments || []) mix(`${c.id}|${c.status}|${c.why};`);
-  for (const m of S.meetings || []) mix(`${m.day}|${m.point}|${m.pick};`);
-  for (const m of K.members) mix(`${m.id}|${JSON.stringify(m.local?.traits || [])}|${m.local?.likes}|${r3(m.social?.load?.tired || 0)};`);
+  const str = JSON.stringify(socialModel(K));
+  for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); }
   return (h >>> 0).toString(16);
 }

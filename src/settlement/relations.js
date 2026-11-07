@@ -67,12 +67,12 @@ function quarrels(w) {
 
 function daily(w) {
   const col = colonists(w);
-  // on a camp of the caravan (campaign/camp.js) a fallen member is still one of the company: what one felt for it is kept
-  // for the campaign (campaign/social.js), and the camp counts that its day faded the bonds
+  // on a camp of the caravan (campaign/camp.js) the bonds between the members are the campaign's (campaign/social.js): they
+  // fade once a day of the walk there (fadeDay), not again on each map of the day; a fallen member is still one of the
+  // company — what one felt for it is kept. The bonds to the others of the map fade as anywhere
   const member = w.campaign?.memberOf;
-  if (member) w.campaign.faded = (w.campaign.faded || 0) + 1;
   for (const a of col) {
-    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < REL.forget || (!col.some(o => o.id === +id) && !member?.has(+id))) delete a.grudge[id]; }
+    if (a.grudge) for (const id of Object.keys(a.grudge)) { if (member?.has(+id)) continue; a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < REL.forget || !col.some(o => o.id === +id)) delete a.grudge[id]; }
     let worst = null, wv = Infinity, best = null, bv = -Infinity;
     for (const b of col) {
       if (b === a) continue;

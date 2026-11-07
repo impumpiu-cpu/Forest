@@ -70,7 +70,7 @@ export const DUTY = {
   campRest: 0.3,       // on a camp's map the need of rest starts this × tired lower
   // a request to be relieved (Ensemble's way: the asker's wish, then the one asked answers by its own rules)
   askAt: 0.6,          // one this tired, on tonight's watch, asks to be relieved
-  promiseDays: 3,      // a promise «later» is due within this many days, else it lapses
+  promiseDays: 3,      // a promise «later» («your next turn») holds a round of the watch and this many nights over, else it lapses
   gap: 0.25,           // one asks only someone at least this much less tired than itself…
   reask: 6,            // …and not one who said no in the last this many days
   // the answer: the sum of the rules that hold (each a reason); ≥ 0 — yes, ≥ −later — «later», else no

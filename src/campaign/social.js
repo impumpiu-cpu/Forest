@@ -4,7 +4,7 @@
 // campaign takes that back once per camp (the session: the camp's seed). Bonds to one not on the map are kept as they were.
 // Fading: the map's day fades the bonds (settlement/relations.js daily); on a day with no such day on a map, the campaign's
 // own day does — never both for one day.
-//   K.social = {version, relations: {A: {B: v}}, why: {A: {B: [fact id]}}, facts: [fact], applied: {session: day}, faded: {day: n}}
+//   K.social = {version, relations: {A: {B: v}}, why: {A: {B: [fact id]}}, facts: [fact], applied: {session: day}}
 //   m.social = {mood: [{id, text, mood, endDay, span}], memory: [{fact, how, part, day, weight}]}
 import {REL} from '../data/colony.js';
 import {OPINION} from '../data/relations.js';
@@ -42,22 +42,22 @@ export function takeBonds(K, present, back) {
     if (Object.keys(row).length) R[a] = row; else delete R[a];
   }
 }
-// the session of a camp is taken back once; the ledger keeps only the last days' sessions
-export function takeOnce(K, session) {
+// the session of a camp is taken back once, and only on the day it was played (a camp is played and taken back the same day
+// of the walk: campaign/fight.js): an outcome of a day before — however long ago, after a save — is old and refused; so the
+// ledger need keep only the last days' sessions
+export function takeOnce(K, session, day = K.day) {
   const S = ensureSocial(K);
-  if (S.applied[session] != null) return false;
+  if (day < K.day || S.applied[session] != null) return false;
   S.applied[session] = K.day;
   for (const [k, d] of Object.entries(S.applied)) if (d < K.day - 1) delete S.applied[k];
   return true;
 }
-// a map's day faded the bonds today (settlement/relations.js daily, counted by the camp: campOutcome `faded`)
-export function notedFade(K, n) { if (n > 0) { const F = ensureSocial(K).faded; F[K.day] = (F[K.day] || 0) + n; } }
-// the campaign's day: the bonds fade as on a map's day, unless a map's day did it already
+// the campaign's day: the bonds between the members fade, once a day of the walk — the one owner of their time (a map of
+// the day does not fade them: settlement/relations.js daily), to those present and to those away alike
 export function fadeDay(K) {
-  const S = ensureSocial(K), done = S.faded[K.day] || 0;
-  for (const d of Object.keys(S.faded)) if (+d < K.day) delete S.faded[d];
+  const S = ensureSocial(K);
+  S.faded = {};   // (a save from before kept the maps' days here)
   for (const m of K.members) if (m.social?.mood?.length) m.social.mood = m.social.mood.filter(e => e.endDay > K.day);   // what ran out is gone
-  if (done >= 1) return;
   for (const [a, row] of Object.entries(S.relations)) {
     for (const [b, v] of Object.entries(row)) { const x = v * (v > 0 ? REL.fadeGood : REL.fade); if (Math.abs(x) < REL.forget) delete row[b]; else row[b] = x; }
     if (!Object.keys(row).length) delete S.relations[a];

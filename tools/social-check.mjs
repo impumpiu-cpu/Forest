@@ -24,12 +24,12 @@
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, newCampaign, runCampaign, stepCampaign, socialHash} from '../src/campaign/index.js';
+import {capitals, newCampaign, runCampaign, stepCampaign, socialHash, socialModel} from '../src/campaign/index.js';
 import {memberLocal, upgradeMembers} from '../src/campaign/start.js';
 import {campSetup, openCamp, runCamp, campOutcome} from '../src/campaign/camp.js';
 import {takeFromCamp} from '../src/campaign/captives.js';
 import {applyCamp} from '../src/campaign/fight.js';
-import {ensureSocial, takeBonds, fadeDay, notedFade, moodOut, moodIn} from '../src/campaign/social.js';
+import {ensureSocial, takeBonds, fadeDay, moodOut, moodIn, takeOnce} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
 import {reasonsOf, noteFate, bondOf, welcome, judge, tell} from '../src/campaign/social.js';
@@ -104,6 +104,17 @@ check('когда ядра не осталось, остальные отпущ�
   const m = K.members[1], keep = JSON.stringify(m.local);
   delete m.local; upgradeMembers(K); const once = JSON.stringify(m.local); upgradeMembers(K); memberLocal(K, m);
   check('старое сохранение: характер дополняется одинаково и один раз', once === keep && JSON.stringify(m.local) === once);
+  // a character with a part missing (no leanings, no skills): the missing parts of the same roll, what is there kept
+  const p = K.members[2], full = JSON.parse(JSON.stringify(p.local));
+  p.local.likes = 'cook'; delete p.local.leans; delete p.local.skill; upgradeMembers(K);
+  check('часть характера пропала: недостающее — из того же броска, имеющееся не трогается', JSON.stringify(p.local.leans) === JSON.stringify(full.leans) && JSON.stringify(p.local.skill) === JSON.stringify(full.skill) && p.local.likes === 'cook');
+  const S1 = campSetup(a, K, {kind: 'stop', dayIn: 0}), S2 = campSetup(a, K, {kind: 'stop', dayIn: 1});
+  const l1 = openCamp(S1).campaign.people.get(p.id).leans, l2 = openCamp(S2).campaign.people.get(p.id).leans;
+  check('склонности на двух стоянках одни и те же, не новый бросок', JSON.stringify(l1) === JSON.stringify(l2) && JSON.stringify(l1) === JSON.stringify(full.leans), `${JSON.stringify(l1)} / ${JSON.stringify(l2)}`);
+  // the setup is a snapshot: a nested change after it does not reach it
+  const S3 = campSetup(a, K, {kind: 'stop', dayIn: 0}), m3 = K.members.find(x => x.id === S3.members[0].id), sk = Object.keys(m3.local.skill)[0] || 'melee', v0 = S3.members[0].local.skill[sk] ?? 0;
+  m3.local.skill[sk] = (m3.local.skill[sk] || 0) + 1; if (m3.values) m3.values.push('gold'); if (m3.align) m3.align.mercy = (m3.align.mercy || 0) + 5;
+  check('снимок стоянки — копия: изменение навыка, ценностей, мировоззрения после него его не меняет', (S3.members[0].local.skill[sk] ?? 0) === v0 && S3.members[0].local !== m3.local && (!m3.align || S3.members[0].align.mercy !== m3.align.mercy));
 }
 
 // ── the bonds between the maps
@@ -135,11 +146,27 @@ check('когда ядра не осталось, остальные отпущ�
   aa.grudge = {[bb.id]: 3}; bb.dead = true; w4.agents = w4.agents.filter(x => x !== bb);
   const o4 = campOutcome(w4);
   check('связь с павшим на стоянке сохраняется для похода', o4.bonds[A.id]?.[B.id] === 3);
-  // the day's fading: once, by the map's day or by the campaign's
-  R[A.id] = {[B.id]: 2}; ensureSocial(K).faded = {};
-  fadeDay(K); const once = R[A.id][B.id];
-  K.day++; R[A.id][B.id] = 2; notedFade(K, 1); fadeDay(K); const mapDay = R[A.id][B.id];
-  check('связи затухают ровно раз в день: днём похода или днём карты, не обоими', Math.abs(once - 2 * REL.fadeGood) < 1e-9 && mapDay === 2, `без стоянки ${once.toFixed(3)}, после стоянки ${mapDay}`);
+  // the day's fading: once, by the campaign's day — two maps of the day fade nothing of the members' bonds, the bond to
+  // one away fades the same
+  {
+    const away = K.members.find(m => m.alive && ![A.id, B.id].includes(m.id) && !S1.members.some(x => x.id === m.id)) || C;
+    R[A.id] = {[B.id]: 2, [away.id]: 2}; K.camps = [];
+    for (let k = 0; k < 2; k++) {
+      const Sx = campSetup(a, K, {kind: 'stop', dayIn: 0}), wx = runCamp(Sx);
+      applyCamp(a, K, Sx, campOutcome(wx), null, 'stop');
+      (K.camps ||= []).push({day: K.day, kind: 'stop'});
+    }
+    const afterMaps = R[A.id][B.id];
+    fadeDay(K);
+    check('связи затухают ровно раз в день похода: две карты дня их не затухают, отсутствующему — так же', afterMaps === 2 && Math.abs(R[A.id][B.id] - 2 * REL.fadeGood) < 1e-9 && Math.abs(R[A.id][away.id] - 2 * REL.fadeGood) < 1e-9, `после карт ${afterMaps}, к вечеру ${R[A.id][B.id]?.toFixed(4)} / ${R[A.id][away.id]?.toFixed(4)}`);
+  }
+  // an old outcome is refused, however long the ledger was cleaned since
+  {
+    const So = campSetup(a, K, {kind: 'stop', dayIn: 0}), oo = campOutcome(openCamp(So)), d0 = K.day;
+    K.day += 3; takeOnce(K, 'other', K.day);
+    check('старый исход стоянки не принимается и через несколько дней', applyCamp(a, K, So, oo, null, 'stop') === false && takeOnce(K, oo.session, d0) === false);
+    K.day = d0;
+  }
   // the mood and the world view: out of one camp, into the next, with what is left of them
   const mood = moodOut(10, 1000, [{t: 900, id: 'stoodUp', text: 'x', mood: 0.2, until: 1000 + DAY / 2}, {t: 0, id: 'old', text: 'y', mood: -0.1, until: 999}]);
   const back = moodIn(10.25, 50, mood);
@@ -279,6 +306,70 @@ check('когда ядра не осталось, остальные отпущ�
   }
 }
 
+// ── the promise «your next turn» on the real turn of the watch: kept on that turn within its days; past them — lapsed, never
+// kept after; a side gone — closed at once
+{
+  const base = generateAtlas({seed: '829', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const fresh = () => {
+    const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); K.inTown = null;
+    for (const m of K.members) { m.hp = 1; (m.social ||= {}).load = {tired: 0, watched: 0, lastWatch: null}; m.local.traits = []; }
+    K.duty = {queue: K.members.filter(m => m.alive && !m.captive).map(m => m.id), night: null, on: []};
+    return {a, K};
+  };
+  const nights = (a, K, n) => { const log = []; for (let d = 0; d < n; d++) { log.push(nightWatch(a, K, {}).join(',')); K.day++; } return log; };
+  // the promise as the request makes it: from tomorrow, a round of the watch and DUTY.promiseDays over
+  {
+    const {a, K} = fresh(), q = K.duty.queue, cr = q[0], db = q[2], per = Math.max(1, Math.min(DUTY.watch, Math.floor(q.length / DUTY.per))), turn = Math.ceil(q.length / per);
+    ensureSocial(K).commitments.push({id: 'n1', kind: 'watch', debtor: db, creditor: cr, made: K.day, due: K.day + 1, until: K.day + turn + DUTY.promiseDays, status: 'accepted'});
+    K.duty.queue = [...q.slice(1), cr];   // (tonight the creditor stood: to the end of the turn)
+    const log = nights(a, K, turn + DUTY.promiseDays + 1), c = K.social.commitments.find(x => x.id === 'n1'), fact = K.social.facts.find(f => f.kind === 'tookWatch' && f.params?.promise === 'n1');
+    check('«в твою следующую смену»: исполнено в настоящую очередь того, кому обещано, в срок', c.status === 'fulfilled' && c.end <= c.until && !!fact, `${c.status} на ${c.end}, срок ${c.until}; ночи ${log.join(' | ')}`);
+  }
+  // a promise whose days run out before the turn comes: lapsed, and not kept on the turn after
+  {
+    const {a, K} = fresh(), q = K.duty.queue, cr = q[0], db = q[q.length - 1];
+    ensureSocial(K).commitments.push({id: 'n2', kind: 'watch', debtor: db, creditor: cr, made: K.day, due: K.day + 1, until: K.day + 1, status: 'accepted'});
+    K.duty.queue = [...q.slice(1), cr];
+    nights(a, K, q.length + 2);
+    const c = K.social.commitments.find(x => x.id === 'n2');
+    check('срок обещания вышел до очереди — истекло, и в следующую очередь не исполняется', c.status === 'lapsed' && !K.social.facts.some(f => f.kind === 'tookWatch' && f.params?.promise === 'n2'), `${c.status} на ${c.end}`);
+  }
+  // the one it was promised to is gone: closed at once, not on a turn that will not come
+  {
+    const {a, K} = fresh(), q = K.duty.queue, cr = K.members.find(m => m.id === q[0]), db = q[q.length - 1];
+    ensureSocial(K).commitments.push({id: 'n3', kind: 'watch', debtor: db, creditor: cr.id, made: K.day, due: K.day + 1, until: K.day + 10, status: 'accepted'});
+    die(a, K, cr, 'пал'); nights(a, K, 1);
+    const c = K.social.commitments.find(x => x.id === 'n3');
+    check('тот, кому обещано, погиб — обещание закрыто сразу', c.status === 'impossible', `${c.status} ${c.why}`);
+  }
+}
+
+// ── a camp taken back in any order of the company: one taken — the friend grieves, whatever the order
+{
+  const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0}), fz = JSON.stringify(saveAtlas(base));
+  const run = rev => {
+    const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'local'}), [A, B] = K.members;
+    ensureSocial(K).relations[B.id] = {[A.id]: 3};
+    const S = campSetup(a, K, {kind: 'night', dayIn: 0}), o = campOutcome(runCamp(S));
+    o.members = o.members.map(mo => (mo.id === A.id ? {id: A.id, alive: false, taken: true} : mo));
+    if (rev) o.members.reverse();
+    applyCamp(a, K, S, o, {kind: 'raiders', label: 'налётчики'}, 'night');
+    return (B.social?.mood || []).map(e => e.id).sort().join();
+  };
+  const one = run(false), two = run(true);
+  check('порядок участников не меняет исход стоянки: уведённого друга оплакивают при любом порядке', one === two && /loss|taken/.test(one), `${one} / ${two}`);
+}
+
+// ── the camp's outcome taken twice at the same tick: the same, the fallen bound once
+{
+  const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'local'});
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S), ag = w.campaign.people.get(K.members[0].id);
+  ag.downed = true; ag.hp = 0.01 * (ag.maxHp || 100);
+  const o1 = campOutcome(w), o2 = campOutcome(w), h = o => o.members.find(m => m.id === K.members[0].id)?.hp;
+  check('исход стоянки, взятый дважды на одном тике, тот же: перевязка одна', h(o1) === h(o2) && JSON.stringify(o1.facts) === JSON.stringify(o2.facts), `${h(o1)} / ${h(o2)}`);
+}
+
 // ── the alarm: a friend fallen, one's own nerve; the fallen bound only by the living
 {
   const base = generateAtlas({seed: '842', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
@@ -362,6 +453,18 @@ check('когда ядра не осталось, остальные отпущ�
   const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); for (let k = 0; k < 4; k++) stepCampaign(a);
   const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))); for (let k = 0; k < 4; k++) { stepCampaign(a); stepCampaign(b); }
   check('один сид — одна история команды; сохранение в пути продолжается так же', h1 === h2 && socialHash(a.campaign) === socialHash(b.campaign), `${h1} / ${h2}; после загрузки ${socialHash(a.campaign)} / ${socialHash(b.campaign)}`);
+  check('после загрузки совпадает вся модель команды, не только отпечаток', JSON.stringify(socialModel(a.campaign)) === JSON.stringify(socialModel(b.campaign)));
+  // the fingerprint sees what decides what comes next: memory, a promise's terms, the leanings, a stream of chance
+  const h0 = socialHash(a.campaign), m = a.campaign.members.find(x => x.alive), changes = [
+    () => { (m.social ||= {}).memory = [...(m.social.memory || []), {fact: 'x', how: 'heard', from: 1}]; },
+    () => { ensureSocial(a.campaign).commitments.push({id: 'z', kind: 'watch', debtor: 1, creditor: 2, made: 0, due: 1, until: 3, status: 'accepted'}); },
+    () => { a.campaign.social.commitments.at(-1).due = 100; },
+    () => { m.local.leans = {...m.local.leans, persist: (m.local.leans?.persist ?? 0.5) + 0.1}; },
+    () => { a.campaign.rng.social = (a.campaign.rng.social ?? 1) + 1; },
+  ];
+  const seen = [h0];
+  for (const f of changes) { f(); seen.push(socialHash(a.campaign)); }
+  check('отпечаток различает память, сроки обещания, склонности, поток случайности', new Set(seen).size === seen.length, seen.join(' '));
 }
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)

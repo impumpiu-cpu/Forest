@@ -69,15 +69,26 @@ export function makeMember(K, rnd, {race, role, gear, core = false, lean = null,
 // from before gets the same character whenever it is filled in). What one already has is kept: a captive taken on the local
 // map brings its own (campaign/captives.js takeFromCamp); an old save keeps what its first camp gave. The ranks' skills and
 // a tool's own (data/camp.js CAMP.skills, CAMP.tools) come with it, as the first camp gave them before.
+// A character of a save from before with some of it missing (no leanings, no skills…) gets the missing parts of the same roll,
+// never a new roll of what it has.
+const LOCAL_KEYS = ['likes', 'dislikes', 'prefs', 'traits', 'food', 'own', 'skill', 'leans'];
 export function memberLocal(K, m) {
-  if (m.local || !isSentient(SPECIES.get(m.race))) return m.local || null;
+  if (!isSentient(SPECIES.get(m.race))) return m.local || null;
+  if (m.local) {
+    const lack = LOCAL_KEYS.filter(k => m.local[k] == null);
+    if (lack.length) { const born = rollLocal(K, m); for (const k of lack) m.local[k] = born[k]; }
+    return m.local;
+  }
+  m.local = rollLocal(K, m);
+  return m.local;
+}
+function rollLocal(K, m) {
   const rng = s => mulberry(seedNumber(`${K.seed}:campaign:${s}:${m.id}`));
   const c = {special: m.special};
   personality({rngs: {birth: rng('personality'), leans: rng('leans')}}, c);
   for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) c.skill[id] = Math.max(c.skill[id] || 0, v);
   for (const tok of m.gear?.hand || []) { const id = gearType(tok); if (CAMP.tools[id]) c.skill[CAMP.tools[id]] = Math.max(c.skill[CAMP.tools[id]] || 0, CAMP.toolSkill); }   // (a bought or forged piece is a word with marks: «ironaxe@dwarf»)
-  m.local = {likes: c.likes, dislikes: c.dislikes, prefs: c.prefs, traits: c.traits, food: c.food, own: c.own, skill: c.skill, leans: c.leans};
-  return m.local;
+  return {likes: c.likes, dislikes: c.dislikes, prefs: c.prefs, traits: c.traits, food: c.food, own: c.own, skill: c.skill, leans: c.leans};
 }
 // a campaign of a save from before: every member gets the character it lacks (idempotent — memberLocal keeps what is there)
 export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) memberLocal(K, m); }
