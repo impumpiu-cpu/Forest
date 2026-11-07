@@ -125,7 +125,8 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     wireMindsButton($('campMinds'));   // the overmind's marks on the camp's map (render/minds.js)
     this.localR = new Renderer($('campLocal'));
     // a click on the camp's map: the card of the creature there, else the building, else the cell (ui/cards.js)
-    $('campLocal').addEventListener('click', e => this.pickLocal(e));
+    this.wireLocalCamera();   // the camp's map zooms and pans on its own camera (ui/campLocal.js)
+    $('campLocal').addEventListener('click', e => { if (this.localDragged) { this.localDragged = false; return; } this.pickLocal(e); });
     // the chronicle: themes to hide (remembered in this browser), one member's lines, the text into a file
     this.hidden = loadHidden(); this.who = null; this.logKey = '';
     const tp = $('campTopics');

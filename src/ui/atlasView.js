@@ -198,7 +198,7 @@ export class MapView extends MapOverlays {
     }, {passive: false});
     $(ids.zoomIn).addEventListener('click', () => this.zoomCentre(1.6));
     $(ids.zoomOut).addEventListener('click', () => this.zoomCentre(1 / 1.6));
-    $(ids.zoomFit).addEventListener('click', () => { if (this.cam) { this.cam.reset(); this.draw(); } });
+    $(ids.zoomFit).addEventListener('click', () => this.zoomFit());
     // the look (render/skin.js): «Картинки» or «Схема», one for all the maps; G flips it (app/main.js)
     if (ids.skin) wireSkinButton($(ids.skin));
     document.addEventListener(SKIN_EVENT, () => { if (!$(ids.screen).hidden) this.draw(); });
@@ -206,7 +206,7 @@ export class MapView extends MapOverlays {
       if ($(ids.screen).hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
       if (e.key === '+' || e.key === '=') this.zoomCentre(1.6);
       else if (e.key === '-' || e.key === '_') this.zoomCentre(1 / 1.6);
-      else if (e.key === '0' || e.key === 'Home') { if (this.cam) { this.cam.reset(); this.draw(); } }
+      else if (e.key === '0' || e.key === 'Home') this.zoomFit();
     });
   }
 
@@ -214,6 +214,7 @@ export class MapView extends MapOverlays {
   box() { const cv = $(this.ids.map); return [cv.clientWidth || 1, cv.clientHeight || 1]; }
 
   zoomCentre(f) { if (!this.cam) return; const [cw, ch] = this.box(); this.cam.zoomAt(cw, ch, f, cw / 2, ch / 2); this.draw(); }
+  zoomFit() { if (this.cam) { this.cam.reset(); this.draw(); } }
 
 
   // the size unit of what is drawn over the cells: a 192-cell-high world's cell at zoom 1, growing

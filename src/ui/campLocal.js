@@ -25,6 +25,25 @@ export const campLocal = Base => class extends Base {
     this.localR.setup(w);
     this.localText(); this.renderStock();
   }
+  // the camp's map has its own camera (the local view's {zoom, cx, cy}, render/renderer.js): while a camp is shown the
+  // zoom buttons and keys work on it (MapView.zoomCentre, zoomFit), the wheel zooms at the cursor, dragging pans
+  zoomCentre(f) { const L = this.local; if (!L) return super.zoomCentre(f); const [cw, ch] = this.localR.size(); this.localR.zoomAt(L.w, L.view.cam, f, cw / 2, ch / 2); }
+  zoomFit() { const L = this.local; if (!L) return super.zoomFit(); L.view.cam.zoom = 1; L.view.cam.cx = L.w.w / 2; L.view.cam.cy = L.w.h / 2; }
+  wireLocalCamera() {
+    const cv = $('campLocal'), at = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    cv.addEventListener('wheel', e => { const L = this.local; if (!L) return; e.preventDefault(); const [px, py] = at(e); this.localR.zoomAt(L.w, L.view.cam, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), px, py); }, {passive: false});
+    let g = null;
+    cv.addEventListener('pointerdown', e => { if (!this.local) return; g = {id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: e.button !== 0}; this.localDragged = false; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => {
+      const L = this.local; if (!L || !g || g.id !== e.pointerId) return;
+      if (!g.drag && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 4) g.drag = true;
+      if (g.drag) { this.localR.pan(L.w, L.view.cam, e.clientX - g.lx, e.clientY - g.ly); this.localDragged = true; }
+      g.lx = e.clientX; g.ly = e.clientY;
+    });
+    const up = () => { g = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('contextmenu', e => e.preventDefault());
+  }
   // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
   localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
   localText() {
