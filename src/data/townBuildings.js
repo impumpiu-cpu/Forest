@@ -532,7 +532,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
   // load — a work's share of its hands and strength (t.load: atlas/treasury.js loadStep; after OpenTTD): each season, as much as `up`
   // of what its goods are worth found a taker (not the merchants of the overflow nor the rot) — `step` up; `down` or less —
   // `stepDown` down, never below `least`; a work whose mean strength falls below the line is razed for its slot (TOWN_SLOTS)
-  load: {up: 0.8, down: 0.6, step: 0.15, stepDown: 0.15, least: 0.2}};
+  load: {up: 0.8, down: 0.5, step: 0.15, stepDown: 0.1, least: 0.2}};
 
 // The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a
 // treasury (t.gold); each realm a treasury (realm.gold).

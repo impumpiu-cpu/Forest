@@ -87,7 +87,7 @@ check('загрузка по сбыту: лишнее, которого ждёт
   const mk = () => town({built: ['mineshaft'], load: {mineshaft: 0.5}, econ: {rows: [{id: 'mineshaft', gave: {iron: 8}}], recipes: [], made: {iron: 8}, used: {}, over: {iron: 2}}});
   const L = TOWN_FLOW.load, at = w => { const t = mk(); loadStep(t, w); return t.load?.mineshaft ?? 1; };
   assert.ok(Math.abs(at({iron: 2}) - (0.5 + L.step)) < 1e-9, 'ждут всё лишнее — выпуск растёт');
-  assert.ok(Math.abs(at({}) - (0.5 - L.step)) < 1e-9, 'никто не ждёт — выпуск падает');
+  assert.ok(Math.abs(at({}) - (0.5 - (L.stepDown ?? L.step))) < 1e-9, 'никто не ждёт — выпуск падает на шаг вниз');
 });
 
 check('склад не сжимается вслед за выпуском: при постоянном спросе 30 за сезон выпуск не падает ниже спроса', () => {
