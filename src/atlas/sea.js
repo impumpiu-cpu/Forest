@@ -26,7 +26,7 @@ function quay(a, t) {
   return -1;
 }
 
-const stepCost = (a, i) => (a.f.ocean[i] ? SEA.cost * (1 - SEA.ease * Math.min(1, a.f.sea[i] / SEA.levels[0].wear)) : Infinity);
+const stepCost = (a, i) => (a.f.ocean[i] ? SEA.cost * (1 - SEA.ease * Math.min(1, (a.f.sea ? a.f.sea[i] : 0) / SEA.levels[0].wear)) : Infinity);
 
 // A* over the water from one quay to another
 function sail(a, s, t, scratch) {
@@ -52,6 +52,13 @@ function sail(a, s, t, scratch) {
   if (found) { path = []; for (let i = t; i !== s; i = came[i]) path.push(i); path.push(s); }
   for (const i of touched) g[i] = Infinity;
   return path;
+}
+
+// the way over the water from one sea cell to another, in order from s (the caravan's ferry: campaign/ferry.js); null — none
+export function seaWay(a, s, t) {
+  const scratch = a.seaScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
+  const p = sail(a, s, t, scratch);
+  return p ? p.reverse() : null;
 }
 
 // one round of shipping between harbours; returns the pairs that got a lane for the first time

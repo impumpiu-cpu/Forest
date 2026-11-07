@@ -49,6 +49,9 @@ export function perTick(w, key, make) {
 
 // the distance between two things with x, y (agents, towns, lairs); between two cells of a grid of width a.w by index
 export const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+// a cell's centre on the world map, [x, y]; a sum of gold to a tenth
+export const centreOf = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
+export const tenth = v => Math.round(v * 10) / 10;
 export const cellDist = (a, i, j) => Math.hypot(i % a.w - j % a.w, ((i / a.w) | 0) - ((j / a.w) | 0));
 // the first letter capitalised («волк» → «Волк»)
 export const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : s);

@@ -100,6 +100,8 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
   return D.on;
 }
 const rest = (m, v) => { const L = loadOf(m); L.tired = Math.max(0, L.tired - v); };
+// a night off the watch for all (aboard a ferry the boat's crew keeps it: campaign/ferry.js) — rested as in a camp
+export function offDuty(K) { for (const m of K.members) if (m.alive && !m.captive) rest(m, DUTY.rest.camp); }
 const round = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v * 100) / 100]));
 
 // tonight's promises: for each one due whose creditor is on tonight — kept (the debtor takes the place), failed through no

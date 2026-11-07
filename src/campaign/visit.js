@@ -96,7 +96,7 @@ export function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach
   }
   return urgent ? fallback : null;
 }
-export const VISIT_WHY = {smith: 'отдать руду кузнецу', winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах'};
+export const VISIT_WHY = {smith: 'отдать руду кузнецу', winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах', ferry: 'найти лодку для переправы'};
 
 // the caravan comes into a town: trade, hire, meet who would go along
 export function enterTown(a, K, t) {

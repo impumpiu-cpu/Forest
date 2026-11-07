@@ -22,6 +22,7 @@ import {wherePhrase} from '../atlas/lairs.js';
 import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {reachable, foot, circle} from './quest.js';
+import {overSea} from './ferry.js';
 import {lairGuard} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {QUEST} from '../data/quest.js';
@@ -96,12 +97,13 @@ export function makeEpicQuest(a, K, rnd) {
   }
   const c4 = old || gatherFourth(a, seat.at, EPIC.doom), lair = a.lairs.find(l => l.id === c4.lair), A = a.artifact;
   // the graves: each a clue, guarded by a miniboss of its boss's retinue
-  const clues = [];
+  const clues = [], sea = overSea(a, K, mask) || mask;   // (a grave over the water is sought there: the ferry — campaign/ferry.js)
   for (const g of a.graves || []) {
     const c = a.calamities.find(x => x.id === g.calamity), gl = a.lairs.find(l => l.id === c?.lair);
-    // a grave out of the caravan's walk (beyond water, on another land) or on a place taken already (the seat, another
-    // clue): its clue is a cenotaph — the stone of its epitaph raised on the walk's nearest free cell to it, guarded the same
-    let at = foot(a, mask, g.i, 6), far = false;
+    // a grave the caravan cannot reach even by a ferry (no boats at the sea on its land) or on a place taken already (the
+    // seat, another clue): its clue is a cenotaph — the stone of its epitaph raised on the walk's nearest free cell to it,
+    // guarded the same
+    let at = foot(a, sea, g.i, 6), far = false;
     const free = j => j >= 0 && dist(a, j, seat.at) >= EPIC.clueApart && clues.every(x => dist(a, j, x.i) >= EPIC.clueApart);
     if (at < 0 || at === seat.at || clues.some(x => x.i === at)) { at = nearestFree(a, cells, g.i, free); far = true; if (at < 0) continue; }
     const retinue = gl ? (LAIRS.get(gl.kind)?.species || c.boss.species) : c.boss.species, sp = SPECIES.get(retinue);

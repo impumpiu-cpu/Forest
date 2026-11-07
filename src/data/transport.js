@@ -113,3 +113,11 @@ export const FODDER = {graze: 0.35, starve: 0.03, regain: 0.03};
 // the council keeps the wheels when the road takes at most `keep` × the straight way's days; otherwise the vehicles
 // are left and the caravan goes straight (the camp's buildings go with it either way)
 export const ROUTE = {keep: 1.6};
+// The ferry (campaign/ferry.js): a goal over the water is reached with a boat hired in a town of the caravan's land.
+//   from:  the buildings that have boats at the sea (a fishing hut, a pier, a harbour)
+//   speed: cells of water a day (× the world's scale); sea: a cell of water against one of land, choosing the port
+//   price: gold a day of the way (both ways paid at once): base + for each of the company, each beast, each vehicle;
+//          short of it, they take what the treasury has
+//   wait:  days the company waits at its landing for the boat back, [lo, hi]; fed: the rations a day of each aboard the
+//          boat's catch gives (1 — they are fed)
+export const FERRY = {from: ['fishhut', 'pier', 'harbor'], speed: 3, fed: 1, sea: 0.5, price: {base: 1, head: 0.3, beast: 0.3, wheels: 1}, wait: [1, 3]};

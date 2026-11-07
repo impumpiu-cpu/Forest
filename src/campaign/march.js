@@ -55,7 +55,8 @@ import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate, tell} from './social.js';
-import {nightWatch, tiredOf} from './duty.js';
+import {nightWatch, tiredOf, offDuty} from './duty.js';
+import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
@@ -244,15 +245,28 @@ function lacking(K, kind) {
 // the way to the goal: with the wheels along the roads, or straight on foot; the wheels are kept when
 // the road is not too much longer (data/transport.js ROUTE), otherwise left behind
 function plan(a, K) {
-  const foot = route(a, K.i, K.goal, K.people, false);
+  // no way by land (a goal over the water, home from there): the ferry (campaign/ferry.js) — to the port, aboard, ashore;
+  // a deal under way is asked first (the way to the port, the landing), else only when the land has no way
+  const ferry = () => {
+    const to = ferryPlan(a, K, (text, kind) => say(a, K, text, kind));
+    if (to === -1) { K.path = null; return true; }
+    return to != null && planTo(a, K, to);
+  };
+  if (K.ferry && ferry()) return;
+  if (planTo(a, K, K.goal) || (!K.ferry && ferry())) return;
+  K.path = null; say(a, K, 'Дороги к цели нет: караван топчется на месте.', 'lost');
+}
+// the way to a cell → true when there is one (K.path set)
+function planTo(a, K, goal) {
+  const foot = route(a, K.i, goal, K.people, false);
   let way = foot;
   if (wheeled(K)) {
-    const road = route(a, K.i, K.goal, K.people, true), keep = ROUTE.keep;
+    const road = route(a, K.i, goal, K.people, true), keep = ROUTE.keep;
     if (road && (!foot || road.cost <= keep * foot.cost)) {
       way = road;
       if (K.route !== 'road') say(a, K, `Совет: идти с обозом по дорогам${foot && road.cost > foot.cost * 1.05 ? ` — дольше на ${Math.round((road.cost / foot.cost - 1) * 100)}%, зато всё с собой` : ''}.`, 'route');
       K.route = 'road';
-    } else {
+    } else if (foot) {   // (no way at all, on wheels or on foot: nothing is left behind — the ferry is asked: plan)
       const names = K.vehicles.map(v => VEHICLES[v.kind].label).join(' и ');
       K.vehicles = []; K.stats.left++; assign(K);
       const lost = overflow(K);
@@ -261,7 +275,7 @@ function plan(a, K) {
     }
   } else K.route = null;
   if (way) { K.path = way.path; K.k = 0; }
-  else { K.path = null; say(a, K, 'Дороги к цели нет: караван топчется на месте.', 'lost'); }
+  return !!way;
 }
 
 // what the council would build now, if anything: a cart (bronze), a wagon (iron and a draft beast),
@@ -554,14 +568,16 @@ export function caravanDay(a, K, day) {
   const ms = alive(K), {r, done} = draw(K, 'day');
   // the day: a camp or the march; food from the land either way
   const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
-  const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null;
-  const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
+  const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null, sailing = aboard(K);   // (aboard a ferry: campaign/ferry.js)
+  const camping = !town && !sailing && (K.camp > 0 || !K.path || K.k >= K.path.length);
+  let seen = K.i;   // (the cell the scouts see from: on the water, where the boat is)
   if (town) {   // a day in town: work for hire, buy the day's food at the market (hired out for board: the town feeds them)
     labour(K, town);
     if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
     const st = standing(a, K, town), price = st ? rationPrice(town, st, termsOf(a, K, town).buy) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * VISIT.dayFood - K.food);
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - toTown(town, n * price)) * 10) / 10; }
-  } else if (!camping) {
+  } else if (sailing) seen = sailDay(a, K, (text, kind) => say(a, K, text, kind));   // the days on the water: no march, no forage, no camp
+  else if (!camping) {
     const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p;
     // the brews of the day (campaign/potions.js): in frost everyone drinks a warming one — then the frost does not slow
     // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
@@ -577,9 +593,9 @@ export function caravanDay(a, K, day) {
   const onMap = camping && K.why && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
-  if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
+  if (!town && !sailing && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   const forage = ms.length * (camping ? Fo.camp * stopFood(a, K) : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
-  if (!town && !onMap) K.food += forage;
+  if (!town && !onMap && !sailing) K.food += forage;
   // the herd in hunger: one is slaughtered for its meat (data/transport.js CAMP_KIT.herd)
   if (K.food < mouths(K) * CAMPAIGN.ration) {
     const b = K.beasts.find(x => BEASTS[x.kind].use === 'food' && x.hp > 0);
@@ -596,7 +612,7 @@ export function caravanDay(a, K, day) {
   } else if (K.hungry) { if (K.hungry >= HT.over) say(a, K, `Голод отступил после ${pieces(K.hungry, 'дня', 'дней', 'дней')}.`, 'hunger'); K.hungry = 0; }
   for (const m of ms) {
     if (K.hungry > CAMPAIGN.hunger.wasteAfter) { m.hp -= CAMPAIGN.hunger.waste * (0.5 + r()) * (camping ? campFx(K, 'shelter') : 1); if (m.hp <= 0) { die(a, K, m, 'умер от голода'); continue; } }
-    else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? CAMPAIGN.heal.ride : 1)) * (1 - DUTY.healCut * tiredOf(m)));   // (the tired heal slower: campaign/duty.js)
+    else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : sailing ? CAMPAIGN.heal.camp : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? CAMPAIGN.heal.ride : 1)) * (1 - DUTY.healCut * tiredOf(m)));   // (the tired heal slower: campaign/duty.js)
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
@@ -605,7 +621,7 @@ export function caravanDay(a, K, day) {
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId), mend = golemMend(K, town, camping);
-  for (const b of [...K.beasts]) {
+  for (const b of sailing ? [] : [...K.beasts]) {   // (aboard the beasts are fed with the company: neither graze nor starve)
     // a golem eats nothing and mends only at a forge or by a dwarf's hand (data/constructs.js GOLEM_REPAIR)
     if (BEASTS[b.kind]?.golem) { if (mend) b.hp = Math.min(1, b.hp + mend); continue; }
     b.hp = grass ? Math.min(1, b.hp + FODDER.regain * (BEASTS[b.kind].use === 'ride' ? kitOf(K).regain ?? 1 : 1)) : b.hp - FODDER.starve * (0.5 + r());
@@ -615,9 +631,12 @@ export function caravanDay(a, K, day) {
   done();
   // what they can carry
   assign(K); overflow(K);
-  if (core(K).length) { entered(a, K, before); evening(a, K); }
-  if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
-  if (core(K).length && !ended(K)) night(a, K);
+  if (sailing) offDuty(K);   // (aboard the boat's crew keeps the watch: the company rests — campaign/duty.js)
+  else {
+    if (core(K).length) { entered(a, K, before); evening(a, K); }
+    if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
+    if (core(K).length && !ended(K)) night(a, K);
+  }
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
     K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)
@@ -628,9 +647,9 @@ export function caravanDay(a, K, day) {
   if (!ended(K) && K.day >= yearsOf(K) * YEAR_DAYS) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
-  reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
-  // the quest: what the scouts see of the places sought; with the crown, the world's pursuit
-  if (K.quest && !ended(K)) {
+  reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
+  // the quest: what the scouts see of the places sought; with the crown, the world's pursuit (none over the water)
+  if (K.quest && !ended(K) && !sailing) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');
     questSight(a, K, tell); pursuit(a, K, rq, tell); epicDay(a, K, rq, tell); dq();
   }

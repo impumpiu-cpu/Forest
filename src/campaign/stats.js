@@ -85,6 +85,7 @@ export function walkStats(a, K) {
     ['В городах', `${v('towns')} раз, нанимались на работу ${v('worked')}`],
     ['Голодных дней', `${v('hungryDays')}, кормили даром ${v('alms')} раз`],
     ['Бросили повозки', v('left')],
+    ['Переправ через воду', `${v('ferries')}${K.ferry ? (K.ferry.state === 'aboard' ? ' — сейчас на борту' : K.ferry.state === 'landed' ? ' — лодка заберёт из бухты высадки' : ' — идут к лодке') : ''}`],
   ]});
   if (K.quest) {
     const Q = K.quest, C = Q.crown;

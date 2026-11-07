@@ -29,6 +29,7 @@ import {lairFoe, lairGuard, rulerAtHead} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
+import {overSea} from './ferry.js';
 import {cellDist, weighted} from '../core/util.js';
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickFirst, tracing, noteDecision} from '../core/decide.js';
@@ -250,7 +251,8 @@ function searchCell(a, K, place, rnd) {
 }
 // the walkable mask, kept beside the campaign (not saved): asked rarely, when a search picks a cell
 const MASKS = new WeakMap();
-function reachMask(a, K) { let m = MASKS.get(K); if (!m) MASKS.set(K, m = reachable(a, K).mask); return m; }
+// (an epic quest's places may lie over the water: there the lands a ferry reaches too — campaign/ferry.js)
+function reachMask(a, K) { let m = MASKS.get(K); if (!m) { m = reachable(a, K).mask; if (K.quest?.epic) m = overSea(a, K, m) || m; MASKS.set(K, m); } return m; }
 
 // ── each day: what the scouts see of the places they look for
 export function questSight(a, K, say) {
