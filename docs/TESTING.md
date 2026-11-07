@@ -30,7 +30,7 @@ check-layers · art-check · atlas-check 2 · atlas-save-check 1 · map-check 3 
 check-data · check-tables · align-check · leaders-check · buildings-check · elves-check · dwarves-check · greenskins-check · humans-check ·
 caravan-check · economy-check · economy-regression-check · chain-balance 5 --check · kinds-check · fight-check ·
 conditions-check · ranks-check · potions-check · review-check · checks-check · clock-check · kingdom-check · polity-check · mind-check ·
-demography-check · build-check · needs-check · donors-check · fisc-check · content-check · land-check · settle-check ·
+demography-check · build-check · needs-check · donors-check · social-check · fisc-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · minds-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 

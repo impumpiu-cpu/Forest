@@ -608,7 +608,7 @@ export function caravanDay(a, K, day) {
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
     K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)
-    for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year}; memberFate(a, m, 'freed'); }
+    for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year, disbanded: true}; memberFate(a, m, 'freed'); }   // (alive: not to be mourned as the fallen — social/fate.js)
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
   }

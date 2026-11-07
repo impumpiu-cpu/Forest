@@ -23,7 +23,7 @@ export function people(a, K, r) {
     // a day with the caravan: hunger, a bad wound, the sight of captives on a cut ration — and the leader's word
     const d = LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0) + (m.hp < 0.5 ? LOYALTY.hurt : 0) + (K.captiveCut ? LOYALTY.cruel : 0) + charm;
     m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
-    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ${m.gender === 'f' ? 'ушла' : 'ушёл'} своей дорогой`);
+    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, K.hungry ? 'hunger' : 'loyalty', `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ${m.gender === 'f' ? 'ушла' : 'ушёл'} своей дорогой`);
     else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
   }
 }
@@ -33,12 +33,12 @@ function contractDay(a, K, m, r) {
   const C = CONTRACT, c = m.contract, f = m.gender === 'f';
   c.opinion = Math.max(0, Math.min(1, (c.opinion ?? C.start) + C.daily + (K.hungry ? C.hungry : 0) + (m.hp < 0.5 ? C.hurt : 0)));
   if (K.day < c.until) {
-    if (c.opinion < C.desert && r() < C.deserts) { K.stats.deserted = (K.stats.deserted || 0) + 1; leave(a, K, m, `${m.name}, ${rank(K, m)}, не дождал${f ? 'ась' : 'ся'} конца срока и сбежал${f ? 'а' : ''}: служба ${f ? 'ей' : 'ему'} опостылела`); }
+    if (c.opinion < C.desert && r() < C.deserts) { K.stats.deserted = (K.stats.deserted || 0) + 1; leave(a, K, m, 'deserted', `${m.name}, ${rank(K, m)}, не дождал${f ? 'ась' : 'ся'} конца срока и сбежал${f ? 'а' : ''}: служба ${f ? 'ей' : 'ему'} опостылела`); }
     return;
   }
   if (c.opinion >= C.stay && !room(K, 'stay')) {   // it would stay, but the joined are full: it goes with thanks
     K.stats.stayFull = (K.stats.stayFull || 0) + 1;
-    leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ${f ? 'ушла' : 'ушёл'} с благодарностью`);
+    leave(a, K, m, 'noRoom', `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ${f ? 'ушла' : 'ушёл'} с благодарностью`);
     return;
   }
   if (c.opinion >= C.stay) {
@@ -52,10 +52,11 @@ function contractDay(a, K, m, r) {
     say(a, K, `${m.name}, ${rank(K, m)}, попросил${f ? 'а' : ''} продлить службу: ещё ${C.days} дней за ${cost} зол.`, 'people', false, [m.id]);
     return;
   }
-  leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ${f ? 'ушла' : 'ушёл'}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
+  leave(a, K, m, 'term', `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ${f ? 'ушла' : 'ушёл'}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
 }
-function leave(a, K, m, text) {
-  m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year};
+// why one leaves (social/fate.js): 'hunger', 'loyalty' (it never took to the company), 'deserted', 'noRoom', 'term'
+function leave(a, K, m, why, text) {
+  m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, why};
   say(a, K, text + '.', 'leave'); assign(K);
 }
 export const shake = (K, d) => {
