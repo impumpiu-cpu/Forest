@@ -159,6 +159,7 @@ export function stepNet(a, feeds) {
   for (const [t, o] of tradeLinks(a, NET.links, NET.reach)) {
     const key = linkKey(t, o); alive.add(key);
     if (!L.has(key)) L.set(key, {p: t, q: o, c: NET.start, flow: 0});
+    else delete L.get(key).via;   // (a route abroad through other lands whose ends have come to neighbour: a link like any — atlas/treasury.js farWays)
   }
   // a link to a razed town dies with it: a dead end must not keep a share of the living town's surplus
   for (const [key, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key); else if (!alive.has(key)) { l.c *= 1 - NET.decay; if (l.c < NET.min) L.delete(key); }

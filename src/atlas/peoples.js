@@ -37,7 +37,7 @@ import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess, seaFeed} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmHome} from './realms.js';
+import {foundRealm, joinRealm, realmLabel, realmLabelGen, realmHome} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 import {abandonEmpty, lifeYear} from './demography.js';
@@ -363,7 +363,9 @@ export function seasonTowns(a, say) {
     if (stepWilds(a, t) && t.treants === 1) say(`У ${townLabel(t, 2)} ${t.name} проснулся древень: старое дерево сошло с корней и встало на стражу.`);   // the elves' grove (atlas/wilds.js)
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
   }
-  seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
+  const money = seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
+  // a trade route through other lands, the first between two realms (atlas/treasury.js farWays): told once
+  for (const [b, s, via] of money.routes) say(`Купцы ${townLabel(b, 2)} ${b.name} проложили торговый путь в ${townLabel(s, 1)} ${s.name} (${realmLabel(a, s.realm)}) через земли ${via.map(id => realmLabelGen(a, id)).join(' и ')}.`);
   for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
   for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t, a); }   // its works' strength kept; its people's mood (atlas/mood.js)
   // the gates of growth (TOWN_LIFE.gates): what a town of a cold land got of its fuel in the winter, kept for the spring (t.gates)

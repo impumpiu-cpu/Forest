@@ -1,6 +1,7 @@
 // The mechanics taken from the donor games (docs/WORLD.md; the project's «Доноры механик»): small scenes, each a rule that must hold.
 import assert from 'node:assert/strict';
-import {payTribute, realmPool, seasonStore, pairLink, loadStep, orderOf, takenStep, sellOver} from '../src/atlas/treasury.js';
+import {payTribute, realmPool, seasonStore, pairLink, loadStep, orderOf, takenStep, sellOver, farNet, farWays} from '../src/atlas/treasury.js';
+import {trades} from '../src/atlas/diplomacy.js';
 import {TOWN_FLOW} from '../src/data/townBuildings.js';
 import {moodStep} from '../src/atlas/mood.js';
 import {TOWN_LIFE} from '../src/data/peoples.js';
@@ -27,6 +28,38 @@ check('продавец своей державы — по самому дешё
   const a = {net: {links: new Map([['1:2', ab], ['2:3', bc], ['1:3', ac]])}, w: 10, h: 10};
   const W = realmPool({a, towns: [A, B, C], links: [ab, bc, ac]}).get(1), toC = W.find(([o]) => o === C)[1];
   assert.equal(toC.cost, 2, `путь до C стоит ${toC.cost}`);
+});
+
+check('торговля через третью державу: путь по связям держав, что торгуют, не больше `through` держав между, с их пошлиной', () => {
+  // A (держава 1) — B1, B2 (держава 2) — C (держава 3): у A своей связи с C нет
+  const T = TOWN_MONEY.trade;
+  const mk = (n, war = null) => {
+    const R = Array.from({length: n}, (_, k) => String(k + 1));
+    const ts = R.flatMap((r, k) => k === 0 || k === n - 1 ? [town({id: k * 10 + 1, realm: r, x: k * 2})] : [town({id: k * 10 + 1, realm: r, x: k * 2}), town({id: k * 10 + 2, realm: r, x: k * 2 + 1})]);
+    const links = [];
+    for (let k = 0; k + 1 < ts.length; k++) links.push({p: ts[k], q: ts[k + 1], c: 0.8, cost: 1, road: 0.5, flow: 0});
+    const rel = {};
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) rel[`${R[i]}:${R[j]}`] = {att: 0, war: null};
+    if (war) rel[war].war = {since: 0};
+    const a = {w: 64, h: 48, cfg: {size: 'small'}, rel, net: {links: new Map(links.map(l => [`${l.p.id}:${l.q.id}`, l]))}};
+    const C = {a, links, deal: (b, s) => (b.realm === s.realm ? 1 : trades(a, b.realm, s.realm) ? TOWN_MONEY.foreign : 0)};
+    return {a, C, ts, far: () => farWays(C, farNet(C), ts[0], new Set([ts[1].id]))};
+  };
+  const {ts, far} = mk(3), W = far(), toC = W.find(([o]) => o === ts.at(-1));
+  assert.ok(toC, `до C пути нет: ${W.map(([o]) => o.id)}`);
+  assert.deepEqual(toC[1].via, ['2'], `пройдены державы ${JSON.stringify(toC[1].via)}`);
+  assert.equal(toC[1].cost, 3); assert.ok(Math.abs(toC[1].c - 0.8) < 1e-9 && Math.abs(toC[1].road - 0.5) < 1e-9);
+  const toB2 = W.find(([o]) => o === ts[2]);
+  assert.ok(toB2 && toB2[1].via.length === 0, 'дальний город соседней державы — без пошлины');
+  // война державы на пути: через неё не ходят
+  assert.ok(!mk(3, '1:2').far().some(([o]) => o.realm === '3'), 'путь прошёл через воюющую державу');
+  // не больше `through` держав между
+  assert.ok(mk(2 + T.through).far().some(([o]) => o.realm === String(2 + T.through)), `через ${T.through} державы пути нет`);
+  assert.ok(!mk(3 + T.through).far().some(([o]) => o.realm === String(3 + T.through)), `путь прошёл больше ${T.through} держав`);
+  // проложенный путь — пара покупателя и продавца, не дорога для других: сеть каравана его не берёт
+  const m = mk(3), route = {p: m.ts[0], q: m.ts.at(-1), c: 1, cost: 1, via: ['2']};
+  m.C.links.push(route);
+  assert.ok(![...(farNet(m.C).get(m.ts[0].id) || [])].some(([, l]) => l === route), 'путь через третью державу взят как связь соседей');
 });
 
 check('встречная торговля по новой связи: одна связь, одна вместимость и память на оба направления', () => {

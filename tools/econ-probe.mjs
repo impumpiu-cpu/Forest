@@ -27,9 +27,10 @@ const zero = () => Object.fromEntries([...PE, 'all'].map(p => [p, {}]));
 // the season's ledger, summed over the year
 let acc = zero(), seasons = 0;
 // (wasted — the worth of what went over the store's room and nobody took; dumped — the worth of what the merchants took of it,
-// at its own price; rotted — the worth of what rotted in store; carry — what the buyers paid the carters; boughtN — the goods
+// at its own price; rotted — the worth of what rotted in store; carry — what the buyers paid the carters; toll — the tolls of the
+// realms the goods crossed on a way through other lands; boughtN — the goods
 // bought from other towns themselves, a count of units of every kind)
-const KEYS = ['bought', 'boughtN', 'sold', 'imported', 'merchants', 'wasted', 'dumped', 'rotted', 'carry', 'people', 'works', 'upkeep', 'recycled'];
+const KEYS = ['bought', 'boughtN', 'sold', 'imported', 'merchants', 'wasted', 'dumped', 'rotted', 'carry', 'toll', 'people', 'works', 'upkeep', 'recycled'];
 function seasonTally() {
   seasons++;
   for (const t of live()) for (const k of KEYS) { const v = t.trade?.[k] || 0; for (const p of [t.people, 'all']) acc[p][k] = (acc[p][k] || 0) + v; }
@@ -148,6 +149,6 @@ for (const g of GOODS) {
 // what the chronicle says, by kind
 const C = a.chronicle.map(c => c.text || '');
 const count = re => C.filter(x => re.test(x)).length;
-const chron = {lines: C.length, famine: count(/голод/i), storm: count(/штурм/), burnt: count(/сожгл|сожгло|пепелищ/), raid: count(/набег/i), built: count(/появил|построил|заложил/i), trade: count(/торгов|караван/i)};
+const chron = {lines: C.length, famine: count(/голод/i), storm: count(/штурм/), burnt: count(/сожгл|сожгло|пепелищ/), raid: count(/набег/i), built: count(/появил|построил|заложил/i), trade: count(/торгов|караван/i), routes: count(/проложили торговый путь/)};
 
 process.stdout.write(JSON.stringify({seed, size, mode, goods: GOODS, ms: a.ms, years, towns, spec, chron}));

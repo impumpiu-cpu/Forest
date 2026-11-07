@@ -47,7 +47,7 @@ import {townFx} from './towns.js';
 import {onEdit} from '../data/schema/layer.js';
 import {allowed} from '../data/commands.js';
 import {NET} from '../data/sites.js';
-import {linkKey} from './common.js';
+import {linkKey, relKey} from './common.js';
 import {scaleOf} from './tectonics.js';
 
 const r2 = v => Math.round(v * 100) / 100;
@@ -157,6 +157,7 @@ export function seasonMoney(a, towns) {
   // wanted it once the ways had carried what they could (worksBuying C.wanted): a want of carriage, not of buyers, so loadStep
   // does not cut its makers for it
   for (const t of towns) { const W = C.wanted?.get(t.id) || {}; t.econ.wanted = Object.fromEntries(Object.entries(W).map(([g, v]) => [g, r2(v)])); closeSeason(a, t, W, sold.get(t.id) || {}); }
+  return {routes: C.routes || []};   // (the routes through other lands opened this season, to be told)
 }
 const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
 
@@ -202,7 +203,7 @@ function worksBuying(C, prep) {
     if (!L || !P || !k || !(L[g] > 0) || !(P[g] > 0)) return 0;
     // (the purse: the makers', and the budget the realm gave the town for this good — atlas/townNeeds.js `metal.budget` — spent first)
     const B = b.budget?.[g], purse = Math.max(0, b.makersGold) + (B?.gold || 0);
-    const price = priceAt(s, g) * k, carry = carriageOf(a, w.cost), unit = price * (1 + carry);
+    const price = priceAt(s, g) * k, carry = carriageOf(a, w.cost), toll = tollOf(w), unit = price * (1 + carry + toll);
     const pair = w.pair || (a.net ? a.net.links.get(linkKey(b, s)) || null : null);
     const room = pair ? Math.max(0, roomOf2(pair) - (pair.carried || 0)) : roomOfWay(w);
     const n = Math.min(L[g], P[g] * w.c, purse / unit, room / price);
@@ -210,18 +211,25 @@ function worksBuying(C, prep) {
     const W = why.get(b.id), byWay = Math.min(L[g], P[g], P[g] * w.c), byRoom = Math.min(byWay, room / price);
     cut(W, g, 'route', Math.min(L[g], P[g]) - byWay); cut(W, g, 'room', byWay - byRoom); cut(W, g, 'money', byRoom - Math.max(0, n));
     if (n < M.dust) return 0;
-    const v = n * price, c = n * price * carry;
-    const fromB = Math.min(v + c, B?.gold || 0);
-    if (fromB > 0) { B.gold = r2(B.gold - fromB); B.got = r2(B.got + n * fromB / (v + c)); }
-    L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - (v + c - fromB)); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
+    const v = n * price, c = n * price * carry, tl = n * price * toll;
+    const fromB = Math.min(v + c + tl, B?.gold || 0);
+    if (fromB > 0) { B.gold = r2(B.gold - fromB); B.got = r2(B.got + n * fromB / (v + c + tl)); }
+    L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - (v + c + tl - fromB)); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
     s.peopleGold = r2(s.peopleGold + c); earn(s, 'people', c); add(b.trade, 'carry', c);   // the carters are the seller's people
+    // the tolls of the realms the goods crossed (a way through other lands: farWays), shared among them, into their treasuries
+    if (tl > 0) { add(b.trade, 'toll', tl); for (const id of w.via) { const R = realmBy.get(id); if (R) { R.gold = r2((R.gold || 0) + tl / w.via.length); fiscOf(R).duty = r2(fiscOf(R).duty + tl / w.via.length); } } }
     if (b.realm !== s.realm) {   // customs: the buyer's realm takes `duty` of it, of the buyer's makers (from the branch Elves)
       const R = realmBy.get(b.realm), d = Math.min(Math.max(0, b.makersGold), v * M.realm.duty);
       if (R && d > 0) { b.makersGold = r2(b.makersGold - d); R.gold = r2((R.gold || 0) + d); fiscOf(R).duty = r2(fiscOf(R).duty + d); }
     }
     // the goods go down the pair's link: a seller more than a hop away gets a link of its own with the buyer (a trade route: the
     // net keeps it while the goods keep coming, atlas/sites.js stepNet, and its road wears, atlas/roads.js wearRoads)
-    if (!w.pair && a.net) w.pair = pairLink(a, b, s, w.cost);
+    if (!w.pair && a.net) {
+      w.pair = pairLink(a, b, s, w.cost);
+      // a route abroad down a way through other lands: kept as one (`via` — the realms it crossed), never taken as a neighbour's
+      // link; the first through a third realm between two realms is told (C.routes → atlas/peoples.js)
+      if (w.via) { w.pair.via = [...w.via]; const k2 = relKey(b.realm, s.realm); if (w.via.length && !a.farRoutes?.[k2]) { (a.farRoutes ||= {})[k2] = a.hist?.year ?? 0; (C.routes ||= []).push([b, s, [...w.via]]); } }
+    }
     if (w.pair) { w.pair.goods = (w.pair.goods || 0) + v; w.pair.carried = (w.pair.carried || 0) + v; const key = `${s.id}>${g}`; (w.pair.took ||= {})[key] = (w.pair.took[key] || 0) + n; }
     put(sold, s.id, g, n); put(got, b.id, g, n);
     add(b.trade, 'bought', v); add(s.trade, 'sold', v); add(b.trade, 'boughtN', n);   // (boughtN — the goods themselves, for the probes)
@@ -232,16 +240,21 @@ function worksBuying(C, prep) {
     const k = deal(b, s);
     if (!k) return Infinity;
     const T = M.trade, took = w.pair?.vol?.[`${s.id}>${g}`] || 0, L0 = why.get(b.id).want[g] || 0;
-    return priceAt(s, g) * k / sureOf(s, g) * (1 + carriageOf(a, w.cost)) * (1 - T.bond * Math.min(1, L0 > 0 ? took / L0 : 0));
+    return priceAt(s, g) * k / sureOf(s, g) * (1 + carriageOf(a, w.cost) + tollOf(w)) * (1 - T.bond * Math.min(1, L0 > 0 ? took / L0 : 0));
   };
   // at home — the province's pool (realmPool); abroad — link by link (the command `town.buy.works`: data/commands.js)
   if (allowed(a.cfg, 'town.buy.works')) {
     const ways = realmPool(C, lack, spare);
-    for (const l of links) if (l.p.realm !== l.q.realm) for (const [b, s] of [[l.p, l.q], [l.q, l.p]]) { const W = ways.get(b.id) || ways.set(b.id, []).get(b.id); W.push([s, {c: l.c, cost: costOfLink(a, l), pair: l}]); }
+    for (const l of links) if (l.p.realm !== l.q.realm && !l.via) for (const [b, s] of [[l.p, l.q], [l.q, l.p]]) { const W = ways.get(b.id) || ways.set(b.id, []).get(b.id); W.push([s, {c: l.c, cost: costOfLink(a, l), pair: l}]); }
+    // and further abroad: through the lands of the realms that trade on the way (farWays), for a buyer that lacks what some
+    // town of another realm has to spare
+    const adjT = farNet(C), abroad = g => towns.some(s => (spare.get(s.id)?.[g] || 0) > 0);
     const orders = new Map();   // the makers' purse left for the orders, by buyer
     for (const t of towns) {
-      const L = lack.get(t.id), W = ways.get(t.id);
-      if (!L || !W) continue;
+      const L = lack.get(t.id);
+      let W = ways.get(t.id);
+      if (L && Object.keys(L).some(g => L[g] > 0 && abroad(g))) W = [...(W || []), ...farWays(C, adjT, t, new Set((W || []).map(([s]) => s.id)))];
+      if (!L || !W?.length) continue;
       for (const g of Object.keys(L)) {
         if (!(L[g] > 0)) continue;
         const by = W.filter(([s]) => spare.get(s.id)?.[g] > 0).map(([s, w]) => [s, w, offer(t, s, w, g)]).filter(x => x[2] < Infinity).sort((p, q) => p[2] - q[2] || p[0].id - q[0].id);
@@ -251,7 +264,7 @@ function worksBuying(C, prep) {
         // — an order no bigger than its lack, laid on the sellers in the order it ranks them, each up to what it still has and to
         // what the purse left buys at that seller's full delivered price (orderOf)
         if (L[g] > M.dust) {
-          const rest = by.filter(([s]) => spare.get(s.id)?.[g] > M.dust).map(([s, w]) => [s.id, priceAt(s, g) * deal(t, s) * (1 + carriageOf(a, w.cost)), spare.get(s.id)[g]]);
+          const rest = by.filter(([s]) => spare.get(s.id)?.[g] > M.dust).map(([s, w]) => [s.id, priceAt(s, g) * deal(t, s) * (1 + carriageOf(a, w.cost) + tollOf(w)), spare.get(s.id)[g]]);
           // (the makers' purse is one for all the goods it orders: what one good's order would cost is not there for the next)
           const free = orders.get(t.id) ?? Math.max(0, t.makersGold), o = orderOf(L[g], free + (t.budget?.[g]?.gold || 0), rest);
           for (const [id, n] of o.by) put(wanted, id, g, n);
@@ -300,6 +313,56 @@ export function orderOf(L, purse, rest) {
 }
 // the carriage, as a share of the worth: `carry` for each step of the way's cost (a world of another size: × its scale)
 const carriageOf = (a, cost) => M.trade.carry * cost / scaleOf(a);
+// the tolls of a way through other lands: `toll` of the worth for each realm it crosses (none on a way at home or to a neighbour)
+const tollOf = w => M.trade.toll * (w.via?.length || 0);
+
+// ── the ways through other lands (the caravans of history; TOWN_MONEY.trade `through`, `toll`). The net as the caravans walk it:
+// the links whose two ends' realms trade (one realm's own links too), not the routes abroad already made (a route is a pair's,
+// not a road for others) → Map town id → [[other, link]]
+export function farNet(C) {
+  const {a, links} = C, adj = new Map();
+  for (const l of links) {
+    if (l.via || !trades(a, l.p.realm, l.q.realm)) continue;
+    (adj.get(l.p.id) || adj.set(l.p.id, []).get(l.p.id)).push([l.q, l]); (adj.get(l.q.id) || adj.set(l.q.id, []).get(l.q.id)).push([l.p, l]);
+  }
+  return adj;
+}
+// from buyer `b`, the cheapest way down that net (by the links' costs; no farther than its carriage doubles the price) to each town
+// of another realm it deals with and has no way to yet (`known`), crossing no more than `through` realms between theirs → [[seller,
+// way]]: the way's least conductance, its cost, its least road, the realms it crosses (`via`, in order) and the pair's route if made
+export function farWays(C, adj, b, known) {
+  const {a, deal} = C, T = M.trade, cap = scaleOf(a) / T.carry, out = [];
+  const best = new Map([[b.id, {c: 1, cost: 0, road: 1, realms: [], t: b}]]), done = new Set(), heap = [[0, b.id]];
+  while (heap.length) {
+    const [, x] = heapPop(heap);
+    if (done.has(x)) continue;
+    done.add(x);
+    const wx = best.get(x), tx = wx.t;
+    if (tx !== b && tx.realm !== b.realm && !known.has(x) && deal(b, tx) > 0) {
+      const via = wx.realms.filter(r => r !== tx.realm);
+      if (via.length <= T.through) out.push([tx, {c: wx.c, cost: wx.cost, road: wx.road, via, pair: a.net?.links.get(linkKey(b, tx)) || null}]);
+    }
+    for (const [o, l] of adj.get(x) || []) {
+      if (done.has(o.id)) continue;
+      const cost = wx.cost + costOfLink(a, l);
+      if (cost > cap) continue;
+      // the realms on the way, the buyer's own aside: one more than `through` would be too many even if the last were the seller's
+      const realms = o.realm === b.realm || wx.realms.includes(o.realm) ? wx.realms : [...wx.realms, o.realm];
+      if (realms.length > T.through + 1) continue;
+      const w = best.get(o.id);
+      if (!w || cost < w.cost) { best.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), realms, t: o}); heapPush(heap, [cost, o.id]); }
+    }
+  }
+  return out.sort((p, q) => p[0].id - q[0].id);
+}
+// a small binary heap of [key, id], least key (then id) first
+const less = (p, q) => p[0] < q[0] || (p[0] === q[0] && p[1] < q[1]);
+function heapPush(h, x) { h.push(x); let i = h.length - 1; while (i > 0) { const j = (i - 1) >> 1; if (!less(h[i], h[j])) break; [h[i], h[j]] = [h[j], h[i]]; i = j; } }
+function heapPop(h) {
+  const top = h[0], end = h.pop();
+  if (h.length) { h[0] = end; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < h.length && less(h[l], h[m])) m = l; if (r < h.length && less(h[r], h[m])) m = r; if (m === i) break; [h[i], h[m]] = [h[m], h[i]]; i = m; } }
+  return top;
+}
 // the cost of a link's way: what its road costs to walk (atlas/roads.js, worked out as its road is worn), else by its length
 const costOfLink = (a, l) => l.cost ?? Math.hypot(l.p.x - l.q.x, l.p.y - l.q.y) * M.trade.step;
 // how much a pair's link carries a season, in gold of goods: by how well its way is roaded (l.road, 0 … 1)
