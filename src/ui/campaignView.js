@@ -40,7 +40,8 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
-import {meetingsOf, meetingHtml, memberCardHtml} from './campSocial.js';
+import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords} from './campSocial.js';
+const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../atlas/calamity.js';
 import {RESOURCES} from '../data/resources.js';
@@ -489,8 +490,22 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // picked in the roster (ui/campSocial.js) — read from what was decided, never decided again
   renderFire(day) {
     const box = $('campFire'), K = this.atlas?.campaign; if (!box || !K) return;
-    const m = this.who != null ? K.members.find(x => x.id === this.who) : null, meets = meetingsOf(K, day);
-    box.innerHTML = (m ? memberCardHtml(K, m) : '') + (meets.length ? meets.map(x => meetingHtml(K, x)).join('') : '<p class="muted">Совет ещё не собирался.</p>');
+    const m = this.who != null ? K.members.find(x => x.id === this.who) : null, meets = meetingsOf(K, day), meet = meets.at(-1);
+    const key = meet ? `${meet.day}:${meet.point}:${this.who}` : `none:${this.who}`;
+    if (key === this.fireKey) return;   // (the same meeting: the scene plays on)
+    this.fireKey = key;
+    box.innerHTML = (m ? memberCardHtml(K, m) : '') + (meet ? `<div class="fire-scene"><canvas id="campFireCv"></canvas><div class="fire-words" id="campFireWords"></div>
+      <div class="row"><button type="button" class="quiet mini" id="campFirePlay">⏸</button><button type="button" class="quiet mini" id="campFireSkip">⏭</button><button type="button" class="quiet mini" id="campFireAgain">↺</button></div></div>` : '') +
+      (meets.length ? meets.map(x => meetingHtml(K, x)).join('') : '<p class="muted">Совет ещё не собирался.</p>');
+    if (!meet) return;
+    // the scene shows the meeting as it was: a speaker at a time, never deciding again (ui/campSocial.js drawFire)
+    const F = this.fire = {meet, step: this.clock.pace === 'max' ? meet.voices.length : 0, playing: this.clock.pace !== 'max', timer: 0};
+    const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; };
+    const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= meet.voices.length) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
+    $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= meet.voices.length) F.step = 0; show(); tick(); });
+    $('campFireSkip').addEventListener('click', () => { F.playing = false; F.step = meet.voices.length; show(); });
+    $('campFireAgain').addEventListener('click', () => { F.step = 0; F.playing = true; show(); tick(); });
+    show(); tick();
   }
 
   // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one

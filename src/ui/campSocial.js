@@ -10,6 +10,8 @@ import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
 import {reasonsOf} from '../campaign/social.js';
 import {fateOf} from '../social/fate.js';
+import {drawPawn} from '../render/art/pawn.js';
+import {SPECIES} from '../data/species.js';
 
 // a variant by the meeting and the speaker, no stream drawn
 const pick = (list, k) => list[Math.abs(k) % list.length];
@@ -62,4 +64,39 @@ export function memberCardHtml(K, m) {
   const fate = fateOf(m);
   return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;
+}
+
+// ── the scene at the fire (plan D6): the company round the fire, the one who speaks lit, its words beneath; the meeting is
+// the one recorded — the scene only shows it, from a step (0 … the voices) that the screen moves on, pauses, skips, plays again
+export function drawFire(cv, K, meet, step) {
+  const ctx = cv.getContext?.('2d'); if (!ctx) return;
+  const dpr = globalThis.devicePixelRatio || 1, w = cv.clientWidth || 360, h = cv.clientHeight || 200;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2 + 6, R = Math.min(w * 0.4, h * 0.36);
+  // the fire
+  const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, R * 0.55); g.addColorStop(0, 'rgba(255,190,90,0.9)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 0.55, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#e8743a'; ctx.beginPath(); ctx.moveTo(cx - 7, cy + 6); ctx.quadraticCurveTo(cx, cy - 16, cx + 7, cy + 6); ctx.fill();
+  const voices = meet.voices, n = Math.max(1, voices.length + (meet.away?.length || 0));
+  const seat = k => [cx + Math.cos(-Math.PI / 2 + k / n * 6.283) * R, cy + Math.sin(-Math.PI / 2 + k / n * 6.283) * R * 0.8];
+  const all = [...voices.map(v => ({id: v.id, v})), ...(meet.away || []).map(x => ({id: x.id, away: true}))];
+  all.forEach((x, k) => {
+    const m = K.members.find(o => o.id === x.id); if (!m) return;
+    const [px, py] = seat(k), speaking = !x.away && k === step && step < voices.length;
+    if (speaking) { ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.arc(px, py, 18, 0, 6.283); ctx.fill(); }
+    const sp = SPECIES.get(m.race), pawn = {id: m.id, species: m.race, gender: m.gender, equip: {}, faceX: px < cx ? 1 : -1};
+    ctx.globalAlpha = x.away ? 0.4 : x.v && x.v.want !== meet.pick && step >= voices.length ? 0.7 : 1;
+    if (!sp || !drawPawn(ctx, pawn, sp, px, py, 14, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(px, py, 8, 0, 6.283); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.fillStyle = speaking ? '#ffe2a0' : '#bfb6a2'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.name, px, py + 24);
+  });
+}
+// the words of a step: who speaks and what (the last step — what was decided)
+export function fireWords(K, meet, step) {
+  const v = meet.voices[step];
+  if (!v) return `Решили: ${commandOf(meet.pick)?.label || meet.pick || '—'}.`;
+  const m = K.members.find(o => o.id === v.id), k = meet.day * 31 + v.id, took = optSaid(meet.pick, meet.day);
+  const why = v.why?.[0] ? pick(SAY_WHY[v.why[0]] || [], k) : '', social = m?.local?.leans?.social ?? 0.5;
+  const said = v.want === meet.pick ? (social < SPEECH.quietBelow ? SAY_ACT.quiet(took) : SAY_ACT.for(optSaid(v.want, k), why)) : SAY_ACT.against(optSaid(v.want, k), why, took);
+  return `${m?.name || '—'}: «${said}»`;
 }
