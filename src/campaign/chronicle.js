@@ -17,13 +17,13 @@ export const lineLevel = l => (CHRONICLE.kinds[l.kind] || ['road', 'info'])[1];
 // the epilogue's lines are dated by the season: the caravan's days are over
 export const dateOf = l => (l.kind === 'epilogue' ? `год ${l.year}, ${season(l.season)}` : `год ${l.year}, ${season(l.season)}, день ${l.day + 1}`);
 
-// the lines to show: themes hidden, one member's lines only (by id or by name), runs folded:
+// the lines to show: themes hidden, one member's lines only (by id where the line names its people, else by name), runs folded:
 // → [{line, n, last}] — n lines of the same foldable kind in a row, `last` the last of them
 export function readLines(log, {hidden = new Set(), member = null} = {}) {
   const out = [];
   for (const l of log) {
     if (hidden.has(lineTopic(l))) continue;
-    if (member && !(l.who?.includes(member.id) || l.text.includes(member.name))) continue;
+    if (member && !(l.who ? l.who.includes(member.id) : l.text.includes(member.name))) continue;   // (a line that names its people: by id — one of the same name is another; an old or untagged line: by the name)
     const prev = out.at(-1);
     if (prev && prev.line.kind === l.kind && CHRONICLE.fold.includes(l.kind)) { prev.n++; prev.last = l; continue; }
     out.push({line: l, n: 1, last: l});

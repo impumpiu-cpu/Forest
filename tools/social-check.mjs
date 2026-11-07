@@ -17,11 +17,13 @@
 // faint-hearted may falter; the fallen are bound after a fight only by someone still on their feet.
 // Step 8 (D5): the council with voices — each who has a say scores the options by its people's mission bent by its own
 // leanings, its needs and its losses; a danger is weighed, not a wall; the meeting is kept: who wanted what and why.
+// Step 9 (D6): the fire's scene and the member's card read what was decided and change nothing; the speakers say only what
+// they have; the archive keeps the people by their ids and the company's story.
 //   node tools/social-check.mjs [worlds=2]
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
+import {capitals, newCampaign, runCampaign, stepCampaign} from '../src/campaign/index.js';
 import {memberLocal, upgradeMembers} from '../src/campaign/start.js';
 import {campSetup, openCamp, runCamp, campOutcome} from '../src/campaign/camp.js';
 import {takeFromCamp} from '../src/campaign/captives.js';
@@ -36,6 +38,8 @@ import {nightWatch, tiredOf} from '../src/campaign/duty.js';
 import {DUTY} from '../src/data/social.js';
 import {warband} from '../src/agents/behaviours/warband.js';
 import {councilChoose} from '../src/campaign/council.js';
+import {meetingsOf, meetingHtml, memberCardHtml} from '../src/ui/campSocial.js';
+import {archive} from '../src/campaign/ending.js';
 import {COUNCIL} from '../src/data/campaign.js';
 import {mulberry} from '../src/core/rng.js';
 import {SPECIES, isSentient} from '../src/data/species.js';
@@ -314,6 +318,20 @@ check('когда ядра не осталось, остальные отпущ�
   const old = councilChoose(bold.a, bold.K, 'caravan.camp', cmds, ask, mulberry(1), {x: {quiet: true, need: 8}}).band;
   COUNCIL.policy = was;
   check('прежний совет по полосам — по-старому (политика переключается данными)', old === 'routine', old);
+}
+
+// ── the fire's scene: read, never decided again; the archive keeps the story
+{
+  const base = generateAtlas({seed: '868', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'});
+  for (let k = 0; k < 6 && !K.social.meetings?.length; k++) stepCampaign(a);
+  const before = JSON.stringify(K), meets = meetingsOf(K, K.day), html = meets.map(m => meetingHtml(K, m)).join('') + K.members.map(m => memberCardHtml(K, m)).join('');
+  check('сцена у костра и карточки читают протокол и ничего не меняют в походе', meets.length > 0 && html.includes('Решили') && JSON.stringify(K) === before, `встреч ${K.social.meetings?.length || 0}`);
+  const M = meets[0], spoke = M.voices.every(v => !(v.why || []).some(w => !['hunger', 'wounds', 'friend', 'tired', 'danger'].includes(w)));
+  check('говорящий ссылается только на свои причины (голод, раны, раненый друг, усталость, опасность ночи)', spoke);
+  K.members.push({...K.members[0], id: 999, name: K.members[0].name});   // a namesake
+  archive(a, K); const rec = a.campaignsDone.at(-1);
+  check('архив похода хранит людей по id и историю команды', rec.members.every(m => m.id != null) && new Set(rec.members.map(m => m.id)).size === rec.members.length && !!rec.social?.facts);
 }
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)

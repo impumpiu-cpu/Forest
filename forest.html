@@ -528,8 +528,9 @@
     </div>
 
     <div class="obs-dock" id="campDock">
-      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button><button type="button" data-tab="stock">Склад</button></div>
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button><button type="button" data-tab="stock">Склад</button><button type="button" data-tab="fire">Костёр</button></div>
       <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
+      <div class="obs-pane" data-pane="fire" hidden><div class="inspect" id="campFire"><p class="muted">Совет ещё не собирался.</p></div></div>
       <div class="obs-pane" data-pane="fights" hidden><div class="fights" id="campFights"><p class="muted">Боёв ещё не было.</p></div></div>
       <div class="obs-pane" data-pane="summary" hidden><div class="fights summary" id="campSummary"><p class="muted">Итоги начнут собираться, когда караван выступит.</p></div></div>
       <div class="obs-pane" data-pane="stock" hidden><div class="row"><small id="campStockWhat" class="muted">Груз каравана</small><div class="seg mini" id="campStockSeg"></div></div><div class="stockgrid" id="campStock"><p class="muted">Караван ещё не выступил.</p></div></div>

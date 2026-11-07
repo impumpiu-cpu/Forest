@@ -51,7 +51,7 @@ function scoreOne(a, K, m, opts, x) {
     if (CAMPISH(o.id) && x && !x.quiet) parts.danger = -N.danger * caution;
     const s = base + Object.values(parts).reduce((p, q) => p + q, 0) * (COUNCIL.want[o.id] ?? 1) / 2;
     out[o.id] = Math.round(s * 1000) / 1000;
-    why[o.id] = Object.entries(parts).filter(([, q]) => Math.abs(q) > 0.05).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1])).map(([k]) => k);
+    why[o.id] = Object.entries(parts).filter(([, q]) => Math.abs(q) > V().whyFrom).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1])).map(([k]) => k);
   }
   return {s: out, why};
 }

@@ -40,6 +40,7 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
+import {meetingsOf, meetingHtml, memberCardHtml} from './campSocial.js';
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../atlas/calamity.js';
 import {RESOURCES} from '../data/resources.js';
@@ -482,7 +483,14 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
         `<small>${esc(raceLabel(sp))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
-    this.renderLog();
+    this.renderLog(); this.renderFire(day);
+  }
+  // the dock's «Костёр»: the council held on the day shown (who said what, campaign/council.js), and the card of the member
+  // picked in the roster (ui/campSocial.js) — read from what was decided, never decided again
+  renderFire(day) {
+    const box = $('campFire'), K = this.atlas?.campaign; if (!box || !K) return;
+    const m = this.who != null ? K.members.find(x => x.id === this.who) : null, meets = meetingsOf(K, day);
+    box.innerHTML = (m ? memberCardHtml(K, m) : '') + (meets.length ? meets.map(x => meetingHtml(K, x)).join('') : '<p class="muted">Совет ещё не собирался.</p>');
   }
 
   // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one

@@ -1,0 +1,65 @@
+// The «Кампания» screen's company: the council at the fire as it was held (K.social.meetings, campaign/council.js) and a
+// member's card — its character, tiredness, what it feels for the others and why, what it remembers, its promises
+// (campaign/social.js, duty.js). It reads what the campaign decided; it never decides or draws again (plan D6).
+import {esc} from '../core/util.js';
+import {SAY_OPTION, SAY_WHY, SAY_ACT, SPEECH} from '../data/speech.js';
+import {FACT_KINDS} from '../data/social.js';
+import {JOBS} from '../data/jobs.js';
+import {TRAITS} from '../data/traits.js';
+import {LEAN_AXES} from '../data/leans.js';
+import {commandOf} from '../data/commands.js';
+import {reasonsOf} from '../campaign/social.js';
+import {fateOf} from '../social/fate.js';
+
+// a variant by the meeting and the speaker, no stream drawn
+const pick = (list, k) => list[Math.abs(k) % list.length];
+const optSaid = (id, k) => pick(SAY_OPTION[id] || [commandOf(id)?.label || id], k);
+const nameOf = (K, id) => K.members.find(m => m.id === id)?.name || '—';
+
+// the meetings of a day (the last held up to it when none that day)
+export function meetingsOf(K, day) {
+  const M = K.social?.meetings || [];
+  const that = M.filter(m => m.day === Math.floor(day));
+  return that.length ? that : M.filter(m => m.day <= day).slice(-1);
+}
+// a meeting told: who was there, what each said, what was taken, who could not speak
+export function meetingHtml(K, meet) {
+  const took = optSaid(meet.pick, meet.day), lines = [];
+  for (const v of meet.voices) {
+    const m = K.members.find(x => x.id === v.id); if (!m) continue;
+    const k = meet.day * 31 + v.id, social = m.local?.leans?.social ?? 0.5, why = v.why?.[0] ? pick(SAY_WHY[v.why[0]] || [], k) : '';
+    const said = v.want === meet.pick ? (social < SPEECH.quietBelow ? SAY_ACT.quiet(took) : SAY_ACT.for(optSaid(v.want, k), social >= SPEECH.fullFrom || v.why?.length ? why : ''))
+      : SAY_ACT.against(optSaid(v.want, k), why, took);
+    const same = lines.find(x => x.said === said);   // (the same words from several: one line, their names)
+    if (same) same.who.push(m.name); else lines.push({said, who: [m.name], against: v.want !== meet.pick});
+  }
+  const away = (meet.away || []).map(x => `${esc(nameOf(K, x.id))} (${x.why === 'captive' ? 'пленный — без голоса' : 'без голоса'})`).join(', ');
+  const W = Object.entries(meet.w || {}).sort((p, q) => q[1] - p[1]).map(([id, w]) => `${esc(commandOf(id)?.label || id)} ${w}`).join(' · ');
+  const told = lines.map(x => `<div class="fire-line${x.against ? ' against' : ''}"><b>${esc(x.who.join(', '))}</b>: «${esc(x.said)}»</div>`).join('');
+  return `<div class="fire"><h4>Совет у костра, день ${meet.day + 1}</h4>${told}<p><b>Решили:</b> ${esc(commandOf(meet.pick)?.label || meet.pick || '—')}.${away ? ` <small class="muted">Не говорили: ${away}.</small>` : ''}</p><small class="muted" title="вес варианта — среднее голосов, затем жребий">веса: ${W}</small></div>`;
+}
+
+// a member's card: who it is, how tired, what it feels for the others and why, what it remembers, its promises
+export function memberCardHtml(K, m) {
+  const L = m.local || {}, S = K.social || {}, R = S.relations?.[m.id] || {};
+  const char = [L.likes ? `любит ${esc(JOBS.get(L.likes)?.label || L.likes)}` : '', L.dislikes ? `не любит ${esc(JOBS.get(L.dislikes)?.label || L.dislikes)}` : '',
+    ...(L.traits || []).map(id => esc(TRAITS.get(id)?.label || id)),
+    ...Object.entries(L.leans || {}).filter(([, v]) => Math.abs(v - 0.5) >= 0.15).map(([k, v]) => `${v > 0.5 ? 'большая' : 'малая'} ${esc(LEAN_AXES[k]?.label || k)}`)].filter(Boolean).join(', ');
+  const tired = m.social?.load?.tired || 0;
+  const rel = Object.entries(R).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1])).slice(0, 6).map(([id, v]) => {
+    const why = reasonsOf(K, m.id, +id).slice(-2).map(f => FACT_KINDS[f.kind]?.label || f.kind).join(', ');
+    return `<li>${esc(nameOf(K, +id))}: ${v > 0 ? 'тепло' : 'холодно'} (${Math.round(v * 10) / 10})${why ? ` — ${esc(why)}` : ''}</li>`;
+  }).join('');
+  const facts = new Map((S.facts || []).map(f => [f.id, f]));
+  const mem = (m.social?.memory || []).slice().sort((p, q) => q.weight - p.weight || q.day - p.day).slice(0, 5).map(x => {
+    const f = facts.get(x.fact); if (!f) return '';
+    const who = [f.by, f.to].filter(id => id != null && id !== m.id).map(id => esc(nameOf(K, id))).join(', ');
+    return `<li>день ${f.day + 1}: ${esc(FACT_KINDS[f.kind]?.label || f.kind)}${who ? ` — ${who}` : ''} <small class="muted">(${x.how === 'saw' ? 'видел' : x.how === 'heard' ? 'слышал' : 'сам'})</small></li>`;
+  }).join('');
+  const ST = {accepted: 'в силе', fulfilled: 'исполнено', failed: 'не вышло не по вине', impossible: 'стало невозможным', broken: 'нарушено', lapsed: 'истекло'};
+  const vows = (S.commitments || []).filter(c => c.debtor === m.id || c.creditor === m.id).slice(-4).map(c =>
+    `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} подмену в дозоре — ${ST[c.status] || c.status}</li>`).join('');
+  const fate = fateOf(m);
+  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
+    `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;
+}

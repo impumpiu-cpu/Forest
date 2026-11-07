@@ -231,6 +231,7 @@ export const COUNCIL = {
     // the needs (added to an option's score, × the want of it): hunger to the food, one's wounds and a friend's to the healing,
     // tiredness to any stop, a dangerous night against a camp by caution, a recent loss to caution
     need: {food: 2, hurt: 2, friend: 0.6, friendAt: 1, tired: 1, danger: 1.5, grief: 0.15, griefDays: 20, griefCap: 0.3},
+    whyFrom: 0.05,      // a part of a score this big or more is a reason one gives
     keep: 40,           // the meetings kept on the campaign (K.social.meetings: who said what, for the fire's scene)
   },
 };
