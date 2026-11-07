@@ -92,13 +92,16 @@ const TARGET = {
     if (!B.length) return {why: 'нечего поставить: нет слота, места или ступени'};
     return {target: {town: t.id, b: B[0][0].id}, expect: {food: r2(B[0][1])}, note: `${B[0][0].name}: еды на ${Math.round(B[0][1])}`};
   },
-  'food.settle'(a, t) { return TARGET['room.settle'](a, t); },
-  'room.settle'(a, t) {
+  'food.settle'(a, t, st, ctx) { return TARGET['room.settle'](a, t, st, ctx); },
+  'room.settle'(a, t, st, ctx) {
     const S0 = WORLD_PEOPLES.get(t.people)?.settlers, Z = TL.settle;
     if (!S0) return {why: 'народ не шлёт поселенцев'};
     if (t.pop < S0.from || t.pop - S0.pop < S0.keep) return {why: `мало жителей: поселенцы уходят от ${S0.from}`};
     if (a.hist.year - (t.settled ?? -Infinity) < Z.every) return {why: 'поселенцев посылали недавно'};
-    if (settleSpot(a, t) < 0) return {why: 'нет свободной земли в досягаемости'};
+    // (where its settlers would go is asked by both needs that send them: once a sitting of the season — nothing is founded meanwhile)
+    const spots = ctx ? (ctx.spots ||= new Map()) : null;
+    let spot = spots?.get(t.id); if (spot === undefined) { spot = settleSpot(a, t); spots?.set(t.id, spot); }
+    if (spot < 0) return {why: 'нет свободной земли в досягаемости'};
     return {target: {town: t.id}, expect: {people: S0.pop}, note: `${S0.pop} поселенцев`};
   },
   'metal.build'(a, t, st, ctx) {

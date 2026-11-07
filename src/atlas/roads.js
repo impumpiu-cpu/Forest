@@ -47,6 +47,24 @@ const stepCost = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.brid
 // the cost of a step into a cell for a traveller of this people (atlas/parties.js); Infinity: the sea
 export const moveCost = (a, i, people) => stepCost(a, baseCosts(a, people), i);
 
+// the lands of the world: each cell not of the ocean by the land it lies on (8 ways, as the paths go), the ocean −1. The land
+// does not change (only the ocean stops a step: baseCost), so it is worked out once and kept beside the world (a.roadLand)
+export function landsOf(a) {
+  if (a.roadLand) return a.roadLand;
+  const {w, h, n} = a, out = new Int32Array(n).fill(-1), stack = [];
+  let id = 0;
+  for (let s = 0; s < n; s++) {
+    if (out[s] !== -1 || a.f.ocean[s]) continue;
+    out[s] = id; stack.push(s);
+    while (stack.length) {
+      const c = stack.pop(), x = c % w, y = (c / w) | 0;
+      for (const [dx, dy] of DIRS8) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const j = ny * w + nx; if (out[j] === -1 && !a.f.ocean[j]) { out[j] = id; stack.push(j); } }
+    }
+    id++;
+  }
+  return (a.roadLand = out);
+}
+
 // A* from one cell to another; the path as a list of cells, or null
 export function findPath(a, s, t, people, scratch) {
   const {w, h} = a, {g, came, touched} = scratch, heap = new Heap(1024), tx = t % w, ty = (t / w) | 0, base = baseCosts(a, people);
@@ -98,8 +116,10 @@ export function wearRoads(a) {
   for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
   const fresh = [], pairs = a.net ? [...a.net.links.values()].filter(l => l.p.alive && l.q.alive).map(l => [l.p, l.q, l]) : tradeLinks(a).map(([t, o]) => [t, o, null]);
+  const land = landsOf(a);
   for (const [t, o, l] of pairs) {
     const key = linkKey(t, o);
+    if (land[t.i] !== land[o.i]) continue;   // (two lands apart: no way on foot — the search would only fail after the whole land)
     const path = findPath(a, t.i, o.i, t.people, scratch);
     if (!path) continue;
     // the way's cost and how well it is roaded, as the trade reads them (atlas/treasury.js: the carriage, the link's room)

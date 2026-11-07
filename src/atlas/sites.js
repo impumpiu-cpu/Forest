@@ -134,6 +134,7 @@ export function razeSites(a, t, year) {
   for (const id of t.sites || []) razeSite(a, a.sites[id - 1], year);
   // the net forgets the town at once: no link keeps a share of a living town's surplus for a dead end
   if (a.net) for (const [key, l] of a.net.links) if (l.p === t || l.q === t) a.net.links.delete(key);
+  a.netIdx = null;   // (the index of the links by town: made again — atlas/treasury.js linksOf)
 }
 
 // old stumps are forgotten
@@ -194,6 +195,7 @@ export function stepNet(a, feeds) {
     l.c = Math.min(1, l.c * (1 - NET.decay) + NET.grow * Math.min(1, l.flow / need));
     if (l.c < NET.min) L.delete(linkKey(l.p, l.q));
   }
+  a.netIdx = null;   // (the index of the links by town: made again — atlas/treasury.js linksOf)
 }
 
 // towns that have come to live by their links: told once each

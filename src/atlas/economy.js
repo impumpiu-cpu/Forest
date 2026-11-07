@@ -76,8 +76,19 @@ function drawPool(id, want, left) {
 // what a mine of a town gives, by good (data/townBuildings.js `dig`, ORE_GOODS: the metal of each ore): its `n` shared by how rich
 // the cell of its work is in each ore it reaches (the town's own cell for a mine not placed yet; a cell rich in none — iron), and
 // its `coal` charges of fuel × how rich the cell is in coal
+// (the ore fields, the cell and the people's stone lore do not change in history: what a mine gives is worked out once a cell,
+// a building and a people, kept beside the world (a.digCache, frozen: read, never changed) and again after an edit of the tables)
+let DIG_EDIT = 0; onEdit(() => { DIG_EDIT++; });
 export function digOf(a, t, b) {
-  const f = a?.f, site = (t.sites || []).map(id => a.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
+  const site = (t.sites || []).map(id => a?.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
+  if (!a?.f) return digAt(a, t, b, i);
+  const C = a.digCache?.edit === DIG_EDIT ? a.digCache : (a.digCache = {edit: DIG_EDIT, m: new Map()}), key = `${i}:${b.id}:${t.people}`;
+  let out = C.m.get(key);
+  if (!out) C.m.set(key, out = Object.freeze(digAt(a, t, b, i)));
+  return out;
+}
+function digAt(a, t, b, i) {
+  const f = a?.f;
   const w = Object.fromEntries(b.dig.ores.map(k => [k, Math.max(0, f?.[`ore_${k}`]?.[i] || 0)]));
   // the knowledge of stone (data/peoples.js `stoneLore`: the dwarves): a rare ore anywhere within `reach` of the work is found —
   // they dig through the whole mountain for it — and counts × its `k` among what the mine gives
@@ -98,7 +109,16 @@ export function digOf(a, t, b) {
 // realm does not know does not ask for it (TOWN_FLOW.recipeFloor): the forge of a realm with no mithril does not want mithril.
 // From the saved towns alone (their buildings, work, store), so a world loaded goes on as it would have → Set of goods
 const METAL_GOODS = new Set(Object.values(METALS).map(m => m.good));
+// (while a pass of the season's works runs over all the towns — atlas/treasury.js openSeason, the buyers' second run — the
+// realms' metals are worked out once a realm and kept (a.metalMemo): in that pass no town's buildings, works or sites change,
+// and its stores only grow — metalGot adds what crossed into one, so the memo is what the walk over the realm would give)
 export function realmMetals(a, t) {
+  const M = a?.metalMemo && t.realm != null ? a.metalMemo : null;
+  if (M) { let v = M.get(t.realm); if (!v) M.set(t.realm, v = walkMetals(a, t)); return v; }
+  return walkMetals(a, t);
+}
+export function metalGot(a, t, g) { const v = a?.metalMemo?.get(t.realm); if (v && METAL_GOODS.has(g) && (t.stock[g] || 0) > TOWN_MONEY.dust) v.add(g); }
+function walkMetals(a, t) {
   const out = new Set(), towns = t.realm == null || !a?.towns ? [t] : a.towns.filter(x => x.alive && x.realm === t.realm);
   const put = g => { if (METAL_GOODS.has(g)) out.add(g); };
   for (const x of towns) {

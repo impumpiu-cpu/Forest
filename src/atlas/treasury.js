@@ -40,7 +40,7 @@ import {UPKEEP} from '../data/kingdom.js';
 import {WORLD_PEOPLES, swapGoods} from '../data/peoples.js';
 import {SEASONS_PER_YEAR as S, SEASON_DAYS} from '../data/atlas.js';
 import {ARMY} from '../data/parties.js';
-import {townEconomy, prepEconomy, heatFactor} from './economy.js';
+import {townEconomy, prepEconomy, heatFactor, metalGot} from './economy.js';
 import {trades} from './diplomacy.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx} from './towns.js';
@@ -113,7 +113,16 @@ function wants(t) {
 // a basket as the town's people takes it (data/peoples.js swapGoods): the needs, the safety reserve and the materials of a building
 export const goodsFor = (people, goods, k = 1) => swapGoods(people, goods, k);
 // the towns a town is linked with, and how well: [other, link]
-const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && (l.p === t || l.q === t)).map(l => [l.p === t ? l.q : l.p, l]);
+// (by an index of the links by town, kept beside the world and made again whenever a link is made or dropped — atlas/sites.js
+// netChanged; in the order of the links, as the filter of all of them gave)
+export const netChanged = a => { a.netIdx = null; };
+function netIndex(a) {
+  if (a.netIdx) return a.netIdx;
+  const by = new Map();
+  for (const l of a.net?.links.values() || []) { for (const x of [l.p, l.q]) { let L = by.get(x); if (!L) by.set(x, L = []); L.push(l); } }
+  return (a.netIdx = by);
+}
+const linksOf = (a, t) => (netIndex(a).get(t) || []).filter(l => l.p.alive && l.q.alive).map(l => [l.p === t ? l.q : l.p, l]);
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
 const dealOf = (a, b, s) => (b.realm == null || s.realm == null ? 0 : b.realm === s.realm ? 1 : trades(a, b.realm, s.realm) ? M.foreign : 0);
 
@@ -149,7 +158,14 @@ export function recycle(t, L, P, give) {
 export function seasonMoney(a, towns) {
   const prep = openSeason(a, towns);
   const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
-  const C = {a, towns, links, deal: (b, s) => dealOf(a, b, s)};
+  // (the deal between two realms does not change while the season's money is reckoned: asked once a pair of realms)
+  const deals = new Map(), deal = (b, s) => {
+    if (b.realm == null || s.realm == null) return 0;
+    let row = deals.get(b.realm); if (!row) deals.set(b.realm, row = new Map());
+    let k = row.get(s.realm); if (k === undefined) row.set(s.realm, k = dealOf(a, b, s));
+    return k;
+  };
+  const C = {a, towns, links, deal};
   const sold = worksBuying(C, prep);
   seasonStore(towns, sold);
   peopleNeeds(C);
@@ -165,7 +181,9 @@ const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'people
 function openSeason(a, towns) {
   // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
   const prep = new Map();   // (the season's first half of each town's works, given again after the buying: atlas/economy.js prepEconomy)
+  a.metalMemo = new Map();   // (the realms' metals, once a realm for the pass: atlas/economy.js realmMetals)
   for (const t of towns) { open(t); t.trade = {...(t.carry || {}), at: a.hist?.step ?? 0}; delete t.carry; const h = heatFactor(a, t), p = prepEconomy(a, t, h); prep.set(t, [h, p]); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }   // (at: the season's step — a town burnt later in the season still sold this season)
+  delete a.metalMemo;
   return prep;
 }
 
@@ -195,6 +213,7 @@ function worksBuying(C, prep) {
   const why = new Map(towns.map(t => [t.id, {gold: r2(Math.max(0, t.makersGold)), want: {...lack.get(t.id)}, money: {}, route: {}, room: {}}]));
   const cut = (W, g, k, v) => { if (v > M.dust) W[k][g] = (W[k][g] || 0) + v; };
   const sold = new Map(), got = new Map(), wanted = C.wanted = new Map();
+  let spareN = null;
   const put = (m, id, g, n) => { const o = m.get(id) || {}; o[g] = (o[g] || 0) + n; m.set(id, o); };
   // a good from one seller: `w` — the way (its least conductance `c`, its cost, the pair's link `pair` — null until the goods
   // first go: then a trade route is made), the most that comes at the delivered price
@@ -214,7 +233,7 @@ function worksBuying(C, prep) {
     const v = n * price, c = n * price * carry, tl = n * price * toll;
     const fromB = Math.min(v + c + tl, B?.gold || 0);
     if (fromB > 0) { B.gold = r2(B.gold - fromB); B.got = r2(B.got + n * fromB / (v + c + tl)); }
-    L[g] -= n; P[g] -= n; b.makersGold = r2(b.makersGold - (v + c + tl - fromB)); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
+    const had = P[g]; L[g] -= n; P[g] -= n; if (spareN && had > 0 && !(P[g] > 0)) spareN.set(g, spareN.get(g) - 1); b.makersGold = r2(b.makersGold - (v + c + tl - fromB)); s.makersGold = r2(s.makersGold + v); earn(s, 'makers', v);
     s.peopleGold = r2(s.peopleGold + c); earn(s, 'people', c); add(b.trade, 'carry', c);   // the carters are the seller's people
     // the tolls of the realms the goods crossed (a way through other lands: farWays), shared among them, into their treasuries
     if (tl > 0) { add(b.trade, 'toll', tl); for (const id of w.via) { const R = realmBy.get(id); if (R) { R.gold = r2((R.gold || 0) + tl / w.via.length); fiscOf(R).duty = r2(fiscOf(R).duty + tl / w.via.length); } } }
@@ -248,7 +267,9 @@ function worksBuying(C, prep) {
     for (const l of links) if (l.p.realm !== l.q.realm && !l.via) for (const [b, s] of [[l.p, l.q], [l.q, l.p]]) { const W = ways.get(b.id) || ways.set(b.id, []).get(b.id); W.push([s, {c: l.c, cost: costOfLink(a, l), pair: l}]); }
     // and further abroad: through the lands of the realms that trade on the way (farWays), for a buyer that lacks what some
     // town of another realm has to spare
-    const adjT = farNet(C), abroad = g => towns.some(s => (spare.get(s.id)?.[g] || 0) > 0);
+    // (how many towns still have a good to spare: kept as the buying takes it — buyGood — not counted over all the towns each time)
+    spareN = new Map(); for (const P of spare.values()) for (const [g, v] of Object.entries(P)) if (v > 0) spareN.set(g, (spareN.get(g) || 0) + 1);
+    const adjT = farNet(C), abroad = g => (spareN.get(g) || 0) > 0;
     const orders = new Map();   // the makers' purse left for the orders, by buyer
     for (const t of towns) {
       const L = lack.get(t.id);
@@ -284,7 +305,9 @@ function worksBuying(C, prep) {
   // the dwarves' reworking (data/townBuildings.js `recycle`): what is left over into what is still lacking
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
-  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
+  a.metalMemo = new Map();   // (the stores only grow in this pass: what crosses into a metal is added — atlas/economy.js metalGot)
+  for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) { t.stock[g] = (t.stock[g] || 0) + n; metalGot(a, t, g); } const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
+  delete a.metalMemo;
   // (and what each still had to spare once the buying was done — for the probes of who could not reach it: tools/reach-probe.mjs)
   for (const t of towns) t.econ.why = {works: reasons(why.get(t.id), lack.get(t.id)), left: Object.fromEntries(Object.entries(spare.get(t.id) || {}).filter(([, n]) => n > M.dust).map(([g, n]) => [g, r2(n)]))};
   return sold;
@@ -294,7 +317,7 @@ function worksBuying(C, prep) {
 export function pairLink(a, b, s, cost) {
   const key = linkKey(b, s);
   let l = a.net.links.get(key);
-  if (!l) a.net.links.set(key, l = {p: s, q: b, c: NET.start, flow: 0, cost});
+  if (!l) { a.net.links.set(key, l = {p: s, q: b, c: NET.start, flow: 0, cost}); netChanged(a); }
   return l;
 }
 // a buyer's order still wanting carriage: of its lack `L`, seller by seller in the buyer's order (`rest`: [id, delivered unit, what
@@ -611,12 +634,12 @@ export function planBuild(a, t, b) {
   const B = M.build, step = Math.min(b.tier, B.labor.length - 1);
   if (step === 0) return {t, cost: 0, own: [], bought: [], labor: 0};   // a hamlet's work: the people's own hands, of what they find
   const own = [], bought = [];
-  let mats = 0, gather = 0, hands = 0;
+  let mats = 0, gather = 0, hands = 0, links = null;   // (the town's links, once a plan)
   for (const [g, n] of Object.entries(goodsFor(t.people, B.mats[b.cat] || B.mats.default))) {
     let need = n;
     const k = Math.min(need, t.stock[g] || 0);
     if (k > 0) { own.push([g, k, k * priceAt(t, g)]); mats += k * priceAt(t, g); need -= k; }
-    for (const [s, l] of need > 0 ? linksOf(a, t) : []) {
+    for (const [s, l] of need > 0 ? (links ||= linksOf(a, t)) : []) {
       const d = dealOf(a, t, s), q = d ? Math.min(need, forOthers(s, g) * l.c) : 0;
       if (q < M.dust) continue;
       const v = q * priceAt(s, g) * d; bought.push([s, g, q, v, l]); mats += v; need -= q;
