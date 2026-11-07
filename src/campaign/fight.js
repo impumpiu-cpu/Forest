@@ -22,7 +22,7 @@ import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
-import {takeOnce, takeBonds, notedFade, takeFacts, noteFate} from './social.js';
+import {takeOnce, takeBonds, notedFade, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
 import {shake} from './people.js';
 import {afterFight} from './quest.js';
@@ -225,7 +225,7 @@ export function freeLairCaptives(a, K, d, r, tell) {
   for (let q = 0; q < CAPTIVE_RAID.freed.max && held.length && room(K, 'joined'); q++) {
     const [people] = held[(r() * held.length) | 0];
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(people).race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
-    K.members.push(m); who.push(m); got.push(`${m.name} (${SPECIES.get(m.race).label})`);
+    K.members.push(m); welcome(K, m); who.push(m); got.push(`${m.name} (${SPECIES.get(m.race).label})`);
     if (--l.captives[people] <= 0) { delete l.captives[people]; held.splice(held.findIndex(([p]) => p === people), 1); }
   }
   if (got.length) tell(`В «${l.name}» держали пленных: ${names(got)} освобожден${got.length > 1 ? 'ы' : who[0].gender === 'f' ? 'а' : ''} и пока ид${got.length > 1 ? 'ут' : 'ёт'} с караваном.`, 'people');
@@ -243,7 +243,7 @@ function spoils(a, K, d, r) {
       const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
       const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
       const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
-      K.members.push(m); got.push(`${m.name} (${SPECIES.get(race).label})`);
+      K.members.push(m); welcome(K, m); got.push(`${m.name} (${SPECIES.get(race).label})`);
     }
     say(a, K, `В лагере врагов нашли пленников и освободили: ${names(got)}. ${n > 1 ? 'Пока идут с караваном' : 'Пока идёт с караваном'} — надолго ли, неизвестно.`, 'people');
   }

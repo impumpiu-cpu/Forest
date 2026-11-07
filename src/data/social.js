@@ -34,7 +34,15 @@ export const FACT_KINDS = {
   tookWatch: {label: 'отстоял дозор за другого', weight: {to: 0.5, by: 0.3, saw: 0.1}},
   brokeWord: {label: 'не сдержал слово', weight: {to: 0.6, by: 0.3, saw: 0.15}},
   wordFailed: {label: 'не смог сдержать слово', weight: {to: 0.3, by: 0.2, saw: 0.05}},
+  // the peaceful life (campaign/company.js welcome; social.js judge)
+  welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
+  frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
 };
+// the newcomer (campaign/social.js welcome): the most sociable of the free takes it in — the bond both ways
+export const WELCOME = {bond: {to: 0.6, by: 0.3}, from: 0.55};
+// a captive sold (campaign/social.js judge): one who holds mercy high (align.mercy ≥ `mercy`) or freedom dear takes it ill —
+// a mood for `days` days, and it is remembered
+export const JUDGE = {mercy: 2, values: ['freedom', 'family'], mood: -0.12, days: 5, text: 'Продали человека, будто скотину. Не по мне это.'};
 
 // a loss as each takes it (campaign/social.js grieve): by what one felt for the one gone, its mood for `days` days —
 // a friend's death weighs, a stranger's a little, one who was hated may even ease; the living gone weigh less
@@ -60,6 +68,8 @@ export const DUTY = {
   // a request to be relieved (Ensemble's way: the asker's wish, then the one asked answers by its own rules)
   askAt: 0.6,          // one this tired, on tonight's watch, asks to be relieved
   promiseDays: 3,      // a promise «later» is due within this many days, else it lapses
+  gap: 0.25,           // one asks only someone at least this much less tired than itself…
+  reask: 6,            // …and not one who said no in the last this many days
   // the answer: the sum of the rules that hold (each a reason); ≥ 0 — yes, ≥ −later — «later», else no
   answer: {base: 0.2, bond: 0.2, tired: -1, owes: 0.35, broke: -0.4, lazy: -0.3, diligent: 0.2, noise: 0.1},   // (noise: ± this)
   later: 0.25,

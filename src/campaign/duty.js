@@ -73,7 +73,8 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
     // the tired on tonight's watch ask to be relieved
     for (const m of [...on]) {
       if (tiredOf(m) < DUTY.askAt || S.commitments.some(c => c.status === 'accepted' && c.creditor === m.id)) continue;
-      const free = able.filter(o => !on.includes(o) && o !== m);
+      const refused = new Set(S.facts.filter(f => f.kind === 'asked' && f.by === m.id && f.params?.answer === 'no' && K.day - f.day < DUTY.reask).map(f => f.to));
+      const free = able.filter(o => !on.includes(o) && o !== m && tiredOf(o) <= tiredOf(m) - DUTY.gap && !refused.has(o.id));   // (nobody fresher to ask: one bears it)
       const to = whomToAsk(K, m, free); if (!to) continue;
       const ans = answer(K, to.m, m, r), here = ms.map(x => x.id);
       const f = campaignFact(K, 'asked', {by: m.id, to: to.m.id, saw: here, params: {answer: ans.say, v: Math.round(ans.v * 100) / 100, why: round(ans.why), chose: round(to.why)}});

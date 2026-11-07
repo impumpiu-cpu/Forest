@@ -9,7 +9,7 @@
 import {REL} from '../data/colony.js';
 import {OPINION} from '../data/relations.js';
 import {DAY} from '../core/time.js';
-import {SOCIAL, GRIEF} from '../data/social.js';
+import {SOCIAL, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember} from '../social/facts.js';
 
@@ -136,5 +136,26 @@ export function grieve(K, gone, kind, ids) {
     const T = GRIEF.text, text = kind === 'died' ? (side === 'friend' ? T.grieve(gone.name, f) : side === 'foe' ? T.relief(gone.name) : T.mourn(gone.name, f))
       : kind === 'taken' ? T.takenFriend(gone.name) : side === 'foe' ? T.relief(gone.name) : T.leftFriend(gone.name);
     ((m.social ||= {}).mood ||= []).push({id: `loss:${kind}`, text, mood, endDay: K.day + G.days, span: G.days * DAY});
+  }
+}
+
+// a newcomer (hired, joined, freed — not a captive: campaign/town.js, fight.js): the most sociable of the free, if sociable
+// enough (leans.social ≥ WELCOME.from), takes it in — a fact, and the bond both ways
+export function welcome(K, m) {
+  if (m.captive) return null;
+  const by = K.members.filter(x => x.alive && x !== m && !x.captive && (x.local?.leans?.social ?? 0) >= WELCOME.from)
+    .sort((p, q) => (q.local.leans.social - p.local.leans.social) || (p.id - q.id))[0];
+  if (!by) return null;
+  const f = campaignFact(K, 'welcomed', {by: by.id, to: m.id, saw: K.members.filter(x => x.alive && x !== by && x !== m).map(x => x.id), params: {bond: WELCOME.bond}});
+  bondBy(K, m.id, by.id, WELCOME.bond.to, f); bondBy(K, by.id, m.id, WELCOME.bond.by, f);
+  return f;
+}
+// a captive sold (campaign/slavery.js): those who hold mercy high or freedom dear take it ill — each its own fact and mood
+export function judge(K, sold) {
+  for (const m of K.members) {
+    if (!m.alive || m.captive || m === sold) continue;
+    if (!((m.align?.mercy ?? 0) >= JUDGE.mercy || (m.values || []).some(v => JUDGE.values.includes(v)))) continue;
+    campaignFact(K, 'frowned', {by: m.id, saw: [], params: {sold: sold.id}});
+    ((m.social ||= {}).mood ||= []).push({id: 'frowned', text: JUDGE.text, mood: JUDGE.mood, endDay: K.day + JUDGE.days, span: JUDGE.days * DAY});
   }
 }

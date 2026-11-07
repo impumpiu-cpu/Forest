@@ -19,6 +19,7 @@
 // leanings, its needs and its losses; a danger is weighed, not a wall; the meeting is kept: who wanted what and why.
 // Step 9 (D6): the fire's scene and the member's card read what was decided and change nothing; the speakers say only what
 // they have; the archive keeps the people by their ids and the company's story.
+// Step 10 (D7): a newcomer is taken in by the most sociable; a captive sold is taken ill by those who hold mercy or freedom.
 //   node tools/social-check.mjs [worlds=2]
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
@@ -31,7 +32,7 @@ import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, notedFade, moodOut, moodIn} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
-import {reasonsOf, noteFate, bondOf} from '../src/campaign/social.js';
+import {reasonsOf, noteFate, bondOf, welcome, judge} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf} from '../src/campaign/duty.js';
@@ -332,6 +333,20 @@ check('когда ядра не осталось, остальные отпущ�
   K.members.push({...K.members[0], id: 999, name: K.members[0].name});   // a namesake
   archive(a, K); const rec = a.campaignsDone.at(-1);
   check('архив похода хранит людей по id и историю команды', rec.members.every(m => m.id != null) && new Set(rec.members.map(m => m.id)).size === rec.members.length && !!rec.social?.facts);
+}
+
+// ── the peaceful life: a newcomer, a sale
+{
+  const base = generateAtlas({seed: '881', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}), [A, B, C] = K.members;
+  for (const m of K.members) m.local.leans.social = 0.3;
+  A.local.leans.social = 0.9;
+  const nm = {...B, id: 500, name: 'Новичок', local: {...B.local}, social: null}; K.members.push(nm);
+  const f = welcome(K, nm);
+  check('новичка принимает самый общительный: факт и связь в обе стороны', f?.by === A.id && bondOf(K, nm.id, A.id) > 0 && bondOf(K, A.id, nm.id) > 0);
+  B.align = {...B.align, mercy: 4}; C.align = {...C.align, mercy: -4}; C.values = ['gold'];
+  judge(K, nm);
+  check('продажу пленного не одобряет милосердный, а не всякий', B.social?.mood?.some(e => e.id === 'frowned') && !C.social?.mood?.some(e => e.id === 'frowned'));
 }
 
 // ── the same seed, the same story

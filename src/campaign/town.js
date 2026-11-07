@@ -34,6 +34,7 @@ import {ORES} from '../data/ores.js';
 import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
 import {makeMember} from './start.js';
+import {welcome} from './social.js';
 import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
@@ -343,7 +344,7 @@ export function hire(a, K, t, st, r) {
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve, a)) continue;
     K.gold = gold(K.gold - toTown(t, cost));
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
-    K.members.push(m);
+    K.members.push(m); welcome(K, m);   // (one of the company takes the newcomer in: campaign/social.js)
     said.push(`наняли ${H.label}а ${m.name} на ${pieces(days, 'день', 'дня', 'дней')} за ${cost} зол.`);
   }
   return said;
@@ -360,7 +361,7 @@ export function companion(a, K, t, st, r) {
   const race = minor || WORLD_PEOPLES.get(t.people).race;
   if (!gratis) K.gold = gold(K.gold - toTown(t, C.fee));
   const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty, align: !minor && t.realm ? realmAlign(a, t.realm) : null});
-  K.members.push(m);
+  K.members.push(m); welcome(K, m);
   const sp = SPECIES.get(race);
   return `к каравану ${gratis ? 'по доброй воле' : `за ${C.fee} зол.`} пристал${m.gender === 'f' ? 'а' : ''} ${m.name}${minor ? ` из народа ${sp.gen || sp.plural}` : ''}`;
 }

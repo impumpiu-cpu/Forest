@@ -58,6 +58,7 @@
     "land": "node tools/land-check.mjs",
     "settle": "node tools/settle-check.mjs",
     "social": "node tools/social-check.mjs",
+    "social:probe": "node tools/social-probe.mjs",
     "questhand": "node tools/quest-hand-check.mjs",
     "audit": "node tools/audit-check.mjs",
     "bestiary": "node tools/bestiary-check.mjs",
