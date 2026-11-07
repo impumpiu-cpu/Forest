@@ -32,7 +32,7 @@ import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, notedFade, moodOut, moodIn} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
-import {reasonsOf, noteFate, bondOf, welcome, judge} from '../src/campaign/social.js';
+import {reasonsOf, noteFate, bondOf, welcome, judge, tell} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf} from '../src/campaign/duty.js';
@@ -171,6 +171,10 @@ check('когда ядра не осталось, остальные отпущ�
     K.social.facts.filter(x => x.id === f?.id).length === 1 && mB.social?.memory?.[0]?.how === 'lived' && mC.social?.memory?.[0]?.how === 'saw' && !(mD.social?.memory || []).some(x => x.fact === f?.id));
   check('причина связи: почему B думает об A — эта помощь', reasonsOf(K, B.id, A.id)[0]?.id === f?.id && (K.social.relations[B.id]?.[A.id] || 0) > 0,
     `связь ${Math.round((K.social.relations[B.id]?.[A.id] || 0) * 100) / 100}`);
+  // the evening's talk: the one asleep did not see it — now it has heard, from the one helped; told again, nothing new
+  const relBefore = JSON.stringify(K.social.relations); K.social.told = null; tell(K); K.social.told = null; tell(K);
+  const heard = (mD.social?.memory || []).filter(x => x.fact === f?.id);
+  check('не видел → узнал на вечернем разговоре от участника; повтор рассказа ничего не прибавляет', heard.length === 1 && heard[0].how === 'heard' && heard[0].from === B.id && JSON.stringify(K.social.relations) === relBefore, JSON.stringify(heard[0]));
   // without the fact the bond would be the same: the fact is its reason, not a second sum
   const w2 = openCamp(S), a2 = w2.campaign.people.get(A.id), b2 = w2.campaign.people.get(B.id);
   b2.hp = b2.hp * 0.3; const before = b2.grudge?.[a2.id] || 0; giveAid(w2, a2, b2);

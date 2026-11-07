@@ -8,6 +8,9 @@ export const SOCIAL = {
   factsMax: 1500,
   // memories a member keeps (the least weighty fade first) and the facts a bond keeps as its reasons
   memoryMax: 60, whyMax: 6,
+  // the evening's talk (campaign/social.js tell): a fact of the last day weighty enough for one who lived it (its weight for
+  // that part at least `tellFrom`) is told by it to those of the company who did not know — they know it as heard, from it
+  tellFrom: 0.5,
 };
 
 // the kinds of fact (src/social/facts.js): what it weighs in a memory, 0 … 1, by the part one had in it —

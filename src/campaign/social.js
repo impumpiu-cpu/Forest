@@ -11,7 +11,9 @@ import {OPINION} from '../data/relations.js';
 import {DAY} from '../core/time.js';
 import {SOCIAL, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
-import {knowers, memoryOf, remember} from '../social/facts.js';
+import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
+import {FACT_KINDS} from '../data/social.js';
+const FACT_KINDS_OF = f => FACT_KINDS[f.kind] || {weight: {}};
 
 export const SOCIAL_VERSION = 1;
 
@@ -157,5 +159,23 @@ export function judge(K, sold) {
     if (!((m.align?.mercy ?? 0) >= JUDGE.mercy || (m.values || []).some(v => JUDGE.values.includes(v)))) continue;
     campaignFact(K, 'frowned', {by: m.id, saw: [], params: {sold: sold.id}});
     ((m.social ||= {}).mood ||= []).push({id: 'frowned', text: JUDGE.text, mood: JUDGE.mood, endDay: K.day + JUDGE.days, span: JUDGE.days * DAY});
+  }
+}
+
+// the evening's talk: what one lived through yesterday or today — a rescue, a wound dressed, a defence — it tells the others
+// round the fire; who did not know it, knows it now as heard, and from whom. The fact itself is the same one: a story told
+// is no second rescue (the bond is not moved again). Who does not hear: the captives, those gone. Called once a day.
+export function tell(K) {
+  const S = ensureSocial(K); if (S.told === K.day) return; S.told = K.day;
+  const here = K.members.filter(m => m.alive && !m.captive), byId = new Map(K.members.map(m => [m.id, m]));
+  for (const f of S.facts) {
+    if (f.day < K.day - 1 || FACT_KINDS_OF(f).fate) continue;
+    const teller = [f.to, f.by].map(id => byId.get(id)).find(m => m?.alive && !m.captive && (FACT_KINDS_OF(f).weight[partOf(f, m.id)] ?? 0) >= SOCIAL.tellFrom);
+    if (!teller) continue;
+    for (const m of here) {
+      if (m === teller || (m.social?.memory || []).some(x => x.fact === f.id) || knowers(f).includes(m.id)) continue;
+      const w = (FACT_KINDS_OF(f).weight.saw ?? 0) / 2;
+      (m.social ||= {}).memory = remember(m.social.memory || [], {fact: f.id, how: 'heard', part: 'heard', from: teller.id, day: K.day, weight: w});
+    }
   }
 }

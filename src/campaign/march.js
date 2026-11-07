@@ -54,7 +54,7 @@ import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCar
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
-import {fadeDay, noteFate} from './social.js';
+import {fadeDay, noteFate, tell} from './social.js';
 import {nightWatch, tiredOf} from './duty.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
@@ -600,6 +600,7 @@ export function caravanDay(a, K, day) {
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
+  tell(K);   // what one lived through, told at the fire to those who did not see it (campaign/social.js)
   fadeDay(K);   // the bonds fade by the campaign's day, unless a map's day faded them today (campaign/social.js)
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
