@@ -168,6 +168,7 @@ function close(K, c, status, why = null) { c.status = status; c.why = why; c.end
 const braveOf = m => (m.local?.own?.mul?.bravery ?? 1) + traitsOf(m).reduce((v, id) => v + (TRAITS.get(id)?.mods?.bravery ?? 0), 0);
 export function escortAsk(a, K, say = () => {}) {
   const S = ensureSocial(K), E = DUTY.escort, ms = K.members.filter(m => mayWatch(m));
+  if (K.mode === 'auto') return null;   // (the quick walk plays no map: a promise kept by a deed there would only lapse)
   if (S.commitments.some(c => c.kind === 'escort' && c.status === 'accepted')) return null;
   const asker = ms.filter(m => braveOf(m) < E.timid).sort((p, q) => braveOf(p) - braveOf(q) || p.id - q.id)[0]; if (!asker) return null;
   const free = ms.filter(o => o !== asker && braveOf(o) >= E.bold);

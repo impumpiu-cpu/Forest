@@ -68,22 +68,27 @@ function debate(K, scores, opts) {
   const fans = scores.filter(v => topOf(v, opts).id === proposal);
   if (!fans.length) return null;
   const by = fans.reduce((b, v) => ((v.s[proposal] ?? 0) > (b.s[proposal] ?? 0) ? v : b), fans[0]);
-  // the objector: wants another most, by a margin, for a reason it has
-  let ob = null, gap = 0, want = null, why = null;
+  // the objector: one with a reason of its own (its wounds, hunger, tiredness, a friend hurt, the danger) for another option,
+  // which it wants more than the proposal by `objectAt` — or no more than `near` less: a reason is said even by one who would
+  // go along; the strongest such voice speaks
+  let ob = null, gap = -Infinity, want = null, why = null;
   for (const v of scores) {
-    const top = topOf(v, opts).id; if (top === proposal) continue;
-    const g = (v.s[top] ?? 0) - (v.s[proposal] ?? 0), R = (v.why[top] || []).find(k => D.reasons.includes(k));
-    if (g >= D.objectAt && R && g > gap) { ob = v; gap = g; want = top; why = R; }
+    if (v === by) continue;
+    for (const o of opts) {
+      if (o.id === proposal) continue;
+      const g = (v.s[o.id] ?? 0) - (v.s[proposal] ?? 0), R = (v.why[o.id] || []).find(k => D.reasons.includes(k));
+      if (R && (g >= D.objectAt || g >= -D.near) && g > gap) { ob = v; gap = g; want = o.id; why = R; }
+    }
   }
   if (!ob) return {proposal, by: by.id, objector: null};
   // the others hear it
   const swayed = [];
   for (const v of scores) {
-    if (v === ob) continue;
+    if (v === ob || v === by) continue;   // (the proposer answers by its own lights, below)
     const was = topOf(v, opts).id, news = (v.why[was] || []).includes(why) || (v.why[want] || []).includes(why) ? D.known : 1;
     const p = D.sway * Math.max(0, 1 + D.bond * Math.max(-1, Math.min(1, bondOf(K, v.id, ob.id) / D.bondTop))) * news;
     v.s[want] = (v.s[want] ?? 0) + p; v.s[proposal] = (v.s[proposal] ?? 0) - p / 2;
-    if (was !== want && topOf(v, opts).id === want && v !== by) swayed.push(v.id);
+    if (was !== want && topOf(v, opts).id === want) swayed.push(v.id);
   }
   // the proposer answers
   let answer = 'held', meet = null;

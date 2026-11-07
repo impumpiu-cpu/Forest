@@ -233,13 +233,14 @@ export const COUNCIL = {
     need: {food: 2, hurt: 2, friend: 0.6, friendAt: 1, tired: 1, danger: 1.5, grief: 0.15, griefDays: 20, griefCap: 0.3},
     whyFrom: 0.05,      // a part of a score this big or more is a reason one gives
     keep: 40,           // the meetings kept on the campaign (K.social.meetings: who said what, for the fire's scene)
-    // one round of talk (campaign/council.js debate): the option most want is proposed by the one who wants it most; the one
-    // who wants another most — by `objectAt` of its score or more, and for a reason it has (`reasons`) — objects; each other
+    // one round of talk (campaign/council.js debate): the option most want is proposed by the one who wants it most; one with a
+    // reason of its own (`reasons`) for another option — wanting it `objectAt` more than the proposal, or no more than `near`
+    // less (a reason is said even by one who would go along) — objects, the strongest such voice; each other
     // voice moves `sway` toward the objection (× 1 + `bond` × what it feels for the objector, ÷ `bondTop`; × `known` when the reason
     // is one it had already: no news), and as much away from the proposal by half; the proposer then yields (its proposal
     // no more than `yieldAt` over the objection now), meets the objector halfway (an option both score `meetAt` of their best
     // or more: `meet` added for both), or holds
-    debate: {objectAt: 0.25, reasons: ['hunger', 'wounds', 'friend', 'tired', 'danger'], sway: 0.15, bond: 0.5, bondTop: 4, known: 0.5, yieldAt: 0.1, meetAt: 0.8, meet: 0.2},
+    debate: {objectAt: 0.25, near: 0.5, reasons: ['hunger', 'wounds', 'friend', 'tired', 'danger'], sway: 0.15, bond: 0.5, bondTop: 4, known: 0.5, yieldAt: 0.1, meetAt: 0.8, meet: 0.2},
   },
 };
 

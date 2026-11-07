@@ -9,7 +9,7 @@ import {CAMPAIGN} from '../src/data/campaign.js';
 import {core} from '../src/campaign/march.js';
 
 const worlds = +(process.argv[2] || 2), mode = process.argv[3] === 'local' ? 'local' : 'auto', asJson = process.argv.includes('--json');
-const T = {walks: 0, won: 0, days: 0, home: 0, ms: 0, facts: {}, answers: {}, vows: {}, meetings: 0, split: 0, voices: 0, pairTop: 0, quarrels: 0, memory: 0, members: 0, bytes: 0};
+const T = {debate: {}, swayed: 0, walks: 0, won: 0, days: 0, home: 0, ms: 0, facts: {}, answers: {}, vows: {}, meetings: 0, split: 0, voices: 0, pairTop: 0, quarrels: 0, memory: 0, members: 0, bytes: 0};
 const add = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 for (let s = 0; s < worlds; s++) {
   const base = generateAtlas({seed: String(777 + s * 13), size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
@@ -28,7 +28,7 @@ for (let s = 0; s < worlds; s++) {
     }
     T.pairTop += Math.max(0, ...Object.values(pairs));
     for (const v of S.commitments || []) add(T.vows, v.status);
-    for (const M of S.meetings || []) { T.meetings++; T.voices += M.voices.length; if (M.voices.some(v => v.want !== M.pick)) T.split++; }
+    for (const M of S.meetings || []) { T.meetings++; T.voices += M.voices.length; if (M.voices.some(v => v.want !== M.pick)) T.split++; if (M.debate?.objector != null) { add(T.debate, M.debate.answer); if (M.debate.swayed?.length) T.swayed++; } }
     for (const m of K.members) { T.members++; T.memory += m.social?.memory?.length || 0; }
     T.bytes += JSON.stringify(S).length;
     process.stderr.write(`${s}/${p}: ${K.phase} ${K.day} дн.; фактов ${(S.facts || []).length}, обещаний ${(S.commitments || []).length}\n`);
@@ -37,6 +37,6 @@ for (let s = 0; s < worlds; s++) {
 const per = v => Math.round(v / Math.max(1, T.walks) * 10) / 10;
 const out = {mode, walks: T.walks, won: T.won, days: per(T.days), homeOfWon: T.won ? Math.round(T.home / T.won * 10) / 10 : 0, msPerWalk: per(T.ms),
   factsPerWalk: Object.fromEntries(Object.entries(T.facts).map(([k, v]) => [k, per(v)])), answers: T.answers, promises: T.vows,
-  meetingsKeptPerWalk: per(T.meetings), splitShare: T.meetings ? Math.round(T.split / T.meetings * 100) / 100 : 0, voicesPerMeeting: T.meetings ? Math.round(T.voices / T.meetings * 10) / 10 : 0,
+  debates: T.debate, debatesSwayedSomeone: T.swayed, meetingsKeptPerWalk: per(T.meetings), splitShare: T.meetings ? Math.round(T.split / T.meetings * 100) / 100 : 0, voicesPerMeeting: T.meetings ? Math.round(T.voices / T.meetings * 10) / 10 : 0,
   quarrelsOnTopPair: T.quarrels ? Math.round(T.pairTop / T.quarrels * 100) / 100 : 0, memoriesPerMember: Math.round(T.memory / Math.max(1, T.members) * 10) / 10, socialKbPerWalk: per(T.bytes / 1024)};
 console.log(asJson ? JSON.stringify(out) : out);
