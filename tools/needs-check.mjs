@@ -15,6 +15,7 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
 const base = generateAtlas({seed: 'needs', size: 'small', land: 1, plates: 1, hemisphere: 'north'});
 const saved = saveAtlas(base, 'needs');
 // a copy as a loaded world, the season's reckoning (not saved) laid on as an empty one: the checks give it what they test
+// (a town the crowding scenes take: one that can raise a house and has no building going on — the history may have left one)
 const copy = () => { const a = loadAtlas(structuredClone(saved)); for (const t of a.towns) if (t.alive) t.econ ||= {dem: {}, made: {}, used: {}, short: {}, why: {works: {by: {}}}}; return a; };
 const opt = (st, id) => st?.last?.opts.find(o => o.answer === id);
 const towns = a => a.towns.filter(t => t.alive && t.econ && t.realm != null);
@@ -29,7 +30,7 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
 // ── room: lit at its threshold, out below the lower one
 {
   const a = copy(); quiet(a);
-  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  const t = towns(a).find(x => !x.project && TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
   const R = room(townFx(t)), D = NEEDS.get('room');
   const eps = Math.max(1, R * 0.002);   // (past the rounding of the strength to 0.001, whatever the town's room)
   t.pop = R * (D.from + D.span * D.on) + eps; stepNeeds(a);
@@ -42,7 +43,7 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
 // ── room: the house is answered with a goal; the town that builds a house already is not given another
 {
   const a = copy(); quiet(a);
-  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  const t = towns(a).find(x => !x.project && TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
   t.pop = room(townFx(t)) * 0.98; stepNeeds(a);
   const st = t.need.room, plan = st.plans['room.build'];
   check('тесно, жильё поставить можно: цель стройки — дом, план с итогом «жильё встало»', !!plan && t.goal?.b === plan.target.b && TOWN_BUILDINGS.get(t.goal.b).house > 0, JSON.stringify(st.last));
@@ -117,7 +118,7 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
 // not move fails; brought a little while the lack stands is a plan carried out that did not help
 {
   const a = copy(); quiet(a);
-  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  const t = towns(a).find(x => !x.project && TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
   t.pop = room(townFx(t)) * 0.98; lackIron(t, 'goods'); stepNeeds(a);
   const builds = Object.values(t.need || {}).flatMap(st => Object.keys(st.plans || {})).filter(id => /\.build$/.test(id)).filter(id => (t.need[id.split('.')[0]].plans[id].target.town === t.id));
   check('тесно и нужен металл: у города одна цель стройки, вторая стройка в нём же не утверждена', builds.length <= 1 && (!builds.length || t.goal?.need === builds[0].split('.')[0]), `${builds.join(', ')}, цель ${JSON.stringify(t.goal)}`);
@@ -132,7 +133,7 @@ const quiet = a => { for (const t of a.towns) { t.need = null; t.goal = null; t.
 }
 {
   const a = copy(); quiet(a);
-  const t = towns(a).find(x => TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
+  const t = towns(a).find(x => !x.project && TOWN_BUILDINGS.all().some(b => b.house > 0 && canBuild(a, x, b)));
   t.pop = room(townFx(t)) * 0.98; stepNeeds(a);
   const p = t.need?.room?.plans?.['room.build'];
   if (p) {
