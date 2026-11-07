@@ -14,6 +14,7 @@ import {DUTY} from '../data/social.js';
 import {ensureSocial, campaignFact, bondBy, bondOf} from './social.js';
 import {draw} from './start.js';
 import {fateOf} from '../social/fate.js';
+import {tracing, noteDecision, r3} from '../core/decide.js';
 
 const loadOf = m => ((m.social ||= {}).load ||= {tired: 0, watched: 0, lastWatch: null});
 export const tiredOf = m => m.social?.load?.tired || 0;
@@ -77,6 +78,10 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
       const free = able.filter(o => !on.includes(o) && o !== m && tiredOf(o) <= tiredOf(m) - DUTY.gap && !refused.has(o.id));   // (nobody fresher to ask: one bears it)
       const to = whomToAsk(K, m, free); if (!to) continue;
       const ans = answer(K, to.m, m, r), here = ms.map(x => x.id);
+      if (tracing()) {   // (the trace: whom it asked among whom, and the answer with its reasons — core/decide.js)
+        noteDecision({point: 'caravan.watch', who: `member:${m.id}`, at: K.day, band: 'routine', policy: 'rule', opts: free.map(o => ({cmd: 'caravan.watch.ask', key: `caravan.watch.ask(${o.id})`, score: o === to.m ? r3(to.score) : null})), pick: `caravan.watch.ask(${to.m.id})`});
+        noteDecision({point: 'caravan.watch', who: `member:${to.m.id}`, at: K.day, band: 'routine', policy: 'rule', opts: Object.entries(ans.why).map(([k, v]) => ({cmd: 'caravan.watch.answer', key: k, score: r3(v)})), pick: `caravan.watch.answer(${ans.say})`});
+      }
       const f = campaignFact(K, 'asked', {by: m.id, to: to.m.id, saw: here, params: {answer: ans.say, v: Math.round(ans.v * 100) / 100, why: round(ans.why), chose: round(to.why)}});
       if (ans.say === 'no') { const friend = bondOf(K, m.id, to.m.id) >= DUTY.toldNo; bondBy(K, m.id, to.m.id, DUTY.bond.no, f); if (friend) say(`${m.name} просит подмены в дозоре — ${to.m.name} отказывает${tiredOf(to.m) >= DUTY.askAt ? ': ' + (fem(K, to.m.id) ? 'сама' : 'сам') + ' с ног валится' : ''}.`, [m.id, to.m.id]); continue; }
       const c = {id: f.id, kind: 'watch', debtor: to.m.id, creditor: m.id, made: K.day, due: ans.say === 'yes' ? K.day : K.day + 1, until: K.day + DUTY.promiseDays, status: 'accepted', fact: f.id};
