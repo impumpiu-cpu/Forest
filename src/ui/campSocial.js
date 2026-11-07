@@ -91,12 +91,14 @@ export function memberCardHtml(K, m, day = Infinity) {
 
 // ── the scene at the fire (plan D6): the company round the fire, the one who speaks lit, its words beneath; the meeting is
 // the one recorded — the scene only shows it, from a step (0 … the voices) that the screen moves on, pauses, skips, plays again
+// the pawns' size at the fire (the radius drawPawn takes): the one place the company is seen close, not as tokens on a map
+const FIRE_PAWN = 22;
 export function drawFire(cv, K, meet, step) {
   const ctx = cv.getContext?.('2d'); if (!ctx) return;
-  const dpr = globalThis.devicePixelRatio || 1, w = cv.clientWidth || 360, h = cv.clientHeight || 200;
-  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const dpr = globalThis.devicePixelRatio || 1, w = cv.clientWidth || 360, h = cv.clientHeight || 280;   // (not laid out yet — the tab hidden: drawn again when shown)
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
-  const cx = w / 2, cy = h / 2 + 6, R = Math.min(w * 0.4, h * 0.36);
+  const cx = w / 2, cy = h / 2 + 10, R = Math.min(w * 0.4, h * 0.34);
   // the fire
   const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, R * 0.55); g.addColorStop(0, 'rgba(255,190,90,0.9)'); g.addColorStop(1, 'rgba(255,120,40,0)');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 0.55, 0, 6.283); ctx.fill();
@@ -108,11 +110,11 @@ export function drawFire(cv, K, meet, step) {
   all.forEach((x, k) => {
     const m = K.members.find(o => o.id === x.id); if (!m) return;
     const [px, py] = seat(k), speaking = !x.away && speakers.has(x.id);
-    if (speaking) { ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.arc(px, py, 18, 0, 6.283); ctx.fill(); }
+    if (speaking) { ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.arc(px, py, FIRE_PAWN * 1.6, 0, 6.283); ctx.fill(); }
     const sp = SPECIES.get(m.race), pawn = {id: m.id, species: m.race, gender: m.gender, equip: {}, faceX: px < cx ? 1 : -1};
     ctx.globalAlpha = x.away ? 0.4 : x.v && (x.v.now ?? x.v.want) !== meet.pick && over ? 0.7 : 1;
-    if (!sp || !drawPawn(ctx, pawn, sp, px, py, 14, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(px, py, 8, 0, 6.283); ctx.fill(); }
-    ctx.globalAlpha = 1; ctx.fillStyle = speaking ? '#ffe2a0' : '#bfb6a2'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.name, px, py + 24);
+    if (!sp || !drawPawn(ctx, pawn, sp, px, py, FIRE_PAWN, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(px, py, 8, 0, 6.283); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.fillStyle = speaking ? '#ffe2a0' : '#bfb6a2'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.name, px, py + FIRE_PAWN * 1.9);
   });
 }
 // the words of a step: who speaks and what (the last step — what was decided); the steps are fireLines

@@ -135,7 +135,8 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const tp = $('campTopics');
     tp.innerHTML = CHRONICLE.topics.map(t => `<button type="button" data-val="${t.id}" aria-pressed="${!this.hidden.has(t.id)}">${t.label}</button>`).join('');
     tp.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const id = b.dataset.val; if (this.hidden.has(id)) this.hidden.delete(id); else this.hidden.add(id); b.setAttribute('aria-pressed', String(!this.hidden.has(id))); saveHidden(this.hidden); this.renderLog(); });
-    $('campRoster').addEventListener('click', e => { const row = e.target.closest('.rm'); if (!row) return; const id = +row.dataset.id; this.who = this.who === id ? null : id; this.renderSide(); });
+    $('campDock')?.addEventListener('tab', e => { if (e.detail?.id === 'fire') this.fire?.show?.(); });   // (the pane shown: the scene drawn at its real size)
+    $('campRoster').addEventListener('click', e => { const row = e.target.closest('.rm'); if (!row) return; const id = +row.dataset.id; this.who = this.who === id ? null : id; this.pickMember?.(this.who); this.renderSide(); });
     $('campWho').addEventListener('click', e => { if (e.target.closest('button')) { this.who = null; this.renderSide(); } });
     $('campExport').addEventListener('click', () => { const K = this.atlas?.campaign; if (K) offerText(latinTitle(`letopis-${K.capitalName}-${K.started?.year ?? ''}`), chronicleText(this.atlas, K)); });
     $('campPast').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const P = this.atlas?.campaignsDone?.[+b.dataset.k]; if (P) offerText(latinTitle(`letopis-${P.from}-${P.started?.year ?? ''}`), chronicleText(this.atlas, P)); });
@@ -518,6 +519,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     // the scene shows the meeting as it was: a speaker at a time, never deciding again (ui/campSocial.js drawFire)
     const last = fireSteps(K, meet), F = this.fire = {meet, step: this.clock.pace === 'max' ? last : 0, playing: this.clock.pace !== 'max', timer: 0};
     const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; };
+    F.show = show;
     const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= last) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
     $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= last) F.step = 0; show(); tick(); });
     $('campFireSkip').addEventListener('click', () => { F.playing = false; F.step = last; show(); });

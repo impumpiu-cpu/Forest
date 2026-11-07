@@ -81,8 +81,17 @@ export const campLocal = Base => class extends Base {
     const i = (fy | 0) * w.w + (fx | 0);
     L.view.selected = best; L.view.selBld = null; L.view.selCell = null;
     if (!best) { const b = w.buildings.find(b => b.cells?.includes(i)); if (b) L.view.selBld = b.id; else if (i >= 0 && i < w.w * w.h) L.view.selCell = i; }
+    // one of the company picked on the map is picked in the roster too (and the other way: pickMember) — one choice, two views
+    if (best?.member != null && this.who !== best.member) { this.who = best.member; this.renderSide(); }
     this.localCard(true);
     if (this.ids?.dock) openTab($(this.ids.dock), 'object');
+  }
+  // the roster's pick on a camp being watched: the member's pawn is the map's pick (the ring, the card)
+  pickMember(id) {
+    const L = this.local; if (!L) return;
+    const ag = id == null ? null : [...L.w.agents].find(a => !a.dead && a.member === id);
+    L.view.selected = ag || null; L.view.selBld = null; L.view.selCell = null; L.view.mind = null;
+    if (ag) this.localCard(true);
   }
   localCard(force = false) {
     const L = this.local, w = L?.w, box = $('campInspect');
