@@ -41,6 +41,7 @@ import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {bondsAmong, moodOut, moodIn} from './social.js';
+import {DUTY} from '../data/social.js';
 import {ITEMS} from '../data/items.js';
 import {SPECIES, isMindless} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -76,7 +77,7 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], effects: effectsOut(K, m), wounds: woundsOut(K, m), marks: m.marks ? [...m.marks] : null, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
-      align: m.align, alignRoot: m.alignRoot || null, values: m.values, mood: m.social?.mood?.length ? m.social.mood.map(e => ({...e})) : null, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
+      align: m.align, alignRoot: m.alignRoot || null, values: m.values, mood: m.social?.mood?.length ? m.social.mood.map(e => ({...e})) : null, tired: m.social?.load?.tired || 0, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     bonds: bondsAmong(K, alive(K).map(m => m.id)),   // what the members present feel for each other (campaign/social.js), by member id
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
@@ -147,7 +148,7 @@ export function openCamp(S) {
     if (!m.captive && !m.former && m.potions) ag.potions = Math.min(POTION.slot, m.potions);   // the healing potions in the slot (agents/potions.js)
     if (!m.captive && !m.former && m.belt?.length) ag.belt = m.belt.slice(0, POTION.belt);   // and the others in the belt
     for (const n of Object.keys(ag.needs)) ag.needs[n] = Math.max(ag.needs[n], 0.75);
-    ag.needs.rest = CAMP.rest[S.kind] ?? 0.85;   // a day's march behind them
+    ag.needs.rest = Math.max(0, (CAMP.rest[S.kind] ?? 0.85) - DUTY.campRest * (m.tired || 0));   // a day's march behind them, and the nights on watch (campaign/duty.js)
     if (S.kind === 'stop') ag.needs.food = 1;   // the day's meal is the campaign's: on the map they hunt and gather
   });
   w.founding = false;

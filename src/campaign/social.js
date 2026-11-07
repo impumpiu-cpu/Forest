@@ -18,7 +18,7 @@ export const SOCIAL_VERSION = 1;
 // the container, made or brought up to date (a save from before has none): idempotent
 export function ensureSocial(K) {
   const S = K.social ||= {};
-  S.version ??= SOCIAL_VERSION; S.relations ||= {}; S.why ||= {}; S.facts ||= []; S.applied ||= {}; S.faded ||= {};
+  S.version ??= SOCIAL_VERSION; S.relations ||= {}; S.why ||= {}; S.facts ||= []; S.commitments ||= []; S.applied ||= {}; S.faded ||= {};
   return S;
 }
 const clampV = v => Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, v));
@@ -103,10 +103,25 @@ export const reasonsOf = (K, a, b) => (K.social?.why?.[a]?.[b] || []).map(id => 
 // a member's fate as a fact of the campaign (social/fate.js: 'died', 'taken', 'escaped', 'sold', 'left'), known to those
 // still with the company — `heard` when they were not there to see it (a death on a quiet stop's map, a captive gone in the
 // night) — and the loss as each of them takes it
-export function noteFate(K, m, kind, {heard = false, params = {}} = {}) {
-  const S = ensureSocial(K), n = (S.factN = (S.factN || 0) + 1), here = K.members.filter(x => x.alive && x !== m).map(x => x.id);
-  const f = makeFact(`${K.seed}:d${K.day}#${n}`, kind, {to: m.id, saw: heard ? [] : here, heard: heard ? here : [], day: K.day, params});
+// a fact of the campaign's own day (not of a camp's map): its id by the day and a number; kept as a camp's facts are
+export function campaignFact(K, kind, parts) {
+  const S = ensureSocial(K), n = (S.factN = (S.factN || 0) + 1);
+  const f = makeFact(`${K.seed}:d${K.day}#${n}`, kind, {...parts, day: K.day});
   takeFacts(K, [f]);
+  return f;
+}
+// a bond moved by a deed of the campaign's day (the watch, campaign/duty.js): the one place it is moved, the fact its reason
+export function bondBy(K, from, to, v, f) {
+  if (!v) return;
+  const S = ensureSocial(K), row = S.relations[from] ||= {};
+  row[to] = clampV((row[to] || 0) + v);
+  if (f) { const l = (S.why[from] ||= {})[to] ||= []; if (!l.includes(f.id)) l.push(f.id); if (l.length > SOCIAL.whyMax) l.shift(); }
+}
+export const bondOf = (K, from, to) => K.social?.relations?.[from]?.[to] || 0;
+
+export function noteFate(K, m, kind, {heard = false, params = {}} = {}) {
+  const here = K.members.filter(x => x.alive && x !== m).map(x => x.id);
+  const f = campaignFact(K, kind, {to: m.id, saw: heard ? [] : here, heard: heard ? here : [], params});
   grieve(K, m, kind, here);
   return f;
 }

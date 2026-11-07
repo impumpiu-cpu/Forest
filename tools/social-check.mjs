@@ -10,6 +10,9 @@
 // Step 5 (D2): quarrels, work, a fight side by side, a defence, an escort, a bed given up — facts too, a long deed once a
 // camp; the fates — death, captivity, escape, sale, leaving — facts of the campaign, known by sight or by word, and the
 // loss weighs by the bond: a friend's death grieves, a hated one's eases; the last help before a death stays before it.
+// Step 6 (D3): the night's watch by turns; one too tired asks one it chooses, that one answers by its own rules; a yes is a
+// promise — kept, failed through no fault, broken, or gone with the one who gave it; what came of it moves the bond once,
+// and the next request remembers it; a save between the promise and its night goes on the same.
 //   node tools/social-check.mjs [worlds=2]
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
@@ -22,9 +25,11 @@ import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, notedFade, moodOut, moodIn} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
-import {reasonsOf, noteFate} from '../src/campaign/social.js';
+import {reasonsOf, noteFate, bondOf} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
+import {nightWatch, tiredOf} from '../src/campaign/duty.js';
+import {DUTY} from '../src/data/social.js';
 import {SPECIES, isSentient} from '../src/data/species.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {newGame, step} from '../src/sim.js';
@@ -188,6 +193,73 @@ check('когда ядра не осталось, остальные отпущ�
   die(a, K, Fm, 'пал'); const sad = E.social.mood.at(-1).mood;
   die(a, K, G, 'пал'); const eased = E.social.mood.at(-1).mood;
   check('утрата — по связи: смерть друга тяжела, ненавистного — облегчение', sad < 0 && eased > 0, `друг ${sad}, недруг ${eased}`);
+}
+
+// ── the watch: a request, an answer, a promise and what came of it
+{
+  const base = generateAtlas({seed: '829', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const fresh = () => { const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); K.inTown = null; return {a, K}; };
+  // three who may stand watch (one a night), the others too hurt; A first in the turn and worn out
+  const setup = ({tA = 0.9, tB = 0, tC = 0, traitsB = null} = {}) => {
+    const {a, K} = fresh(), [A, B, C, ...rest] = K.members;
+    for (const m of rest) m.hp = DUTY.badly / 2;
+    const T = {[A.id]: tA, [B.id]: tB, [C.id]: tC};
+    for (const m of [A, B, C]) { m.hp = 1; (m.social ||= {}).load = {tired: T[m.id], watched: 0, lastWatch: null}; m.local.traits = m.id === B.id && traitsB ? traitsB : []; }
+    K.duty = {queue: K.members.map(m => m.id), night: null, on: []};
+    return {a, K, A, B, C};
+  };
+  const night = (a, K, lines) => { const on = nightWatch(a, K, {say: t => lines.push(t)}); K.day++; return on; };
+  // 1. A asks the more rested, it says yes, stands tonight; A's bond to it grows with the fact as its reason
+  {
+    const {a, K, A, B, C} = setup({tB: 0, tC: 0.3}), lines = [], on = night(a, K, lines);
+    const asked = K.social.facts.find(f => f.kind === 'asked'), took = K.social.facts.find(f => f.kind === 'tookWatch');
+    check('уставший просит отдохнувшего; тот соглашается и стоит дозор вместо него', asked?.to === B.id && on[0] === B.id && took?.by === B.id && took?.to === A.id, lines.join(' | '));
+    check('исполненное обещание — связь у того, кому помогли, с фактом-причиной', bondOf(K, A.id, B.id) === DUTY.bond.kept && reasonsOf(K, A.id, B.id).some(f => f.kind === 'tookWatch'));
+    check('отстоявший устал, сменённый отдохнул', tiredOf(B) > 0 && tiredOf(A) < 0.9);
+  }
+  // 2. the same tiredness, other bonds: another is asked
+  {
+    const one = setup({tB: 0.2, tC: 0.2}), two = setup({tB: 0.2, tC: 0.2});
+    ensureSocial(two.K).relations[two.A.id] = {[two.C.id]: 2};
+    night(one.a, one.K, []); night(two.a, two.K, []);
+    const to = X => X.K.social.facts.find(f => f.kind === 'asked')?.to;
+    check('при одной усталости, но других связях — просят другого', to(one) === one.B.id && to(two) === two.C.id, `без дружбы → ${to(one)}, с другом → ${to(two)}`);
+  }
+  // 3. a promise for later: due on A's next turn; kept, failed through no fault, broken, gone
+  const later = (traitsB = null) => {
+    const X = setup({tB: 0.55, tC: 0.95, traitsB}), {K, A, B} = X;
+    ensureSocial(K).commitments.push({id: 'p1', kind: 'watch', debtor: B.id, creditor: A.id, made: K.day - 1, due: K.day, until: K.day + DUTY.promiseDays, status: 'accepted', fact: null});
+    return X;
+  };
+  {
+    const X = later(); X.B.hp = DUTY.badly / 2; const lines = []; night(X.a, X.K, lines);
+    const c = X.K.social.commitments.find(c => c.id === 'p1');
+    check('раненый не исполнил обещание не по своей вине: «failed», связь не падает', c.status === 'failed' && c.why === 'hurt' && bondOf(X.K, X.A.id, X.B.id) === 0 && X.K.social.facts.some(f => f.kind === 'wordFailed'), lines.join(' | '));
+  }
+  {
+    const X = later(['lazy']); X.B.social.load.tired = 0.9; const lines = []; night(X.a, X.K, lines);
+    const c = X.K.social.commitments.find(c => c.id === 'p1');
+    check('ленивый уставший не встал: обещание нарушено, связь падает, факт — «не сдержал слово»', c.status === 'broken' && bondOf(X.K, X.A.id, X.B.id) === DUTY.bond.broke && X.K.social.facts.some(f => f.kind === 'brokeWord'), lines.join(' | '));
+    // the next request: the one who broke its word is not asked first, though it is as rested
+    X.B.social.load.tired = 0; X.C.social.load.tired = 0; X.A.social.load.tired = 0.95;
+    X.K.duty.queue = [X.A.id, X.B.id, X.C.id, ...X.K.duty.queue.filter(id => ![X.A.id, X.B.id, X.C.id].includes(id))];
+    night(X.a, X.K, []);
+    const next = X.K.social.facts.filter(f => f.kind === 'asked').at(-1);
+    check('нарушившего слово в следующий раз не просят первым', next?.to === X.C.id, `попросили ${next?.to}`);
+  }
+  {
+    const X = later(); die(X.a, X.K, X.B, 'пал'); night(X.a, X.K, []);
+    const c = X.K.social.commitments.find(c => c.id === 'p1');
+    check('погибший не нарушитель: обещание стало невозможным', c.status === 'impossible' && c.why === 'dead' && bondOf(X.K, X.A.id, X.B.id) >= 0);
+  }
+  // 4. a save between the promise and its night goes on the same; the same day twice is one night
+  {
+    const X = later(), saved = JSON.parse(JSON.stringify(X.K)), lines1 = [], lines2 = [];
+    nightWatch(X.a, X.K, {say: t => lines1.push(t)}); nightWatch(X.a, X.K, {say: t => lines1.push(t)});
+    const a2 = X.a; a2.campaign = saved; nightWatch(a2, saved, {say: t => lines2.push(t)});
+    const st = K => K.social.commitments.find(c => c.id === 'p1').status;
+    check('сохранение между обещанием и ночью продолжается так же; второй вызов в тот же день — та же ночь', st(X.K) === st(saved) && lines1.join() === lines2.join() && X.K.duty.on.join() === saved.duty.on.join(), `${st(X.K)} / ${st(saved)}`);
+  }
 }
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)

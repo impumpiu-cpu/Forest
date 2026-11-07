@@ -55,6 +55,8 @@ import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate} from './social.js';
+import {nightWatch, tiredOf} from './duty.js';
+import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 
 const SEASON_LIST = SEASONS.all();
@@ -588,7 +590,7 @@ export function caravanDay(a, K, day) {
   } else if (K.hungry) { if (K.hungry >= HT.over) say(a, K, `Голод отступил после ${pieces(K.hungry, 'дня', 'дней', 'дней')}.`, 'hunger'); K.hungry = 0; }
   for (const m of ms) {
     if (K.hungry > CAMPAIGN.hunger.wasteAfter) { m.hp -= CAMPAIGN.hunger.waste * (0.5 + r()) * (camping ? campFx(K, 'shelter') : 1); if (m.hp <= 0) { die(a, K, m, 'умер от голода'); continue; } }
-    else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? CAMPAIGN.heal.ride : 1)));
+    else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? CAMPAIGN.heal.ride : 1)) * (1 - DUTY.healCut * tiredOf(m)));   // (the tired heal slower: campaign/duty.js)
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
@@ -607,6 +609,7 @@ export function caravanDay(a, K, day) {
   // what they can carry
   assign(K); overflow(K);
   if (core(K).length) { entered(a, K, before); evening(a, K); }
+  if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
   if (core(K).length && !ended(K)) night(a, K);
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {

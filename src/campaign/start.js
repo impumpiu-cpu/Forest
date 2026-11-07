@@ -125,7 +125,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
     seed: seed || `${a.cfg.seed}:${t.id}`, mode, started: {year: a.hist.year, season: a.hist.season}, day: 0,
     capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
     members: [], food: 0, gold: 0, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
-    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null, social: {version: 1, relations: {}, applied: {}, faded: {}},
+    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null, social: {version: 1, relations: {}, why: {}, facts: [], commitments: [], applied: {}, faded: {}},
     // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
     beasts: [], nextBeast: 1, vehicles: [], buildings: [...CAMP_KIT.start], cargo: {rope: CAPTIVE.campaign.startRope, pots: ALCHEMY.pots}, build: null, route: null,   // (pots for the healer's hut: data/market.js ALCHEMY)
   };
