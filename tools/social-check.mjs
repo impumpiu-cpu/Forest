@@ -30,17 +30,17 @@ import {campSetup, openCamp, runCamp, campOutcome} from '../src/campaign/camp.js
 import {takeFromCamp} from '../src/campaign/captives.js';
 import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, moodOut, moodIn, takeOnce} from '../src/campaign/social.js';
-import {REL} from '../src/data/colony.js';
+import {REL, TOGETHER} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
 import {reasonsOf, noteFate, bondOf, welcome, judge, tell, reconcile, campaignFact, trustOf} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf, escortAsk} from '../src/campaign/duty.js';
-import {escortOption, enterEscort} from '../src/settlement/together.js';
+import {escortOption, enterEscort, guardStep} from '../src/settlement/together.js';
 import {DUTY} from '../src/data/social.js';
 import {warband} from '../src/agents/behaviours/warband.js';
 import {councilChoose} from '../src/campaign/council.js';
-import {meetingsOf, meetingHtml, memberCardHtml} from '../src/ui/campSocial.js';
+import {meetingsOf, meetingHtml, memberCardHtml, fireLines, fireSteps, fireWords} from '../src/ui/campSocial.js';
 import {archive} from '../src/campaign/ending.js';
 import {COUNCIL} from '../src/data/campaign.js';
 import {mulberry} from '../src/core/rng.js';
@@ -372,8 +372,14 @@ check('когда ядра не осталось, остальные отпущ�
     const opt = escortOption(X.w, X.gb);
     check('на карте обещавший получает задачу «пойти рядом», пока тот работает снаружи', opt?.[0]?.id === 'company' && opt[0].who === X.ga.id && !!opt[0].promised, JSON.stringify(opt?.[0]));
     if (opt) { X.gb.task = opt[0]; enterEscort(X.w, X.gb, opt[0]); }
+    // taking the task is not the deed: far apart and no time at its side — not kept yet
+    X.gb.x = X.ga.x + 20; X.gb.y = X.ga.y;
+    check('взял задачу, но ещё не дошёл — не исполнено', X.w.campaign.promises[0].state !== 'kept', X.w.campaign.promises[0].state);
+    // at its side the time that counts (TOGETHER.promiseNear ticks) — kept
+    X.gb.x = X.ga.x + 1; X.gb.y = X.ga.y;
+    for (let t = 0; t < TOGETHER.promiseNear + 2; t++) { guardStep(X.w, X.gb, X.ga, X.gb.task); X.w.tick++; }
     const o = campOutcome(X.w), before = bondOf(X.K, X.A.id, X.B.id);
-    check('исход стоянки: обещание исполнено делом', o.promises?.[0]?.state === 'kept', JSON.stringify(o.promises));
+    check('исход стоянки: обещание исполнено делом — временем рядом', o.promises?.[0]?.state === 'kept', JSON.stringify(o.promises));
     applyCamp(X.a, X.K, X.S, o, null, 'stop');
     const c = X.K.social.commitments.find(x => x.id === 'e1');
     check('исполненное на карте — исполнено в походе: факт и связь у того, кого проводили', c.status === 'fulfilled' && X.K.social.facts.some(f => f.kind === 'keptEscort') && bondOf(X.K, X.A.id, X.B.id) > before, `${c.status}, связь ${before} → ${bondOf(X.K, X.A.id, X.B.id)}`);
@@ -422,15 +428,26 @@ check('когда ядра не осталось, остальные отпущ�
   }
   {
     const {a, K} = fresh(), [A, B] = K.members, R = ensureSocial(K).relations;
+    // help before the quarrel: nothing to forgive by it
+    campaignFact(K, 'stoodUp', {by: B.id, to: A.id, saw: [A.id, B.id]}); K.day++;
     R[A.id] = {[B.id]: -2}; R[B.id] = {[A.id]: -1.5};
     campaignFact(K, 'quarrel', {by: A.id, to: B.id, saw: [A.id, B.id]});
     reconcile(K);
-    check('без помощи в беде обида держится', bondOf(K, A.id, B.id) === -2);
-    campaignFact(K, 'stoodUp', {by: B.id, to: A.id, saw: [A.id, B.id]});
+    check('помощь до ссоры обиду не снимает; без новой помощи обида держится', bondOf(K, A.id, B.id) === -2 && !K.social.facts.some(f => f.kind === 'thankful'));
+    // help after it: the one helped softens — on its side; the other, who was not helped, keeps its own heart
+    K.day++; campaignFact(K, 'stoodUp', {by: B.id, to: A.id, saw: [A.id, B.id]});
     const lines = []; reconcile(K, t => lines.push(t));
-    check('ссора → помощь в беде → примирение: обида снята с обеих сторон, причина — факт', bondOf(K, A.id, B.id) >= 0.5 && bondOf(K, B.id, A.id) >= 0.5 && K.social.facts.some(f => f.kind === 'reconciled') && reasonsOf(K, A.id, B.id).some(f => f.kind === 'reconciled'), lines.join(' | '));
-    R[A.id][B.id] = -2; reconcile(K);
-    check('за одну помощь мирятся один раз', bondOf(K, A.id, B.id) === -2);
+    check('ссора → помощь в беде → обида помогшему ослабла у того, кому помогли; у второго — своя', bondOf(K, A.id, B.id) > -2 && bondOf(K, B.id, A.id) === -1.5 && K.social.facts.some(f => f.kind === 'thankful' && f.by === A.id) && !K.social.facts.some(f => f.kind === 'reconciled') && reasonsOf(K, A.id, B.id).some(f => f.kind === 'thankful'), `${bondOf(K, A.id, B.id)} / ${bondOf(K, B.id, A.id)}: ${lines.join(' | ')}`);
+    // the other side helped too: both at peace — reconciled
+    K.day++; campaignFact(K, 'aid', {by: A.id, to: B.id, saw: [A.id, B.id]});
+    B.social ||= {}; B.social.memory = [...(B.social.memory || []), {fact: K.social.facts.find(f => f.kind === 'quarrel').id, how: 'lived', part: 'to', day: 0, weight: 0.35}];
+    const l2 = []; reconcile(K, t => l2.push(t));
+    check('и второй выручен: его обида ослабла, но первый ещё не на мире — не помирились', bondOf(K, B.id, A.id) >= 0 && bondOf(K, A.id, B.id) < 0 && !K.social.facts.some(f => f.kind === 'reconciled'), `${bondOf(K, A.id, B.id)} / ${bondOf(K, B.id, A.id)}: ${l2.join(' | ')}`);
+    K.day++; campaignFact(K, 'aid', {by: B.id, to: A.id, saw: [A.id, B.id]});
+    const l3 = []; reconcile(K, t => l3.push(t));
+    check('ещё одна помощь — оба на мире: помирились, факт пары', bondOf(K, A.id, B.id) >= 0 && K.social.facts.some(f => f.kind === 'reconciled'), `${bondOf(K, A.id, B.id)} / ${bondOf(K, B.id, A.id)}: ${l3.join(' | ')}`);
+    const n = K.social.facts.filter(f => f.kind === 'thankful').length; reconcile(K);
+    check('за одну помощь благодарят один раз', K.social.facts.filter(f => f.kind === 'thankful').length === n);
   }
 }
 
@@ -445,7 +462,8 @@ check('когда ядра не осталось, остальные отпущ�
     const memD = D.social?.memory?.find(x => x.fact === f.id);
     check('судьбу видели свидетели; остальные слышат от того, кто был ближе к ушедшему', f.saw.includes(B.id) && f.saw.includes(C.id) && f.heard.includes(D.id) && memD?.from === C.id, JSON.stringify({saw: f.saw, heard: f.heard, from: memD?.from}));
     const g = noteFate(K, B, 'taken', {seen: []});
-    check('никто не видел — знают, что пропал, но не как', g.params.unknown === true && g.saw.length === 0 && g.params.teller == null);
+    const before = (D.social?.mood || []).length;
+    check('никто не видел — знают только, что пропал: факт «пропал», не плен; никто не горюет', g.kind === 'missing' && g.params.was === 'taken' && g.saw.length === 0 && g.heard.includes(D.id) && (D.social?.mood || []).length === before && !K.social.facts.some(f => f.kind === 'taken' && f.to === B.id));
   }
   {
     const {K} = fresh(), core = K.members.filter(m => m.alive).map(m => m.id), nm = {...K.members[0], id: 700, name: 'Наёмник', role: 'hired', social: null, local: {...K.members[0].local}};
@@ -500,6 +518,22 @@ check('когда ядра не осталось, остальные отпущ�
   check('чужой упавшему — без этого варианта', !cOffers.some(o => o[0].id === 'aid' && o[0].who === b1.id));
   c1.hp = c1.maxHp ? c1.maxHp * 0.4 : c1.hp * 0.4; c1.mods = {...c1.mods, bravery: 0.6};   // (hurt, but not past BOARD.hurt: those keep out anyway)
   check('тяжело раненый робкий может дрогнуть и отойти к огню', (warband.want(w, c1) || []).some(o => o[0].id === 'runHome'));
+  // the fallen and the ones who cannot stand it (D4.7): a helper not merciful enough goes with less of a will, a hater not at all
+  {
+    const {aidOption: aidOf} = await import('../src/settlement/together.js');
+    const far = o => { o.x = b1.x + 3; o.y = b1.y; };
+    w.agents = w.agents.filter(x => x !== foe); w.campaign.alarm = false; w.campaign.foeObjs = [];
+    a1.align = {...(a1.align || {}), mercy: 0}; c1.align = {...(c1.align || {}), mercy: 0}; far(a1); far(c1); c1.hp = c1.maxHp || c1.hp;
+    const {opinion, OPINION} = await import('../src/data/relations.js');
+    a1.grudge = {}; c1.grudge = {[b1.id]: REL.dislike - opinion(c1, b1) - 0.1};   // (the grudge brings the opinion just under REL.dislike)
+    const sA = aidOf(w, a1), sC = aidOf(w, c1);
+    check('упавшего, которого не выносит, немилосердный идёт спасать с меньшей охотой', sA?.[0]?.who === b1.id && sC?.[0]?.who === b1.id && sC[1] < sA[1] * 0.7, `${sA?.[1]} / ${sC?.[1]}`);
+    c1.grudge[b1.id] = -OPINION.grudgeCap; b1.align = {...(b1.align || {}), mercy: 5, order: c1.align.order ?? 0};   // (as deep a grudge as there is, and a stranger in mercy: under the hate line)
+    const hated = opinion(c1, b1) <= REL.dislike * TOGETHER.spiteHate, hates = !aidOf(w, c1); c1.align.mercy = 5;
+    const after = aidOf(w, c1);
+    check('ненавистного — не идёт вовсе; милосердный идёт', hated && hates && !!after);
+    c1.grudge = {}; c1.align.mercy = 0;
+  }
   // nobody on their feet: the fallen are not bound by anyone
   for (const ag of P.values()) if (ag !== b1) ag.dead = true;
   w.agents = w.agents.filter(x => !x.dead || x === b1);
@@ -552,6 +586,11 @@ check('когда ядра не осталось, остальные отпущ�
   check('ответ предложившего записан: уступил, сошлись или настоял', ['yielded', 'met', 'held'].includes(Mc.debate.answer));
   const html = meetingHtml(cold.K, Mc);
   check('у костра слышен разговор: предложение, возражение, ответ', /Предлагаю/.test(html) && /Лучше/.test(html), html.replace(/<[^>]+>/g, ' ').slice(0, 200));
+  // one sequence of lines for the text and the scene: the talk first, then the voices as they stood after it; one moved by the
+  // talk says what it wanted first as first — never «I would have…» after yielding
+  const Lw = fireLines(warm.K, Mw), kinds = Lw.map(x => x.kind), moved = Mw.voices.filter(v => v.now && v.now !== v.want);
+  check('одна последовательность реплик: разговор → голоса → итог; шаги сцены — те же строки', kinds[0] === 'propose' && kinds.indexOf('voice') > kinds.indexOf('answer') && kinds.at(-1) === 'pick' && fireSteps(warm.K, Mw) === Lw.length - 1 && fireWords(warm.K, Mw, 0).includes('Предлагаю'), kinds.join(','));
+  check('кто передумал, говорит об этом, а не о прежнем желании как о нынешнем', moved.every(v => Lw.some(x => x.kind === 'voice' && x.who.includes(v.id) && /вернее/.test(x.said))) && !Lw.some(x => x.kind === 'voice' && moved.some(v => x.who.includes(v.id)) && /Я бы/.test(x.said)), `передумали ${moved.length}`);
 }
 
 // ── the fire's scene: read, never decided again; the archive keeps the story

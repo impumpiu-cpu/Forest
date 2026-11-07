@@ -123,18 +123,22 @@ export const bondOf = (K, from, to) => K.social?.relations?.[from]?.[to] || 0;
 
 // a fate (social/fate.js) as the company comes to know it: who saw it (on a camp's map: settlement/facts.js noteSeen — `seen`)
 // knows it so; the others hear it from one of them — the one who was closest to the gone (its bond), else the lower id — and
-// remember from whom; if nobody saw it, they know only that it is gone, not how (params.unknown). Without `seen`: a fate of
+// remember from whom; if nobody saw it, they know only that it is gone, not how (a `missing` fact). Without `seen`: a fate of
 // the campaign's day (all saw it), or `heard` — told by the most talkative of them
 export function noteFate(K, m, kind, {heard = false, seen = null, params = {}} = {}) {
   const here = K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id), R = ensureSocial(K).relations;
   const bondTo = id => R[id]?.[m.id] || 0, byBond = (p, q) => bondTo(q) - bondTo(p) || p - q;
   let saw, told, teller = null;
-  if (seen) { saw = here.filter(id => seen.includes(id)); told = here.filter(id => !saw.includes(id)); teller = saw.slice().sort(byBond)[0] ?? null; if (teller == null && told.length) params = {...params, unknown: true}; }
+  if (seen) { saw = here.filter(id => seen.includes(id)); told = here.filter(id => !saw.includes(id)); teller = saw.slice().sort(byBond)[0] ?? null; }
   else if (heard) { saw = []; told = here; teller = here.map(id => K.members.find(x => x.id === id)).sort((p, q) => (q.local?.leans?.social ?? 0) - (p.local?.leans?.social ?? 0) || p.id - q.id)[0]?.id ?? null; }
   else { saw = here; told = []; }
+  // nobody saw it: what the company knows is that it is gone — a fact of its own (`missing`, the true fate in params.was for the
+  // world and the chronicle, never read as the death or the capture: campaign/council.js losses, the cards); it grieves nobody
+  // yet — the fate is not known (a later word of a witness would make the true fact: none comes today)
+  if (seen && teller == null) return campaignFact(K, 'missing', {to: m.id, saw: [], heard: told, params: {...params, was: kind}});
   const f = campaignFact(K, kind, {to: m.id, saw, heard: told, params: teller != null ? {...params, teller} : params});
   if (teller != null) for (const id of told) { const x = K.members.find(o => o.id === id), e = x?.social?.memory?.find(q => q.fact === f.id); if (e && id !== teller) e.from = teller; }
-  grieve(K, m, kind, [...saw, ...(teller != null || !seen ? told : [])]);   // (nobody saw it: the others do not know yet what befell it)
+  grieve(K, m, kind, [...saw, ...told]);
   return f;
 }
 // the loss: by the bond each had with the one gone (K.social.relations, personal), a mood for some days (m.social.mood)
@@ -202,20 +206,30 @@ export function repayer(K, m, free, tiredOf) {
   }
   return null;
 }
-// a quarrel made up: one who holds a grudge against another the other since did a good turn in need — the evening's talk
-// makes it up, both ways (the lift is the fact's). Called once a day. → the facts of it
+// a grudge softened, a quarrel made up (STORY): for one who holds a grudge against another — a bond at `grudge` or below, made
+// by a fact it knows (`sour`: the last quarrel between them, a word broken to it) — a good turn in need the other did it after
+// that fact softens it: its bond rises (the lift is the fact's, `thankful`), on its side only. When both then stand at `peace` or
+// above, they are reconciled — a fact of the pair, told. Called once a day. → the facts of it
 export function reconcile(K, say = () => {}) {
   const S = ensureSocial(K), T = STORY, R = S.relations, here = K.members.filter(m => m.alive && !m.captive), byId = new Map(here.map(m => [m.id, m])), out = [];
+  const between = (f, a, b) => (f.by === a && f.to === b) || (f.by === b && f.to === a);
   for (const a of here) {
     if ((a.align?.mercy ?? 0) < T.mercyFrom) continue;   // (a merciless heart keeps its grudge)
+    const mine = new Set((a.social?.memory || []).map(x => x.fact));
     for (const [bid, v] of Object.entries(R[a.id] || {})) {
       const b = byId.get(+bid); if (!b || v > T.grudge) continue;
-      const help = S.facts.filter(f => T.need.includes(f.kind) && f.by === b.id && f.to === a.id && K.day - f.day <= T.days).at(-1);
-      if (!help || S.facts.some(f => f.kind === 'reconciled' && f.params?.for === help.id)) continue;
-      const f = campaignFact(K, 'reconciled', {by: a.id, to: b.id, saw: here.map(m => m.id), params: {for: help.id}});
-      for (const [x, y] of [[a, b], [b, a]]) { const now = bondOf(K, x.id, y.id); if (now < T.made) bondBy(K, x.id, y.id, T.made - now, f); }
-      say(`${a.name} и ${b.name} помирились: после того как ${b.name} ${b.gender === 'f' ? 'выручила' : 'выручил'} в беде, старая обида забыта.`, [a.id, b.id]);
-      out.push(f);
+      // the grudge's cause: the last sour fact between them that a knows of; none known — nothing to forgive by a deed
+      const sour = S.facts.filter(f => T.sour.includes(f.kind) && between(f, a.id, b.id) && mine.has(f.id)).at(-1); if (!sour) continue;
+      // the good turn after it, not yet thanked for by a
+      const help = S.facts.filter(f => T.need.includes(f.kind) && f.by === b.id && f.to === a.id && f.day >= sour.day && f.id !== sour.id && K.day - f.day <= T.days && !S.facts.some(g => g.kind === 'thankful' && g.by === a.id && g.params?.for === f.id)).at(-1);
+      if (!help || help.day < sour.day || (help.day === sour.day && S.facts.indexOf(help) < S.facts.indexOf(sour))) continue;
+      const f = campaignFact(K, 'thankful', {by: a.id, to: b.id, saw: here.map(m => m.id), params: {for: help.id, over: sour.id}});
+      bondBy(K, a.id, b.id, Math.min(T.thank, T.made - v), f); out.push(f);
+      // both at peace now: reconciled — one fact for the pair, said once
+      if (bondOf(K, a.id, b.id) >= T.peace && bondOf(K, b.id, a.id) >= T.peace && !S.facts.some(g => g.kind === 'reconciled' && between(g, a.id, b.id) && g.day >= sour.day)) {
+        const g = campaignFact(K, 'reconciled', {by: a.id, to: b.id, saw: here.map(m => m.id), params: {for: help.id}}); out.push(g);
+        say(`${a.name} и ${b.name} помирились: после того как ${b.name} ${b.gender === 'f' ? 'выручила' : 'выручил'} в беде, старая обида забыта.`, [a.id, b.id]);
+      } else say(`${a.name} уже не так зл${a.gender === 'f' ? 'а' : ''} на ${b.name}: ${b.gender === 'f' ? 'та выручила' : 'тот выручил'} в беде.`, [a.id, b.id]);
     }
   }
   return out;

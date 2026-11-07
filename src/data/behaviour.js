@@ -299,6 +299,7 @@ export const COLONIST = {
   night: {build: 0.3, work: 0.2, outdoorFrom: 0.6, outdoorMul: 1.5, outdoorRisk: 0.5, pray: 0.5},   // work goes unwillingly by night, outdoor work waits for morning
   tasty: 1.2,                        // a job that brings your favourite food is a little more tempting
   standHp: 0.85,                     // brave × healthy above this: stands and fights when attacked, else runs home
+  zoneStand: 0.4,                    // inside the settlement (nowhere to run to) the line is this × standHp: one badly hurt and faint-hearted still runs for the fire
   memWolf: 0.05,                     // a wolf's attack is remembered this much (a.mem.wolf)
   prayFrom: 0.1,                     // low spirits past this want a prayer
   sleptFull: 0.995,                  // rested to this before dawn: sleeps on till first light

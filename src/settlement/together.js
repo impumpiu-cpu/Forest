@@ -76,7 +76,7 @@ export function escortOption(w, a) {
     if (b && !b.dead && outWork(b)) {
       pr.seenOut = true;
       const going = a.task?.id === 'company' && a.task.who === b.id;
-      if (going && !a.task.promised) { a.task.promised = pr.id; pr.state = 'kept'; pr.tick = w.tick; }   // (already at its side: the promise is kept)
+      if (going && !a.task.promised) { a.task.promised = pr.id; pr.took = true; }   // (already going along: the promise is being kept — by the time at its side, guardStep)
       if (hpShare(a) >= TOGETHER.aidBelow) return [going ? a.task : {id: 'company', who: b.id, promised: pr.id}, DUTY.escort.score, () => `обещал${a.gender === 'f' ? 'а' : ''} пойти рядом с ${b.name}`];
     }
   }
@@ -126,6 +126,8 @@ export function guardStep(w, a, b, task) {
   if (task.fought != null) { bond(w, b, a, TOGETHER.bondDefend); noteFact(w, 'stoodUp', a, b, {bond: {to: TOGETHER.bondDefend}}); think(w, b, 'stoodUp', {name: a.name, gender: a.gender}); task.fought = null; }
   if (dist(a, b) > TOGETHER.keep) { approach(w, a, b.x, b.y); return 'far'; }
   if (w.tick % HOUR === 0) { bond(w, a, b, TOGETHER.bondEscort); bond(w, b, a, TOGETHER.bondEscort); }
+  // a promised escort is kept by the deed — the time really spent at the other's side, not by taking the task
+  if (task.promised) { const pr = w.campaign?.promises?.find(p => p.id === task.promised); if (pr && pr.state !== 'kept' && (pr.near = (pr.near || 0) + 1) >= TOGETHER.promiseNear) { pr.state = 'kept'; pr.tick = w.tick; } }
   return 'near';
 }
 
@@ -143,7 +145,7 @@ export function enterEscort(w, a, task) {
   const s = social(w); if (s && !task.home) s.escort++;
   if (!task.home) { think(w, b, 'escorted', {name: a.name, gender: a.gender}); noteFact(w, 'escorted', a, b, {bond: {to: TOGETHER.bondEscort, by: TOGETHER.bondEscort}}); }
   const pr = task.promised && w.campaign?.promises?.find(p => p.id === task.promised);
-  if (pr) { pr.state = 'kept'; pr.tick = w.tick; }   // (the promise kept by the deed: campaign/camp.js campOutcome)
+  if (pr) pr.took = true;   // (it set out: the promise is kept only by the time at the other's side — guardStep)
 }
 
 // ── aid
@@ -161,10 +163,12 @@ export function aidOption(w, a) {
   for (const b of colonists(w)) {
     if (b === a || !needsAid(w, b) || dist(a, b) > TOGETHER.far) continue;
     const h = helper(w, b.id); if (h && h !== a) continue;
-    const op = opinion(a, b);
-    // the merciful help even those they cannot stand; a life at stake, anyone helps
-    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < ALIGN.help) continue;
-    const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
+    const op = opinion(a, b), merciful = (a.align?.mercy ?? 0) >= ALIGN.help;
+    // the merciful help even those they cannot stand; the rest: not the walking wounded it dislikes, and a fallen one it
+    // dislikes with less of a will (TOGETHER.aidSpite) — one it hates (REL.dislike × spiteHate) it leaves to the others
+    if (!merciful && op <= REL.dislike && (!b.downed || op <= REL.dislike * TOGETHER.spiteHate)) continue;
+    const spite = !merciful && b.downed && op <= REL.dislike ? TOGETHER.aidSpite : 1;
+    const s = aidScore(b) * spite + 0.05 * clamp(op, -2, 4);
     if (s > bs) { bs = s; best = b; }
   }
   return best ? [{id: 'aid', who: best.id, fallen: !!best.downed}, bs, () => aidWhy(best)] : null;

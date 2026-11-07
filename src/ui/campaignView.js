@@ -40,7 +40,7 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
-import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords} from './campSocial.js';
+import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps} from './campSocial.js';
 const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../atlas/calamity.js';
@@ -468,20 +468,21 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.renderFights(); this.renderSummary(); if (!this.local) this.renderStock();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
-    const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};
-    const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
-    const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
-    const plan = ended(K) ? phaseWord(K.phase) : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : phaseWord(K.phase);
     this.frame();
-    // the numbers of the day shown, not of the season computed ahead (K.daily: what stood at the end of each day; the live
-    // state at the end, between seasons, for a save from before)
+    // the day shown, not the season computed ahead (K.daily: what stood at the end of each day — the numbers, what they did,
+    // the council, the crown; the live state at the end, between seasons, for a save from before)
     const sd = this.shownDay(), shot = sd < K.day ? (K.daily || []).filter(x => x.d < sd).at(-1) : null;
-    const V = shot || {d: K.day, food: K.food, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: K.stats.walked, towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0};
-    const dayN = shot ? shot.d + 1 : K.day;
+    const V = shot || {d: K.day, food: K.food, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: K.stats.walked, towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0,
+      state: K, council: K.council ? {pick: K.council.pick, n: K.council.opts.length, day: K.council.day} : null, crown: K.quest ? {...K.quest.crown, r: K.quest.crown.area?.r ?? null} : null};
+    const dayN = shot ? shot.d + 1 : K.day, X = V.state || K;
+    const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: X.build ? `лагерь: ${X.build.kind === 'building' ? `рубят «${BUILDINGS.get(X.build.id).name}»` : X.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${X.build.days} дн.` : 'лагерь: строят'};
+    const tameKind = X.why?.startsWith('tame:') ? BEASTS[X.why.slice(5)] : null;
+    const townOf = id => a.towns.find(t => t.id === id), inTown = X.inTown && townOf(X.inTown.id), via = X.via != null && townOf(X.via);
+    const plan = ended(K) && !shot ? phaseWord(K.phase) : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${X.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : X.hungry ? `голодают ${X.hungry} ${plural(X.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : X.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[X.why] || 'лагерь') : phaseWord(X.phase);
     $('campStatus').innerHTML = `<dt>В пути</dt><dd>${dayN} ${plural(dayN, 'день', 'дня', 'дней')} (${(dayN / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
-      (K.council ? `<dt>Совет</dt><dd class="nb" title="${esc(K.council.opts.map(o => `${commandOf(o.id)?.label || o.id} ${o.w}`).join(' · '))}">${esc(commandOf(K.council.pick)?.label || K.council.pick)} — жребий из ${K.council.opts.length}, день ${K.council.day}</dd>` : '') +
-      (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
+      (V.council ? `<dt>Совет</dt><dd class="nb"${!shot ? ` title="${esc(K.council.opts.map(o => `${commandOf(o.id)?.label || o.id} ${o.w}`).join(' · '))}"` : ''}>${esc(commandOf(V.council.pick)?.label || V.council.pick)} — жребий из ${V.council.n}, день ${V.council.day ?? V.d}</dd>` : '') +
+      (K.quest ? (() => { const Q = K.quest, C = V.crown || Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(Q.crown.label)}` : C.r != null ? `где-то в круге ${Math.round(C.r)} кл.` : 'где — неизвестно';
         return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${V.found} из ${Q.clues.length}${V.storms ? ` · штурмов ${V.storms}` : ''}</dd>`; })() : '') +
       `<dt>Еда</dt><dd>${Math.floor(V.food)} ${plural(Math.floor(V.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (V.food / need).toFixed(1) : 0} дн.</dd>` +
       `<dt>Груз</dt><dd>${Math.round(load(K))} из ${capacity(K)} мест</dd>` +
@@ -510,16 +511,16 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const key = meet ? `${meet.day}:${meet.point}:${this.who}` : `none:${this.who}`;
     if (key === this.fireKey) return;   // (the same meeting: the scene plays on)
     this.fireKey = key;
-    box.innerHTML = (m ? memberCardHtml(K, m) : '') + (meet ? `<div class="fire-scene"><canvas id="campFireCv"></canvas><div class="fire-words" id="campFireWords"></div>
+    box.innerHTML = (m ? memberCardHtml(K, m, day) : '') + (meet ? `<div class="fire-scene"><canvas id="campFireCv"></canvas><div class="fire-words" id="campFireWords"></div>
       <div class="row"><button type="button" class="quiet mini" id="campFirePlay">⏸</button><button type="button" class="quiet mini" id="campFireSkip">⏭</button><button type="button" class="quiet mini" id="campFireAgain">↺</button></div></div>` : '') +
       (meets.length ? meets.map(x => meetingHtml(K, x)).join('') : '<p class="muted">Совет ещё не собирался.</p>');
     if (!meet) return;
     // the scene shows the meeting as it was: a speaker at a time, never deciding again (ui/campSocial.js drawFire)
-    const F = this.fire = {meet, step: this.clock.pace === 'max' ? meet.voices.length : 0, playing: this.clock.pace !== 'max', timer: 0};
+    const last = fireSteps(K, meet), F = this.fire = {meet, step: this.clock.pace === 'max' ? last : 0, playing: this.clock.pace !== 'max', timer: 0};
     const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; };
-    const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= meet.voices.length) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
-    $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= meet.voices.length) F.step = 0; show(); tick(); });
-    $('campFireSkip').addEventListener('click', () => { F.playing = false; F.step = meet.voices.length; show(); });
+    const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= last) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
+    $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= last) F.step = 0; show(); tick(); });
+    $('campFireSkip').addEventListener('click', () => { F.playing = false; F.step = last; show(); });
     $('campFireAgain').addEventListener('click', () => { F.step = 0; F.playing = true; show(); tick(); });
     show(); tick();
   }

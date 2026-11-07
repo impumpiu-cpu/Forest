@@ -561,7 +561,14 @@ export function golemMend(K, town, camping) {
 
 // one day of the campaign (the world's day `day` of the current season)
 // what the screen's summary reads of a day: the food, the treasury, the fights, the way walked, the towns, the clues — at its end
-export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: Math.round(K.stats.walked), towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0, alive: K.members.filter(m => m.alive).length});
+// (and what the day's screen tells of them: what they do, the council's pick, the crown's state, each one's bonds and
+// tiredness — so a day shown is shown as it stood, not as the season computed ahead stands: ui/campaignView.js, ui/campSocial.js)
+export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: Math.round(K.stats.walked), towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0, alive: K.members.filter(m => m.alive).length,
+  state: {inTown: K.inTown ? {...K.inTown} : null, via: K.via, camp: K.camp, why: K.why, hungry: K.hungry, phase: K.phase, build: K.build ? {...K.build} : null, route: K.route},
+  council: K.council?.day === d ? {pick: K.council.pick, n: K.council.opts.length} : null,
+  crown: K.quest ? {state: K.quest.crown.state, carrier: K.quest.crown.carrier, exact: K.quest.crown.exact, seen: K.quest.crown.seen, r: K.quest.crown.area?.r ?? null} : null,
+  rel: Object.fromEntries(Object.entries(K.social?.relations || {}).map(([a, row]) => [a, {...row}])),
+  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0]))});
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};

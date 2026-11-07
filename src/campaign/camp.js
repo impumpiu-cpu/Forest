@@ -372,7 +372,9 @@ function outcomeOf(w) {
   const promises = (C.promises || []).map(p => {
     if (p.state === 'kept') return {id: p.id, state: 'kept'};
     const db = [...C.people.values()].find(x => x.id === p.by);
-    const why = !db || db.dead || db.downed || db.captive || db.gone ? 'hurt' : !p.seenOut ? 'notNeeded' : C.alarm || w.campaign.foes?.length ? 'busy' : (db.traits || []).includes('lazy') ? 'ignored' : 'busy';
+    // (took: it set out and was at the other's side a while but not long enough — the camp ended, the other came home: the
+    // deed was begun, not done — through no fault: `short`)
+    const why = !db || db.dead || db.downed || db.captive || db.gone ? 'hurt' : !p.seenOut ? 'notNeeded' : C.alarm || w.campaign.foes?.length ? 'busy' : p.took ? 'short' : (db.traits || []).includes('lazy') ? 'ignored' : 'busy';
     return {id: p.id, state: 'open', why};
   });
   const bonds = {};   // what each member present came to feel for the others there, by member id (campaign/social.js takeBonds)

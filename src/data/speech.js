@@ -29,6 +29,8 @@ export const SAY_ACT = {
   for: (o, why) => `${o}${why ? ` — ${why}` : ''}.`,
   against: (o, why, took) => `я бы ${o}${why ? ` — ${why}` : ''}. Но раз решили ${took} — пойду со всеми.`,
   quiet: took => `Согласен: ${took}.`,
+  // moved by the talk: what it wanted first, what it wants now (and the pick, when that is yet another)
+  changed: (was, now, took) => `Хотел ${was}, но ${now} — так вернее.${took ? ` А раз решили ${took} — пойду со всеми.` : ''}`,
 };
 // the round of talk (campaign/council.js debate): the proposal, the objection with its reason, the proposer's answer, those
 // the objection moved

@@ -9,7 +9,7 @@
 //   K.duty = {queue: [member id], night: day, on: [member id]}
 //   m.social.load = {tired, watched, lastWatch}
 //   commitment = {id, kind: 'watch' | 'escort', debtor, creditor, made, due, until, status, why, fact, end, endFact} — status:
-//   'accepted', then 'fulfilled', 'failed' (hurt or bound, busy fighting: through no fault), 'impossible' (gone; no need came),
+//   'accepted', then 'fulfilled', 'failed' (hurt or bound, busy fighting, set out but the day ended — short: through no fault), 'impossible' (gone; no need came),
 //   'broken' (did not get up, did not go), 'lapsed'
 // The escort (D4.2: a promise kept by a deed on the map): on a camp to forage where the night is not quiet, the faint-hearted
 // asks one bolder to go along when it goes out (escortAsk); the map gives the one who promised the task (settlement/together.js
@@ -185,7 +185,7 @@ export function escortAsk(a, K, say = () => {}) {
 // the escorts due on a camp's day, for its setup (campaign/camp.js campSetup): both on the map
 export const escortsDue = (K, present) => ensureSocial(K).commitments.filter(c => c.kind === 'escort' && c.status === 'accepted' && c.due <= K.day && present.has(c.debtor) && present.has(c.creditor)).map(c => ({id: c.id, debtor: c.debtor, creditor: c.creditor}));
 // what the map gave of them (campaign/fight.js applyCamp): kept — the bond grows by the deed; not — by its reason
-const ESCORT_END = {kept: ['fulfilled'], hurt: ['failed', 'hurt'], busy: ['failed', 'busy'], notNeeded: ['impossible', 'notNeeded'], ignored: ['broken', 'ignored']};
+const ESCORT_END = {kept: ['fulfilled'], hurt: ['failed', 'hurt'], busy: ['failed', 'busy'], short: ['failed', 'short'], notNeeded: ['impossible', 'notNeeded'], ignored: ['broken', 'ignored']};
 export function takeEscorts(K, out = [], say = () => {}) {
   const S = ensureSocial(K), here = K.members.filter(m => m.alive && !m.captive).map(m => m.id);
   for (const p of out) {

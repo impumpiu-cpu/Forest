@@ -25,51 +25,65 @@ export function meetingsOf(K, day) {
   return that.length ? that : M.filter(m => m.day <= day).slice(-1);
 }
 // a meeting told: who was there, what each said, what was taken, who could not speak
-export function meetingHtml(K, meet) {
-  const took = optSaid(meet.pick, meet.day), lines = [];
+// the meeting as one sequence of lines, for the text and the scene alike (campaign/council.js: the voices as they first stood,
+// the round of talk, the voices as they stood after it, the pick): the talk first — proposal, objection, answer, who changed
+// their mind; then each voice's last word (`now` when the talk moved it — what it wanted first is said as what it wanted
+// first); the same words from several — one line. → [{who: [member id], said, kind: 'propose'|'object'|'answer'|'swayed'|'voice'|'pick', against}]
+export function fireLines(K, meet) {
+  const took = optSaid(meet.pick, meet.day), out = [], T = meet.debate;
+  if (T?.objector != null) {
+    const k = meet.day * 31 + T.objector;
+    out.push({who: [T.by], kind: 'propose', said: SAY_TALK.propose(optSaid(T.proposal, k))});
+    out.push({who: [T.objector], kind: 'object', against: true, said: SAY_TALK.object(optSaid(T.want, k), pick(SAY_WHY[T.why] || [], k))});
+    out.push({who: [T.by], kind: 'answer', said: SAY_TALK[T.answer](optSaid(T.answer === 'yielded' ? T.want : T.answer === 'met' ? T.meet : T.proposal, k))});
+    if (T.swayed?.length) out.push({who: T.swayed, kind: 'swayed', said: SAY_TALK.swayed, aside: true});
+  }
+  const spoke = new Set(T?.objector != null ? [T.by, T.objector] : []);
   for (const v of meet.voices) {
     const m = K.members.find(x => x.id === v.id); if (!m) continue;
-    const k = meet.day * 31 + v.id, social = m.local?.leans?.social ?? 0.5, why = v.why?.[0] ? pick(SAY_WHY[v.why[0]] || [], k) : '';
-    const said = v.want === meet.pick ? (social < SPEECH.quietBelow ? SAY_ACT.quiet(took) : SAY_ACT.for(optSaid(v.want, k), social >= SPEECH.fullFrom || v.why?.length ? why : ''))
-      : SAY_ACT.against(optSaid(v.want, k), why, took);
-    const same = lines.find(x => x.said === said);   // (the same words from several: one line, their names)
-    if (same) same.who.push(m.name); else lines.push({said, who: [m.name], against: v.want !== meet.pick});
+    const k = meet.day * 31 + v.id, social = m.local?.leans?.social ?? 0.5, want = v.now ?? v.want, why = v.why?.[0] ? pick(SAY_WHY[v.why[0]] || [], k) : '';
+    let said;
+    if (v.now && v.now !== v.want) said = SAY_ACT.changed(optSaid(v.want, k), optSaid(v.now, k), v.now === meet.pick ? '' : took);   // (moved by the talk: what it wanted first is said as first)
+    else if (want === meet.pick) { if (spoke.has(v.id) && !why) continue; said = social < SPEECH.quietBelow && !spoke.has(v.id) ? SAY_ACT.quiet(took) : SAY_ACT.for(optSaid(want, k), social >= SPEECH.fullFrom || v.why?.length ? why : ''); }
+    else said = SAY_ACT.against(optSaid(want, k), why, took);
+    const same = out.find(x => x.kind === 'voice' && x.said === said);
+    if (same) same.who.push(v.id); else out.push({who: [v.id], kind: 'voice', said, against: want !== meet.pick});
   }
-  // the round of talk, before the voices' last word (campaign/council.js debate)
-  const T = meet.debate, talk = [];
-  if (T?.objector != null) {
-    const k = meet.day * 31 + T.objector, nm = id => esc(nameOf(K, id));
-    talk.push(`<div class="fire-line"><b>${nm(T.by)}</b>: «${esc(SAY_TALK.propose(optSaid(T.proposal, k)))}»</div>`);
-    talk.push(`<div class="fire-line against"><b>${nm(T.objector)}</b>: «${esc(SAY_TALK.object(optSaid(T.want, k), pick(SAY_WHY[T.why] || [], k)))}»</div>`);
-    talk.push(`<div class="fire-line"><b>${nm(T.by)}</b>: «${esc(SAY_TALK[T.answer](optSaid(T.answer === 'yielded' ? T.want : T.answer === 'met' ? T.meet : T.proposal, k)))}»</div>`);
-    if (T.swayed?.length) talk.push(`<div class="fire-line"><small class="muted">${T.swayed.map(nm).join(', ')} — ${SAY_TALK.swayed}</small></div>`);
-  }
-  const away = (meet.away || []).map(x => `${esc(nameOf(K, x.id))} (${x.why === 'captive' ? 'пленный — без голоса' : 'без голоса'})`).join(', ');
+  out.push({who: [], kind: 'pick', said: `Решили: ${commandOf(meet.pick)?.label || meet.pick || '—'}.`});
+  return out;
+}
+export function meetingHtml(K, meet) {
+  const lines = fireLines(K, meet), nm = id => esc(nameOf(K, id));
+  const away = (meet.away || []).map(x => `${nm(x.id)} (${x.why === 'captive' ? 'пленный — без голоса' : 'без голоса'})`).join(', ');
   const W = Object.entries(meet.w || {}).sort((p, q) => q[1] - p[1]).map(([id, w]) => `${esc(commandOf(id)?.label || id)} ${w}`).join(' · ');
-  const told = lines.map(x => `<div class="fire-line${x.against ? ' against' : ''}"><b>${esc(x.who.join(', '))}</b>: «${esc(x.said)}»</div>`).join('');
-  return `<div class="fire"><h4>Совет у костра, день ${meet.day + 1}</h4>${talk.join('')}${told}<p><b>Решили:</b> ${esc(commandOf(meet.pick)?.label || meet.pick || '—')}.${away ? ` <small class="muted">Не говорили: ${away}.</small>` : ''}</p><small class="muted" title="вес варианта — среднее голосов, затем жребий">веса: ${W}</small></div>`;
+  const told = lines.filter(x => x.kind !== 'pick').map(x => (x.aside ? `<div class="fire-line"><small class="muted">${x.who.map(nm).join(', ')} — ${esc(x.said)}</small></div>` : `<div class="fire-line${x.against ? ' against' : ''}"><b>${x.who.map(nm).join(', ')}</b>: «${esc(x.said)}»</div>`)).join('');
+  return `<div class="fire"><h4>Совет у костра, день ${meet.day + 1}</h4>${told}<p><b>Решили:</b> ${esc(commandOf(meet.pick)?.label || meet.pick || '—')}.${away ? ` <small class="muted">Не говорили: ${away}.</small>` : ''}</p><small class="muted" title="вес варианта — среднее голосов после разговора, затем жребий">веса: ${W}</small></div>`;
 }
 
 // a member's card: who it is, how tired, what it feels for the others and why, what it remembers, its promises
-export function memberCardHtml(K, m) {
-  const L = m.local || {}, S = K.social || {}, R = S.relations?.[m.id] || {};
+// (`day` — the day shown: the bonds and the tiredness as they stood at its end (K.daily: campaign/march.js dayShot), the
+// memories, facts and promises up to it; no day — as they stand now)
+export function memberCardHtml(K, m, day = Infinity) {
+  const L = m.local || {}, S = K.social || {}, shot = day < K.day ? (K.daily || []).filter(x => x.d < day).at(-1) : null;
+  const R = shot ? shot.rel?.[m.id] || {} : S.relations?.[m.id] || {}, upTo = f => f.day <= day;
   const char = [L.likes ? `любит ${esc(JOBS.get(L.likes)?.label || L.likes)}` : '', L.dislikes ? `не любит ${esc(JOBS.get(L.dislikes)?.label || L.dislikes)}` : '',
     ...(L.traits || []).map(id => esc(TRAITS.get(id)?.label || id)),
     ...Object.entries(L.leans || {}).filter(([, v]) => Math.abs(v - 0.5) >= 0.15).map(([k, v]) => `${v > 0.5 ? 'большая' : 'малая'} ${esc(LEAN_AXES[k]?.label || k)}`)].filter(Boolean).join(', ');
-  const tired = m.social?.load?.tired || 0;
+  const tired = shot ? shot.tired?.[m.id] || 0 : m.social?.load?.tired || 0;
   const rel = Object.entries(R).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1])).slice(0, 6).map(([id, v]) => {
-    const why = reasonsOf(K, m.id, +id).slice(-2).map(f => FACT_KINDS[f.kind]?.label || f.kind).join(', ');
+    const why = reasonsOf(K, m.id, +id).filter(upTo).slice(-2).map(f => FACT_KINDS[f.kind]?.label || f.kind).join(', ');
     return `<li>${esc(nameOf(K, +id))}: ${v > 0 ? 'тепло' : 'холодно'} (${Math.round(v * 10) / 10})${why ? ` — ${esc(why)}` : ''}</li>`;
   }).join('');
   const facts = new Map((S.facts || []).map(f => [f.id, f]));
-  const mem = (m.social?.memory || []).slice().sort((p, q) => q.weight - p.weight || q.day - p.day).slice(0, 5).map(x => {
-    const f = facts.get(x.fact); if (!f) return '';
+  const mem = (m.social?.memory || []).filter(x => x.day <= day).sort((p, q) => q.weight - p.weight || q.day - p.day).slice(0, 5).map(x => {
+    const f = facts.get(x.fact); if (!f || !upTo(f)) return '';
     const who = [f.by, f.to].filter(id => id != null && id !== m.id).map(id => esc(nameOf(K, id))).join(', ');
     return `<li>день ${f.day + 1}: ${esc(FACT_KINDS[f.kind]?.label || f.kind)}${who ? ` — ${who}` : ''} <small class="muted">(${x.how === 'saw' ? 'видел' : x.how === 'heard' ? 'слышал' : 'сам'})</small></li>`;
   }).join('');
   const ST = {accepted: 'в силе', fulfilled: 'исполнено', failed: 'не вышло не по вине', impossible: 'стало невозможным', broken: 'нарушено', lapsed: 'истекло'};
-  const vows = (S.commitments || []).filter(c => c.debtor === m.id || c.creditor === m.id).slice(-4).map(c =>
-    `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} ${c.kind === 'escort' ? 'пойти рядом за едой' : 'подмену в дозоре'} — ${ST[c.status] || c.status}</li>`).join('');
+  const asOf = c => (c.end != null && c.end > day ? 'accepted' : c.status);   // (closed after the day shown: still in force then)
+  const vows = (S.commitments || []).filter(c => (c.debtor === m.id || c.creditor === m.id) && c.made <= day).slice(-4).map(c =>
+    `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} ${c.kind === 'escort' ? 'пойти рядом за едой' : 'подмену в дозоре'} — ${ST[asOf(c)] || asOf(c)}</li>`).join('');
   const fate = fateOf(m);
   return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;
@@ -90,22 +104,21 @@ export function drawFire(cv, K, meet, step) {
   const voices = meet.voices, n = Math.max(1, voices.length + (meet.away?.length || 0));
   const seat = k => [cx + Math.cos(-Math.PI / 2 + k / n * 6.283) * R, cy + Math.sin(-Math.PI / 2 + k / n * 6.283) * R * 0.8];
   const all = [...voices.map(v => ({id: v.id, v})), ...(meet.away || []).map(x => ({id: x.id, away: true}))];
+  const lines = fireLines(K, meet), line = lines[step], speakers = new Set(line && line.kind !== 'pick' ? line.who : []), over = step >= lines.length - 1;
   all.forEach((x, k) => {
     const m = K.members.find(o => o.id === x.id); if (!m) return;
-    const [px, py] = seat(k), speaking = !x.away && k === step && step < voices.length;
+    const [px, py] = seat(k), speaking = !x.away && speakers.has(x.id);
     if (speaking) { ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.arc(px, py, 18, 0, 6.283); ctx.fill(); }
     const sp = SPECIES.get(m.race), pawn = {id: m.id, species: m.race, gender: m.gender, equip: {}, faceX: px < cx ? 1 : -1};
-    ctx.globalAlpha = x.away ? 0.4 : x.v && x.v.want !== meet.pick && step >= voices.length ? 0.7 : 1;
+    ctx.globalAlpha = x.away ? 0.4 : x.v && (x.v.now ?? x.v.want) !== meet.pick && over ? 0.7 : 1;
     if (!sp || !drawPawn(ctx, pawn, sp, px, py, 14, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(px, py, 8, 0, 6.283); ctx.fill(); }
     ctx.globalAlpha = 1; ctx.fillStyle = speaking ? '#ffe2a0' : '#bfb6a2'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.name, px, py + 24);
   });
 }
-// the words of a step: who speaks and what (the last step — what was decided)
+// the words of a step: who speaks and what (the last step — what was decided); the steps are fireLines
+export const fireSteps = (K, meet) => fireLines(K, meet).length - 1;
 export function fireWords(K, meet, step) {
-  const v = meet.voices[step];
-  if (!v) return `Решили: ${commandOf(meet.pick)?.label || meet.pick || '—'}.`;
-  const m = K.members.find(o => o.id === v.id), k = meet.day * 31 + v.id, took = optSaid(meet.pick, meet.day);
-  const why = v.why?.[0] ? pick(SAY_WHY[v.why[0]] || [], k) : '', social = m?.local?.leans?.social ?? 0.5;
-  const said = v.want === meet.pick ? (social < SPEECH.quietBelow ? SAY_ACT.quiet(took) : SAY_ACT.for(optSaid(v.want, k), why)) : SAY_ACT.against(optSaid(v.want, k), why, took);
-  return `${m?.name || '—'}: «${said}»`;
+  const lines = fireLines(K, meet), x = lines[Math.min(step, lines.length - 1)];
+  if (!x || x.kind === 'pick') return lines.at(-1).said;
+  return x.aside ? `${x.who.map(id => nameOf(K, id)).join(', ')} — ${x.said}` : `${x.who.map(id => nameOf(K, id)).join(', ')}: «${x.said}»`;
 }

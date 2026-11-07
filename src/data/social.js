@@ -32,6 +32,7 @@ export const FACT_KINDS = {
   escaped:   {label: 'пленный бежал', weight: {to: 1, saw: 0.3, heard: 0.2}, fate: true},
   sold:      {label: 'продан', weight: {to: 1, saw: 0.4, heard: 0.3}, fate: true},
   left:      {label: 'ушёл', weight: {to: 1, saw: 0.3, heard: 0.2}, fate: true},
+  missing:   {label: 'пропал — судьба неизвестна', weight: {to: 1, saw: 0.5, heard: 0.4}, fate: true},   // (nobody saw what befell it: the company knows only that it is gone — campaign/social.js noteFate)
   // the watch (campaign/duty.js): `by` the one who asks or answers for it, `to` the other
   asked:     {label: 'попросил сменить в дозоре', weight: {to: 0.2, by: 0.25, saw: 0.05}},
   tookWatch: {label: 'отстоял дозор за другого', weight: {to: 0.5, by: 0.3, saw: 0.1}},
@@ -42,6 +43,7 @@ export const FACT_KINDS = {
   keptEscort: {label: 'ходил рядом, как обещал', weight: {to: 0.5, by: 0.3, saw: 0.1}},
   // the stories of the company (campaign/social.js): a good turn paid back unasked, a quarrel made up after help in need
   repaid:    {label: 'отплатил добром', weight: {to: 0.5, by: 0.3, saw: 0.1}},
+  thankful:  {label: 'обида ослабла: помог в беде', weight: {to: 0.3, by: 0.5, saw: 0.05}},   // (one side: `by` is grateful to `to`)
   reconciled: {label: 'помирились', weight: {to: 0.5, by: 0.5, saw: 0.15}, pair: true},
   // the peaceful life (campaign/company.js welcome; social.js judge)
   welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
@@ -49,9 +51,12 @@ export const FACT_KINDS = {
 };
 // the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
 // one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);
-// a quarrel — a bond `grudge` or below — is made up when the other did one a good turn in need since (`days`): the bond is
-// lifted to `made`, and the lift is the fact's (reconcile; a merciless heart — mercy below `mercyFrom` — does not)
-export const STORY = {good: ['aid', 'saved', 'stoodUp', 'yieldedBed', 'keptEscort', 'tookWatch', 'escorted'], need: ['aid', 'saved', 'stoodUp'], days: 30, gap: 0.25, grudge: -0.5, made: 0.5, mercyFrom: -2};
+// a grudge — a bond `grudge` or below, with the fact that made it (`sour`: a quarrel, a word broken) — softens for the one who
+// holds it when the other did it a good turn in need (`need`) AFTER that fact, within `days`: its bond rises by `thank` (to
+// `made` at most), the lift is the fact's (thankful — one side only: the other keeps its own heart); when both sides are then at
+// `peace` or above, they are reconciled (a fact of the pair). A merciless heart (mercy below `mercyFrom`) softens for nobody
+export const STORY = {good: ['aid', 'saved', 'stoodUp', 'yieldedBed', 'keptEscort', 'tookWatch', 'escorted'], need: ['aid', 'saved', 'stoodUp'], sour: ['quarrel', 'brokeWord'],
+  days: 30, gap: 0.25, grudge: -0.5, thank: 1.5, made: 0.5, peace: 0, mercyFrom: -2};
 // trust and staying (campaign/social.js trustOf; campaign/people.js): one who is not of the core takes to the company — or not —
 // by what it feels for the core (the mean of its bonds to them, ÷ `top`) less `broke` for each word broken to it in the last
 // `days`; a day's loyalty (or a hireling's opinion of the service) moves by `k` × that, from −1 … 1
