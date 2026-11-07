@@ -223,7 +223,7 @@ export const TABLES = [
   // the contract of a decision (data/commands.js, core/decide.js, docs/BEHAVIOUR.md «Договор решения»): every command of every mind
   // under its full id, the points they are asked at, their marks and the profiles of the runs
   {id: 'decisionPoints', label: 'Точки решения', group: 'Существа', key: 'id', computed: true, rows: () => POINTS.all(),
-    note: 'Где и как часто решает каждый ум игры (data/commands.js POINTS): пешка и зверь, держава и логово, совет поселения, город, караван. «Как выбирает»: наибольшая оценка, жребий по весу, первое по прежнему порядку, голосование, правило.',
+    note: 'Где и как часто решает каждый ум игры (data/commands.js POINTS): пешка и зверь, держава и логово, совет поселения, город, караван. «Как выбирает»: наибольшая оценка, жребий по весу, первое по прежнему порядку, голосование, голоса (жребий по среднему голосов), правило.',
     columns: [col('id', 'id'), col('level', 'Кто', 'enum', {values: LEVELS}), col('label', 'Решение'), col('clock', 'Когда'), col('policy', 'Как выбирает', 'enum', {values: POLICIES}), col('code', 'Код')]},
   {id: 'commands', label: 'Команды', group: 'Существа', key: 'id', computed: true, rows: () => commands().all().map(c => ({...c})),
     note: 'Всё, что может выбрать любой ум игры, под полным id (data/commands.js): поведения локальной карты — local.behaviour.*, дела мира — world.deed.*, команды города и каравана. Поведения и дела берутся из их таблиц; метки — из «Метки команд»; что выключено в прогоне — «Профили команд».',

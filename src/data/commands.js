@@ -6,7 +6,7 @@
 //
 //   POINTS    a decision point: who decides (`level`), how often (`clock`), how it picks (`policy`: max — the highest
 //             score, draw — by weight, first — the first in the old order that offers anything, vote — the council's
-//             vote, rule — a rule that may only be allowed or not), where the code is (`code`)
+//             vote, voices — each with a say scores the options, drawn from by the mean (campaign/council.js), rule — a rule that may only be allowed or not), where the code is (`code`)
 //   COMMANDS  a command: its point, its lane (`band`), its marks, the source row (`src`)
 //   MARKS     what a command leads to, for the profiles: hostile — it starts a hostility (a raid, a war, a lair burnt,
 //             a fallen foe bound), trade — it is a trade, side — a side pursuit of the caravan (wheels, beasts, ore),
@@ -24,7 +24,7 @@ import {Registry} from '../core/registry.js';
 import {BEHAVIOURS} from './behaviours.js';
 import {DEEDS} from './deeds.js';
 
-export const POLICIES = {max: 'наибольшая оценка', draw: 'жребий по весу', first: 'первое по прежнему порядку', vote: 'голосование', rule: 'правило'};
+export const POLICIES = {max: 'наибольшая оценка', draw: 'жребий по весу', first: 'первое по прежнему порядку', vote: 'голосование', voices: 'голоса: жребий по среднему', rule: 'правило'};
 export const LEVELS = {local: 'пешка и существо', world: 'держава и логово', settlement: 'поселение', town: 'город', caravan: 'караван'};
 
 export const POINTS = new Registry('decision point');
