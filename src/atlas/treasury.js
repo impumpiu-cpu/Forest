@@ -272,10 +272,8 @@ function worksBuying(C, prep) {
   for (const t of towns) recycle(t, lack.get(t.id), spare.get(t.id), (g, n) => put(got, t.id, g, n));
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; const [h, p] = prep.get(t); setEcon(t, townEconomy(a, t, h, fromStore(t), p)); }
-  // (what the sellers of the whole world still had once the buying was done: what a buyer lacked of it was there, out of its reach)
-  const anywhere = {};
-  for (const S2 of spare.values()) for (const [g, n] of Object.entries(S2 || {})) if (n > M.dust) anywhere[g] = (anywhere[g] || 0) + n;
-  for (const t of towns) t.econ.why = {works: reasons(why.get(t.id), lack.get(t.id), anywhere)};
+  // (and what each still had to spare once the buying was done — for the probes of who could not reach it: tools/reach-probe.mjs)
+  for (const t of towns) t.econ.why = {works: reasons(why.get(t.id), lack.get(t.id)), left: Object.fromEntries(Object.entries(spare.get(t.id) || {}).filter(([, n]) => n > M.dust).map(([g, n]) => [g, r2(n)]))};
   return sold;
 }
 // the link of a buyer and a seller more than a hop apart, made when the goods first go (a trade route) — or the one the other
@@ -313,15 +311,14 @@ const sureOf = (t, g) => Math.max(M.trade.sureFloor, 1 - M.trade.sure * (t.swing
 // the reasons of what was left lacking, by good (for the probes): `W` — what was wanted, and what the sellers had and the buyer
 // could not pay for (money) or a weak link did not carry (route), summed over the sellers it asked; `left` — what was still
 // lacking at the end. What was left is laid first on the money, then on the route, then on the link's room; the rest none of its
-// sellers had (goods) — `far` of it some town of the world still had, out of the buyer's reach (`anywhere`: good → what is left) →
-// {gold: the buyer's purse at the start, by: {good: {want, left, money, route, room, goods, far}}}
-function reasons(W, left, anywhere = {}) {
+// sellers had (goods) →
+// {gold: the buyer's purse at the start, by: {good: {want, left, money, route, room, goods}}}
+function reasons(W, left) {
   const by = {};
   for (const [g, want] of Object.entries(W.want)) {
     if (!(want > M.dust)) continue;
     const l = Math.max(0, Math.min(want, left?.[g] || 0)), money = Math.min(l, W.money[g] || 0), route = Math.min(l - money, W.route[g] || 0), room = Math.min(l - money - route, W.room?.[g] || 0);
-    const goods = l - money - route - room;
-    by[g] = {want: r2(want), left: r2(l), money: r2(money), route: r2(route), room: r2(room), goods: r2(goods), far: r2(Math.min(goods, anywhere[g] || 0))};
+    by[g] = {want: r2(want), left: r2(l), money: r2(money), route: r2(route), room: r2(room), goods: r2(l - money - route - room)};
   }
   return {gold: W.gold, by};
 }
