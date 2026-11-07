@@ -152,7 +152,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0;
     this.making = true; this.genPaused = false; $('campEpicGo').textContent = 'Остановить';
     this.paceBefore = this.clock.pace; this.clock.setPace('max');   // (a quick start is made as fast as it goes; the pace buttons slow it to watch it grow; the walk's pace comes back after)
-    this.syncRun();
+    $('campRun').hidden = false; $('campDay').textContent = ''; this.syncRun();
     $('campCapsField').hidden = true; $('campTitle').textContent = this.worldName;
     const t0 = performance.now();
     let drawn = 0, stepAt = 0;
@@ -172,7 +172,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     };
     this.genRaf = requestAnimationFrame(loop);
   }
-  backPace() { if (this.paceBefore) { this.clock.setPace(this.paceBefore); this.paceBefore = null; } this.syncPaceBox?.(); }
+  backPace() { if (this.paceBefore) { this.clock.setPace(this.paceBefore); this.paceBefore = null; } this.syncPaceBox?.(); if (!this.atlas?.campaign) $('campRun').hidden = true; }
   stopEpic() { this.dropEpic(); this.setupMode(); this.draw(); }
   // the world being made is let go, unsaved
   dropEpic() {
