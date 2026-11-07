@@ -30,6 +30,16 @@ export const SAY_ACT = {
   against: (o, why, took) => `я бы ${o}${why ? ` — ${why}` : ''}. Но раз решили ${took} — пойду со всеми.`,
   quiet: took => `Согласен: ${took}.`,
 };
+// the round of talk (campaign/council.js debate): the proposal, the objection with its reason, the proposer's answer, those
+// the objection moved
+export const SAY_TALK = {
+  propose: o => `Предлагаю ${o}.`,
+  object: (o, why) => `Нет — ${why}. Лучше ${o}.`,
+  yielded: o => `Твоя правда: ${o}.`,
+  met: o => `Тогда сойдёмся на том, чтобы ${o}.`,
+  held: o => `Нет, всё же ${o}.`,
+  swayed: 'передумали после этих слов',
+};
 // the manner: the sociable say more (both the want and its reason), the reserved say only the want; past `quietBelow` of the
 // social leaning a voice that agrees just agrees
 export const SPEECH = {quietBelow: 0.35, fullFrom: 0.6};

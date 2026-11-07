@@ -2,7 +2,7 @@
 // member's card — its character, tiredness, what it feels for the others and why, what it remembers, its promises
 // (campaign/social.js, duty.js). It reads what the campaign decided; it never decides or draws again (plan D6).
 import {esc} from '../core/util.js';
-import {SAY_OPTION, SAY_WHY, SAY_ACT, SPEECH} from '../data/speech.js';
+import {SAY_OPTION, SAY_WHY, SAY_ACT, SAY_TALK, SPEECH} from '../data/speech.js';
 import {FACT_KINDS} from '../data/social.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
@@ -35,10 +35,19 @@ export function meetingHtml(K, meet) {
     const same = lines.find(x => x.said === said);   // (the same words from several: one line, their names)
     if (same) same.who.push(m.name); else lines.push({said, who: [m.name], against: v.want !== meet.pick});
   }
+  // the round of talk, before the voices' last word (campaign/council.js debate)
+  const T = meet.debate, talk = [];
+  if (T?.objector != null) {
+    const k = meet.day * 31 + T.objector, nm = id => esc(nameOf(K, id));
+    talk.push(`<div class="fire-line"><b>${nm(T.by)}</b>: «${esc(SAY_TALK.propose(optSaid(T.proposal, k)))}»</div>`);
+    talk.push(`<div class="fire-line against"><b>${nm(T.objector)}</b>: «${esc(SAY_TALK.object(optSaid(T.want, k), pick(SAY_WHY[T.why] || [], k)))}»</div>`);
+    talk.push(`<div class="fire-line"><b>${nm(T.by)}</b>: «${esc(SAY_TALK[T.answer](optSaid(T.answer === 'yielded' ? T.want : T.answer === 'met' ? T.meet : T.proposal, k)))}»</div>`);
+    if (T.swayed?.length) talk.push(`<div class="fire-line"><small class="muted">${T.swayed.map(nm).join(', ')} — ${SAY_TALK.swayed}</small></div>`);
+  }
   const away = (meet.away || []).map(x => `${esc(nameOf(K, x.id))} (${x.why === 'captive' ? 'пленный — без голоса' : 'без голоса'})`).join(', ');
   const W = Object.entries(meet.w || {}).sort((p, q) => q[1] - p[1]).map(([id, w]) => `${esc(commandOf(id)?.label || id)} ${w}`).join(' · ');
   const told = lines.map(x => `<div class="fire-line${x.against ? ' against' : ''}"><b>${esc(x.who.join(', '))}</b>: «${esc(x.said)}»</div>`).join('');
-  return `<div class="fire"><h4>Совет у костра, день ${meet.day + 1}</h4>${told}<p><b>Решили:</b> ${esc(commandOf(meet.pick)?.label || meet.pick || '—')}.${away ? ` <small class="muted">Не говорили: ${away}.</small>` : ''}</p><small class="muted" title="вес варианта — среднее голосов, затем жребий">веса: ${W}</small></div>`;
+  return `<div class="fire"><h4>Совет у костра, день ${meet.day + 1}</h4>${talk.join('')}${told}<p><b>Решили:</b> ${esc(commandOf(meet.pick)?.label || meet.pick || '—')}.${away ? ` <small class="muted">Не говорили: ${away}.</small>` : ''}</p><small class="muted" title="вес варианта — среднее голосов, затем жребий">веса: ${W}</small></div>`;
 }
 
 // a member's card: who it is, how tired, what it feels for the others and why, what it remembers, its promises

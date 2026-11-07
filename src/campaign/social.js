@@ -47,7 +47,7 @@ export function takeBonds(K, present, back) {
 // ledger need keep only the last days' sessions
 export function takeOnce(K, session, day = K.day) {
   const S = ensureSocial(K);
-  if (day < K.day || S.applied[session] != null) return false;
+  if (day !== K.day || S.applied[session] != null) return false;
   S.applied[session] = K.day;
   for (const [k, d] of Object.entries(S.applied)) if (d < K.day - 1) delete S.applied[k];
   return true;

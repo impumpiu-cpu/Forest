@@ -245,10 +245,12 @@ function worksBuying(C, prep) {
     // net keeps it while the goods keep coming, atlas/sites.js stepNet, and its road wears, atlas/roads.js wearRoads)
     if (!w.pair && a.net) {
       w.pair = pairLink(a, b, s, w.cost);
+      if (!w.pair.near) setHops(a, w.pair, w);
       // a route abroad down a way through other lands: kept as one (`via` — the realms it crossed), never taken as a neighbour's
       // link; the first through a third realm between two realms is told (C.routes → atlas/peoples.js)
       if (w.via) { w.pair.via = [...w.via]; const k2 = relKey(b.realm, s.realm); if (w.via.length && !a.farRoutes?.[k2]) { (a.farRoutes ||= {})[k2] = a.hist?.year ?? 0; (C.routes ||= []).push([b, s, [...w.via]]); } }
     }
+    else if (w.pair && !w.pair.near && w.l !== w.pair && !hopsLive(a, w.pair)) setHops(a, w.pair, w);   // (a route with no way kept, or a link of it gone: the way it goes now)
     if (w.pair) { w.pair.goods = (w.pair.goods || 0) + v; w.pair.carried = (w.pair.carried || 0) + v; const key = `${s.id}>${g}`; (w.pair.took ||= {})[key] = (w.pair.took[key] || 0) + n; }
     put(sold, s.id, g, n); put(got, b.id, g, n);
     add(b.trade, 'bought', v); add(s.trade, 'sold', v); add(b.trade, 'boughtN', n);   // (boughtN — the goods themselves, for the probes)
@@ -314,6 +316,13 @@ function worksBuying(C, prep) {
 }
 // the link of a buyer and a seller more than a hop apart, made when the goods first go (a trade route) — or the one the other
 // direction's buying made already this season: one link, one room, one memory for both
+// a route's way over the net (atlas/roads.js wearRoads: its goods wear the roads of these links, it has no road of its own):
+// the links from the buyer to the seller as the search found them (`l` — the last, `pw` — the way before it), by key
+export const hopsLive = (a, l) => !!l.hops && l.hops.every(k => a.net.links.has(k));
+function setHops(a, pair, w) {
+  const hops = []; for (let x = w; x?.l; x = x.pw) hops.push(linkKey(x.l.p, x.l.q));
+  if (hops.length > 1) pair.hops = hops.reverse(); else delete pair.hops;
+}
 export function pairLink(a, b, s, cost) {
   const key = linkKey(b, s);
   let l = a.net.links.get(key);
@@ -363,7 +372,7 @@ export function farWays(C, adj, b, known) {
     const wx = best.get(x), tx = wx.t;
     if (tx !== b && tx.realm !== b.realm && !known.has(x) && deal(b, tx) > 0) {
       const via = wx.realms.filter(r => r !== tx.realm);
-      if (via.length <= T.through) out.push([tx, {c: wx.c, cost: wx.cost, road: wx.road, via, pair: a.net?.links.get(linkKey(b, tx)) || null}]);
+      if (via.length <= T.through) out.push([tx, {c: wx.c, cost: wx.cost, road: wx.road, via, pair: a.net?.links.get(linkKey(b, tx)) || null, l: wx.l, pw: wx.pw}]);
     }
     for (const [o, l] of adj.get(x) || []) {
       if (done.has(o.id)) continue;
@@ -373,7 +382,7 @@ export function farWays(C, adj, b, known) {
       const realms = o.realm === b.realm || wx.realms.includes(o.realm) ? wx.realms : [...wx.realms, o.realm];
       if (realms.length > T.through + 1) continue;
       const w = best.get(o.id);
-      if (!w || cost < w.cost) { best.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), realms, t: o}); heapPush(heap, [cost, o.id]); }
+      if (!w || cost < w.cost) { best.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), realms, t: o, l, pw: wx}); heapPush(heap, [cost, o.id]); }
     }
   }
   return out.sort((p, q) => p[0].id - q[0].id);
@@ -429,7 +438,7 @@ export function realmPool(C) {
       for (const [o, l] of adj.get(x) || []) {
         if (done.has(o.id)) continue;
         const cost = wx.cost + costOfLink(a, l), w = ways.get(o.id);
-        if (!w || cost < w.cost) { ways.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), hop: wx.hop + 1}); byId.set(o.id, o); }
+        if (!w || cost < w.cost) { ways.set(o.id, {c: Math.min(wx.c, l.c), cost, road: Math.min(wx.road, l.road || 0), hop: wx.hop + 1, l, pw: wx}); byId.set(o.id, o); }
       }
     }
     const W = [];

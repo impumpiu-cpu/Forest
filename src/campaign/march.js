@@ -559,6 +559,8 @@ export function golemMend(K, town, camping) {
 }
 
 // one day of the campaign (the world's day `day` of the current season)
+// what the screen's summary reads of a day: the food, the treasury, the fights, the way walked, the towns, the clues — at its end
+export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: Math.round(K.stats.walked), towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0, alive: K.members.filter(m => m.alive).length});
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
@@ -654,6 +656,7 @@ export function caravanDay(a, K, day) {
     questSight(a, K, tell); pursuit(a, K, rq, tell); epicDay(a, K, rq, tell); dq();
   }
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
+  (K.daily ||= []).push(dayShot(K, K.day));   // (the summary of the day shown: campaign/index.js)
   const p = (a.parties || []).find(x => x.id === K.party);
   if (p) { p.x = K.x; p.y = K.y; p.i = K.i; p.men = alive(K).length; p.goal = K.goal; if (ended(K)) p.state = 'gone'; }
   K.day++;

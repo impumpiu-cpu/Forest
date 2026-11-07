@@ -4,7 +4,8 @@
 // of them — by its people's mission (data/campaign.js COUNCIL.mission, the context of all, counted once) bent by its own
 // leanings, by its needs (hunger, its wounds and its friends', tiredness), by the danger of the night as its caution reads
 // it and by the losses it remembers — and the options are drawn from by the sum of what each prefers (core/decide.js
-// pickVoices). A danger is weighed, not a wall: a bad choice may be taken. The meeting is kept (K.social.meetings): who was
+// pickVoices) after one round of talk (debate: a proposal, an objection for a reason, the others moved, the proposer's answer).
+// A danger is weighed, not a wall: a bad choice may be taken. The meeting is kept (K.social.meetings): who was
 // there, what each wanted most and why, the weights, the pick — the fire's scene reads it, never asks again.
 // With COUNCIL.policy 'lanes' (or a run without leanings' social side) the old way: pickLanes.
 import {COUNCIL, CAMPAIGN} from '../data/campaign.js';
@@ -56,6 +57,46 @@ function scoreOne(a, K, m, opts, x) {
   return {s: out, why};
 }
 
+const topOf = (v, opts) => opts.reduce((b, o) => ((v.s[o.id] ?? 0) > (v.s[b.id] ?? 0) ? o : b), opts[0]);
+// one round of talk before the draw (COUNCIL.voice.debate): a proposal, an objection for a reason one has, the others moved by
+// it as they feel for the one who spoke and as it is news to them, the proposer's answer — yield, meet halfway, hold. Changes
+// the scores (`scores`, in place); no draw. → what was said, or null (nobody objected for a reason: nothing to talk over)
+function debate(K, scores, opts) {
+  const D = V().debate; if (!D || scores.length < 2 || opts.length < 2) return null;
+  const mean = id => scores.reduce((s, v) => s + Math.max(0, v.s[id] ?? 0), 0) / scores.length;
+  const proposal = opts.reduce((b, o) => (mean(o.id) > mean(b.id) ? o : b), opts[0]).id;
+  const fans = scores.filter(v => topOf(v, opts).id === proposal);
+  if (!fans.length) return null;
+  const by = fans.reduce((b, v) => ((v.s[proposal] ?? 0) > (b.s[proposal] ?? 0) ? v : b), fans[0]);
+  // the objector: wants another most, by a margin, for a reason it has
+  let ob = null, gap = 0, want = null, why = null;
+  for (const v of scores) {
+    const top = topOf(v, opts).id; if (top === proposal) continue;
+    const g = (v.s[top] ?? 0) - (v.s[proposal] ?? 0), R = (v.why[top] || []).find(k => D.reasons.includes(k));
+    if (g >= D.objectAt && R && g > gap) { ob = v; gap = g; want = top; why = R; }
+  }
+  if (!ob) return {proposal, by: by.id, objector: null};
+  // the others hear it
+  const swayed = [];
+  for (const v of scores) {
+    if (v === ob) continue;
+    const was = topOf(v, opts).id, news = (v.why[was] || []).includes(why) || (v.why[want] || []).includes(why) ? D.known : 1;
+    const p = D.sway * Math.max(0, 1 + D.bond * Math.max(-1, Math.min(1, bondOf(K, v.id, ob.id) / D.bondTop))) * news;
+    v.s[want] = (v.s[want] ?? 0) + p; v.s[proposal] = (v.s[proposal] ?? 0) - p / 2;
+    if (was !== want && topOf(v, opts).id === want && v !== by) swayed.push(v.id);
+  }
+  // the proposer answers
+  let answer = 'held', meet = null;
+  if ((by.s[proposal] ?? 0) - (by.s[want] ?? 0) <= D.yieldAt) { answer = 'yielded'; by.s[want] = Math.max(by.s[want] ?? 0, (by.s[proposal] ?? 0) + D.yieldAt); }
+  else {
+    const best = v => Math.max(...opts.map(o => v.s[o.id] ?? 0));
+    const mid = opts.filter(o => o.id !== proposal && o.id !== want && (by.s[o.id] ?? 0) >= D.meetAt * best(by) && (ob.s[o.id] ?? 0) >= D.meetAt * best(ob))
+      .sort((p, q) => ((by.s[q.id] ?? 0) + (ob.s[q.id] ?? 0)) - ((by.s[p.id] ?? 0) + (ob.s[p.id] ?? 0)))[0];
+    if (mid) { answer = 'met'; meet = mid.id; for (const v of [by, ob]) v.s[mid.id] = (v.s[mid.id] ?? 0) + D.meet; }
+  }
+  return {proposal, by: by.id, objector: ob.id, want, why, swayed, answer, ...(meet ? {meet} : {})};
+}
+
 // the evening's choice of a point (caravan.camp, caravan.visit): `cmds` the point's commands, `ask(c, opts)` → an option or
 // null (what may be done), `x` what the evening knows (the danger of the night: x.quiet). → as pickLanes: {option, band, opts, asked}
 export function councilChoose(a, K, point, cmds, ask, r, {allowed = () => true, x = null} = {}) {
@@ -71,10 +112,13 @@ export function councilChoose(a, K, point, cmds, ask, r, {allowed = () => true, 
   const voters = K.members.filter(m => m.alive && (V().say[m.role] ?? (m.captive ? V().say.captive : 1)) > 0 && !m.captive);
   if (!voters.length) return pickLanes(cmds, ask, r, {allowed});
   const scores = voters.map(m => ({id: m.id, ...scoreOne(a, K, m, opts, x)}));
+  const first = scores.map(v => ({...v, s: {...v.s}}));   // (what each wanted before the talk: the fire tells it)
+  const talk = debate(K, scores, opts);
   const {option, w} = pickVoices(opts, scores, r, V().eps);
   // the meeting, as it was (for the scene at the fire and the cards)
   const S = ensureSocial(K), meet = {day: K.day, point, pick: option?.id ?? null, w: Object.fromEntries(Object.entries(w).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-    voices: scores.map(v => { const top = opts.reduce((b, o) => ((v.s[o.id] ?? 0) > (v.s[b.id] ?? 0) ? o : b), opts[0]); return {id: v.id, want: top.id, why: v.why[top.id] || [], s: v.s}; }),
+    voices: first.map((v, k) => { const top = topOf(v, opts), now = topOf(scores[k], opts); return {id: v.id, want: top.id, why: v.why[top.id] || [], s: v.s, ...(now.id !== top.id ? {now: now.id} : {})}; }),
+    ...(talk ? {debate: talk} : {}),
     away: K.members.filter(m => m.alive && !voters.includes(m)).map(m => ({id: m.id, why: m.captive ? 'captive' : 'noSay'}))};
   (S.meetings ||= []).push(meet); if (S.meetings.length > V().keep) S.meetings.splice(0, S.meetings.length - V().keep);
   return {option, band: 'council', opts: opts.map(o => ({...o, score: w[o.id]})), asked};

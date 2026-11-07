@@ -2,7 +2,7 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/history.js';
-import {caravanDay, ended, finished, alive, die} from './march.js';
+import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/persons.js';
 import {upgradeMembers} from './start.js';
@@ -25,6 +25,7 @@ export function stepCampaign(a) {
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
   K.track = []; K.seasonFrom = K.day;   // (the camps of this season are all kept for the screen: campaign/fight.js play)
+  K.daily = [dayShot(K, K.day - 1)];   // (the season's days as the screen shows them: what stood at the end of each — ui/campaignView.js)
   const spring = a.hist.season === 0;
   stepHistory(a, () => caravanDay(a, K, K.day));
   if (spring && !ended(K)) agePersons(a, K);

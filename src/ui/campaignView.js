@@ -473,22 +473,27 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
     const plan = ended(K) ? phaseWord(K.phase) : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : phaseWord(K.phase);
     this.frame();
-    $('campStatus').innerHTML = `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
+    // the numbers of the day shown, not of the season computed ahead (K.daily: what stood at the end of each day; the live
+    // state at the end, between seasons, for a save from before)
+    const sd = this.shownDay(), shot = sd < K.day ? (K.daily || []).filter(x => x.d < sd).at(-1) : null;
+    const V = shot || {d: K.day, food: K.food, gold: K.gold, fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0, walked: K.stats.walked, towns: K.stats.towns || 0, storms: K.stats.storms || 0, found: K.quest?.found ?? 0};
+    const dayN = shot ? shot.d + 1 : K.day;
+    $('campStatus').innerHTML = `<dt>В пути</dt><dd>${dayN} ${plural(dayN, 'день', 'дня', 'дней')} (${(dayN / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
       (K.council ? `<dt>Совет</dt><dd class="nb" title="${esc(K.council.opts.map(o => `${commandOf(o.id)?.label || o.id} ${o.w}`).join(' · '))}">${esc(commandOf(K.council.pick)?.label || K.council.pick)} — жребий из ${K.council.opts.length}, день ${K.council.day}</dd>` : '') +
       (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
-        return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${Q.found} из ${Q.clues.length}${K.stats.storms ? ` · штурмов ${K.stats.storms}` : ''}</dd>`; })() : '') +
-      `<dt>Еда</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (K.food / need).toFixed(1) : 0} дн.</dd>` +
+        return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${V.found} из ${Q.clues.length}${V.storms ? ` · штурмов ${V.storms}` : ''}</dd>`; })() : '') +
+      `<dt>Еда</dt><dd>${Math.floor(V.food)} ${plural(Math.floor(V.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (V.food / need).toFixed(1) : 0} дн.</dd>` +
       `<dt>Груз</dt><dd>${Math.round(load(K))} из ${capacity(K)} мест</dd>` +
       `<dt>Обоз</dt><dd class="nb">${esc(baggageText(K))}</dd>` +
       (K.route ? `<dt>Путь</dt><dd>${K.route === 'road' ? 'с обозом по дорогам' : 'напрямик, налегке'}</dd>` : '') +
-      `<dt>Казна</dt><dd>${K.gold} зол.</dd>` +
-      `<dt>В городах</dt><dd>${K.stats.towns || 0} раз</dd>` +
+      `<dt>Казна</dt><dd>${V.gold} зол.</dd>` +
+      `<dt>В городах</dt><dd>${V.towns} раз</dd>` +
       `<dt>Скорость</dt><dd>${pace(a, K, SEASONS.all()[H.season % SEASONS.all().length].id).toFixed(2)} кл./день</dd>` +
-      `<dt>Пройдено</dt><dd>${Math.round(K.stats.walked)} клеток</dd>` +
-      `<dt>Боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won} · засад ${K.stats.ambushes || 0}</dd>` +
+      `<dt>Пройдено</dt><dd>${Math.round(V.walked)} клеток</dd>` +
+      `<dt>Боёв</dt><dd>${V.fights} · отбились ${V.won} · засад ${V.ambushes}</dd>` +
       (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
-    const day = this.shownDay(); this.sideDay = day;
+    const day = sd; this.sideDay = day;
     $('campRoster').innerHTML = K.members.map(m => this.seenAs(m, day)).filter(Boolean).sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : '', m.belt?.length ? `в поясе: ${m.belt.map(r => RESOURCES.get(r).short).join(', ')}` : ''].filter(Boolean).join(', ');

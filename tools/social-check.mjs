@@ -416,6 +416,29 @@ check('когда ядра не осталось, остальные отпущ�
   check('прежний совет по полосам — по-старому (политика переключается данными)', old === 'routine', old);
 }
 
+// ── one round of talk at the council: a proposal, an objection for a reason, the others moved by who spoke, an answer
+{
+  const base = generateAtlas({seed: '855', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const team = () => { const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); for (const m of K.members) { m.hp = 1; (m.social ||= {}).load = {tired: 0}; m.local.traits = []; } K.food = 400; return {a, K}; };
+  const cmds = [{id: 'caravan.camp.food', band: 'routine'}, {id: 'caravan.camp.heal', band: 'routine'}];
+  const ask = c => ({id: c.id, score: 1});
+  const meet = (X, k = 1) => { councilChoose(X.a, X.K, 'caravan.camp', cmds, ask, mulberry(k), {x: {quiet: true, need: 8}}); return X.K.social.meetings.at(-1); };
+  // all whole: nobody objects for a reason
+  const calm = team(), M0 = meet(calm);
+  check('нет причины — нет возражения: совет не переоценивает', M0.debate?.objector == null, JSON.stringify(M0.debate));
+  // one badly wounded, the others whole: it objects with its wounds; friends of it are moved more than strangers
+  const cold = team(), warm = team();
+  for (const X of [cold, warm]) X.K.members[1].hp = 0.15;
+  const B = warm.K.members[1], R = ensureSocial(warm.K).relations;
+  for (const m of warm.K.members) if (m !== B) R[m.id] = {[B.id]: 4};
+  const Mc = meet(cold), Mw = meet(warm), heal = 'caravan.camp.heal';
+  check('раненый возражает своей причиной — ранами', Mc.debate?.objector === cold.K.members[1].id && Mc.debate.why === 'wounds' && Mc.debate.want === heal, JSON.stringify(Mc.debate));
+  check('возражение друга двигает сильнее, чем чужого: вес «отлежаться» после разговора выше', (Mw.w[heal] ?? 0) > (Mc.w[heal] ?? 0), `чужие ${Mc.w[heal]}, друзья ${Mw.w[heal]}`);
+  check('ответ предложившего записан: уступил, сошлись или настоял', ['yielded', 'met', 'held'].includes(Mc.debate.answer));
+  const html = meetingHtml(cold.K, Mc);
+  check('у костра слышен разговор: предложение, возражение, ответ', /Предлагаю/.test(html) && /Лучше/.test(html), html.replace(/<[^>]+>/g, ' ').slice(0, 200));
+}
+
 // ── the fire's scene: read, never decided again; the archive keeps the story
 {
   const base = generateAtlas({seed: '868', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
