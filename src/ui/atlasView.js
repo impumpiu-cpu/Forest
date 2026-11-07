@@ -234,6 +234,8 @@ export class MapView extends MapOverlays {
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
     const on = ON[this.layer] || NONE;
+    // the rivers lie on the land: under the roads, the lanes, the towns and all the rest
+    if (a.f.flow && on.has('rivers')) this.rivers(a, px);
     if (a.f.road && on.has('roads')) this.drawRoads(a, px);
     if (a.f.sea && on.has('lanes')) this.drawLanes(a, px);
     if (a.lairs && on.has('lairs')) { this.drawLairs(a, px); this.drawLeaders(a, px); }
@@ -244,7 +246,6 @@ export class MapView extends MapOverlays {
     if (a.ruins && on.has('ruins')) this.drawRuins(a, px);
     if (a.towns && on.has('will')) this.drawWill(a, px);
     if (a.towns && on.has('towns')) this.drawTowns(a, px);
-    if (a.f.flow && on.has('rivers')) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
   }
