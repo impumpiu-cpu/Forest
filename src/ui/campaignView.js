@@ -26,7 +26,7 @@ import {eraPlan, historyLength, seasonLabel} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
-import {TickClock, dateText} from '../core/clock.js';
+import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
 import {gearDef} from '../agents/equipment.js';
@@ -83,12 +83,13 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
       onPace: id => {
+        if (this.making) { this.clock.setPace(id); this.genPaused = false; this.syncRun(); return; }   // (a world being made: its pace — makeEpic)
         this.clock.setPace(id); this.ticks.pace = this.localPace(id);
         if (this.local && !WATCH[id] && !this.local.c.boss) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left (a named fight is)
         if (this.clock.paused && !this.local) { this.clock.resume(); this.animate(); }
         this.syncRun();
       },
-      onPause: () => { const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else { this.clock.toggle(); if (!this.clock.paused) this.animate(); else this.renderSide(); } this.syncRun(); }});   // (going on: the rest of the season plays out)
+      onPause: () => { if (this.making) { this.genPaused = !this.genPaused; this.syncRun(); return; } const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else { this.clock.toggle(); if (!this.clock.paused) this.animate(); else this.renderSide(); } this.syncRun(); }});   // (going on: the rest of the season plays out)
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
     $('campCaps').addEventListener('click', e => {
@@ -149,28 +150,37 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, profile: this.epicProfile, ...(this.epicYears ? {epicYears: this.epicYears} : {})});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0;
-    this.making = true; $('campEpicGo').textContent = 'Остановить';
+    this.making = true; this.genPaused = false; $('campEpicGo').textContent = 'Остановить';
+    this.paceBefore = this.clock.pace; this.clock.setPace('max');   // (a quick start is made as fast as it goes; the pace buttons slow it to watch it grow; the walk's pace comes back after)
+    this.syncRun();
     $('campCapsField').hidden = true; $('campTitle').textContent = this.worldName;
     const t0 = performance.now();
-    let drawn = 0;
+    let drawn = 0, stepAt = 0;
+    // the pace (core/clock.js PACE, the same buttons as the walk's): «Сразу» — as many stages as fit a frame; a slower pace —
+    // a season of history at its season's time, so the world can be watched as it grows; the land's stages always at once;
+    // the pause holds it
     const loop = () => {
       if (!this.making || a !== this.atlas) return;
-      const f0 = performance.now();
-      while (!atlasDone(a) && performance.now() - f0 < 30) runNextStage(a);
+      const f0 = performance.now(), P = paceOf(this.clock.pace);
+      if (!this.genPaused) {
+        if (!P.season || !a.hist) { while (!atlasDone(a) && performance.now() - f0 < 30 && (!P.season || !a.hist)) runNextStage(a); }
+        else if (f0 - stepAt >= P.season) { stepAt = f0; runNextStage(a); drawn = 0; }
+      }
       if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); }
       if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000, a); return; }
       this.genRaf = requestAnimationFrame(loop);
     };
     this.genRaf = requestAnimationFrame(loop);
   }
+  backPace() { if (this.paceBefore) { this.clock.setPace(this.paceBefore); this.paceBefore = null; } this.syncPaceBox?.(); }
   stopEpic() { this.dropEpic(); this.setupMode(); this.draw(); }
   // the world being made is let go, unsaved
   dropEpic() {
-    this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
+    this.making = false; this.genPaused = false; this.backPace(); cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
     this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.';
   }
   async doneEpic(sec, a = this.atlas) {
-    this.making = false; $('campEpicGo').textContent = 'Сотворить';
+    this.making = false; this.genPaused = false; this.backPace(); this.syncRun(); $('campEpicGo').textContent = 'Сотворить';
     this.bitmapKey = ''; this.draw();
     const yrs = a.hist.year - 1;   // (the year after the last season is the one history stands at)
     $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
@@ -296,11 +306,12 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       sw('rgb(230,80,60)', 'угроза рядом (треугольник; темнее — сыта или не заметила)') + sw('rgb(235,200,90)', 'торговый обоз') + sw('rgb(140,200,110)', 'стадо') + sw('rgba(255,240,200,0.3)', 'кольцо пузыря');
   }
   syncRun() {
-    const K = this.atlas?.campaign, done = !K || finished(K);
+    const K = this.atlas?.campaign, done = !this.making && (!K || finished(K));   // (a world being made runs on the same pace buttons)
     $('campAgain').hidden = !done || !K;
     $('campPause').hidden = done; $('campSpeed').hidden = done;
     this.syncPaceBox?.();
     if (this.local) $('campPause').textContent = this.ticks.paused ? 'Дальше' : 'Пауза';
+    if (this.making) $('campPause').textContent = this.genPaused ? 'Дальше' : 'Пауза';
   }
 
   clickAt(e) { this.selectAt(e); }   // a click on the world map: the card of what is here (ui/inspect.js)

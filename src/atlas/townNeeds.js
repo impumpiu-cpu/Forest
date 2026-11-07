@@ -106,17 +106,21 @@ const TARGET = {
     if (!gs.length) return {why: 'нехватки металла по стоимости нет'};
     const towns = (t.realm == null ? [t] : (a.towns || []).filter(x => x.alive && x.realm === t.realm))
       .sort((p, q) => (p === t ? -1 : q === t ? 1 : Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y) || p.id - q.id));
+    // (what the realm has built and the metals it knows are the realm's — the same for each of its towns; a town's facts and
+    // a mine's dig, once each: nothing changes while the sitting looks — it was the late years' cost, towns × metals × towns)
+    const inR = realmBuilt(a, t), known = realmMetals(a, t), factsOf = new Map(), digs = new Map();
+    const facts = x => { let f = factsOf.get(x.id); if (!f) factsOf.set(x.id, f = townFacts(a, x, {inRealm: inR})); return f; };
+    const dug = (x, b) => { const k = `${x.id}:${b.id}`; let d = digs.get(k); if (!d) digs.set(k, d = digOf(a, x, b)); return d; };
     for (const g of gs) {
       const makers = TOWN_BUILDINGS.all().filter(b => makesOf(b).includes(g));
       for (const x of towns) {
         if (x.goal) continue;   // (a town builds one goal at a time)
-        const inR = realmBuilt(a, x), facts = townFacts(a, x, {inRealm: inR}), known = realmMetals(a, x);
         for (const b of makers) {
           if (ctx.taken.has(x.id)) continue;   // (a town has one builder: one goal at a time)
-          if (b.dig && !(digOf(a, x, b)[g] > 0)) continue;
+          if (b.dig && !(dug(x, b)[g] > 0)) continue;
           if (Object.keys(b.in || {}).some(h => METAL.has(h) && !known.has(h))) continue;   // (a steelworks with no iron in the realm)
-          if (!canBuild(a, x, b, inR, facts)) continue;
-          const n = b.dig ? digOf(a, x, b)[g] : (b.out?.[g] || 0);
+          if (!canBuild(a, x, b, inR, facts(x))) continue;
+          const n = b.dig ? dug(x, b)[g] : (b.out?.[g] || 0);
           return {target: {town: x.id, b: b.id, g}, expect: {good: g, n: r2(n)}, note: `${b.name} в ${x.name}: ${gName(g)}`};
         }
       }
