@@ -23,7 +23,7 @@
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, newCampaign, runCampaign, stepCampaign} from '../src/campaign/index.js';
+import {capitals, newCampaign, runCampaign, stepCampaign, socialHash} from '../src/campaign/index.js';
 import {memberLocal, upgradeMembers} from '../src/campaign/start.js';
 import {campSetup, openCamp, runCamp, campOutcome} from '../src/campaign/camp.js';
 import {takeFromCamp} from '../src/campaign/captives.js';
@@ -332,6 +332,17 @@ check('когда ядра не осталось, остальные отпущ�
   K.members.push({...K.members[0], id: 999, name: K.members[0].name});   // a namesake
   archive(a, K); const rec = a.campaignsDone.at(-1);
   check('архив похода хранит людей по id и историю команды', rec.members.every(m => m.id != null) && new Set(rec.members.map(m => m.id)).size === rec.members.length && !!rec.social?.facts);
+}
+
+// ── the same seed, the same story
+{
+  const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0}), fz = JSON.stringify(saveAtlas(base));
+  const run = () => { const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); for (let k = 0; k < 8; k++) stepCampaign(a); return socialHash(K); };
+  const h1 = run(), h2 = run();
+  // a save on the way: the rest of the walk goes on the same
+  const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); for (let k = 0; k < 4; k++) stepCampaign(a);
+  const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))); for (let k = 0; k < 4; k++) { stepCampaign(a); stepCampaign(b); }
+  check('один сид — одна история команды; сохранение в пути продолжается так же', h1 === h2 && socialHash(a.campaign) === socialHash(b.campaign), `${h1} / ${h2}; после загрузки ${socialHash(a.campaign)} / ${socialHash(b.campaign)}`);
 }
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)
