@@ -241,6 +241,7 @@ export function seedRot(a, rnd) {
     if (spots.some(q => Math.hypot(q % a.w - i % a.w, ((q / a.w) | 0) - ((i / a.w) | 0)) < 25 * k)) continue;
     spots.push(i); barrows(a, i, Math.max(2, Math.round(3 * k)), ROT.ancientGraves);
   }
+  if (a.f.barrows) a.f.barrowsOld = Float32Array.from(a.f.barrows);   // the barrows of before the chronicle: they do not settle (stepRot)
   return spots;
 }
 
@@ -258,6 +259,9 @@ export function stepRot(a) {
     const j = cell[t.i], x0 = j % F.W, y0 = (j / F.W) | 0;
     for (let y = Math.max(0, y0 - 1); y <= Math.min(F.H - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(F.W - 1, x0 + 1); x++) ward[y * F.W + x] = Math.max(ward[y * F.W + x], w);
   }
+  // the graves settle: what history laid down sinks back towards the barrows older than the chronicle (a.f.barrowsOld),
+  // ROT.graveSettle of the rest a season — a battlefield's or a raid's dead feed the rot for some generations, not for ever
+  if (a.f.barrows) { const G = a.f.barrows, O = a.f.barrowsOld, k = ROT.graveSettle; for (let i = 0; i < a.n; i++) { const o = O ? O[i] : 0; if (G[i] > o) G[i] = o + (G[i] - o) * (1 - k); } }
   src.fill(0); cnt.fill(0);
   if (a.f.barrows) for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j < 0) continue; src[j] += a.f.barrows[i]; cnt[j]++; }
   else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
