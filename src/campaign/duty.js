@@ -15,7 +15,7 @@
 // asks one bolder to go along when it goes out (escortAsk); the map gives the one who promised the task (settlement/together.js
 // escortOption), the camp's outcome says what came of it and why (campaign/camp.js), the campaign closes it (takeEscorts).
 import {DUTY} from '../data/social.js';
-import {ensureSocial, campaignFact, bondBy, bondOf} from './social.js';
+import {ensureSocial, campaignFact, bondBy, bondOf, repayer} from './social.js';
 import {draw} from './start.js';
 import {fateOf} from '../social/fate.js';
 import {tracing, noteDecision, r3} from '../core/decide.js';
@@ -73,10 +73,19 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
   const byId = id => K.members.find(m => m.id === id), able = D.queue.map(byId).filter(mayWatch);
   let on = able.slice(0, Math.max(1, Math.min(DUTY.watch, Math.floor(able.length / DUTY.per))));
   lapse(K);   // (first: a promise past its days or with a side gone is closed before any is kept — a lapsed one is never fulfilled)
-  const {r, done} = draw(K, 'social');
+  const {r, done} = draw(K, 'social'), relieved = [];
   try {
     // the promises due tonight: the one who promised stands in for the other, or does not
     on = keepPromises(K, on, able, say);
+    // a good turn paid back: the worn out on tonight's watch relieved, unasked, by one it did a good turn to lately
+    for (const m of [...on]) {
+      if (tiredOf(m) < DUTY.askAt) continue;
+      const got = repayer(K, m, able.filter(o => !on.includes(o) && o !== m), tiredOf); if (!got) continue;
+      const [o, turn] = got, f = campaignFact(K, 'repaid', {by: o.id, to: m.id, saw: ms.map(x => x.id), params: {for: turn.id}});
+      bondBy(K, m.id, o.id, DUTY.bond.kept, f);
+      on = on.map(x => (x === m ? o : x)); relieved.push(m.id);
+      say(`${o.name} сам${fem(K, o.id) ? 'а' : ''} встал${fem(K, o.id) ? 'а' : ''} в дозор за ${m.name}: долг платежом красен.`, [o.id, m.id]);
+    }
     // the tired on tonight's watch ask to be relieved
     for (const m of [...on]) {
       if (tiredOf(m) < DUTY.askAt || S.commitments.some(c => c.status === 'accepted' && c.creditor === m.id)) continue;
@@ -102,7 +111,7 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
   // the night: the watchmen tire, the others sleep
   for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch); L.watched++; L.lastWatch = K.day; } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
   // to the end of the queue go those who stood (or would have stood: the one relieved too — its turn is taken)
-  const went = new Set([...on.map(m => m.id), ...S.commitments.filter(c => c.end === K.day && c.status === 'fulfilled').map(c => c.creditor)]);
+  const went = new Set([...on.map(m => m.id), ...relieved, ...S.commitments.filter(c => c.end === K.day && c.status === 'fulfilled').map(c => c.creditor)]);
   D.queue = [...D.queue.filter(id => !went.has(id)), ...D.queue.filter(id => went.has(id))];
   D.on = on.map(m => m.id);
   return D.on;

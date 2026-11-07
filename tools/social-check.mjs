@@ -32,7 +32,7 @@ import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, moodOut, moodIn, takeOnce} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
-import {reasonsOf, noteFate, bondOf, welcome, judge, tell} from '../src/campaign/social.js';
+import {reasonsOf, noteFate, bondOf, welcome, judge, tell, reconcile, campaignFact} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf, escortAsk} from '../src/campaign/duty.js';
@@ -397,6 +397,40 @@ check('когда ядра не осталось, остальные отпущ�
     const o = campOutcome(X.w); applyCamp(X.a, X.K, X.S, o, null, 'stop');
     const c = X.K.social.commitments.find(x => x.id === 'e1');
     check('тот не ходил наружу — обещание ждёт следующего дня стоянки, в срок', c.status === 'accepted', c.status);
+  }
+}
+
+// ── the stories: a good turn paid back unasked; a quarrel made up after help in need
+{
+  const base = generateAtlas({seed: '829', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const fresh = () => {
+    const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); K.inTown = null;
+    for (const m of K.members) { m.hp = 1; (m.social ||= {}).load = {tired: 0, watched: 0, lastWatch: null}; m.local.traits = []; }
+    K.duty = {queue: K.members.filter(m => m.alive && !m.captive).map(m => m.id), night: null, on: []};
+    return {a, K};
+  };
+  {
+    const {a, K} = fresh(), [A, B] = K.members.filter(m => K.duty.queue.indexOf(m.id) === 0 || K.duty.queue.indexOf(m.id) === K.duty.queue.length - 1);
+    const first = K.members.find(m => m.id === K.duty.queue[0]), last = K.members.find(m => m.id === K.duty.queue.at(-1));
+    first.social.load.tired = 0.9;
+    campaignFact(K, 'saved', {by: first.id, to: last.id, saw: [first.id, last.id]});
+    const lines = [], on = nightWatch(a, K, {say: t => lines.push(t)});
+    const f = K.social.facts.find(x => x.kind === 'repaid');
+    check('добро платят без просьбы: спасённый сам встаёт в дозор за измотанного спасителя', f?.by === last.id && f.to === first.id && on.includes(last.id) && !on.includes(first.id), lines.join(' | '));
+    K.day++; first.social.load.tired = 0.9; nightWatch(a, K, {});
+    check('долг платят один раз', K.social.facts.filter(x => x.kind === 'repaid').length === 1);
+  }
+  {
+    const {a, K} = fresh(), [A, B] = K.members, R = ensureSocial(K).relations;
+    R[A.id] = {[B.id]: -2}; R[B.id] = {[A.id]: -1.5};
+    campaignFact(K, 'quarrel', {by: A.id, to: B.id, saw: [A.id, B.id]});
+    reconcile(K);
+    check('без помощи в беде обида держится', bondOf(K, A.id, B.id) === -2);
+    campaignFact(K, 'stoodUp', {by: B.id, to: A.id, saw: [A.id, B.id]});
+    const lines = []; reconcile(K, t => lines.push(t));
+    check('ссора → помощь в беде → примирение: обида снята с обеих сторон, причина — факт', bondOf(K, A.id, B.id) >= 0.5 && bondOf(K, B.id, A.id) >= 0.5 && K.social.facts.some(f => f.kind === 'reconciled') && reasonsOf(K, A.id, B.id).some(f => f.kind === 'reconciled'), lines.join(' | '));
+    R[A.id][B.id] = -2; reconcile(K);
+    check('за одну помощь мирятся один раз', bondOf(K, A.id, B.id) === -2);
   }
 }
 

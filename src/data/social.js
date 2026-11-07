@@ -40,10 +40,18 @@ export const FACT_KINDS = {
   // the escort (campaign/duty.js escortAsk, kept on the map)
   askedEscort: {label: 'попросил пойти рядом за едой', weight: {to: 0.2, by: 0.25, saw: 0.05}},
   keptEscort: {label: 'ходил рядом, как обещал', weight: {to: 0.5, by: 0.3, saw: 0.1}},
+  // the stories of the company (campaign/social.js): a good turn paid back unasked, a quarrel made up after help in need
+  repaid:    {label: 'отплатил добром', weight: {to: 0.5, by: 0.3, saw: 0.1}},
+  reconciled: {label: 'помирились', weight: {to: 0.5, by: 0.5, saw: 0.15}, pair: true},
   // the peaceful life (campaign/company.js welcome; social.js judge)
   welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
   frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
 };
+// the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
+// one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);
+// a quarrel — a bond `grudge` or below — is made up when the other did one a good turn in need since (`days`): the bond is
+// lifted to `made`, and the lift is the fact's (reconcile; a merciless heart — mercy below `mercyFrom` — does not)
+export const STORY = {good: ['aid', 'saved', 'stoodUp', 'yieldedBed', 'keptEscort', 'tookWatch', 'escorted'], need: ['aid', 'saved', 'stoodUp'], days: 30, gap: 0.25, grudge: -0.5, made: 0.5, mercyFrom: -2};
 // the newcomer (campaign/social.js welcome): the most sociable of the free takes it in — the bond both ways
 export const WELCOME = {bond: {to: 0.6, by: 0.3}, from: 0.55};
 // a captive sold (campaign/social.js judge): one who holds mercy high (align.mercy ≥ `mercy`) or freedom dear takes it ill —

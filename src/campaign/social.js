@@ -9,7 +9,7 @@
 import {REL} from '../data/colony.js';
 import {OPINION} from '../data/relations.js';
 import {DAY} from '../core/time.js';
-import {SOCIAL, GRIEF, WELCOME, JUDGE} from '../data/social.js';
+import {SOCIAL, STORY, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
 import {FACT_KINDS} from '../data/social.js';
@@ -178,4 +178,35 @@ export function tell(K) {
       (m.social ||= {}).memory = remember(m.social.memory || [], {fact: f.id, how: 'heard', part: 'heard', from: teller.id, day: K.day, weight: w});
     }
   }
+}
+
+// ── the stories of the company (data/social.js STORY)
+// a good turn paid back: one worn out on tonight's watch (`tired`) is relieved, unasked, by one it did a good turn to lately,
+// fresher than it — the one who owes. → [the one who takes the watch, the fact] or null (campaign/duty.js nightWatch)
+export function repayer(K, m, free, tiredOf) {
+  const S = ensureSocial(K), T = STORY, paid = new Set(S.facts.filter(f => f.kind === 'repaid').map(f => f.params?.for));
+  const turns = S.facts.filter(f => T.good.includes(f.kind) && f.by === m.id && f.to != null && f.to !== m.id && K.day - f.day <= T.days && !paid.has(f.id));
+  for (const f of turns.slice().reverse()) {
+    const o = free.find(x => x.id === f.to && tiredOf(x) <= tiredOf(m) - T.gap);
+    if (o) return [o, f];
+  }
+  return null;
+}
+// a quarrel made up: one who holds a grudge against another the other since did a good turn in need — the evening's talk
+// makes it up, both ways (the lift is the fact's). Called once a day. → the facts of it
+export function reconcile(K, say = () => {}) {
+  const S = ensureSocial(K), T = STORY, R = S.relations, here = K.members.filter(m => m.alive && !m.captive), byId = new Map(here.map(m => [m.id, m])), out = [];
+  for (const a of here) {
+    if ((a.align?.mercy ?? 0) < T.mercyFrom) continue;   // (a merciless heart keeps its grudge)
+    for (const [bid, v] of Object.entries(R[a.id] || {})) {
+      const b = byId.get(+bid); if (!b || v > T.grudge) continue;
+      const help = S.facts.filter(f => T.need.includes(f.kind) && f.by === b.id && f.to === a.id && K.day - f.day <= T.days).at(-1);
+      if (!help || S.facts.some(f => f.kind === 'reconciled' && f.params?.for === help.id)) continue;
+      const f = campaignFact(K, 'reconciled', {by: a.id, to: b.id, saw: here.map(m => m.id), params: {for: help.id}});
+      for (const [x, y] of [[a, b], [b, a]]) { const now = bondOf(K, x.id, y.id); if (now < T.made) bondBy(K, x.id, y.id, T.made - now, f); }
+      say(`${a.name} и ${b.name} помирились: после того как ${b.name} ${b.gender === 'f' ? 'выручила' : 'выручил'} в беде, старая обида забыта.`, [a.id, b.id]);
+      out.push(f);
+    }
+  }
+  return out;
 }
