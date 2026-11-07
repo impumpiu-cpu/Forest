@@ -55,7 +55,7 @@ import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate, tell} from './social.js';
-import {nightWatch, tiredOf, offDuty} from './duty.js';
+import {nightWatch, tiredOf, offDuty, escortAsk} from './duty.js';
 import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
@@ -428,6 +428,7 @@ function evening(a, K) {
             : why.startsWith('mine:') ? `Здесь ${why.slice(5) === 'placer' ? 'в речном песке блестит золото' : `выходит на поверхность ${mineLabel(why.slice(5))}`}: совет решил встать и добывать.`
               : `Здесь пасутся дикие ${BEASTS[why.slice(5)].plural}: совет решил встать и приручить.`;
       say(a, K, text, 'camp');
+      if (why === 'food' && !quiet) escortAsk(a, K, (t, who) => say(a, K, t, 'people', false, who));   // the faint-hearted ask for company out there (campaign/duty.js)
     } else if (!why) K.why = '';
   }
   // the way to the goal

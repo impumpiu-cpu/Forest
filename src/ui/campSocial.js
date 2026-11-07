@@ -69,7 +69,7 @@ export function memberCardHtml(K, m) {
   }).join('');
   const ST = {accepted: 'в силе', fulfilled: 'исполнено', failed: 'не вышло не по вине', impossible: 'стало невозможным', broken: 'нарушено', lapsed: 'истекло'};
   const vows = (S.commitments || []).filter(c => c.debtor === m.id || c.creditor === m.id).slice(-4).map(c =>
-    `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} подмену в дозоре — ${ST[c.status] || c.status}</li>`).join('');
+    `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} ${c.kind === 'escort' ? 'пойти рядом за едой' : 'подмену в дозоре'} — ${ST[c.status] || c.status}</li>`).join('');
   const fate = fateOf(m);
   return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;

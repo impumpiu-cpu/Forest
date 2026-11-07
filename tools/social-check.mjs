@@ -35,7 +35,8 @@ import {giveAid} from '../src/settlement/together.js';
 import {reasonsOf, noteFate, bondOf, welcome, judge, tell} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
-import {nightWatch, tiredOf} from '../src/campaign/duty.js';
+import {nightWatch, tiredOf, escortAsk} from '../src/campaign/duty.js';
+import {escortOption, enterEscort} from '../src/settlement/together.js';
 import {DUTY} from '../src/data/social.js';
 import {warband} from '../src/agents/behaviours/warband.js';
 import {councilChoose} from '../src/campaign/council.js';
@@ -341,6 +342,61 @@ check('когда ядра не осталось, остальные отпущ�
     die(a, K, cr, 'пал'); nights(a, K, 1);
     const c = K.social.commitments.find(x => x.id === 'n3');
     check('тот, кому обещано, погиб — обещание закрыто сразу', c.status === 'impossible', `${c.status} ${c.why}`);
+  }
+}
+
+// ── the escort: a promise kept by a deed on the map — or not, and why
+{
+  const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0}), fz = JSON.stringify(saveAtlas(base));
+  const fresh = () => {
+    const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'local'}), [A, B] = K.members;
+    for (const m of K.members) { m.hp = 1; m.local.traits = ['brave']; (m.social ||= {}).load = {tired: 0}; }
+    A.local.traits = ['timid']; ensureSocial(K).relations[B.id] = {[A.id]: 3};
+    return {a, K, A, B};
+  };
+  // asked on the evening: the faint-hearted asks one bolder, a friend says yes
+  {
+    const {a, K, A, B} = fresh(), lines = [], got = escortAsk(a, K, t => lines.push(t));
+    check('робкий просит смелого пойти рядом за едой; друг обещает', got?.answer === 'yes' && got.c.creditor === A.id && got.c.debtor === B.id && got.c.kind === 'escort', JSON.stringify(got) + ' ' + lines.join(' | '));
+  }
+  const scene = (fix = () => {}) => {
+    const X = fresh(), {a, K, A, B} = X;
+    ensureSocial(K).commitments.push({id: 'e1', kind: 'escort', debtor: B.id, creditor: A.id, made: K.day - 1, due: K.day, until: K.day + 2, status: 'accepted'});
+    const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S), P = w.campaign.people, ga = P.get(A.id), gb = P.get(B.id);
+    fix(w, ga, gb);
+    return {...X, S, w, ga, gb};
+  };
+  const gatherJob = 'gather';
+  {
+    const X = scene((w, ga) => { ga.task = {id: 'job', job: gatherJob}; });
+    const opt = escortOption(X.w, X.gb);
+    check('на карте обещавший получает задачу «пойти рядом», пока тот работает снаружи', opt?.[0]?.id === 'company' && opt[0].who === X.ga.id && !!opt[0].promised, JSON.stringify(opt?.[0]));
+    if (opt) { X.gb.task = opt[0]; enterEscort(X.w, X.gb, opt[0]); }
+    const o = campOutcome(X.w), before = bondOf(X.K, X.A.id, X.B.id);
+    check('исход стоянки: обещание исполнено делом', o.promises?.[0]?.state === 'kept', JSON.stringify(o.promises));
+    applyCamp(X.a, X.K, X.S, o, null, 'stop');
+    const c = X.K.social.commitments.find(x => x.id === 'e1');
+    check('исполненное на карте — исполнено в походе: факт и связь у того, кого проводили', c.status === 'fulfilled' && X.K.social.facts.some(f => f.kind === 'keptEscort') && bondOf(X.K, X.A.id, X.B.id) > before, `${c.status}, связь ${before} → ${bondOf(X.K, X.A.id, X.B.id)}`);
+  }
+  {
+    const X = scene((w, ga, gb) => { ga.task = {id: 'job', job: gatherJob}; gb.downed = true; });
+    escortOption(X.w, X.gb);
+    const b0 = bondOf(X.K, X.A.id, X.B.id), o = campOutcome(X.w); applyCamp(X.a, X.K, X.S, o, null, 'stop');
+    const c = X.K.social.commitments.find(x => x.id === 'e1');
+    check('обещавший упал — не вышло не по вине, связь не падает', c.status === 'failed' && c.why === 'hurt' && bondOf(X.K, X.A.id, X.B.id) >= b0, `${c.status} ${c.why}`);
+  }
+  {
+    const X = scene((w, ga, gb) => { ga.task = {id: 'job', job: gatherJob}; gb.local = gb.local || {}; gb.traits = ['lazy']; });
+    escortOption(X.w, X.gb);   // (seen out, but it did not go)
+    const b0 = bondOf(X.K, X.A.id, X.B.id), o = campOutcome(X.w); applyCamp(X.a, X.K, X.S, o, null, 'stop');
+    const c = X.K.social.commitments.find(x => x.id === 'e1');
+    check('ленивый видел, что тот ушёл, и не пошёл — нарушено, связь падает', c.status === 'broken' && bondOf(X.K, X.A.id, X.B.id) < b0, `${c.status} ${c.why}`);
+  }
+  {
+    const X = scene();
+    const o = campOutcome(X.w); applyCamp(X.a, X.K, X.S, o, null, 'stop');
+    const c = X.K.social.commitments.find(x => x.id === 'e1');
+    check('тот не ходил наружу — обещание ждёт следующего дня стоянки, в срок', c.status === 'accepted', c.status);
   }
 }
 

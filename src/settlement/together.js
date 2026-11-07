@@ -17,6 +17,7 @@
 // Counted in w.behave.social (settlement/behaviour.js).
 import {JOBS} from '../data/jobs.js';
 import {opinion, OPINION} from '../data/relations.js';
+import {DUTY} from '../data/social.js';
 import {colonists} from './query.js';
 import {agentInZone} from './zone.js';
 import {perTick, clamp, esc, g, dist} from '../core/util.js';
@@ -65,7 +66,20 @@ const escortOf = (w, a) => colonists(w).find(o => o.task?.id === 'company' && o.
 const walkers = w => perTick(w, 'walkers', () => (outsideRisk(w) < TOGETHER.riskFrom ? [] : colonists(w).filter(a => outWork(a) && !a.task.hauling && !escortOf(w, a))));
 
 // the best person for `a` to go along with, and how much it tempts: [task, score, why] or null
+// a promise to go along (a caravan's camp: campaign/duty.js escortAsk) — the one it was promised to, out at work, is gone
+// along with whatever the risk; seen out, the promise is due (w.campaign.promises: what came of it)
+const promiseOf = (w, a) => w.campaign?.promises?.find(p => p.by === a.id && p.state === 'open') || null;
 export function escortOption(w, a) {
+  const pr = promiseOf(w, a);
+  if (pr) {
+    const b = byId(w, pr.to);
+    if (b && !b.dead && outWork(b)) {
+      pr.seenOut = true;
+      const going = a.task?.id === 'company' && a.task.who === b.id;
+      if (going && !a.task.promised) { a.task.promised = pr.id; pr.state = 'kept'; pr.tick = w.tick; }   // (already at its side: the promise is kept)
+      if (hpShare(a) >= TOGETHER.aidBelow) return [going ? a.task : {id: 'company', who: b.id, promised: pr.id}, DUTY.escort.score, () => `обещал${a.gender === 'f' ? 'а' : ''} пойти рядом с ${b.name}`];
+    }
+  }
   const risk = outsideRisk(w);
   // already going along with someone: that one, while still needed
   if (a.task?.id === 'company') { const b = escortGoing(w, a, a.task); if (b) return [a.task, 0.2 + 0.6 * risk + (a.task.home ? 0.6 : 0), () => (a.task.home ? `ведёт ${b.name} к своим` : `в лесу опасно, ${b.name} не ${g(b, 'один', 'одна')}`)]; }
@@ -120,6 +134,7 @@ export function escortGoing(w, a, task) {
   const b = byId(w, task.who);
   if (!b) return null;
   if (task.home) return agentInZone(w, b) ? null : b;   // seeing a wounded friend home
+  if (task.promised) return outWork(b) ? b : null;   // (a promise: while it works out there, whatever the risk)
   return outWork(b) && outsideRisk(w) >= TOGETHER.riskTill ? b : null;
 }
 
@@ -127,6 +142,8 @@ export function enterEscort(w, a, task) {
   const b = byId(w, task.who); if (!b) return;
   const s = social(w); if (s && !task.home) s.escort++;
   if (!task.home) { think(w, b, 'escorted', {name: a.name, gender: a.gender}); noteFact(w, 'escorted', a, b, {bond: {to: TOGETHER.bondEscort, by: TOGETHER.bondEscort}}); }
+  const pr = task.promised && w.campaign?.promises?.find(p => p.id === task.promised);
+  if (pr) { pr.state = 'kept'; pr.tick = w.tick; }   // (the promise kept by the deed: campaign/camp.js campOutcome)
 }
 
 // ── aid

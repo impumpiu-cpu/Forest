@@ -8,13 +8,18 @@
 // the night's fights are as before. Numbers: data/social.js DUTY.
 //   K.duty = {queue: [member id], night: day, on: [member id]}
 //   m.social.load = {tired, watched, lastWatch}
-//   commitment = {id, kind: 'watch', debtor, creditor, made, due, until, status, why, fact, end, endFact} — status: 'accepted',
-//   then 'fulfilled', 'failed' (hurt or bound: through no fault), 'impossible' (gone), 'broken' (did not get up), 'lapsed'
+//   commitment = {id, kind: 'watch' | 'escort', debtor, creditor, made, due, until, status, why, fact, end, endFact} — status:
+//   'accepted', then 'fulfilled', 'failed' (hurt or bound, busy fighting: through no fault), 'impossible' (gone; no need came),
+//   'broken' (did not get up, did not go), 'lapsed'
+// The escort (D4.2: a promise kept by a deed on the map): on a camp to forage where the night is not quiet, the faint-hearted
+// asks one bolder to go along when it goes out (escortAsk); the map gives the one who promised the task (settlement/together.js
+// escortOption), the camp's outcome says what came of it and why (campaign/camp.js), the campaign closes it (takeEscorts).
 import {DUTY} from '../data/social.js';
 import {ensureSocial, campaignFact, bondBy, bondOf} from './social.js';
 import {draw} from './start.js';
 import {fateOf} from '../social/fate.js';
 import {tracing, noteDecision, r3} from '../core/decide.js';
+import {TRAITS} from '../data/traits.js';
 
 const loadOf = m => ((m.social ||= {}).load ||= {tired: 0, watched: 0, lastWatch: null});
 export const tiredOf = m => m.social?.load?.tired || 0;
@@ -28,7 +33,7 @@ const traitsOf = m => m.local?.traits || [];
 function wordOf(K, judge, other) {
   const S = ensureSocial(K), mine = new Set((judge.social?.memory || []).map(x => x.fact));
   let kept = 0, broke = 0;
-  for (const f of S.facts) if (mine.has(f.id) && f.by === other.id) { if (f.kind === 'tookWatch') kept++; else if (f.kind === 'brokeWord') broke++; }
+  for (const f of S.facts) if (mine.has(f.id) && f.by === other.id) { if (f.kind === 'tookWatch' || f.kind === 'keptEscort') kept++; else if (f.kind === 'brokeWord') broke++; }
   return {kept, broke};
 }
 // favours the asker did the one asked: the watches it stood for it
@@ -112,7 +117,7 @@ const round = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math
 function keepPromises(K, on, able, say) {
   const S = ensureSocial(K), byId = id => K.members.find(m => m.id === id), here = K.members.filter(m => m.alive && !m.captive).map(m => m.id);
   for (const c of S.commitments) {
-    if (c.status !== 'accepted' || c.due > K.day) continue;
+    if (c.status !== 'accepted' || c.due > K.day || (c.kind ?? 'watch') !== 'watch') continue;   // (an escort is kept on the map)
     const cr = byId(c.creditor), db = byId(c.debtor);
     if (!cr || !on.includes(cr)) continue;   // the creditor is not on tonight: the promise waits for its turn
     if (!db || fateOf(db) !== 'in') { close(K, c, 'impossible', fateOf(db || {})); continue; }   // the one who promised is gone: nobody's fault
@@ -149,3 +154,44 @@ function lapse(K) {
   S.commitments = S.commitments.filter(c => c.status === 'accepted' || K.day - (c.end ?? K.day) <= DUTY.promiseDays * 10);   // (the closed ones a while, for the cards)
 }
 function close(K, c, status, why = null) { c.status = status; c.why = why; c.end = K.day; }
+
+// ── the escort: asked on the evening a camp to forage begins where the night is not quiet (campaign/march.js evening)
+const braveOf = m => (m.local?.own?.mul?.bravery ?? 1) + traitsOf(m).reduce((v, id) => v + (TRAITS.get(id)?.mods?.bravery ?? 0), 0);
+export function escortAsk(a, K, say = () => {}) {
+  const S = ensureSocial(K), E = DUTY.escort, ms = K.members.filter(m => mayWatch(m));
+  if (S.commitments.some(c => c.kind === 'escort' && c.status === 'accepted')) return null;
+  const asker = ms.filter(m => braveOf(m) < E.timid).sort((p, q) => braveOf(p) - braveOf(q) || p.id - q.id)[0]; if (!asker) return null;
+  const free = ms.filter(o => o !== asker && braveOf(o) >= E.bold);
+  const to = whomToAsk(K, asker, free); if (!to) return null;
+  const {r, done} = draw(K, 'social'), ans = answer(K, to.m, asker, r); done();
+  const here = K.members.filter(m => m.alive && !m.captive).map(m => m.id);
+  const f = campaignFact(K, 'askedEscort', {by: asker.id, to: to.m.id, saw: here, params: {answer: ans.say, v: Math.round(ans.v * 100) / 100, why: round(ans.why)}});
+  if (ans.say !== 'yes') { if (ans.say === 'no') bondBy(K, asker.id, to.m.id, DUTY.bond.no, f); return {asked: to.m.id, answer: ans.say}; }
+  const c = {id: f.id, kind: 'escort', debtor: to.m.id, creditor: asker.id, made: K.day, due: K.day + 1, until: K.day + E.days, status: 'accepted', fact: f.id};
+  S.commitments.push(c);
+  say(`${asker.name} боится ходить одн${fem(K, asker.id) ? 'а' : 'им'} за едой: ${to.m.name} обещает пойти рядом.`, [asker.id, to.m.id]);
+  return {asked: to.m.id, answer: 'yes', c};
+}
+// the escorts due on a camp's day, for its setup (campaign/camp.js campSetup): both on the map
+export const escortsDue = (K, present) => ensureSocial(K).commitments.filter(c => c.kind === 'escort' && c.status === 'accepted' && c.due <= K.day && present.has(c.debtor) && present.has(c.creditor)).map(c => ({id: c.id, debtor: c.debtor, creditor: c.creditor}));
+// what the map gave of them (campaign/fight.js applyCamp): kept — the bond grows by the deed; not — by its reason
+const ESCORT_END = {kept: ['fulfilled'], hurt: ['failed', 'hurt'], busy: ['failed', 'busy'], notNeeded: ['impossible', 'notNeeded'], ignored: ['broken', 'ignored']};
+export function takeEscorts(K, out = [], say = () => {}) {
+  const S = ensureSocial(K), here = K.members.filter(m => m.alive && !m.captive).map(m => m.id);
+  for (const p of out) {
+    const c = S.commitments.find(x => x.id === p.id && x.status === 'accepted'); if (!c) continue;
+    if (p.state === 'open' && p.why === 'notNeeded' && K.day < c.until) continue;   // (it never went out today: another day of the camp may need it)
+    const [status, why] = ESCORT_END[p.state === 'kept' ? 'kept' : p.why] || ESCORT_END.busy;
+    close(K, c, status, status === 'fulfilled' ? null : why);
+    const db = K.members.find(m => m.id === c.debtor), cr = K.members.find(m => m.id === c.creditor);
+    if (status === 'fulfilled') {
+      const f = campaignFact(K, 'keptEscort', {by: c.debtor, to: c.creditor, saw: here, params: {promise: c.id}}); c.endFact = f.id;
+      bondBy(K, c.creditor, c.debtor, DUTY.bond.kept, f);
+      say(`${db?.name} ${fem(K, c.debtor) ? 'сдержала' : 'сдержал'} слово: ходил${fem(K, c.debtor) ? 'а' : ''} рядом с ${cr?.name}, пока ${fem(K, c.creditor) ? 'та' : 'тот'} собирал${fem(K, c.creditor) ? 'а' : ''} еду.`, [c.debtor, c.creditor]);
+    } else if (status === 'broken') {
+      const f = campaignFact(K, 'brokeWord', {by: c.debtor, to: c.creditor, saw: here, params: {why: 'escort'}}); c.endFact = f.id;
+      bondBy(K, c.creditor, c.debtor, DUTY.bond.broke, f);
+      say(`${cr?.name} ${fem(K, c.creditor) ? 'ждала' : 'ждал'} провожатого, а ${db?.name} так и не пош${fem(K, c.debtor) ? 'ла' : 'ёл'}.`, [c.debtor, c.creditor]);
+    } else if (status === 'failed') { const f = campaignFact(K, 'wordFailed', {by: c.debtor, to: c.creditor, saw: here, params: {why}}); c.endFact = f.id; }
+  }
+}

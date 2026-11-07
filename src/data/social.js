@@ -37,6 +37,9 @@ export const FACT_KINDS = {
   tookWatch: {label: 'отстоял дозор за другого', weight: {to: 0.5, by: 0.3, saw: 0.1}},
   brokeWord: {label: 'не сдержал слово', weight: {to: 0.6, by: 0.3, saw: 0.15}},
   wordFailed: {label: 'не смог сдержать слово', weight: {to: 0.3, by: 0.2, saw: 0.05}},
+  // the escort (campaign/duty.js escortAsk, kept on the map)
+  askedEscort: {label: 'попросил пойти рядом за едой', weight: {to: 0.2, by: 0.25, saw: 0.05}},
+  keptEscort: {label: 'ходил рядом, как обещал', weight: {to: 0.5, by: 0.3, saw: 0.1}},
   // the peaceful life (campaign/company.js welcome; social.js judge)
   welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
   frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
@@ -82,4 +85,9 @@ export const DUTY = {
   pick: {bond: 0.3, rested: 1, kept: 0.4, broke: -0.6},
   // what it comes to between the two: creditor → debtor
   bond: {kept: 0.8, broke: -1, no: -0.2},
+  // the escort (campaign/duty.js escortAsk; settlement/together.js escortOption): on a camp to forage where the night is not
+  // quiet, one faint-hearted (bravery under `timid`) asks one bolder (at least `bold`) to go along when it goes out; the answer
+  // by the same rules; a yes is a promise for the next day of the camp (`days` to keep it), kept on the local map: the one who
+  // promised walks with it while it works out there (the option's weight `score`)
+  escort: {timid: 0.95, bold: 1, days: 3, score: 1.1},
 };

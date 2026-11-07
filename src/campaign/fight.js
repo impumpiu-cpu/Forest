@@ -3,6 +3,7 @@
 // sent it — and what came out of it is taken back as it came out: the dead, the wounds, what was eaten,
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
+import {takeEscorts} from './duty.js';
 import {isFighter, inLine, toolOf} from '../data/campaign.js';
 import {memberFate} from '../atlas/persons.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
@@ -138,6 +139,7 @@ export function applyCamp(a, K, S, o, d, how) {
   }
   // the bonds the camp came to, between those who were there (the fallen too: what was felt for them is kept)
   takeBonds(K, S.members.map(m => m.id), o.bonds); takeFacts(K, o.facts);
+  takeEscorts(K, o.promises, (text, who) => say(a, K, text, 'people', false, who));   // the promises kept on the map, or why not (campaign/duty.js)
   for (const [m, mo] of fates) {
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
