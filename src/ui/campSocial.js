@@ -11,6 +11,7 @@ import {commandOf} from '../data/commands.js';
 import {reasonsOf} from '../campaign/social.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
+import {dress, gearDef} from '../agents/equipment.js';
 import {SPECIES} from '../data/species.js';
 
 // a variant by the meeting and the speaker, no stream drawn
@@ -93,6 +94,20 @@ export function memberCardHtml(K, m, day = Infinity) {
 // the one recorded — the scene only shows it, from a step (0 … the voices) that the screen moves on, pauses, skips, plays again
 // the pawns' size at the fire (the radius drawPawn takes): the one place the company is seen close, not as tokens on a map
 const FIRE_PAWN = 22;
+// one of the company as a pawn to draw: in what it wears and holds now (its gear, dressed as the camp's map dresses it —
+// campaign/camp.js), kept while its gear stays the same
+const PAWNS = new WeakMap();
+function firePawn(m, faceX) {
+  const key = `${m.gear?.hand?.join(',')}|${m.gear?.body}`, had = PAWNS.get(m);
+  let pawn = had?.key === key ? had.pawn : null;
+  if (!pawn) {
+    pawn = {id: m.id, species: m.race, gender: m.gender, equip: {}};
+    try { dress(pawn, [...(m.gear?.hand || []), m.gear?.body].filter(id => id && gearDef(id)), 0); } catch (e) { pawn.equip = {}; }
+    PAWNS.set(m, {key, pawn});
+  }
+  pawn.faceX = faceX;
+  return pawn;
+}
 export function drawFire(cv, K, meet, step) {
   const ctx = cv.getContext?.('2d'); if (!ctx) return;
   const dpr = globalThis.devicePixelRatio || 1, w = cv.clientWidth || 360, h = cv.clientHeight || 280;   // (not laid out yet — the tab hidden: drawn again when shown)
@@ -111,7 +126,7 @@ export function drawFire(cv, K, meet, step) {
     const m = K.members.find(o => o.id === x.id); if (!m) return;
     const [px, py] = seat(k), speaking = !x.away && speakers.has(x.id);
     if (speaking) { ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.arc(px, py, FIRE_PAWN * 1.6, 0, 6.283); ctx.fill(); }
-    const sp = SPECIES.get(m.race), pawn = {id: m.id, species: m.race, gender: m.gender, equip: {}, faceX: px < cx ? 1 : -1};
+    const sp = SPECIES.get(m.race), pawn = firePawn(m, px < cx ? 1 : -1);
     ctx.globalAlpha = x.away ? 0.4 : x.v && (x.v.now ?? x.v.want) !== meet.pick && over ? 0.7 : 1;
     if (!sp || !drawPawn(ctx, pawn, sp, px, py, FIRE_PAWN, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(px, py, 8, 0, 6.283); ctx.fill(); }
     ctx.globalAlpha = 1; ctx.fillStyle = speaking ? '#ffe2a0' : '#bfb6a2'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(m.name, px, py + FIRE_PAWN * 1.9);
