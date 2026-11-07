@@ -81,8 +81,17 @@ export function realmBand(a, realmId, people) {
   return s ? `${H.base}:${s}` : H.base;
 }
 
+// (while a pass over the towns runs — the councils' sittings, the builds, the season's money — what a realm has built is asked
+// for every candidate of every town: kept once a realm for the pass (a.builtMemo, set by the pass), and made again whenever a
+// town's buildings change inside it — builtChanged, at every place t.built is changed; realms and towns do not change in a pass)
+export const builtChanged = a => { if (a?.builtMemo) a.builtMemo = new Map(); };
 export function realmBuilt(a, t) {
   if (t.realm == null || !a?.towns) return new Set(t.built);
+  const M = a.builtMemo;
+  if (M) { let v = M.get(t.realm); if (!v) M.set(t.realm, v = walkBuilt(a, t)); return v; }
+  return walkBuilt(a, t);
+}
+function walkBuilt(a, t) {
   const out = new Set();
   for (const o of a.towns) if (o.alive && o.realm === t.realm) for (const id of o.built) out.add(id);
   for (const id of t.built) out.add(id);

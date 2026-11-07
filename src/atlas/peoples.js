@@ -16,7 +16,7 @@ import {ORE_KINDS, LAND_BIOMES, TOWN_ROLES} from '../data/worldLand.js';
 import {cap1} from '../core/util.js';
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {takeHeads, sync, foundHeads} from './population.js';
-import {townFx, room, townLabel, upgradeOf} from './towns.js';
+import {townFx, room, townLabel, upgradeOf, builtChanged} from './towns.js';
 import {keepWork} from './economy.js';
 import {moodStep, moodGrow, moodOf} from './mood.js';
 import {seasonMoney} from './treasury.js';
@@ -254,7 +254,7 @@ export function raiseBuilding(a, t, b, say) {
   const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
   const old = upgradeOf(t, b);   // housing and a tier built in place of an older one
   if (old) t.built.splice(t.built.indexOf(old), 1);
-  t.built.push(b.id);
+  t.built.push(b.id); builtChanged(a);
   // a tier of a work on the map: the last unit that gave way leaves its cell free (atlas/sites.js)
   if (old && TOWN_BUILDINGS.get(old).site && !t.built.includes(old)) {
     const s = (t.sites || []).map(id => a.sites?.[id - 1]).find(x => x?.alive && x.kind === old);

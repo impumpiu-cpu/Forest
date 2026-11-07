@@ -19,7 +19,7 @@ import {SITES, NET} from '../data/sites.js';
 import {killHeads} from './population.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
-import {placeHas} from './towns.js';
+import {placeHas, builtChanged} from './towns.js';
 import {placeNeed} from '../data/peoples.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
@@ -112,7 +112,7 @@ export function razeSite(a, s, year) {
   if (!s.alive) return;
   const t = a.towns.find(t => t.id === s.town);
   if (t) {
-    const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1);
+    const k = t.built.indexOf(s.kind); if (k >= 0) { t.built.splice(k, 1); builtChanged(a); }
     if (t.alive !== false && t.built.includes(s.kind)) return;   // the rest of the farmland stands
     t.sites = (t.sites || []).filter(id => id !== s.id);
   }

@@ -15,7 +15,7 @@ import {meets} from '../core/requirements.js';
 import {townFacts} from './requirements.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SEASON_DAYS, SEASONS_PER_YEAR} from '../data/atlas.js';
-import {townFx, chooseBuilding, canBuild, slotsUsed, slotsOf} from './towns.js';
+import {townFx, chooseBuilding, canBuild, slotsUsed, slotsOf, builtChanged} from './towns.js';
 import {realmTaste} from './realms.js';
 import {roadAccess} from './roads.js';
 import {planBuild, doBuild} from './treasury.js';
@@ -89,7 +89,7 @@ export function razeIdle(t, a = null) {
   if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.idle'))) return null;
   const worst = Object.entries(avg).filter(([, v]) => v < S.raze).sort((p, q) => p[1] - q[1] || (p[0] < q[0] ? -1 : 1))[0];
   if (!worst) return null;
-  t.built.splice(t.built.indexOf(worst[0]), 1); if (!t.built.includes(worst[0])) delete avg[worst[0]];
+  t.built.splice(t.built.indexOf(worst[0]), 1); builtChanged(a); if (!t.built.includes(worst[0])) delete avg[worst[0]];
   if (a) noteRaze(a, t, 'town.raze.idle', worst[0]);
   return worst[0];
 }
@@ -101,7 +101,7 @@ export function razeWorst(t, a = null) {
   if (slotsUsed(t).town < slotsOf(t).town || (a && !allowed(a.cfg, 'town.raze.worst'))) return null;
   const worst = [...new Set(t.built)].filter(id => slotKind(TOWN_BUILDINGS.get(id)) === 'town' && (t.work?.[id] ?? 1) < S.idle).sort((p, q) => (t.work?.[p] ?? 1) - (t.work?.[q] ?? 1) || (p < q ? -1 : 1))[0];
   if (!worst) return null;
-  t.built.splice(t.built.indexOf(worst), 1); if (t.workAvg && !t.built.includes(worst)) delete t.workAvg[worst];
+  t.built.splice(t.built.indexOf(worst), 1); builtChanged(a); if (t.workAvg && !t.built.includes(worst)) delete t.workAvg[worst];
   if (a) noteRaze(a, t, 'town.raze.worst', worst);
   return worst;
 }
@@ -117,6 +117,10 @@ function noteRaze(a, t, cmd, id) {
 const hardOk = (a, t, b) => meets([tierNeed(b, t.people), needsOf(b)].filter(Boolean), townFacts(a, t));
 
 export function stepBuilds(a, rnd, say) {
+  a.builtMemo = new Map();   // (what the realms have built, once a realm for the pass — atlas/towns.js realmBuilt)
+  try { stepBuildsPass(a, rnd, say); } finally { delete a.builtMemo; }
+}
+function stepBuildsPass(a, rnd, say) {
   for (const t of a.towns || []) {
     if (!t.alive || !t.wants || !WORLD_PEOPLES.has(t.people)) continue;
     razeIdle(t, a);

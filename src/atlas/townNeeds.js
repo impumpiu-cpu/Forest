@@ -227,6 +227,10 @@ function sitting(a, t, st, ctx) {
 
 // ── the season
 export function stepNeeds(a) {
+  a.builtMemo = new Map();   // (what the realms have built, once a realm for the sittings — atlas/towns.js realmBuilt)
+  try { return stepNeedsPass(a); } finally { delete a.builtMemo; }
+}
+function stepNeedsPass(a) {
   const now = stepOf(a), towns = (a.towns || []).filter(t => t.alive && t.econ && WORLD_PEOPLES.has(t.people));
   // the realms' purses for the season's budgets: a share of each treasury (reserved as the budgets are given)
   const ctx = {taken: new Set(), purse: new Map((a.realms || []).filter(r => r.fallen == null).map(r => [r.id, Math.max(0, (r.gold || 0) * NEED.budget.share)]))};
