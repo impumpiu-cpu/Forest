@@ -20,7 +20,7 @@ import {faunaLevel} from '../world/region.js';
 import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {CAMPAIGN, FOES, RETINUE, MINE, isFighter, inLine} from '../data/campaign.js';
+import {CAMPAIGN, FOES, RETINUE, MINE, COUNCIL, isFighter, inLine} from '../data/campaign.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {YEAR_DAYS} from '../data/atlas.js';
 import {plural} from '../core/util.js';
@@ -56,6 +56,7 @@ import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate} from './social.js';
 import {nightWatch, tiredOf} from './duty.js';
+import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 
@@ -291,8 +292,8 @@ const restless = (K, x) => !K.hungry && !x.quiet && K.path && K.k < K.path.lengt
 // fed, whole and in a quiet place, and the time to think of it has come (once an evening: the day of the next thought is set)
 const thinks = (K, x) => (x.ask.thinks ??= !K.hungry && x.calm && K.food >= x.need * x.C.foodDays && K.day >= (K.nextThink ?? 0) && ((K.nextThink = K.day + x.C.think), true));
 const CAMP_ASK = {
-  food: (a, K, x) => (K.food < x.need * x.C.foodDays && x.rich >= x.C.foodLand && !restless(K, x) ? {cmd: 'food', why: 'food'} : null),
-  heal: (a, K, x) => ((x.core < x.C.hp || x.badly) && !restless(K, x) ? {cmd: 'heal', why: 'heal'} : null),
+  food: (a, K, x) => (K.food < x.need * x.C.foodDays && x.rich >= x.C.foodLand && (x.voices || !restless(K, x)) ? {cmd: 'food', why: 'food'} : null),   // (with voices the danger is each one's to weigh: campaign/council.js)
+  heal: (a, K, x) => ((x.core < x.C.hp || x.badly) && (x.voices || !restless(K, x)) ? {cmd: 'heal', why: 'heal'} : null),
   // to build: the wheels, when they would go the way, else a building the camp lacks
   build: (a, K, x) => { if (!thinks(K, x)) return null; const B = wantBuild(a, K); return B ? {cmd: 'build', why: 'build', build: B} : null; },
   // to tame the beasts that graze here
@@ -354,12 +355,17 @@ function evening(a, K) {
   const worn = () => { const fs = free(K); return fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length) < CAMPAIGN.camp.hp; };
   const barren = K.hungry >= VISIT.retreat && (richness(a, K.i) * seasonFood(a, K.i, seasonId) < CAMPAIGN.camp.foodLand || worn());
   if (K.via == null && (K.camp === 0 || (barren && K.why === 'food'))) {
-    const why = wantVisit(a, K, seasonId);
-    // urgent — any way to the nearest: the winter, the badly wounded, hunger with the gold to end it
-    const urgent = why === 'winter' || (why === 'heal' && free(K).some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0);   // (starving, any way: a friendly town feeds them even without gold — campaign/town.js)
-    // (starving, the food left gives no measure: a town within winterReach; on barren land after `retreat` days of it, within retreatReach)
-    const days = why === 'winter' || why === 'smith' ? VISIT.winterReach : why === 'food' ? (barren ? VISIT.retreatReach : K.hungry ? VISIT.winterReach : Math.min(VISIT.reach, K.food / need + VISIT.foodSpare)) : VISIT.reach;
-    const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : why === 'smith' ? VISIT.smithDetour : VISIT.detour, days, why === 'smith' ? smithAt : null);
+    // the town a reason would take them to: urgent — any way to the nearest: the winter, the badly wounded, hunger with the
+    // gold to end it (starving, any way: a friendly town feeds them even without gold — campaign/town.js); starving, the food
+    // left gives no measure: a town within winterReach; on barren land after `retreat` days of it, within retreatReach
+    const townFor = why => {
+      const urgent = why === 'winter' || (why === 'heal' && free(K).some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0);
+      const days = why === 'winter' || why === 'smith' ? VISIT.winterReach : why === 'food' ? (barren ? VISIT.retreatReach : K.hungry ? VISIT.winterReach : Math.min(VISIT.reach, K.food / need + VISIT.foodSpare)) : VISIT.reach;
+      return findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : why === 'smith' ? VISIT.smithDetour : VISIT.detour, days, why === 'smith' ? smithAt : null);
+    };
+    const towns = {}, can = w2 => (towns[w2] ??= townFor(w2) || null) != null;   // (with voices: only a reason with a town to it is an option)
+    const why = wantVisit(a, K, seasonId, can);
+    const found = why && (why in towns ? towns[why] : townFor(why));
     if (why === 'smith' && !found) K.smithTried = K.day + VISIT.smithRetry;   // no smith near: look again later (a shop may do now)
     if (found) {
       K.via = found.t.id; K.viaWhy = why; K.path = found.way.path; K.k = 0; K.camp = 0; K.why = '';
@@ -388,9 +394,9 @@ function evening(a, K) {
     // the decision point `caravan.camp` (core/decide.js, data/commands.js): the commands that want a camp, lane by lane (the
     // camps of need — food, the wounded — before the ones of choice), drawn from by weight (data/campaign.js COUNCIL)
     const cmds = pointCommands('caravan.camp');
-    const x = {need, rich, core, badly, quiet, calm, C, ask: {}};   // (one for the evening: the asks share it)
+    const x = {need, rich, core, badly, quiet, calm, C, ask: {}, voices: (a?.cfg?.council ?? COUNCIL.policy) === 'voices'};   // (one for the evening: the asks share it)
     const {r, done} = draw(K, 'council');
-    const got = pickLanes(cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a?.cfg, c.id)});
+    const got = councilChoose(a, K, 'caravan.camp', cmds, (c, opts) => { const o = CAMP_ASK[c.id.slice(CAMP_CMD.length)](a, K, x, opts); return o && {...o, id: c.id, score: councilWeight(a, K, c.id)}; }, r, {allowed: c => allowed(a?.cfg, c.id), x});
     done();
     readout(K, got);
     if (tracing()) noteCaravan(a, K, 'caravan.camp', cmds, got);

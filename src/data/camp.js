@@ -26,7 +26,11 @@ export const CAMP = {
   // the camp's alarm (campaign/camp.js stepCamp; agents/behaviours/warband.js): raised when one of the caravan who is not
   // asleep sees a foe within `sight` cells (by day; at night × the eyes' night sight, data/tongues.js), or a blow is struck;
   // then every able one goes for the foe with the weight `want`
-  band: {sight: 14, want: 3},
+  // — or not (plan claude/caravan-ver_d.md D4): one whose friend lies fallen with a foe over it may run to the friend instead
+  // (`rescue`: what it feels for the friend past `friend`, × `per`, up to `cap`, over `want`; the friend within `near`, the foe
+  // within `foe` of it); one badly hurt and faint-hearted may falter and fall back to the fire (`falter`: health share below
+  // `hp`, bravery below `bravery`) — no rule makes anyone stand, and none keeps anyone safe
+  band: {sight: 14, want: 3, rescue: {friend: 2.5, per: 0.3, cap: 1.2, near: 10, foe: 4}, falter: {hp: 0.45, bravery: 0.8, over: 0.5}},
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,
   // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone

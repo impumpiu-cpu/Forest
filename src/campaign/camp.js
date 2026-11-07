@@ -42,6 +42,7 @@ import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {bondsAmong, moodOut, moodIn} from './social.js';
 import {DUTY} from '../data/social.js';
+import {noteFact} from '../settlement/facts.js';
 import {ITEMS} from '../data/items.js';
 import {SPECIES, isMindless} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -359,8 +360,15 @@ export function campOutcome(w) {
     if (ag?.gone && !ag.dead && !ag.fugitive) return {id: m.id, alive: false, taken: true};   // led off over the edge by a raider (agents/behaviours/led.js): alive, but no more with the caravan
     if (!ag || ag.dead) return {id: m.id, alive: false, cause: (ag && w.chronicle.people.find(p => p.id === ag.id)?.cause) || 'погиб'};
     // a fallen one still senseless when the camp ends: the others bind the wound (agents/wounds.js dress) — a grave wound
-    // and the trauma it fell with, barely alive
-    const wasDown = !!ag.downed; if (wasDown) bindFallen(w, ag);
+    // and the trauma it fell with, barely alive. Only if there are others to do it: one of the company on its feet and free
+    // when the camp ends (plan claude/caravan-ver_d.md D4.9: no help from nowhere) — the binding is theirs, as a group, a fact
+    // with no single saviour; with nobody to bind it, the wound takes its course
+    const wasDown = !!ag.downed;
+    if (wasDown) {
+      const able = [...C.people.values()].filter(o => o !== ag && !o.dead && !o.downed && !o.captive && !o.gone && !o.fugitive);
+      if (!able.length) return {id: m.id, alive: false, cause: m.gender === 'f' ? 'истекла кровью: перевязать было некому' : 'истёк кровью: перевязать было некому'};
+      bindFallen(w, ag); noteFact(w, 'boundAfter', null, ag, {});
+    }
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
     return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary), ...(cap ? {captive: cap} : {})};

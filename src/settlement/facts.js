@@ -14,7 +14,7 @@ const sees = (w, o, a, b) => !o.sleeping && !o.downed && !o.dead && [a, b].some(
 export function noteFact(w, kind, by, to, params = {}) {
   const C = w.campaign; if (!C?.memberOf) return null;
   const mb = by ? C.memberOf.get(by.id) : null, mt = to ? C.memberOf.get(to.id) : null;
-  if ((by && mb == null) || (to && mt == null)) return null;   // one of them is not of the company
+  if ((by && mb == null) || (to && mt == null)) return null;   // one of them is not of the company (`by` null: the company as a group)
   // a deed that goes on (working side by side, an escort, a fight shoulder to shoulder): one fact a camp for the pair
   if (FACT_KINDS[kind].once) { const key = `${kind}:${[mb, mt].sort((p, q) => p - q).join(':')}`, D = (C.factOnce ||= new Set()); if (D.has(key)) return null; D.add(key); }
   const saw = colonists(w).filter(o => o !== by && o !== to && C.memberOf.has(o.id) && sees(w, o, by, to)).map(o => C.memberOf.get(o.id));

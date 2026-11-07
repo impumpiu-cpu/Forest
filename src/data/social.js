@@ -15,6 +15,7 @@ export const SOCIAL = {
 // (`once`: noted once a camp for the same pair — a deed that goes on for hours is one fact; `pair`: the two are equal in it)
 export const FACT_KINDS = {
   aid:       {label: 'помощь раненому', weight: {to: 0.6, by: 0.3, saw: 0.15}},
+  boundAfter: {label: 'перевязали после боя', weight: {to: 0.5, saw: 0.2}},   // (by the company: no single saviour)
   saved:     {label: 'спас упавшего', weight: {to: 1, by: 0.5, saw: 0.3}},
   stoodUp:   {label: 'заступился', weight: {to: 0.6, by: 0.3, saw: 0.15}},
   escorted:  {label: 'пошёл провожатым', weight: {to: 0.25, by: 0.15, saw: 0.05}, once: true},

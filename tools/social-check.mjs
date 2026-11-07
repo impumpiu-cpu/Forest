@@ -13,6 +13,10 @@
 // Step 6 (D3): the night's watch by turns; one too tired asks one it chooses, that one answers by its own rules; a yes is a
 // promise — kept, failed through no fault, broken, or gone with the one who gave it; what came of it moves the bond once,
 // and the next request remembers it; a save between the promise and its night goes on the same.
+// Step 7 (D4): under the camp's alarm the line is not the only answer — one may run to a fallen friend, one badly hurt and
+// faint-hearted may falter; the fallen are bound after a fight only by someone still on their feet.
+// Step 8 (D5): the council with voices — each who has a say scores the options by its people's mission bent by its own
+// leanings, its needs and its losses; a danger is weighed, not a wall; the meeting is kept: who wanted what and why.
 //   node tools/social-check.mjs [worlds=2]
 import {fateOf, livesOn, FATES} from '../src/social/fate.js';
 import {generateAtlas} from '../src/atlas/generate.js';
@@ -30,6 +34,10 @@ import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf} from '../src/campaign/duty.js';
 import {DUTY} from '../src/data/social.js';
+import {warband} from '../src/agents/behaviours/warband.js';
+import {councilChoose} from '../src/campaign/council.js';
+import {COUNCIL} from '../src/data/campaign.js';
+import {mulberry} from '../src/core/rng.js';
 import {SPECIES, isSentient} from '../src/data/species.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {newGame, step} from '../src/sim.js';
@@ -260,6 +268,52 @@ check('когда ядра не осталось, остальные отпущ�
     const st = K => K.social.commitments.find(c => c.id === 'p1').status;
     check('сохранение между обещанием и ночью продолжается так же; второй вызов в тот же день — та же ночь', st(X.K) === st(saved) && lines1.join() === lines2.join() && X.K.duty.on.join() === saved.duty.on.join(), `${st(X.K)} / ${st(saved)}`);
   }
+}
+
+// ── the alarm: a friend fallen, one's own nerve; the fallen bound only by the living
+{
+  const base = generateAtlas({seed: '842', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'local'}), [A, B, C] = K.members;
+  const R = ensureSocial(K).relations; R[A.id] = {[B.id]: 4};
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S), P = w.campaign.people, a1 = P.get(A.id), b1 = P.get(B.id), c1 = P.get(C.id);
+  b1.downed = true; b1.x = a1.x + 3; b1.y = a1.y; c1.x = a1.x - 3; c1.y = a1.y;
+  const foe = {...c1, id: 99999, faction: 'raiders', x: b1.x + 1, y: b1.y, dead: false, downed: false, captive: null, member: null, task: null};
+  w.agents.push(foe); w.campaign.alarm = true; w.campaign.foeObjs = [foe];
+  const offers = warband.want(w, a1) || [], rescue = offers.find(o => o[0].id === 'aid' && o[0].who === b1.id);
+  check('под тревогой друг бросается к упавшему другу — вариант сильнее строя', !!rescue && rescue[1] > offers[0][1], offers.map(o => `${o[0].id} ${o[1].toFixed(2)}`).join(', '));
+  const cOffers = warband.want(w, c1) || [];
+  check('чужой упавшему — без этого варианта', !cOffers.some(o => o[0].id === 'aid' && o[0].who === b1.id));
+  c1.hp = c1.maxHp ? c1.maxHp * 0.4 : c1.hp * 0.4; c1.mods = {...c1.mods, bravery: 0.6};   // (hurt, but not past BOARD.hurt: those keep out anyway)
+  check('тяжело раненый робкий может дрогнуть и отойти к огню', (warband.want(w, c1) || []).some(o => o[0].id === 'runHome'));
+  // nobody on their feet: the fallen are not bound by anyone
+  for (const ag of P.values()) if (ag !== b1) ag.dead = true;
+  w.agents = w.agents.filter(x => !x.dead || x === b1);
+  const o = campOutcome(w), ob = o.members.find(x => x.id === B.id);
+  check('упавшего перевязывают только живые: некому — рана берёт своё', ob && !ob.alive && /некому/.test(ob.cause || ''), ob?.cause);
+}
+
+// ── the caravan's council with voices
+{
+  const base = generateAtlas({seed: '855', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const team = () => { const a = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(base)))), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); return {a, K}; };
+  const cmds = [{id: 'caravan.camp.build', band: 'routine'}, {id: 'caravan.camp.goOn', band: 'routine'}];
+  const ask = (c, opts) => (c.id.endsWith('goOn') && !opts.length ? null : {id: c.id, score: 1});
+  const meetOf = (X, quiet, n = 200) => { let food = 0; for (let k = 0; k < n; k++) { const got = councilChoose(X.a, X.K, 'caravan.camp', cmds, ask, mulberry(k + 1), {x: {quiet, need: 8}}); if (got.option?.id === 'caravan.camp.build') food++; } return food / n; };
+  // the same place and stores; one company fresh and bold, the other worn out, timid, and grieving one of its own
+  const bold = team(), worn = team();
+  for (const m of bold.K.members) { m.local.traits = ['brave']; (m.social ||= {}).load = {tired: 0}; }
+  for (const m of worn.K.members) { m.local.traits = ['timid']; (m.social ||= {}).load = {tired: 0.9}; }
+  bold.K.food = worn.K.food = 400;
+  const fallen = worn.K.members.at(-1); die(worn.a, worn.K, fallen, 'пал');
+  const qb = meetOf(bold, true), qw = meetOf(worn, true), db = meetOf(bold, false), dw = meetOf(worn, false);
+  check('одна и та же клетка и запасы — разные команды решают по-разному (усталые чаще встают)', qw > qb, `встать на постройку: бодрые ${qb.toFixed(2)}, измотанные ${qw.toFixed(2)}`);
+  check('опасная ночь взвешивается, а не запрещает: робкие и скорбящие встают реже, чем в тихом месте; смелые — встают и там', dw < qw && db > 0, `в опасном месте: смелые ${db.toFixed(2)}, робкие ${dw.toFixed(2)}`);
+  const M = worn.K.social.meetings.at(-1);
+  check('совет записан: голос каждого с правом, его желание и причины; пленные — без голоса', M && M.voices.length === worn.K.members.filter(m => m.alive && !m.captive).length && M.voices.every(v => v.want && Array.isArray(v.why)), JSON.stringify(M?.voices?.[0]));
+  const was = COUNCIL.policy; COUNCIL.policy = 'lanes';
+  const old = councilChoose(bold.a, bold.K, 'caravan.camp', cmds, ask, mulberry(1), {x: {quiet: true, need: 8}}).band;
+  COUNCIL.policy = was;
+  check('прежний совет по полосам — по-старому (политика переключается данными)', old === 'routine', old);
 }
 
 // ── the settlement's council: the proposal that won is the one remembered (a second round may change it)
