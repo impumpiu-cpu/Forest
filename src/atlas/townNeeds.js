@@ -16,6 +16,7 @@
 // blocked: {answer id: until step}, last: {pick, opts}, log: [{answer, outcome, why, at}]}}; t.goal = {b, need, from};
 // t.budget = {good: {gold, got}}. Every sitting goes to the trace (core/decide.js) as the point `town.need`, the answers it
 // could not give with their reasons.
+import {realmTowns, townDist, withFrame} from './frame.js';
 import {NEEDS, ANSWERS, NEED, LEAN} from '../data/townNeeds.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, METALS, makesOf, goodPrice, foodNet} from '../data/townBuildings.js';
 import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
@@ -107,8 +108,7 @@ const TARGET = {
   'metal.build'(a, t, st, ctx) {
     const gs = Object.entries(st.by).sort((p, q) => q[1].left * price(q[0]) - p[1].left * price(p[0]) || (p[0] < q[0] ? -1 : 1)).map(([g]) => g);
     if (!gs.length) return {why: 'нехватки металла по стоимости нет'};
-    const towns = (t.realm == null ? [t] : (a.towns || []).filter(x => x.alive && x.realm === t.realm))
-      .sort((p, q) => (p === t ? -1 : q === t ? 1 : Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y) || p.id - q.id));
+    const towns = [...realmTowns(a, t)].sort((p, q) => (p === t ? -1 : q === t ? 1 : townDist(a, p, t) - townDist(a, q, t) || p.id - q.id));
     // (what the realm has built and the metals it knows are the realm's — the same for each of its towns; a town's facts and
     // a mine's dig, once each: nothing changes while the sitting looks — it was the late years' cost, towns × metals × towns)
     const inR = realmBuilt(a, t), known = realmMetals(a, t), factsOf = new Map(), digs = new Map();
@@ -228,7 +228,7 @@ function sitting(a, t, st, ctx) {
 // ── the season
 export function stepNeeds(a) {
   a.builtMemo = new Map();   // (what the realms have built, once a realm for the sittings — atlas/towns.js realmBuilt)
-  try { return stepNeedsPass(a); } finally { delete a.builtMemo; }
+  try { return withFrame(a, () => stepNeedsPass(a)); } finally { delete a.builtMemo; }   // (the season's frame: atlas/frame.js)
 }
 function stepNeedsPass(a) {
   const now = stepOf(a), towns = (a.towns || []).filter(t => t.alive && t.econ && WORLD_PEOPLES.has(t.people));

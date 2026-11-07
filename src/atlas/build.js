@@ -9,6 +9,7 @@
 // project the town can no longer build (its realm lost what it requires) is dropped, the work done kept in `t.works`: if
 // the town comes back to it, it goes on from there and is not paid twice. So a town builds as fast as its hands let it:
 // a big, busy town many things a year, a hamlet one in a few.
+import {withFrame} from './frame.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, TOWN_SLOTS, slotKind} from '../data/townBuildings.js';
 import {needsOf, tierNeed} from '../data/requirements.js';
 import {meets} from '../core/requirements.js';
@@ -52,7 +53,7 @@ function pickProject(a, t, rnd) {
     if (tracing()) noteDecision({point: 'town.project', who: `town:${t.id}`, at: a.hist ? a.hist.year * 4 + a.hist.season : 0, band: 'routine', policy: 'rule',
       opts: [{cmd: 'town.need.build', key: `town.need.build(${G.id})`, score: 1}], pick: plan ? `town.need.build(${G.id})` : null, goal: t.goal.need});
     if (plan) {
-      doBuild(plan); note(a, t.realm, vectorOf(G), plan.cost);
+      doBuild(plan, a); note(a, t.realm, vectorOf(G), plan.cost);
       (t.works ||= {})[G.id] = {done: 0, paid: true};
       return G;
     }
@@ -64,7 +65,7 @@ function pickProject(a, t, rnd) {
     if (t.works?.[b.id]?.paid) return b;   // begun before: paid already
     const plan = planBuild(a, t, b);
     if (!plan) { ctx.skip.add(b.id); continue; }   // (an outlying work takes its cell when it stands: chooseBuilding saw one free)
-    doBuild(plan);   // paid: the materials to their makers, the work to the people (atlas/treasury.js)
+    doBuild(plan, a);   // paid: the materials to their makers, the work to the people (atlas/treasury.js)
     note(a, t.realm, vectorOf(b), plan.cost);   // the realm's course: what it builds, along the building's vector (atlas/mind.js)
     (t.works ||= {})[b.id] = {done: 0, paid: true};
     return b;
@@ -118,7 +119,7 @@ const hardOk = (a, t, b) => meets([tierNeed(b, t.people), needsOf(b)].filter(Boo
 
 export function stepBuilds(a, rnd, say) {
   a.builtMemo = new Map();   // (what the realms have built, once a realm for the pass — atlas/towns.js realmBuilt)
-  try { stepBuildsPass(a, rnd, say); } finally { delete a.builtMemo; }
+  try { withFrame(a, () => stepBuildsPass(a, rnd, say)); } finally { delete a.builtMemo; }   // (the season's frame: atlas/frame.js)
 }
 function stepBuildsPass(a, rnd, say) {
   for (const t of a.towns || []) {

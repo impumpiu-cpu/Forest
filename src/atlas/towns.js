@@ -18,6 +18,7 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
+import {realmTowns, metalsChanged} from './frame.js';
 import {onEdit} from '../data/schema/layer.js';
 import {LAND_BIOMES, ORE_KINDS, ROCK_CLAY, ROCK_CAVES} from '../data/worldLand.js';
 import {vectorOf, along} from '../data/mind.js';
@@ -84,7 +85,7 @@ export function realmBand(a, realmId, people) {
 // (while a pass over the towns runs — the councils' sittings, the builds, the season's money — what a realm has built is asked
 // for every candidate of every town: kept once a realm for the pass (a.builtMemo, set by the pass), and made again whenever a
 // town's buildings change inside it — builtChanged, at every place t.built is changed; realms and towns do not change in a pass)
-export const builtChanged = a => { if (a?.builtMemo) a.builtMemo = new Map(); };
+export const builtChanged = a => { if (a?.builtMemo) a.builtMemo = new Map(); metalsChanged(a); };
 export function realmBuilt(a, t) {
   if (t.realm == null || !a?.towns) return new Set(t.built);
   const M = a.builtMemo;
@@ -93,7 +94,7 @@ export function realmBuilt(a, t) {
 }
 function walkBuilt(a, t) {
   const out = new Set();
-  for (const o of a.towns) if (o.alive && o.realm === t.realm) for (const id of o.built) out.add(id);
+  for (const o of realmTowns(a, t)) for (const id of o.built) out.add(id);
   for (const id of t.built) out.add(id);
   return out;
 }

@@ -11,6 +11,7 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
+import {withFrame, frameChanged, metalsChanged} from './frame.js';
 import {townsByRealm} from './common.js';
 import {ORE_KINDS, LAND_BIOMES, TOWN_ROLES} from '../data/worldLand.js';
 import {cap1} from '../core/util.js';
@@ -153,6 +154,7 @@ function bestSite(a, pe, j, rnd) {
 export {townLabel} from './towns.js';
 
 function foundTown(a, pe, i, rnd, pop, say) {
+  frameChanged(a);   // (a town more: the season's frame — atlas/frame.js)
   const P = pe.P, H = a.hist;
   const t = {id: (H.nextTown = (H.nextTown || 0) + 1), people: P.id, name: townName(P, rnd, H.names), i, x: i % a.w, y: (i / a.w) | 0,
     founded: H.year, pop, tier: 0, built: [], alive: true};
@@ -195,14 +197,14 @@ export function foundFrom(a, from, rnd, say) {
   if (i < 0) return null;
   const t = foundTown(a, pe, i, rnd, 0);
   t.heads = takeHeads(a, from, S.pop, {how: 'settlers'}); sync(t);   // the settlers go as they are: their races and ages (atlas/population.js)
-  t.realm = from.realm;
+  t.realm = from.realm; frameChanged(a);
   if (t.realm == null) joinRealm(a, t);
   t.from = from.id;
   const carry = {};
   for (const [g, v] of Object.entries(S.goods || {})) {
     const n = Math.min(v, from.stock?.[g] || 0);
     if (n <= 0) continue;
-    from.stock[g] -= n; if (from.stock[g] < TOWN_MONEY.dust) delete from.stock[g];
+    from.stock[g] -= n; if (from.stock[g] < TOWN_MONEY.dust) delete from.stock[g]; metalsChanged(a);
     carry[g] = n;
   }
   if (Object.keys(carry).length) t.stock = carry;
@@ -349,7 +351,8 @@ function holdField(a, pe) {
 }
 
 // A season of the towns' goods, purses and living works. Growth, founding and building stay yearly.
-export function seasonTowns(a, say) {
+export function seasonTowns(a, say) { return withFrame(a, () => seasonTownsPass(a, say)); }   // (the season's frame: atlas/frame.js)
+function seasonTownsPass(a, say) {
   // the towns' economies first (atlas/economy.js, atlas/treasury.js): their stores, what they buy of each other, their gold
   for (const t of a.towns) {
     if (!t.alive) continue;
@@ -366,7 +369,7 @@ export function seasonTowns(a, say) {
   const money = seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
   // a trade route through other lands, the first between two realms (atlas/treasury.js farWays): told once
   for (const [b, s, via] of money.routes) say(`Купцы ${townLabel(b, 2)} ${b.name} проложили торговый путь в ${townLabel(s, 1)} ${s.name} (${realmLabel(a, s.realm)}) через земли ${via.map(id => realmLabelGen(a, id)).join(' и ')}.`);
-  for (const t of a.towns) if (t.alive) tradeUp(t);   // the nomads sell their finery for arms
+  for (const t of a.towns) if (t.alive) tradeUp(t, a);   // the nomads sell their finery for arms
   for (const t of a.towns) if (t.alive) { keepWork(t); moodStep(t, a); }   // its works' strength kept; its people's mood (atlas/mood.js)
   // the gates of growth (TOWN_LIFE.gates): what a town of a cold land got of its fuel in the winter, kept for the spring (t.gates)
   const sid = SEASONS.all()[a.hist?.season ?? 0]?.id;
@@ -379,9 +382,10 @@ export function seasonTowns(a, say) {
 
 // a people that sells some goods as soon as it has them (data/peoples.js tradeUp: the greenskins) sells what its town's store
 // holds of them to the passing traders, for `buys` at `rate` of their worth → the worth sold
-export function tradeUp(t) {
+export function tradeUp(t, a = null) {
   const TU = WORLD_PEOPLES.get(t.people)?.tradeUp;
   if (!TU || !t.stock) return 0;
+  metalsChanged(a);   // (the stores change inside the season's pass — atlas/frame.js)
   let worth = 0;
   for (const g of TU.sells) { const n = t.stock[g] || 0; if (n <= 0) continue; worth += n * goodPrice(g); delete t.stock[g]; }
   if (worth > 0) t.stock[TU.buys] = (t.stock[TU.buys] || 0) + worth * TU.rate / goodPrice(TU.buys);

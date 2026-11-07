@@ -27,6 +27,7 @@
 //               to the others
 //   tools     — one stock of the town (TOWN_FLOW.tools a hand at work): what it has of them against that weighs on every work, soft
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
+import {realmTowns, frameOf} from './frame.js';
 import {ORE_KINDS} from '../data/worldLand.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, goodPrice, recipesOf, makesOf} from '../data/townBuildings.js';
 // (reqLit: who a recipe is for — its people or kind — against the town's lights)
@@ -113,13 +114,13 @@ const METAL_GOODS = new Set(Object.values(METALS).map(m => m.good));
 // realms' metals are worked out once a realm and kept (a.metalMemo): in that pass no town's buildings, works or sites change,
 // and its stores only grow — metalGot adds what crossed into one, so the memo is what the walk over the realm would give)
 export function realmMetals(a, t) {
-  const M = a?.metalMemo && t.realm != null ? a.metalMemo : null;
+  const F = t.realm != null ? frameOf(a) : null, M = a?.metalMemo && t.realm != null ? a.metalMemo : F ? (F.metals ||= new Map()) : null;   // (a pass open: on the season's frame — atlas/frame.js)
   if (M) { let v = M.get(t.realm); if (!v) M.set(t.realm, v = walkMetals(a, t)); return v; }
   return walkMetals(a, t);
 }
 export function metalGot(a, t, g) { const v = a?.metalMemo?.get(t.realm); if (v && METAL_GOODS.has(g) && (t.stock[g] || 0) > TOWN_MONEY.dust) v.add(g); }
 function walkMetals(a, t) {
-  const out = new Set(), towns = t.realm == null || !a?.towns ? [t] : a.towns.filter(x => x.alive && x.realm === t.realm);
+  const out = new Set(), towns = !a?.towns ? [t] : realmTowns(a, t);
   const put = g => { if (METAL_GOODS.has(g)) out.add(g); };
   for (const x of towns) {
     for (const [g, v] of Object.entries(x.stock || {})) if (v > TOWN_MONEY.dust) put(g);

@@ -7,6 +7,7 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
+import {frameChanged} from './frame.js';
 import {ORE_KINDS, TOWN_ROLES} from '../data/worldLand.js';
 import {warsOf} from './common.js';
 import {cap1} from '../core/util.js';
@@ -64,7 +65,7 @@ export function foundRealm(a, t, from = null) {
   const r = {id, people: t.people, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
     from: from ? from.id : null};   // (from: the realm it broke away from, for the card)
   a.realms.push(r);
-  t.realm = r.id; t.capital = true;
+  t.realm = r.id; t.capital = true; frameChanged(a);
   return r;
 }
 
@@ -108,7 +109,7 @@ export function realmLand(a) {
 export function joinRealm(a, t) {
   let best = null, bd = Infinity;
   for (const o of a.towns) if (o !== t && o.alive && o.people === t.people && o.realm) { const d = Math.hypot(o.x - t.x, o.y - t.y); if (d < bd) { bd = d; best = o; } }
-  if (best) t.realm = best.realm; else foundRealm(a, t);
+  if (best) { t.realm = best.realm; frameChanged(a); } else foundRealm(a, t);
   return t.realm;
 }
 
@@ -120,7 +121,7 @@ const harbored = t => TOWN_ROLES.harbor.some(id => t.built.includes(id));   // (
 function divide(a, oldId, newId, seatOld, seatNew) {
   let went = 0;
   for (const t of a.towns) if (t.alive && t.realm === oldId && t !== seatOld && t !== seatNew) {
-    if (Math.hypot(t.x - seatNew.x, t.y - seatNew.y) < Math.hypot(t.x - seatOld.x, t.y - seatOld.y)) { t.realm = newId; went++; }
+    if (Math.hypot(t.x - seatNew.x, t.y - seatNew.y) < Math.hypot(t.x - seatOld.x, t.y - seatOld.y)) { t.realm = newId; went++; frameChanged(a); }
   }
   return went;
 }

@@ -34,6 +34,7 @@
 // Once a year the realm takes its tax, in gold and in kind (atlas/kingdom.js), and grants its towns gold to build; each season
 // it keeps its war host out of its treasury — realm.gold and its store realm.stock: garrisons, and its armies' pay, food and kit
 // (realmKeep).
+import {metalsChanged} from './frame.js';
 import {councilShares} from './mind.js';
 import {TOWN_MONEY as M, TOWN_GOODS, TOWN_FLOW, TOWN_FLOW as F, goodPrice, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {UPKEEP} from '../data/kingdom.js';
@@ -662,9 +663,10 @@ export function planBuild(a, t, b) {
   if (hands && t.econ && t.econ.freeHands < hands) return null;   // nobody free to fetch it
   return {t, cost, own, bought, labor, gather, hands, payer};
 }
-export function doBuild(P) {
+export function doBuild(P, a = null) {
   const {t, cost, own, bought, labor, hands, payer} = P;
   if (!cost) return;
+  metalsChanged(a);   // (the stores change: the realms' metals on the season's frame — atlas/frame.js)
   goOut('gather', P.gather);   // (the gathering by hand: paid to nobody)
   // the gathering by hand costs what it costs (its gold goes to nobody: the hours of those who fetched it), and takes hands
   if (hands && t.econ) t.econ.freeHands -= hands;
