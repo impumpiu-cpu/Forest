@@ -83,10 +83,10 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       onPace: id => {
         this.clock.setPace(id); this.ticks.pace = this.localPace(id);
         if (this.local && !WATCH[id] && !this.local.c.boss) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left (a named fight is)
-        if (this.clock.paused && !this.local) this.clock.resume();
+        if (this.clock.paused && !this.local) { this.clock.resume(); this.animate(); }
         this.syncRun();
       },
-      onPause: () => { const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else this.clock.toggle(); this.syncRun(); }});
+      onPause: () => { const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else { this.clock.toggle(); if (!this.clock.paused) this.animate(); else this.renderSide(); } this.syncRun(); }});   // (going on: the rest of the season plays out)
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
     $('campCaps').addEventListener('click', e => {
@@ -330,12 +330,28 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       this.frame();
       if (this.local) { this.stepLocal(); this.raf = requestAnimationFrame(loop); return; }
       if (this.queue.length && this.atlas?.campaign && this.clock.running && this.slide() >= this.queue[0].at) { this.startLocal(this.queue.shift()); this.raf = requestAnimationFrame(loop); return; }
+      if (this.atlas?.campaign && this.shownDay() !== this.sideDay) this.renderSide();   // the roster and the chronicle follow the playback's day
       if (!this.atlas?.campaign || !this.clock.running || this.slide() >= 1) { this.draw(); return; }
       this.draw(); this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
   }
 
+  // the campaign's day the screen is at: the season is computed ahead and played back — a camp on the local map is at its
+  // own day, the march at the playback's; between seasons, or at the end, the last day computed
+  shownDay() {
+    const K = this.atlas?.campaign; if (!K) return 0;
+    if (this.local) return this.local.c.day - 0.5;   // (a camp being watched: its day is not over — what came of it is not told yet)
+    if (ended(K) || K.seasonFrom == null || !(this.clock.running || this.clock.frozen != null)) return K.day;
+    const n = Math.max(1, (K.track?.length || 1) - 1);
+    return Math.min(K.day, K.seasonFrom + Math.floor(this.slide() * n));
+  }
+  // as the screen saw it on that day: one who fell or left later is still with them; one who joined later is not yet
+  seenAs(m, day) {
+    if ((m.joined ?? 0) > day) return null;
+    const gone = m.died?.day ?? m.left?.day;
+    return gone != null && gone > day ? {...m, alive: true, died: null, left: null, fate: null, hp: m.died ? 1 : m.hp} : m;
+  }
   // where the caravan is at this moment of the playback
   caravanAt() {
     const K = this.atlas.campaign, T = K.track;
@@ -459,7 +475,8 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       `<dt>Пройдено</dt><dd>${Math.round(K.stats.walked)} клеток</dd>` +
       `<dt>Боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won} · засад ${K.stats.ambushes || 0}</dd>` +
       (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
-    $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
+    const day = this.shownDay(); this.sideDay = day;
+    $('campRoster').innerHTML = K.members.map(m => this.seenAs(m, day)).filter(Boolean).sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : '', m.belt?.length ? `в поясе: ${m.belt.map(r => RESOURCES.get(r).short).join(', ')}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
@@ -476,11 +493,12 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const m = this.who != null ? K.members.find(x => x.id === this.who) : null;
     $('campWho').hidden = !m;
     if (m) $('campWho').innerHTML = `Только о ${esc(m.name)}<button type="button">все строки</button>`;
-    const key = `${K.log.length}:${[...this.hidden].join(',')}:${this.who}`;
+    const day = this.shownDay(), lines = K.log.filter(l => l.kind === 'epilogue' || l.day == null || l.day <= day);   // (the season computed ahead: only up to the day shown)
+    const key = `${lines.length}:${[...this.hidden].join(',')}:${this.who}`;
     if (key === this.logKey) return;
     this.logKey = key;
     const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    box.innerHTML = readLines(K.log, {hidden: this.hidden, member: m}).map(({line: l, n, last}) =>
+    box.innerHTML = readLines(lines, {hidden: this.hidden, member: m}).map(({line: l, n, last}) =>
       `<div class="lv-${lineLevel(l)}"><small>${dateOf(l)}</small> ${esc(l.text)}${n > 1 ? ` <span class="fold">и ещё ${n - 1} ${plural(n - 1, 'такая строка', 'такие строки', 'таких строк')}, до ${last.day + 1}-го дня</span>` : ''}</div>`).join('') || '<small class="muted">Нет строк по выбранным темам.</small>';
     if (atEnd || !this.logShown) box.scrollTop = box.scrollHeight;
     this.logShown = 1;

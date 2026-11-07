@@ -33,6 +33,7 @@ export class SeasonClock {
   // how far between the last step and the next the screen is, 0 … 1 (1 when paused or at `max`)
   phase() {
     if (this.held != null) return this.held;
+    if (this.paused && this.frozen != null) return this.frozen;   // paused mid-season: the screen stays where it was
     if (!this.tickAt || this.paused || !this.tickWait) return 1;
     return Math.min(1, (performance.now() - this.tickAt) / this.tickWait);
   }
@@ -64,7 +65,7 @@ export class SeasonClock {
     };
     this.timer = setTimeout(this.next, delay);
   }
-  stop() { clearTimeout(this.timer); this.timer = 0; this.gen++; this.held = null; }
+  stop() { clearTimeout(this.timer); this.timer = 0; this.gen++; this.held = null; this.frozen = null; }
   // the season's wait is held (a camp on the local map is being watched) and let go from where it stood. Held, the clock
   // has no timer: nothing (a new pace, a stray start) runs the world on while the camp is watched
   // `at` — the phase to hold at (the camp's own day: the frame that noticed it may be a little past it)
@@ -76,8 +77,21 @@ export class SeasonClock {
     this.timer = setTimeout(this.next, Math.max(0, (1 - frac) * wait));
   }
   get running() { return !!this.timer || this.held != null; }
-  pause() { this.paused = true; this.stop(); }
-  resume() { if (this.paused) { this.paused = false; this.start(); } }
+  // a pause holds the season's playback where it stands (the phase is kept); going on plays the rest of the season out
+  // before the next one is run — not the next one at once
+  pause() {
+    if (this.paused) return;
+    const f = this.held ?? this.phase(), mid = !!this.timer && this.tickWait > 0 && f < 1;
+    clearTimeout(this.timer); this.timer = 0;
+    this.paused = true; this.frozen = mid ? f : null;
+    if (!mid) this.stop();
+  }
+  resume() {
+    if (!this.paused) return;
+    this.paused = false;
+    if (this.frozen != null && this.next) { const f = this.frozen, wait = paceOf(this.pace).season || this.tickWait; this.frozen = null; this.tickWait = wait; this.tickAt = performance.now() - f * wait; this.timer = setTimeout(this.next, Math.max(0, (1 - f) * wait)); return; }
+    this.start();
+  }
   toggle() { if (this.paused) this.resume(); else this.pause(); }
   // a step done by hand (a stretch set while paused): the phase starts anew
   mark() { this.tickAt = performance.now(); this.tickWait = paceOf(this.pace).season; }
@@ -103,6 +117,6 @@ export class TickClock {
 // the date of a world with the day of the season the screen is at: «год 181, весна, день 12»
 export function dateText(a, clock, seasonLabel) {
   const H = a.hist; if (!H) return '';
-  const day = clock && clock.running ? clock.day() : null;
+  const day = clock && (clock.running || clock.frozen != null) ? clock.day() : null;   // (paused mid-season: that day)
   return `год ${H.year}, ${seasonLabel(H.season)}${day ? `, день ${day}` : ''}`;
 }

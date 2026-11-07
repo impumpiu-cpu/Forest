@@ -23,7 +23,7 @@ export const campLocal = Base => class extends Base {
     this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
-    this.localText(); this.renderStock();
+    this.localText(); this.renderStock(); this.renderSide();   // the roster and the chronicle at the camp's day
   }
   // the camp's map has its own camera (the local view's {zoom, cx, cy}, render/renderer.js): while a camp is shown the
   // zoom buttons and keys work on it (MapView.zoomCentre, zoomFit), the wheel zooms at the cursor, dragging pans
