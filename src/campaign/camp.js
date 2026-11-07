@@ -380,8 +380,8 @@ function outcomeOf(w) {
   const members = S.members.map(m => {
     const ag = C.people.get(m.id);
     if (ag?.fugitive && !ag.dead) return {id: m.id, alive: false, escaped: true};   // a captive got away (settlement/escape.js)
-    if (ag?.gone && !ag.dead && !ag.fugitive) return {id: m.id, alive: false, taken: true};   // led off over the edge by a raider (agents/behaviours/led.js): alive, but no more with the caravan
-    if (!ag || ag.dead) return {id: m.id, alive: false, cause: (ag && w.chronicle.people.find(p => p.id === ag.id)?.cause) || 'погиб'};
+    if (ag?.gone && !ag.dead && !ag.fugitive) return {id: m.id, alive: false, taken: true, seen: C.seenFate?.[m.id] || []};   // led off over the edge by a raider (agents/behaviours/led.js): alive, but no more with the caravan
+    if (!ag || ag.dead) return {id: m.id, alive: false, cause: (ag && w.chronicle.people.find(p => p.id === ag.id)?.cause) || 'погиб', seen: C.seenFate?.[m.id] || null};
     // a fallen one still senseless when the camp ends: the others bind the wound (agents/wounds.js dress) — a grave wound
     // and the trauma it fell with, barely alive. Only if there are others to do it: one of the company on its feet and free
     // when the camp ends (plan claude/caravan-ver_d.md D4.9: no help from nowhere) — the binding is theirs, as a group, a fact

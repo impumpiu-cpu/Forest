@@ -9,7 +9,7 @@
 import {REL} from '../data/colony.js';
 import {OPINION} from '../data/relations.js';
 import {DAY} from '../core/time.js';
-import {SOCIAL, STORY, GRIEF, WELCOME, JUDGE} from '../data/social.js';
+import {SOCIAL, STORY, TRUST, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
 import {FACT_KINDS} from '../data/social.js';
@@ -121,10 +121,20 @@ export function bondBy(K, from, to, v, f) {
 }
 export const bondOf = (K, from, to) => K.social?.relations?.[from]?.[to] || 0;
 
-export function noteFate(K, m, kind, {heard = false, params = {}} = {}) {
-  const here = K.members.filter(x => x.alive && x !== m).map(x => x.id);
-  const f = campaignFact(K, kind, {to: m.id, saw: heard ? [] : here, heard: heard ? here : [], params});
-  grieve(K, m, kind, here);
+// a fate (social/fate.js) as the company comes to know it: who saw it (on a camp's map: settlement/facts.js noteSeen — `seen`)
+// knows it so; the others hear it from one of them — the one who was closest to the gone (its bond), else the lower id — and
+// remember from whom; if nobody saw it, they know only that it is gone, not how (params.unknown). Without `seen`: a fate of
+// the campaign's day (all saw it), or `heard` — told by the most talkative of them
+export function noteFate(K, m, kind, {heard = false, seen = null, params = {}} = {}) {
+  const here = K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id), R = ensureSocial(K).relations;
+  const bondTo = id => R[id]?.[m.id] || 0, byBond = (p, q) => bondTo(q) - bondTo(p) || p - q;
+  let saw, told, teller = null;
+  if (seen) { saw = here.filter(id => seen.includes(id)); told = here.filter(id => !saw.includes(id)); teller = saw.slice().sort(byBond)[0] ?? null; if (teller == null && told.length) params = {...params, unknown: true}; }
+  else if (heard) { saw = []; told = here; teller = here.map(id => K.members.find(x => x.id === id)).sort((p, q) => (q.local?.leans?.social ?? 0) - (p.local?.leans?.social ?? 0) || p.id - q.id)[0]?.id ?? null; }
+  else { saw = here; told = []; }
+  const f = campaignFact(K, kind, {to: m.id, saw, heard: told, params: teller != null ? {...params, teller} : params});
+  if (teller != null) for (const id of told) { const x = K.members.find(o => o.id === id), e = x?.social?.memory?.find(q => q.fact === f.id); if (e && id !== teller) e.from = teller; }
+  grieve(K, m, kind, [...saw, ...(teller != null || !seen ? told : [])]);   // (nobody saw it: the others do not know yet what befell it)
   return f;
 }
 // the loss: by the bond each had with the one gone (K.social.relations, personal), a mood for some days (m.social.mood)
@@ -209,4 +219,14 @@ export function reconcile(K, say = () => {}) {
     }
   }
   return out;
+}
+
+// how one who is not of the core trusts the company, −1 … 1 (data/social.js TRUST): its bonds to the core, less the words
+// broken to it lately (campaign/people.js: the day's loyalty and a hireling's opinion move by it)
+export function trustOf(K, m, coreIds) {
+  const S = ensureSocial(K), row = S.relations[m.id] || {};
+  const bonds = coreIds.filter(id => id !== m.id).map(id => row[id] || 0);
+  const mean = bonds.length ? bonds.reduce((x, y) => x + y, 0) / bonds.length / TRUST.top : 0;
+  const broke = S.facts.filter(f => f.kind === 'brokeWord' && f.to === m.id && K.day - f.day <= TRUST.days).length;
+  return Math.max(-1, Math.min(1, mean - TRUST.broke * broke));
 }

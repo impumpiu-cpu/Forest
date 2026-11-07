@@ -125,11 +125,11 @@ export function pace(a, K, seasonId) {
   return v * paceOf(K).speed;   // the pace the council keeps (data/road.js PACES; normal — × 1)
 }
 
-export function die(a, K, m, why, {heard = false} = {}) {
+export function die(a, K, m, why, {heard = false, seen = null} = {}) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
   memberFate(a, m, 'dead');   // (a person of the world dies with it — atlas/persons.js)
-  noteFate(K, m, 'died', {heard, params: {why}});   // the company's loss (campaign/social.js)
+  noteFate(K, m, 'died', {heard, seen, params: {why}});   // the company's loss, as they came to know it (campaign/social.js)
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);

@@ -1,5 +1,6 @@
 // The chronicle: what the settlement and each colonist did, kept for the final summary.
 // Every colonist who ever lived gets a record (alive or not); the colony keeps totals.
+import {noteSeen} from './facts.js';
 import {SPECIES} from '../data/species.js';
 import {DAY} from '../core/time.js';
 import {colonists} from './query.js';
@@ -20,6 +21,7 @@ export function enrol(w, a, founder) {
 export const recordOf = (w, a) => w.chronicle.people.find(p => p.id === a.id);
 
 export function noteDeath(w, a, cause, by) {
+  noteSeen(w, a);   // (who of a caravan saw it fall: campaign/social.js noteFate)
   const r = recordOf(w, a); if (!r) return;
   r.died = w.tick; r.doing = a.task?.id === 'job' ? a.task.job : a.task?.id;
   // killed by raiders, by a beast (its name), or died of something (hunger, cold, fire, venom…)

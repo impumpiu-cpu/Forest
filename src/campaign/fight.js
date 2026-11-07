@@ -132,7 +132,7 @@ export function applyCamp(a, K, S, o, d, how) {
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (mo.escaped || mo.taken) { fates.push([m, mo]); continue; }
-    if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
+    if (!mo.alive) { fallen.push(m); m.fell = mo.cause; m.fellSeen = mo.seen; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local; if (mo.align) m.align = mo.align; (m.social ||= {}).mood = mo.mood || []; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null; if (mo.effects) m.effects = effectsIn(K, mo.effects); if (mo.wounds) m.wounds = woundsIn(K, mo.wounds); if (mo.marks) m.marks = [...new Set([...(m.marks || []), ...mo.marks])];
@@ -143,7 +143,7 @@ export function applyCamp(a, K, S, o, d, how) {
   for (const [m, mo] of fates) {
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     // led off by the raiders: gone from the caravan, alive — the chronicle keeps it
-    m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken'); noteFate(K, m, 'taken', {heard: true});
+    m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, taken: true}; K.stats.taken = (K.stats.taken || 0) + 1; memberFate(a, m, 'taken'); noteFate(K, m, 'taken', {seen: mo.seen || []});
     say(a, K, `На стоянке ${m.name} ${m.gender === 'f' ? 'уведена' : 'уведён'} налётчиками в плен.`, 'leave', false, [m.id]); assign(K);
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
@@ -169,7 +169,7 @@ export function applyCamp(a, K, S, o, d, how) {
   o.led = taken.length;   // (those really led away — the caravan's room may be short of the bound; the rest get away: recordFight `led`)
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
-    for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, stopDeath(m, why), {heard: true}); }   // (a quiet day: the others were about their work)
+    for (const m of fallen) { const why = m.fell, seen = m.fellSeen; delete m.fell; delete m.fellSeen; die(a, K, m, stopDeath(m, why), seen ? {seen} : {heard: true}); }   // (a quiet day: the others were about their work)
     return;
   }
   // the line: what happened, who fell, who is hurt, what is lost and won
@@ -184,7 +184,7 @@ export function applyCamp(a, K, S, o, d, how) {
   if (took.length) parts.push(`с убитых взяли ${names(took)}`);
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
-  for (const m of fallen) { delete m.fell; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`); }
+  for (const m of fallen) { const seen = m.fellSeen; delete m.fell; delete m.fellSeen; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`, seen ? {seen} : {}); }
 }
 
 // a death on the local map as the campaign tells it (settlement/chronicle.js noteDeath: «умер от холода», «погиб: волк»,

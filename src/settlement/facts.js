@@ -11,6 +11,12 @@ import {dist} from '../core/util.js';
 // awake, standing, near enough in this light, and the doer or the other in sight
 const sees = (w, o, a, b) => !o.sleeping && !o.downed && !o.dead && [a, b].some(x => x && dist(o, x) <= SOCIAL.see * darkness(w, o) && canSee(w, o, x));
 
+// who of the company saw this befall one of it (a caravan's camp): its death, its being led off — for the campaign's fate
+// fact (campaign/social.js noteFate: they saw it, the others hear it from one of them, or never learn how)
+export function noteSeen(w, a) {
+  const C = w.campaign; if (!C?.memberOf?.has(a.id)) return;
+  (C.seenFate ||= {})[C.memberOf.get(a.id)] = colonists(w).filter(o => o !== a && C.memberOf.has(o.id) && sees(w, o, a, null)).map(o => C.memberOf.get(o.id));
+}
 export function noteFact(w, kind, by, to, params = {}) {
   const C = w.campaign; if (!C?.memberOf) return null;
   const mb = by ? C.memberOf.get(by.id) : null, mt = to ? C.memberOf.get(to.id) : null;

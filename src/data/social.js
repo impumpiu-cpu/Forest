@@ -52,6 +52,10 @@ export const FACT_KINDS = {
 // a quarrel — a bond `grudge` or below — is made up when the other did one a good turn in need since (`days`): the bond is
 // lifted to `made`, and the lift is the fact's (reconcile; a merciless heart — mercy below `mercyFrom` — does not)
 export const STORY = {good: ['aid', 'saved', 'stoodUp', 'yieldedBed', 'keptEscort', 'tookWatch', 'escorted'], need: ['aid', 'saved', 'stoodUp'], days: 30, gap: 0.25, grudge: -0.5, made: 0.5, mercyFrom: -2};
+// trust and staying (campaign/social.js trustOf; campaign/people.js): one who is not of the core takes to the company — or not —
+// by what it feels for the core (the mean of its bonds to them, ÷ `top`) less `broke` for each word broken to it in the last
+// `days`; a day's loyalty (or a hireling's opinion of the service) moves by `k` × that, from −1 … 1
+export const TRUST = {k: 0.006, top: 4, broke: 0.5, days: 30};
 // the newcomer (campaign/social.js welcome): the most sociable of the free takes it in — the bond both ways
 export const WELCOME = {bond: {to: 0.6, by: 0.3}, from: 0.55};
 // a captive sold (campaign/social.js judge): one who holds mercy high (align.mercy ≥ `mercy`) or freedom dear takes it ill —

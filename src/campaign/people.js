@@ -8,7 +8,8 @@ import {assign} from './baggage.js';
 import {captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {alive, core, isCore, rank, say} from './march.js';
-import {noteFate} from './social.js';
+import {noteFate, trustOf} from './social.js';
+import {TRUST} from '../data/social.js';
 
 // those who are not the core: the hired go when their term is up, the joined may go any day
 export function people(a, K, r) {
@@ -17,12 +18,14 @@ export function people(a, K, r) {
   freedomEvening(a, K, (text, kind, who) => say(a, K, text, kind, false, who));   // captives freed, former slaves taken in (campaign/captives.js)
   // the best talker of those who lead keeps the joined: charm × (Charisma − 5)
   const charm = LOYALTY.charm * (Math.max(NORM, ...core(K).map(m => m.special?.C ?? NORM)) - NORM);
+  const coreIds = core(K).filter(m => m.alive).map(m => m.id);
   for (const m of alive(K)) {
     if (isCore(m)) continue;
-    if (m.contract) { contractDay(a, K, m, r); continue; }
+    const trust = m.captive ? 0 : TRUST.k * trustOf(K, m, coreIds);   // (what it feels for the core, the words broken to it: campaign/social.js)
+    if (m.contract) { contractDay(a, K, m, r, trust); continue; }
     if (m.loyalty == null || m.loyalty >= 1) continue;
-    // a day with the caravan: hunger, a bad wound, the sight of captives on a cut ration — and the leader's word
-    const d = LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0) + (m.hp < 0.5 ? LOYALTY.hurt : 0) + (K.captiveCut ? LOYALTY.cruel : 0) + charm;
+    // a day with the caravan: hunger, a bad wound, the sight of captives on a cut ration — and the leader's word, and trust
+    const d = LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0) + (m.hp < 0.5 ? LOYALTY.hurt : 0) + (K.captiveCut ? LOYALTY.cruel : 0) + charm + trust;
     m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
     if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, K.hungry ? 'hunger' : 'loyalty', `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ${m.gender === 'f' ? 'ушла' : 'ушёл'} своей дорогой`);
     else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
@@ -30,9 +33,9 @@ export function people(a, K, r) {
 }
 // a hireling's day (data/market.js CONTRACT): the opinion of the service moves; a bad one may desert; at the end
 // of the term it stays for good, asks for another term, or goes
-function contractDay(a, K, m, r) {
+function contractDay(a, K, m, r, trust = 0) {
   const C = CONTRACT, c = m.contract, f = m.gender === 'f';
-  c.opinion = Math.max(0, Math.min(1, (c.opinion ?? C.start) + C.daily + (K.hungry ? C.hungry : 0) + (m.hp < 0.5 ? C.hurt : 0)));
+  c.opinion = Math.max(0, Math.min(1, (c.opinion ?? C.start) + C.daily + (K.hungry ? C.hungry : 0) + (m.hp < 0.5 ? C.hurt : 0) + trust));
   if (K.day < c.until) {
     if (c.opinion < C.desert && r() < C.deserts) { K.stats.deserted = (K.stats.deserted || 0) + 1; leave(a, K, m, 'deserted', `${m.name}, ${rank(K, m)}, не дождал${f ? 'ась' : 'ся'} конца срока и сбежал${f ? 'а' : ''}: служба ${f ? 'ей' : 'ему'} опостылела`); }
     return;

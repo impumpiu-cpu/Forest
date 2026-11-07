@@ -32,7 +32,7 @@ import {applyCamp} from '../src/campaign/fight.js';
 import {ensureSocial, takeBonds, fadeDay, moodOut, moodIn, takeOnce} from '../src/campaign/social.js';
 import {REL} from '../src/data/colony.js';
 import {giveAid} from '../src/settlement/together.js';
-import {reasonsOf, noteFate, bondOf, welcome, judge, tell, reconcile, campaignFact} from '../src/campaign/social.js';
+import {reasonsOf, noteFate, bondOf, welcome, judge, tell, reconcile, campaignFact, trustOf} from '../src/campaign/social.js';
 import {workTogether} from '../src/settlement/together.js';
 import {die} from '../src/campaign/march.js';
 import {nightWatch, tiredOf, escortAsk} from '../src/campaign/duty.js';
@@ -434,6 +434,31 @@ check('когда ядра не осталось, остальные отпущ�
   }
 }
 
+// ── a fate as the company came to know it; trust and staying
+{
+  const base = generateAtlas({seed: '829', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0}), fz = JSON.stringify(saveAtlas(base));
+  const fresh = () => { const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'auto'}); return {a, K}; };
+  {
+    const {K} = fresh(), [A, B, C, D] = K.members;
+    ensureSocial(K).relations[C.id] = {[A.id]: 3};
+    const f = noteFate(K, A, 'taken', {seen: [B.id, C.id]});
+    const memD = D.social?.memory?.find(x => x.fact === f.id);
+    check('судьбу видели свидетели; остальные слышат от того, кто был ближе к ушедшему', f.saw.includes(B.id) && f.saw.includes(C.id) && f.heard.includes(D.id) && memD?.from === C.id, JSON.stringify({saw: f.saw, heard: f.heard, from: memD?.from}));
+    const g = noteFate(K, B, 'taken', {seen: []});
+    check('никто не видел — знают, что пропал, но не как', g.params.unknown === true && g.saw.length === 0 && g.params.teller == null);
+  }
+  {
+    const {K} = fresh(), core = K.members.filter(m => m.alive).map(m => m.id), nm = {...K.members[0], id: 700, name: 'Наёмник', role: 'hired', social: null, local: {...K.members[0].local}};
+    K.members.push(nm);
+    const R = ensureSocial(K).relations, t0 = trustOf(K, nm, core);
+    R[nm.id] = Object.fromEntries(core.map(id => [id, 3]));
+    const warm = trustOf(K, nm, core);
+    campaignFact(K, 'brokeWord', {by: core[0], to: nm.id, saw: core});
+    const after = trustOf(K, nm, core);
+    check('доверие не своего: тёплые связи с ядром поднимают, нарушенное ему слово роняет', warm > t0 && after < warm, `${t0} → ${warm.toFixed(2)} → ${after.toFixed(2)}`);
+  }
+}
+
 // ── a camp taken back in any order of the company: one taken — the friend grieves, whatever the order
 {
   const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0}), fz = JSON.stringify(saveAtlas(base));
@@ -441,7 +466,7 @@ check('когда ядра не осталось, остальные отпущ�
     const a = loadAtlas(JSON.parse(fz)), K = newCampaign(a, capitals(a)[0].town, {mode: 'local'}), [A, B] = K.members;
     ensureSocial(K).relations[B.id] = {[A.id]: 3};
     const S = campSetup(a, K, {kind: 'night', dayIn: 0}), o = campOutcome(runCamp(S));
-    o.members = o.members.map(mo => (mo.id === A.id ? {id: A.id, alive: false, taken: true} : mo));
+    o.members = o.members.map(mo => (mo.id === A.id ? {id: A.id, alive: false, taken: true, seen: [B.id]} : mo));
     if (rev) o.members.reverse();
     applyCamp(a, K, S, o, {kind: 'raiders', label: 'налётчики'}, 'night');
     return (B.social?.mood || []).map(e => e.id).sort().join();
