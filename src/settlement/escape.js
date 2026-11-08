@@ -29,7 +29,7 @@ import {wake} from '../agents/attention.js';
 import {cellOf} from '../world/grid.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
-import {hourOf, dayOf, DAY, HOUR} from '../core/time.js';
+import {hourOf, dayOf, dayLen, atHour, DAY, HOUR} from '../core/time.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {setStanding} from '../agents/standing.js';
 import {sleepDose} from '../agents/potions.js';
@@ -40,13 +40,13 @@ const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
 const willOf = a => (a.captive.will ??= ESCAPE.will.start);
 const holdOf = a => (BONDS.has(a.captive.bonds) ? BONDS.get(a.captive.bonds).hold : 1);
 const holdsTool = a => handItems(a).length > 0;   // a captive holds nothing in its hands but a tool (agents/outfit.js captiveItem)
-const days = (w, a) => Math.max(0, (w.tick - a.captive.since) / DAY);
+const days = (w, a) => Math.max(0, (w.tick - a.captive.since) / dayLen(w));
 const free = w => colonists(w).filter(a => !a.captive && !a.dead);
 const label = a => SPECIES.get(a.species).label;
 const name = a => `<b>${esc(a.name)}</b>`;
 
 // the tools are away for the night: from the end of the council till dawn
-export const toolsAway = w => { const h = hourOf(w.tick); return h >= COUNCIL.to || h < ESCAPE.tools.dawn; };
+export const toolsAway = w => { const h = hourOf(w.tick, w); return h >= COUNCIL.to || h < ESCAPE.tools.dawn; };
 
 // the council's ration for the captives: × hunger and × work through the body's own extras
 function applyRation(a, cut) {
@@ -88,7 +88,7 @@ function council(w, S, rng) {
     // one set on running is given the sleeping brew, if the stock has one (data/potions.js sleep): it sleeps the night
     // through; a strong one calms it too
     const dose = will >= POTION.home.will ? sleepDose(w.stock) : null;
-    if (dose) { slept++; a.captive.sleepsUntil = (dayOf(w.tick) + 1) * DAY + ESCAPE.tools.dawn * HOUR; if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
+    if (dose) { slept++; a.captive.sleepsUntil = (dayOf(w.tick, w) + 1) * dayLen(w) + atHour(w, ESCAPE.tools.dawn); if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
     if (rng() < ESCAPE.escape.base * will * holdOf(a)) want.push(a);
     const R = ESCAPE.resign;
     if (!want.includes(a) && rng() < R.base * (1 - will) * days(w, a) / (days(w, a) + R.settle)) {
@@ -110,7 +110,7 @@ function council(w, S, rng) {
     log(w, `${name(s)} ${g(s, 'выдал', 'выдала')} сговор пленных: ${name(by)} ${g(by, 'подбивал', 'подбивала')} бежать этой ночью. Побега не будет.`, 'people', 'notice');
     return;
   }
-  S.plot = {day: dayOf(w.tick), ids: plotters.map(a => a.id), by: by.id};
+  S.plot = {day: dayOf(w.tick, w), ids: plotters.map(a => a.id), by: by.id};
   C(w).plots = (C(w).plots || 0) + 1;
 }
 
@@ -158,7 +158,7 @@ function handIn(w, a) {
 export function stepEscape(w) {
   const caps = captives(w), S = E(w);
   if (!caps.length && !S.plot) { S.alarm = null; return; }
-  const day = dayOf(w.tick), h = hourOf(w.tick), rng = w.rngs.colony;
+  const day = dayOf(w.tick, w), h = hourOf(w.tick, w), rng = w.rngs.colony;
   if (h >= ESCAPE.tools.dawn && S.dawn !== day) { S.dawn = day; dawn(w, S); }
   // the council: once it is over (or nobody came) — not in a caravan's camp (campaign/camp.js: the campaign rolls)
   if (!w.light && S.rolled !== day && h >= COUNCIL.from && w.council?.lastDay === day) { S.rolled = day; council(w, S, rng); }

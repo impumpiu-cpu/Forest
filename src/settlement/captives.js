@@ -10,6 +10,7 @@
 //   bindCaptive(w, by, f) — the knots are tied (agents/tasks/social.js 'bind')
 //   captiveItem(it)       — what a captive may hold (agents/outfit.js)
 import {SPECIES} from '../data/species.js';
+import {sunTicks} from '../core/time.js';
 import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
 import {CAN_FALL, WOUNDS, GRAVE_TICKS, DEATHBLOW} from '../data/wounds.js';
 import {isHostile} from '../data/factions.js';
@@ -88,7 +89,7 @@ export function bindCaptive(w, by, f) {
   w.stock[B.resource] -= B.n;
   // the wound dressed in time (as agents/wounds.js stabilize, without the colonist's words)
   const d = f.downed; f.downed = null;
-  f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
+  f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + sunTicks(w, GRAVE_TICKS('grave'))}];
   if (d.trauma) f.wounds.push({id: d.trauma});
   // the goods on its back go to the one who bound it; weapons and armour to the store
   if (f.loot) {
@@ -140,7 +141,7 @@ export function bindCaptive(w, by, f) {
 function letGo(w, by, f) {
   if (!f.downed || f.dead) return null;
   const d = f.downed; f.downed = null;
-  f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
+  f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + sunTicks(w, GRAVE_TICKS('grave'))}];
   if (d.trauma) f.wounds.push({id: d.trauma});
   const loot = allItems(f).filter(it => it.dur > 0 && !captiveItem(it));
   if (f.equip) { f.equip = emptySlots(); for (const it of allItems(f).filter(captiveItem)) putOn(f, it, 'body', []); }

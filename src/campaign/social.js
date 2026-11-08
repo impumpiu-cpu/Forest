@@ -8,7 +8,7 @@
 //   m.social = {mood: [{id, text, mood, endDay, span}], memory: [{fact, how, part, day, weight}]}
 import {REL} from '../data/colony.js';
 import {OPINION} from '../data/relations.js';
-import {DAY} from '../core/time.js';
+import {DAY, dayLen} from '../core/time.js';
 import {SOCIAL, STORY, TRUST, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
@@ -66,12 +66,14 @@ export function fadeDay(K) {
 
 // the mood a member carries out of a camp: its fresh thoughts with what is left of them, by the campaign's day (a camp's tick
 // is within its day: `S.day` the day, the camp's ticks counted from its start)
-export function moodOut(day, tick, diary) {
-  return (diary || []).filter(e => e.until > tick).map(e => ({id: e.id, text: e.text, mood: e.mood, endDay: day + (e.until - tick) / DAY, span: e.until - e.t}));
+export function moodOut(day, tick, diary, w = null) {
+  const D = dayLen(w);   // (a camp's slower sun: core/time.js dayScale)
+  return (diary || []).filter(e => e.until > tick).map(e => ({id: e.id, text: e.text, mood: e.mood, endDay: day + (e.until - tick) / D, span: (e.until - e.t) * DAY / D}));   // (span: in a settlement's ticks)
 }
 // and into the next: what is left of it at this camp's start; what ran out on the way is gone
-export function moodIn(day, tick, mood) {
-  return (mood || []).filter(e => e.endDay > day).map(e => { const until = tick + Math.round((e.endDay - day) * DAY); return {t: until - e.span, id: e.id, text: e.text, mood: e.mood, until}; });
+export function moodIn(day, tick, mood, w = null) {
+  const D = dayLen(w);
+  return (mood || []).filter(e => e.endDay > day).map(e => { const until = tick + Math.round((e.endDay - day) * D); return {t: until - Math.round(e.span * D / DAY), id: e.id, text: e.text, mood: e.mood, until}; });
 }
 
 // the facts a camp noted (settlement/facts.js), taken into the campaign: kept, remembered by those who know them first hand,

@@ -23,6 +23,11 @@ export const CAMP = {
   // a storm of a guarded place of the quest (campaign/quest.js): in the morning, rested, the guards at hand
   guard: {from: 9, come: [9, 9.05], until: 18, near: 12},
   quiet: 1,
+  // the camp's clock (core/time.js dayScale; docs/CAMPAIGN.md «Часы стоянки»): its sun goes `scale` times slower than a
+  // settlement's — an hour is HOUR × scale ticks, so the company crosses the camp, sets it up and fights many times over in
+  // a night; the body and what lasts by the sun keep to the sun. The screen winds the night on by itself when no foe is on
+  // the map (ui/campLocal.js: at `wind` times the pace)
+  clock: {scale: 4, wind: 8, dark: 0.5},   // (`dark` — the night deeper than this is wound)
   // the camp's alarm (campaign/camp.js stepCamp; agents/behaviours/warband.js): raised when one of the caravan who is not
   // asleep sees a foe within `sight` cells (by day; at night × the eyes' night sight, data/tongues.js), or a blow is struck;
   // then every able one goes for the foe with the weight `want`

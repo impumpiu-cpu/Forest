@@ -35,7 +35,7 @@ import {walkable} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {cellPlan} from '../seam/cell.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {DAY, HOUR, nightness} from '../core/time.js';
+import {DAY, HOUR, nightness, sunTicks, ofSun, atHour} from '../core/time.js';
 import {SEASON_DAYS} from '../data/seasons.js';
 import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
@@ -104,11 +104,12 @@ export function campSetup(a, K, ev) {
 }
 
 // the hours of a camp: when it begins, when the foe comes, when it ends at the latest (ticks)
+// (in the camp's own ticks: its sun is slower than a settlement's, CAMP.clock — core/time.js dayScale)
 function hours(S, r) {
-  const H = CAMP[S.kind] && S.kind !== 'night' ? CAMP[S.kind] : CAMP.night;
-  const t0 = Math.round(H.from * HOUR), wrap = h => (h < H.from ? h + 24 : h);
-  const until = Math.round(wrap(H.until) * HOUR);
-  const come = H.come ? Math.round(wrap(H.come[0] + r() * (H.come[1] - H.come[0] + (H.come[1] < H.come[0] ? 24 : 0))) * HOUR) : null;
+  const H = CAMP[S.kind] && S.kind !== 'night' ? CAMP[S.kind] : CAMP.night, h = HOUR * CAMP.clock.scale;
+  const t0 = Math.round(H.from * h), wrap = x => (x < H.from ? x + 24 : x);
+  const until = Math.round(wrap(H.until) * h);
+  const come = H.come ? Math.round(wrap(H.come[0] + r() * (H.come[1] - H.come[0] + (H.come[1] < H.come[0] ? 24 : 0))) * h) : null;
   return {t0, until, come};
 }
 
@@ -118,6 +119,7 @@ export function openCamp(S) {
   const cfg = {...DEFAULT_CFG, name: 'Стоянка', seed: S.seed, size: 'small', dims: CAMP.size, colonists: 0, stock: 'poor', start: 'spring',
     raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay}}, ...(S.profile ? {profile: S.profile} : {})};   // (the world's profile of commands: data/commands.js)
   const w = createWorld(cfg);
+  w.dayScale = CAMP.clock.scale;   // the camp's sun is slower: more is done by it in a night (core/time.js; docs/CAMPAIGN.md «Часы стоянки»)
   // an open-cut face is dug only on a stop to dig, and only for the ore it was for (settlement/query.js wantedOre)
   w.campDig = S.dig && ORES.has(S.dig) ? new Set([ORES.get(S.dig).code]) : new Set();
   w.scratch = null;   // what was counted for this tick before the camp knew what it digs
@@ -152,9 +154,10 @@ export function openCamp(S) {
     if (m.former) setStanding(ag, 'former', {since: w.tick, bond: m.loyalty ?? 0.6, fought: false});   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { setStanding(ag, 'captive', {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}); if (rec) rec.captive = true; }   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
-    if (m.mood?.length) ag.diary = [...moodIn(S.day, w.tick, m.mood), ...(ag.diary || [])];   // the fresh thoughts it brings (campaign/social.js)
-    if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + e.ticks}));
-    if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + x.ticks}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
+    if (m.mood?.length) ag.diary = [...moodIn(S.day, w.tick, m.mood, w), ...(ag.diary || [])];   // the fresh thoughts it brings (campaign/social.js)
+    // (what lasts by the sun comes in the sun's ticks and goes out in them: core/time.js dayScale)
+    if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + sunTicks(w, e.ticks)}));
+    if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + sunTicks(w, x.ticks)}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
@@ -368,7 +371,7 @@ export function campDone(w) {
   if (w.tick >= C.until) return true;
   // the foe is beaten or gone, and an hour passed quietly (the wounded tended, the fire made up)
   // (the camp waits for its own fallen to be helped, and for the fallen foes to be bound while there are bonds)
-  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= CAMP.quiet * HOUR && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w);
+  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= atHour(w, CAMP.quiet) && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w);
 }
 
 // play a camp through; → the world at its end
@@ -419,7 +422,7 @@ function outcomeOf(w) {
     }
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: ofSun(w, e.until - w.tick)})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary, w), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -445,7 +448,7 @@ function outcomeOf(w) {
   // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
   const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
     name: o.name, gender: o.gender, race: o.species, people: o.people || null, person: o.person || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
-    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, wounds: (o.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), from: S.foe?.kind || null, will: o.captive.will,
+    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, wounds: (o.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), from: S.foe?.kind || null, will: o.captive.will,
     gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(gearToken))].filter(id => !!gearDef(id)), body: (b => (b ? gearToken(b) : 'clothes'))(allItems(o).find(it => itemOf(it).slot === 'body'))},
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill, leans: o.leans}))}));
   const plundered = w.stats.lastSteal >= C.start;

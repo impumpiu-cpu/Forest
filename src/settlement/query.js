@@ -1,7 +1,7 @@
 // Read-only questions about the world state, shared by systems and content definitions.
 import {RESOURCES} from '../data/resources.js';
 import {perTick} from '../core/util.js';
-import {HOUR} from '../core/time.js';
+import {HOUR, atHour} from '../core/time.js';
 import {SPECIES} from '../data/species.js';
 import {exposedOre} from '../world/ores.js';
 import {ORE_BY_CODE} from '../data/ores.js';
@@ -47,7 +47,7 @@ export const wantedOre = w => perTick(w, 'wantedOre', () => {
 // a day or more across a big map, raise it only on their last stretch, and nobody starves at the fire
 // waiting for them. Asked many times a tick, so counted once.
 export const raidAlarm = w => perTick(w, 'raidAlarm', () => {
-  const camp = w.nav.get('camp'), reach = CAMP_LIFE.alarmHours * HOUR * CAMP_LIFE.alarmPace;   // (woods and detours slow the march)
+  const camp = w.nav.get('camp'), reach = atHour(w, CAMP_LIFE.alarmHours) * CAMP_LIFE.alarmPace;   // (woods and detours slow the march)
   return w.agents.some(o => {
     if (o.faction !== 'raiders' || o.dead || o.downed) return false;   // one lying senseless is no threat (settlement/captives.js)
     // a squad falling back or leaving with its loot is no alarm any more (agents/squad.js state); who

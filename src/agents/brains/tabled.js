@@ -26,7 +26,7 @@
 // it began: then it is asked, and only the task under way is taken from its offers (a task begun goes on while the
 // command would keep it). While the trace is on, each thought is recorded with every offer of the lane weighed.
 import {SPECIES} from '../../data/species.js';
-import {nightness} from '../../core/time.js';
+import {nightness, scaleOf} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {tempAt} from '../../world/heat.js';
 import {TASKS} from '../tasks.js';
@@ -151,7 +151,7 @@ function beastBody(w, a) {
   if (sp.needs.length) return stepBody(w, a);
   const T = tempAt(w, cellOf(w, a));
   if (heatHarm(a, sp, T, sp.kind === 'spirit' ? 'spirit' : 'beast') && a.hp <= 0) kill(w, a, 'огня');
-  if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
+  if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a) / scaleOf(w));   // wounds close slowly (a mule, a bear)
   return T;
 }
 

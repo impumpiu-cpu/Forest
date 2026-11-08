@@ -20,7 +20,7 @@
 import {isFree} from './reserve.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, atHour, dayLen, sunTicks} from '../core/time.js';
 import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
 import {colonists, has} from './query.js';
@@ -36,7 +36,7 @@ import {ADDICTION} from '../data/afflictions.js';
 const brewOf = a => SPECIES.get(a.species).brew;
 export function brewFactor(w, a) {
   const b = brewOf(a); if (!b) return 1;
-  return a.drankAt != null && w.tick - a.drankAt < b.lasts * DAY ? b.drunk : b.sober;
+  return a.drankAt != null && w.tick - a.drankAt < b.lasts * dayLen(w) ? b.drunk : b.sober;
 }
 
 export {LIFE};   // (data/colony.js)
@@ -166,7 +166,7 @@ function dawn(w) {
     if (a.captive) continue;   // a captive does not just walk away: that is an escape (docs/CAPTIVES.md)
     if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) { leave(w, a); continue; }
     if (a.gloom >= LIFE.sulkFrom && w.rngs.colony() < LIFE.sulkChance) {
-      a.task = {id: 'sulk', until: w.tick + 3 * HOUR}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;
+      a.task = {id: 'sulk', until: w.tick + sunTicks(w, 3 * HOUR)}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;
       log(w, `<b>${esc(a.name)}</b> ${g(a, 'хандрит', 'хандрит')}: бросает работу и бродит по лагерю.`, 'people');
     }
   }
@@ -184,9 +184,9 @@ export function leave(w, a) {
 }
 
 export function stepLife(w) {
-  const t = w.tick % DAY;
-  if (t === 5 * HOUR) dawn(w);
-  else if (t === Math.round(21.6 * HOUR)) evening(w);
+  const t = tickOfDay(w);
+  if (t === atHour(w, 5)) dawn(w);
+  else if (t === atHour(w, 21.6)) evening(w);
 }
 
 // the shrine: worth a walk for someone in low spirits, once a day

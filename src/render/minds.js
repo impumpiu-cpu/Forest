@@ -132,7 +132,7 @@ export function drawMinds(ctx, w, S, view) {
 // the day's places and who holds them (settlement/plan.js vacancyLines, read without its caches)
 function openPlaces(w) {
   const vac = w.plan?.vac; if (!vac) return {total: 0, rows: []};
-  const d = dayOf(w.tick), by = {};
+  const d = dayOf(w.tick, w), by = {};
   for (const a of w.agents) if (a.faction === 'colony' && !a.dead && !a.downed && a.shift?.day === d && a.shift.job) (by[a.shift.job] ||= []).push(a);
   let total = 0;
   const rows = Object.entries(vac).map(([j, v]) => { const hs = by[j] || [], free = Math.max(0, v.places - hs.length); total += free; return {job: j, places: v.places, hs, free, why: v.why}; });
@@ -155,7 +155,7 @@ export function mindCard(w, h) {
     return `<h3>${f.red ? 'Красный флаг' : 'Жёлтый флаг'}: ${esc(f.label)}</h3><dl class="sum">` +
       row('Где', esc(f.where)) + row('Кто', esc(Object.entries(kinds).map(([l, n]) => n > 1 ? `${l} ×${n}` : l).join(', '))) +
       row('Вес', f.red ? 'не пропустить, пока не кончится' : `${(f.weight || 0).toFixed(2)} — срочность × не закрытая доля`) +
-      row('Поднял', `${esc(f.byName || '—')}, ${esc(clockStr(f.started))}`) +
+      row('Поднял', `${esc(f.byName || '—')}, ${esc(clockStr(f.started, w))}`) +
       row('Знают', `${known.length}${known.length ? ': ' + names(known.slice(0, 8)) + (known.length > 8 ? '…' : '') : ''}`) +
       row('Отвечают', who.length ? names(who) : 'никто') + '</dl>' +
       '<small class="muted">Доска только знает и объявляет: каждый решает сам, идти ли (settlement/board.js).</small>';

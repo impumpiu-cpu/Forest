@@ -50,7 +50,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {tempAt} from '../world/heat.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, dayLen, ofSun} from '../core/time.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {statusOf} from '../settlement/life.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
@@ -99,7 +99,7 @@ function woundsHtml(w, a) {
   if (a.downed) out.push(`<span class="chip dislike" title="Без помощи умрёт">без сознания: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} ч до смерти</span>`);
   for (const x of a.wounds || []) {
     const W = WOUNDS.get(x.id);
-    const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} дн.` : '';
+    const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / dayLen(w)))} дн.` : '';
     out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${esc(W.label)}: ${esc(W.note)}${left}">${esc(W.label)}</span>`);
   }
   // the passing states and exhaustion (data/conditions.js); the fall and the wounds are shown above
@@ -144,7 +144,7 @@ export function where(w, a) {
 function whyHtml(w, a) {
   if (a.downed) return '';   // senseless: no choice to explain (agents/wounds.js)
   const y = a.why, rows = [];
-  const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
+  const ago = t => { const m = ofSun(w, w.tick - t); return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
   if (y) {
     if (y.woke) rows.push(`<dt>Задумался</dt><dd>${ago(y.t)}: ${esc(y.woke)}</dd>`);
     rows.push(`<dt>Выбор</dt><dd><b>${esc(y.task)}</b> (${y.score})${y.why ? ` — ${esc(y.why)}` : ''}${y.kept ? '; продолжает начатое' : ''}</dd>`);
@@ -217,12 +217,12 @@ export function personHtml(w, a) {
     const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
     return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}${it.maker ? ', работа: ' + esc(it.maker) : ''}"` : ''}>${esc(txt)}</dd>`;
   }).join('');
-  const today = dayOf(w.tick);
+  const today = dayOf(w.tick, w);
   let lastDay = null;
   const diary = a.diary.slice(0, 14).map(e => {
-    const d = dayOf(e.t), head = d !== lastDay ? `<li class="dday">${d === today ? 'Сегодня' : d === today - 1 ? 'Вчера' : 'День ' + (d + 1)}</li>` : '';
+    const d = dayOf(e.t, w), head = d !== lastDay ? `<li class="dday">${d === today ? 'Сегодня' : d === today - 1 ? 'Вчера' : 'День ' + (d + 1)}</li>` : '';
     lastDay = d;
-    const hh = clockStr(e.t).split(', ')[1];
+    const hh = clockStr(e.t, w).split(', ')[1];
     return `${head}<li class="${e.mood > 0 ? 'up' : e.mood < 0 ? 'down' : ''}"><span>${hh}</span>${esc(e.text)}</li>`;
   }).join('');
   return `<div class="pc-head"><h3>${esc(a.name)}</h3><span class="pc-mood m${mood > 0.15 ? 'up' : mood < -0.15 ? 'down' : 'mid'}">${moodLabel(a, mood)}</span>

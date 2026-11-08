@@ -2,6 +2,7 @@
 // entry's mood when it depends on circumstances), a mood made of them,
 // and wishes read from needs, gear and what they would argue for at the council.
 import {THOUGHTS, MOOD_LABELS} from '../data/thoughts.js';
+import {sunTicks} from '../core/time.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {clamp} from '../core/util.js';
@@ -12,7 +13,7 @@ export function think(w, a, id, ctx = {}) {
   if (!a?.diary || a.dead) return;
   const d = THOUGHTS.get(id);
   if (d.once && a.diary.some(e => e.id === id && w.tick - e.t < d.once)) return;
-  a.diary.unshift({t: w.tick, id, text: d.text(a, ctx), mood: ctx.mood ?? d.mood, until: w.tick + d.lasts});
+  a.diary.unshift({t: w.tick, id, text: d.text(a, ctx), mood: ctx.mood ?? d.mood, until: w.tick + sunTicks(w, d.lasts)});   // (a thought's days are the sun's: core/time.js dayScale)
   if (a.diary.length > MIND.diary) a.diary.pop();
 }
 

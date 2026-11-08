@@ -8,6 +8,8 @@ import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {workText} from '../campaign/works.js';
 import {CAMP_KINDS} from '../data/labels.js';
+import {CAMP} from '../data/camp.js';
+import {nightness} from '../core/time.js';
 import {mindAt, mindCard} from '../render/minds.js';
 
 // the camps watched on the local map by the pace (core/clock.js PACE): at the observer's pace the day stops too, at
@@ -49,10 +51,20 @@ export const campLocal = Base => class extends Base {
   localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
   localText() {
     const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
-    $('campLocalText').innerHTML = `<b>${CAMP_KINDS[c.kind] || CAMP_KINDS.stop}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
+    $('campLocalText').innerHTML = `<b>${CAMP_KINDS[c.kind] || CAMP_KINDS.stop}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${L.wind ? ' · <span class="muted">ночь идёт ⏩</span>' : ''}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
+  }
+  // the night winds on by itself (CAMP.clock.wind × the pace) while no foe is on the map, the camp is set up and it is dark:
+  // the camp's sun is slow (core/time.js dayScale), and a quiet night is not worth the watching
+  winding(w) {
+    const C = w.campaign;
+    if (C.S.kind === 'stop' || campDone(w)) return false;
+    if (C.foeObjs.some(o => !o.dead && !o.gone && !o.captive && o.task?.id !== 'leave')) return false;
+    if ((w.works || []).some(x => !x.done) || nightness(w) < CAMP.clock.dark) return false;
+    return true;
   }
   stepLocal() {
-    const L = this.local, w = L.w, per = this.ticks.ticks(performance.now());
+    const L = this.local, w = L.w, wind = this.winding(w), per = this.ticks.ticks(performance.now(), 40, wind ? CAMP.clock.wind : 1);
+    if (wind !== L.wind) { L.wind = wind; this.localText(); }
     if (!this.ticks.paused) {
       if (!campDone(w)) { for (let k = 0; k < per && !campDone(w); k++) stepCamp(w); }
       else if (!L.done) L.done = performance.now();

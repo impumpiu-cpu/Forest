@@ -19,7 +19,7 @@
 // the victim's aid), gave (the pack backed off), taken (someone else killed the prey). Counted in w.behave.hunts.
 // Plain data, saved with the world.
 import {SPECIES} from '../data/species.js';
-import {DAY, nightness} from '../core/time.js';
+import {DAY, nightness, dayLen} from '../core/time.js';
 import {log} from '../core/log.js';
 import {agentInZone} from '../settlement/zone.js';
 import {createAgent} from './agent.js';
@@ -74,7 +74,7 @@ export function stepCarcasses(w) {
     if (age > C.rotFrom) c.food = Math.max(0, c.food - c.food0 * C.rot);
     const big = (SPECIES.get(c.species).hp || 0) >= C.upyrFrom && share(c) >= C.upyrLeft;
     // checked every `every` ticks; about `darkShare` of the day is this dark, so the chance is spread over those checks
-    if (age > C.rotFrom && big && !c.risen && night > C.darkFrom && w.rngs.wild() < C.upyr * C.every / (DAY * C.darkShare) && SPECIES.has(C.rises)) {
+    if (age > C.rotFrom && big && !c.risen && night > C.darkFrom && w.rngs.wild() < C.upyr * C.every / (dayLen(w) * C.darkShare) && SPECIES.has(C.rises)) {
       c.risen = true;
       const u = createAgent(w, C.rises, 'raiders', c.x, c.y);
       u.brain = 'raider'; u.band = C.risesBand; u.name = cap(SPECIES.get(C.rises).label);

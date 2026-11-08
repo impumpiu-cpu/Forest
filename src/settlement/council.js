@@ -36,8 +36,8 @@ export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.ge
 
 
 export function councilDue(w) {
-  const h = hourOf(w.tick);
-  return !w.light && h >= COUNCIL.from && h < COUNCIL.to && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+  const h = hourOf(w.tick, w);
+  return !w.light && h >= COUNCIL.from && h < COUNCIL.to && w.council.lastDay !== dayOf(w.tick, w) && colonists(w).length > 0;
 }
 
 // extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way
@@ -106,7 +106,7 @@ export function councilWish(w, a) {
 }
 
 export function stepCouncil(w) {
-  const day = dayOf(w.tick), h = hourOf(w.tick);
+  const day = dayOf(w.tick, w), h = hourOf(w.tick, w);
   if (!councilDue(w)) {
     if (w.council.lastDay !== day && h >= COUNCIL.to && colonists(w).length) w.council.lastDay = day;   // nobody came
     return;
@@ -118,7 +118,7 @@ export function stepCouncil(w) {
 
 function hold(w, present, total) {
   const c = w.council;
-  c.lastDay = dayOf(w.tick);
+  c.lastDay = dayOf(w.tick, w);
   for (const a of present) shiftAlign(a, 'order', ALIGN_DRIFT.pawn.council, (a.alignRoot?.order ?? a.align?.order ?? 0) + ALIGN_DRIFT.pawn.councilCap);   // an evening of law: a little more of it in each
   const site = openSites(w)[0];
   const args = [];

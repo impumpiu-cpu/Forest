@@ -11,6 +11,7 @@ import {buildingById} from '../../settlement/query.js';
 import {PEN} from '../../data/behaviour.js';
 import {CAMP_WORKS} from '../../data/camp.js';
 import {tetherAt} from '../../campaign/works.js';
+import {scaleOf} from '../../core/time.js';
 
 // the pen this animal belongs to: the one it had, or the first with room
 function penOf(w, a) {
@@ -38,7 +39,7 @@ export const penned = {
     recover(a);
     // the pen's rest: up to PEN.mends a tick together with the body's own (a mule mends by itself: agents/brains/tabled.js beastBody)
     const more = PEN.mends - (SPECIES.get(a.species).mends || 0);
-    if (more > 0 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + more * maxHp(a));
+    if (more > 0 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + more * maxHp(a) / scaleOf(w));   // (by the sun: core/time.js dayScale)
     const i = cellOf(w, a);
     if (t.mode === 'camp') {
       // at the caravan's camp with a tether set (campaign/works.js): it stands at the rope, a step this way or that

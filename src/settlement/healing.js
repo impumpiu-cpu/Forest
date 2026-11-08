@@ -3,6 +3,7 @@
 //   each tick a patient gets HEAL.rate × the healer's work rate back, HEAL.noHerbs of that without herbs;
 //   every HEAL.perHerb of health healed with herbs uses up one herb from the stock.
 // With nobody to tend the healer picks herbs (the job's harvest fields, data/jobs.js 'heal').
+import {scaleOf} from '../core/time.js';
 import {maxHp} from '../agents/agent.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {cellOf} from '../world/grid.js';
@@ -35,7 +36,7 @@ export function tend(w, healer, rate) {
   let given = 0;
   for (const p of ps) {
     const herbs = (w.stock.herbs || 0) >= 1 || (w.herbCredit || 0) > 0;
-    const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
+    const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6) / scaleOf(w));   // (by the sun: core/time.js dayScale)
     if (amount <= 0) continue;
     p.hp += amount; given += amount;
     p.task.healer = healer.id;

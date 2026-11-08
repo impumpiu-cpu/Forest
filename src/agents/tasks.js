@@ -9,7 +9,7 @@ import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
 import {FOODS} from '../data/foods.js';
 import {cellOf} from '../world/grid.js';
-import {nightness} from '../core/time.js';
+import {nightness, scaleOf} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock, hurl} from './combat.js';
 import {COMBAT} from '../data/balance/combat.js';
@@ -66,8 +66,9 @@ TASKS.registerAll([
     const pop = Math.max(1, colonists(w).length);
     const beds = Math.min(1, w.mods.add.beds / pop), warm = Math.min(1, (w.mods.add.bedWarmth || 0) / pop);
     a.sleeping = true;
-    a.needs.rest = Math.min(1, a.needs.rest + REST.rate * (1 + REST.beds * beds));
-    if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + REST.warm * warm * (w.campLit ? 1 : REST.unlit));
+    const k = 1 / scaleOf(w);   // (the body lives by the sun: core/time.js dayScale)
+    a.needs.rest = Math.min(1, a.needs.rest + REST.rate * (1 + REST.beds * beds) * k);
+    if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + REST.warm * warm * (w.campLit ? 1 : REST.unlit) * k);
     mill(w, a, task, TASK.mill.sleep);
     // rested before dawn: sleep on till first light rather than stand about in the dark (nobody goes to the
     // woods by night); a tired body or an alarm still wakes anyone

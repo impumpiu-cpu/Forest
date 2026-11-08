@@ -15,7 +15,7 @@ import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
 import {SPECIES, brainOf} from '../data/species.js';
 import {BUILDINGS, penK, useHerd} from '../data/buildings.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, atHour} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
 import {log} from '../core/log.js';
 import {esc, perTick} from '../core/util.js';
@@ -127,7 +127,7 @@ function bear(w, mother) {
 }
 
 export function stepHerd(w) {
-  if (w.tick % DAY !== 6 * HOUR) return;
+  if (tickOfDay(w) !== atHour(w, 6)) return;
   const list = herd(w); if (!list.length) return;
   const S = season(w), grass = HERD.graze[S.id] ?? 0;
   let hayShort = false;

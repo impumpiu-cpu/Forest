@@ -16,7 +16,7 @@ import {workTogether, afterRaid, threatTo} from './together.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, clamp, weighted} from '../core/util.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, dayLen} from '../core/time.js';
 import {REL} from '../data/colony.js';
 import {noteFact} from './facts.js';
 
@@ -86,7 +86,7 @@ function daily(w) {
 }
 
 export function stepRelations(w) {
-  if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
+  if (tickOfDay(w) === Math.floor(dayLen(w) * 0.55)) daily(w);
   if (w.tick % REL.quarrelEvery === 37) quarrels(w);
   if (w.tick % HOUR === 11) workTogether(w);
   // a raid over: those who fought it side by side come out of it closer

@@ -4,7 +4,7 @@
 // Growth follows the season's `grow`; the first frost of winter kills what is still unripe.
 import {CROPS} from '../data/crops.js';
 import {T, OPEN} from '../data/terrain.js';
-import {DAY} from '../core/time.js';
+import {DAY, tickOfDay, dayLen} from '../core/time.js';
 import {season, seasonStarts} from '../data/seasons.js';
 import {isCampArea} from '../world/grid.js';
 import {colonists, foodTotal} from './query.js';
@@ -67,7 +67,7 @@ export function stepFarms(w) {
   if (w.tick % EVERY) return;
   const S = season(w);
   // the first frost: whatever is still unripe in the ground is lost
-  if (S.frost != null && w.tick % DAY < EVERY && seasonStarts(w)) {
+  if (S.frost != null && tickOfDay(w) < EVERY && seasonStarts(w)) {
     let lost = 0;
     for (const b of fields(w)) for (const p of b.plots) if (p.crop && p.g < 1) { p.crop = null; p.g = 0; lost++; }
     if (lost) log(w, `Мороз побил несжатые посевы: ${lost} грядок пропало.`, 'weather', 'notice');
@@ -77,7 +77,7 @@ export function stepFarms(w) {
     if (!p.crop || p.g >= 1) continue;
     if (w.grid.fire[p.i] > 0) { p.crop = null; p.g = 0; continue; }
     // rich soil grows faster: fertility 0.5 is the plain rate, 1 is half as fast again
-    p.g = Math.min(1, p.g + EVERY * S.grow * soilRate(w, p.i) / (CROPS.get(p.crop).days * DAY));
+    p.g = Math.min(1, p.g + EVERY * S.grow * soilRate(w, p.i) / (CROPS.get(p.crop).days * dayLen(w)));
     if (p.g >= 1) ripened = true;
   }
   if (ripened) w.nav.dirty('fieldwork');

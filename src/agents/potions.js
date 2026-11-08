@@ -16,7 +16,7 @@ import {POTION, POTION_RES, HOME_BY_USE, BELT_ORDER, potionOf} from '../data/pot
 import {NIGHT, hasSense} from '../data/tongues.js';
 import {CONDITIONS, hasMark} from '../data/conditions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
-import {nightness} from '../core/time.js';
+import {nightness, sunTicks} from '../core/time.js';
 import {darkness} from './combat.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
@@ -43,7 +43,7 @@ function apply(w, a, row) {
   }
   let body = !!row.cures?.includes('ill');
   if (row.ticks) {
-    a.effects = [...(a.effects || []).filter(e => e.id !== row.id), {id: row.id, until: w.tick + row.ticks}];
+    a.effects = [...(a.effects || []).filter(e => e.id !== row.id), {id: row.id, until: w.tick + sunTicks(w, row.ticks)}];   // (a brew's hours are the sun's: core/time.js dayScale)
     if (Object.keys(row.mods || {}).length || row.hp != null) body = true;
   }
   if (row.blade) a.coat = {id: row.id, hits: row.blade.hits};
@@ -207,7 +207,7 @@ export function stepPotionEffects(w, a) {
   if (left.length === a.effects.length) return;
   const ended = a.effects.filter(e => w.tick >= e.until);
   // a state that leaves another behind it (data/conditions.js `then`: the berserker's frenzy, then weariness)
-  for (const e of ended) { const nx = CONDITIONS.has(e.id) ? CONDITIONS.get(e.id).then : null; if (nx && CONDITIONS.has(nx)) left.push({id: nx, until: w.tick + (CONDITIONS.get(nx).ticks || 0), from: e.id}); }
+  for (const e of ended) { const nx = CONDITIONS.has(e.id) ? CONDITIONS.get(e.id).then : null; if (nx && CONDITIONS.has(nx)) left.push({id: nx, until: w.tick + sunTicks(w, CONDITIONS.get(nx).ticks || 0), from: e.id}); }
   a.effects = left.length ? left : null;
   if (ended.some(e => CONDITIONS.has(e.id) && (Object.keys(CONDITIONS.get(e.id).mods || {}).length || CONDITIONS.get(e.id).hp != null || CONDITIONS.get(e.id).then))) refreshBody(a);
 }
@@ -217,7 +217,7 @@ export function stepPotionEffects(w, a) {
 export function rage(w, a) {
   const F = FRENZY;
   if (a.dead || a.downed || (a.effects || []).some(e => (e.id === F.rage || e.id === F.spent) && w.tick < e.until)) return false;
-  a.effects = [...(a.effects || []), {id: F.rage, until: w.tick + CONDITIONS.get(F.rage).ticks}];
+  a.effects = [...(a.effects || []), {id: F.rage, until: w.tick + sunTicks(w, CONDITIONS.get(F.rage).ticks)}];
   refreshBody(a); a.flash = 4;
   return true;
 }

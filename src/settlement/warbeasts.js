@@ -5,7 +5,7 @@
 import {WAR_DENS as D} from '../data/buildings.js';
 import {SPECIES} from '../data/species.js';
 import {seasonStarts} from '../data/seasons.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, atHour} from '../core/time.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
 import {colonists, has} from './query.js';
@@ -30,7 +30,7 @@ export function raise(w, key) {
   return a;
 }
 export function stepWarBeasts(w) {
-  if (w.tick % DAY !== 8 * HOUR) return;
+  if (tickOfDay(w) !== atHour(w, 8)) return;
   for (const [key, R] of dens()) if (R.silk && has(w, key)) w.stock.rope = (w.stock.rope || 0) + R.silk;   // (the spider den spins rope)
   if (!seasonStarts(w, w.tick)) return;
   for (const [key] of dens()) raise(w, key);

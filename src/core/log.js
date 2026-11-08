@@ -7,7 +7,7 @@ const MAX_LINES = 150;
 
 export function log(w, html, topic = 'people', level) {
   const lv = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : 'info');
-  w.logLines.unshift({t: w.tick, html, when: clockStr(w.tick), topic, level: lv});
+  w.logLines.unshift({t: w.tick, html, when: clockStr(w.tick, w), topic, level: lv});
   if (w.logLines.length > MAX_LINES) w.logLines.pop();
   w.logVersion++;
 }

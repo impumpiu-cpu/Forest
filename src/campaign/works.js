@@ -11,7 +11,7 @@ import {CAMP_WORKS} from '../data/camp.js';
 import {VEHICLES} from '../data/transport.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {log} from '../core/log.js';
-import {HOUR} from '../core/time.js';
+import {atHour} from '../core/time.js';
 
 const W = () => CAMP_WORKS, MID = 1 / 2;
 export const worksOf = w => w.works || [];
@@ -114,7 +114,7 @@ export function workOn(w, a, x) {
   x.by = a.id; x.progress++;
   if (x.progress >= x.ticks) finish(w, x);
 }
-export const inSetup = w => w.tick - w.campaign.start < W().setup.hours * HOUR;
+export const inSetup = w => w.tick - w.campaign.start < atHour(w, W().setup.hours);
 
 // the tether's place, for the beasts (agents/behaviours/penned.js): the middle of the posts, or null
 export function tetherAt(w) { const t = worksOf(w).find(x => x.key === 'tether' && x.done); return t ? [t.x, t.y] : null; }

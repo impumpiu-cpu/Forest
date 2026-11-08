@@ -2,7 +2,7 @@
 // Every colonist who ever lived gets a record (alive or not); the colony keeps totals.
 import {noteSeen} from './facts.js';
 import {SPECIES} from '../data/species.js';
-import {DAY} from '../core/time.js';
+import {DAY, dayLen} from '../core/time.js';
 import {colonists} from './query.js';
 import {moodOf} from '../agents/mind.js';
 
@@ -40,4 +40,4 @@ export function sampleChronicle(w) {
 }
 
 export const add = (obj, key, n = 1) => { obj[key] = (obj[key] || 0) + n; };
-export const daysLived = (w, r) => ((r.died ?? r.left ?? w.tick) - r.arrived) / DAY;
+export const daysLived = (w, r) => ((r.died ?? r.left ?? w.tick) - r.arrived) / dayLen(w);

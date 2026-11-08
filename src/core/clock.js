@@ -13,7 +13,7 @@ import {TICK_MS} from './time.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 
 export const PACE = [
-  {id: 'watch', label: 'Наблюдатель', season: 6000, local: 1, title: 'Полмесяца в секунду: сезон за 6 с, 2,5 года в минуту. На локальной карте — час за 2,5 с'},
+  {id: 'watch', label: 'Наблюдатель', season: 6000, local: 1, title: 'Полмесяца в секунду: сезон за 6 с, 2,5 года в минуту. На локальной карте — час стоянки за 10 с; ночь без врага мотается сама'},
   {id: 'x4', label: '×4', season: 1500, local: 4, title: 'Сезон за 1,5 с, 10 лет в минуту'},
   {id: 'x16', label: '×16', season: 375, local: 16, title: 'Сезон за 0,4 с, 40 лет в минуту'},
   {id: 'max', label: 'Сразу', season: 0, local: 0, title: 'Так быстро, как успевает экран; стоянки не показываются'},
@@ -100,13 +100,13 @@ export class SeasonClock {
 // the local map's clock: real milliseconds into ticks at the pace (`local` × the base pace of TICK_MS), at most `cap` a frame
 export class TickClock {
   constructor() { this.pace = DEFAULT_PACE; this.acc = 0; this.last = 0; this.paused = false; }
-  // ticks to run this frame
-  ticks(now, cap = 40) {
+  // ticks to run this frame; `wind` × the pace — the night wound on while nothing happens (ui/campLocal.js)
+  ticks(now, cap = 40, wind = 1) {
     const dt = this.last ? Math.min(250, now - this.last) : 0; this.last = now;
     const P = paceOf(this.pace);
     if (this.paused) { this.acc = 0; return 0; }
     if (!P.local) return cap;   // `max`: as many as the frame allows
-    this.acc += dt * P.local;
+    this.acc += dt * P.local * wind;
     const n = Math.min(cap, Math.floor(this.acc / TICK_MS));
     this.acc -= n * TICK_MS;
     if (this.acc > 500) this.acc = 0;
