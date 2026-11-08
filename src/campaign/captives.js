@@ -7,7 +7,7 @@
 //   takeFromCamp(a, K, o, say)  — the captives the camp on the local map took (campaign/camp.js outcome)
 //   bondsSets(K)                — how many more the baggage can bind
 import {freesCaptives} from '../data/slavery.js';
-import {memberFate} from '../atlas/persons.js';
+import {memberFate} from '../atlas/index.js';
 import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
@@ -16,7 +16,7 @@ import {makeMember, memberLocal} from './start.js';
 import {noteFate} from './social.js';
 import {room, setPlace} from './company.js';
 import {DAY} from '../core/time.js';
-import {sleepDose} from '../agents/potions.js';
+import {sleepDose} from '../local/index.js';
 import {POTION} from '../data/potions.js';
 
 const C = CAPTIVE.campaign;

@@ -9,7 +9,7 @@
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
 import {inLine, CAMPAIGN} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
-import {gearDef} from '../agents/equipment.js';
+import {gearDef} from '../local/index.js';
 import {BONDS} from '../data/captives.js';
 import {ORES} from '../data/ores.js';
 import {RESOURCES} from '../data/resources.js';

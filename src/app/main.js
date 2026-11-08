@@ -11,6 +11,7 @@ import {BeastView} from './beastView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
 import {CampaignView} from '../ui/campaignView.js';
+import {QuickShell} from '../ui/shell/landShell.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
@@ -22,16 +23,17 @@ const OBSERVER = new Set(['settle', 'campaign']);   // the screens laid out as t
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 
-let screen = 'home', land = null, settle = null, campaign = null, beasts = null;
+let screen = 'home', land = null, settle = null, campaign = null, beasts = null, quickShell = null;
 function show(id) {
   // the screen left halts its clock between frames (it goes on when the screen is back)
-  if (screen !== id) { if (screen === 'land') land?.stop(); if (screen === 'settle') settle?.stop(); if (screen === 'campaign') campaign?.halt(); }
+  if (screen !== id) { if (screen === 'land') { land?.stop(); land?.hide(); } if (screen === 'settle') { settle?.stop(); settle?.hide(); } if (screen === 'campaign') campaign?.halt(); if (screen === 'quick') quickShell?.leave(); }
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
   if (id === 'settings') tables.show();
   if (id === 'bestiary') (beasts ||= new BeastView()).show();
   if (id === 'land') (land ||= new LandView()).show();
+  if (id === 'quick') (quickShell ||= new QuickShell({})).enter();   // (the form in the shell's frame: ui/shell/landShell.js)
   if (id === 'settle') (settle ||= new SettleView()).show();
   if (id === 'campaign') theCampaign().show('library');
   window.scrollTo(0, 0);
@@ -46,7 +48,7 @@ function theCampaign() {
 // the campaign screen shown for a world or a new epic one (the quick start): shown without `show`, which would halt it
 function openCampaign(fn) {
   const v = theCampaign();
-  if (screen === 'settle') settle?.stop();
+  if (screen === 'settle') { settle?.stop(); settle?.hide(); } if (screen === 'quick') quickShell?.leave(); if (screen === 'land') { land?.stop(); land?.hide(); }
   screen = 'campaign'; for (const s of SCREENS) $(s).hidden = s !== 'campaign'; document.body.classList.add('observer');
   fn(v);
   requestAnimationFrame(() => v.draw());

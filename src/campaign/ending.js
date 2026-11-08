@@ -5,12 +5,12 @@
 // that know it think better of it, the crown stays its relic); a lost caravan is a line of the world's
 // chronicle. When the epilogue is told, the campaign goes into the world's archive (a.campaignsDone): its
 // chronicle stays with the world, and another caravan may set out.
-import {drawTo} from '../atlas/demography.js';
-import {memberFate} from '../atlas/persons.js';
-import {stepHistory} from '../atlas/history.js';
-import {townLabel} from '../atlas/towns.js';
-import {realmLabel, realmLabelGen, realmTowns} from '../atlas/realms.js';
-import {relation} from '../atlas/diplomacy.js';
+import {drawTo} from '../atlas/index.js';
+import {memberFate} from '../atlas/index.js';
+import {stepHistory} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
+import {realmLabel, realmLabelGen, realmTowns} from '../atlas/index.js';
+import {relation} from '../atlas/index.js';
 import {SPECIES} from '../data/species.js';
 import {RETINUE, inLine} from '../data/campaign.js';
 import {EPILOGUE, FATES, fate} from '../data/epilogue.js';

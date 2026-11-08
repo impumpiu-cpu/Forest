@@ -1,15 +1,15 @@
 // The map's layers (ui/atlasView.js MapView): the colour of a cell on each layer, the light on the relief, the legend,
 // the off-screen bitmap of the cells. Out of ui/atlasView.js; MapView takes these methods by extending MapLayers.
-import {biomeAt, soilAt} from '../atlas/biomes.js';
+import {biomeAt, soilAt} from '../view/world.js';
 import {BIOMES, BIOME_KINDS} from '../data/biomes.js';
 import {SOILS} from '../data/soils.js';
 import {BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
-import {landOf} from '../atlas/peoples.js';
+import {landOf} from '../view/world.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
-import {realmLabel, realmLand} from '../atlas/realms.js';
+import {realmLabel, realmLand} from '../view/world.js';
 import {ROADS} from '../data/roads.js';
-import {faunaAt} from '../atlas/fauna.js';
-import {towers, seatMap} from '../atlas/necro.js';
+import {faunaAt} from '../view/world.js';
+import {towers, seatMap} from '../view/world.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {esc} from '../core/util.js';

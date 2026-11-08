@@ -4,7 +4,7 @@ import {offerText, latinTitle} from './store.js';
 import {SPECIES} from '../data/species.js';
 import {esc} from '../core/util.js';
 import {$} from './dom.js';
-import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../campaign/stats.js';
+import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../view/campaign.js';
 
 export const campStats = Base => class extends Base {
   // the fights of the walk (campaign/stats.js) in the dock: the totals, the years as bars, the named fights, the people

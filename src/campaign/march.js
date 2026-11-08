@@ -8,15 +8,15 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
-import {toTown} from '../atlas/treasury.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {gearDef} from '../agents/equipment.js';
-import {townAt} from '../atlas/peoples.js';
-import {trades, atWar} from '../atlas/diplomacy.js';
-import {realmLabel} from '../atlas/realms.js';
-import {biomeAt} from '../atlas/biomes.js';
-import {townLabel} from '../atlas/towns.js';
-import {faunaLevel} from '../world/region.js';
+import {toTown} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
+import {gearDef} from '../local/index.js';
+import {townAt} from '../atlas/index.js';
+import {trades, atWar} from '../atlas/index.js';
+import {realmLabel} from '../atlas/index.js';
+import {biomeAt} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
+import {faunaLevel} from '../local/index.js';
 import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
@@ -24,9 +24,9 @@ import {CAMPAIGN, FOES, RETINUE, MINE, COUNCIL, isFighter, inLine} from '../data
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {YEAR_DAYS} from '../data/atlas.js';
 import {plural} from '../core/util.js';
-import {personOf, personDies, personCaptured, memberFate} from '../atlas/persons.js';
-import {sceneLosses} from '../atlas/army.js';
-import {goHome} from '../atlas/parties.js';
+import {personOf, personDies, personCaptured, memberFate} from '../atlas/index.js';
+import {sceneLosses} from '../atlas/index.js';
+import {goHome} from '../atlas/index.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler, campOf} from './baggage.js';
@@ -47,7 +47,7 @@ import {SPECIES} from '../data/species.js';
 import {GOLEM_REPAIR} from '../data/constructs.js';
 import {free, unbind, mouths} from './captives.js';
 import {morningFind} from './finds.js';
-import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
+import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/index.js';
 import {LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
 import {wantVisit, findTown, smithAt, VISIT_WHY, enterTown, townEvening, noteCaravan, councilWeight, readout, isGoOn} from './visit.js';

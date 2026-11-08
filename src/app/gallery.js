@@ -1,14 +1,14 @@
 // The gallery of the pictures (gallery.html, `npm run gallery`; docs/ART.md): a live local map drawn by the game's own
 // renderer, and every picture of src/art/ at the sizes the maps draw it, on the ground it will stand on. The page
 // to look at the pictures and say what is wrong with them; an edited SVG shows on a reload (tools/serve.mjs).
-import {newGame, step} from '../sim.js';
+import {newGame, step} from '../view/local.js';
 import {DEFAULT_CFG} from '../data/presets.js';
 import {DAY} from '../core/time.js';
 import {SPECIES} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {createAgent} from '../agents/agent.js';
-import {newItem} from '../agents/equipment.js';
-import {putUp} from '../settlement/buildings.js';
+import {createAgent} from '../view/local.js';
+import {newItem} from '../view/local.js';
+import {putUp} from '../view/local.js';
 import {Renderer} from '../render/renderer.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 import {drawSprite, spriteKeys, spriteBox, MARK, FIGURE, FULL} from '../render/art/sprite.js';

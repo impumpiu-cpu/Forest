@@ -6,27 +6,27 @@
 //
 //   cellPlan(a, i) → {seed, ref, region, extra} — plain data, independent of the local map's size,
 //   kept in the game's settings as `cfg.cell` and turned into a site by makeSite.
-import {realmBand} from '../atlas/towns.js';
-import {cellBiomes, biomeAt} from '../atlas/biomes.js';
-import {cellGeology} from '../atlas/geology.js';
-import {faunaAt, faunaCell} from '../atlas/fauna.js';
-import {lairAt} from '../atlas/lairs.js';
-import {roadAccess, roadLevel} from '../atlas/roads.js';
-import {riverKind} from '../atlas/hydrology.js';
-import {latitude} from '../atlas/latitude.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {realmLabel} from '../atlas/realms.js';
-import {atWar, trades, realmAlign} from '../atlas/diplomacy.js';
-import {townLabel} from '../atlas/towns.js';
+import {realmBand} from '../atlas/index.js';
+import {cellBiomes, biomeAt} from '../atlas/index.js';
+import {cellGeology} from '../atlas/index.js';
+import {faunaAt, faunaCell} from '../atlas/index.js';
+import {lairAt} from '../atlas/index.js';
+import {roadAccess, roadLevel} from '../atlas/index.js';
+import {riverKind} from '../atlas/index.js';
+import {latitude} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
+import {realmLabel} from '../atlas/index.js';
+import {atWar, trades, realmAlign} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {clamp, cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
-import {cultPool} from '../atlas/necro.js';
+import {cultPool} from '../atlas/index.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
 import {BIOMES} from '../data/biomes.js';
-import {faunaLevel} from '../world/region.js';
+import {faunaLevel} from '../local/index.js';
 import {SEAM, LAIR_BANDS, WAR_ONLY_BANDS, RAID_UNRULED, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
 // the raid band of a tribe's folk (by the lair kinds of its species), read when asked (the lairs' table edits `species`)
 const folkBand = sp => { let out = null; for (const L of LAIRS.all()) if (L.tribe && LAIR_BANDS[L.id] && L.species === sp) out = LAIR_BANDS[L.id]; return out; };

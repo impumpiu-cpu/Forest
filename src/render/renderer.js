@@ -1,17 +1,17 @@
 // Canvas renderer. Every field is painted into its own offscreen canvas at 1 px per cell and
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
-import {CARCASS} from '../agents/carcass.js';
-import {hpShare} from '../agents/agent.js';
+import {CARCASS} from '../view/local.js';
+import {hpShare} from '../view/local.js';
 import {BY_CODE, T, WALKABLE, isWater} from '../data/terrain.js';
-import {airTemp} from '../world/heat.js';
+import {airTemp} from '../view/local.js';
 import {SPECIES, isSentient} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {RESOURCES} from '../data/resources.js';
 import {nightness} from '../core/time.js';
 import {clamp} from '../core/util.js';
-import {DX, DY} from '../world/grid.js';
-import {FAR} from '../nav/navigation.js';
+import {DX, DY} from '../view/local.js';
+import {FAR} from '../view/local.js';
 import {LOOKS} from './looks.js';
 import {skin} from './skin.js';
 import {ART} from './art/index.js';

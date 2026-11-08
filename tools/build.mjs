@@ -13,9 +13,13 @@ buildSprites();   // the pictures (src/art/*.svg → src/art/sprites.js) as they
 const res = await build({entryPoints: ['src/app/main.js'], bundle: true, format: 'iife', write: false, minify: false, target: 'es2020',
   define: {__BUILD__: JSON.stringify('сборка ' + commit)}});
 const js = res.outputFiles[0].text;
-const css = readFileSync('style.css', 'utf8');
+const css = readFileSync('style.css', 'utf8'), shell = readFileSync('shell.css', 'utf8');
+// the fonts go in as data: the one file needs no fonts/ beside it
+const fonts = readFileSync('fonts/fonts.css', 'utf8').replace(/url\(([^)]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync('fonts/' + f).toString('base64')})`);
 const html = readFileSync('forest.html', 'utf8')
+  .replace('<link rel="stylesheet" href="fonts/fonts.css">', () => `<style>\n${fonts}</style>`)
   .replace('<link rel="stylesheet" href="style.css">', () => `<style>\n${css}</style>`)
+  .replace('<link rel="stylesheet" href="shell.css">', () => `<style>\n${shell}</style>`)
   .replace('<script type="module" src="src/app/main.js"></script>', () => `<script>\n${js}</script>`);
 mkdirSync('dist', {recursive: true});
 writeFileSync('dist/forest.html', html);

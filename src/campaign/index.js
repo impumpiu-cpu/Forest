@@ -1,10 +1,10 @@
 // The campaign's clock: the world's season (atlas/history.js stepHistory), with the caravan's day after
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
-import {stepHistory, startHistory} from '../atlas/history.js';
+import {stepHistory, startHistory} from '../atlas/index.js';
 import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
-import {personOf, agedOut} from '../atlas/persons.js';
+import {personOf, agedOut} from '../atlas/index.js';
 import {upgradeMembers} from './start.js';
 
 export {newCampaign, capitals} from './start.js';
@@ -79,3 +79,12 @@ export function socialHash(K) {
   for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); }
   return (h >>> 0).toString(16);
 }
+
+// — the door: what the other systems and the screen take from the campaign —
+export {capacity, load, wheeled} from './baggage.js';
+export {campDone, openCamp, stepCamp} from './camp.js';
+export {dateOf, lineLevel, readLines} from './chronicle.js';
+export {baggageText, isCore, rank} from './march.js';
+export {reasonsOf} from './social.js';
+export {FATES, HOWS, fightReportText, fightStats, groupText, walkReportText, walkStats} from './stats.js';
+export {workText} from './works.js';

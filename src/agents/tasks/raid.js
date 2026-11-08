@@ -11,7 +11,7 @@ import {log} from '../../core/log.js';
 import {squadOf, noteHome, SQUAD} from '../squad.js';
 import {liveById} from '../lookup.js';
 import {TACTICS, TASK} from '../../data/behaviour.js';
-import {dress as dressWound, stabilize} from '../wounds.js';
+import {dressWound, stabilize} from '../wounds.js';
 import {CONDITIONS} from '../../data/conditions.js';
 import {done, fail, mill, campMill} from './common.js';
 
