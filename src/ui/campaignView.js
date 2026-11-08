@@ -27,6 +27,7 @@ import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
+import {SAY_EVENT} from './shell/shell.js';
 import {CampSetupShell} from './shell/landShell.js';
 import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
@@ -42,7 +43,7 @@ import {scaleOf} from '../view/world.js';
 import {townLabel} from '../view/world.js';
 import {capacity, load, wheeled} from '../view/campaign.js';
 import {baggageText, rank, isCore} from '../view/campaign.js';
-import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps} from './campSocial.js';
+import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps, fireLines} from './campSocial.js';
 const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
 import {questHint} from '../view/world.js';
@@ -524,7 +525,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     if (!meet) return;
     // the scene shows the meeting as it was: a speaker at a time, never deciding again (ui/campSocial.js drawFire)
     const last = fireSteps(K, meet), F = this.fire = {meet, step: this.clock.pace === 'max' ? last : 0, playing: this.clock.pace !== 'max', timer: 0};
-    const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; };
+    const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; this.announce(K, meet, F.step); };
     F.show = show;
     const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= last) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
     $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= last) F.step = 0; show(); tick(); });
@@ -533,6 +534,13 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     show(); tick();
   }
 
+  // a line of the scene, told to the screen (ui/shell/campShell.js: a word over the speaker's portrait): the speakers' ids
+  // and what they say; the last line (what was decided) has no speaker
+  announce(K, meet, step) {
+    const line = fireLines(K, meet)[step]; if (!line || !line.who?.length) return;
+    const key = `${meet.day}:${meet.point}:${step}`; if (this.saidKey === key) return; this.saidKey = key;
+    document.dispatchEvent(new CustomEvent(SAY_EVENT, {detail: {who: line.who, said: line.said, kind: line.kind}}));
+  }
   // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one
   renderLog() {
     const box = $('campLog'), K = this.atlas?.campaign;

@@ -75,6 +75,7 @@ body.shelled > .wrap > header{display:none}
 .sh-last .body div b{color:var(--fg);font-weight:400}
 /* the strip along the bottom */
 .sh-strip{grid-column:2;grid-row:3;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.sh-strip.sh-party{overflow:visible}
 .sh-strip > .body{flex:1;min-height:0;overflow:auto;padding:calc(6 * var(--u)) calc(10 * var(--u))}
 .sh-strip .obs-chron{display:flex;flex-direction:column;gap:6px;background:transparent;border:0;padding:0;height:100%}
 .sh-strip .obs-chron .log{flex:1;min-height:0;overflow:auto;max-height:none}
@@ -94,7 +95,9 @@ body.shelled > .wrap > header{display:none}
 .sh-party .roster .rm.dead .role{border-color:#555}
 .sh-party .arrow{flex:none;width:calc(26 * var(--u));background:transparent;border:1px solid var(--sh-edge);color:var(--muted);font-size:calc(18 * var(--u));padding:0;border-radius:calc(5 * var(--u))}
 /* a word said by the fire, over the company */
-.sh-say{position:absolute;bottom:calc(100% + 6px);left:calc(100 * var(--u));max-width:calc(420 * var(--u));background:#f3e9c9;color:#2a2416;border-radius:calc(8 * var(--u));padding:calc(6 * var(--u)) calc(10 * var(--u));font-size:calc(13 * var(--u));box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;transition:left .25s}
+.sh-say{position:absolute;bottom:calc(100% + 6px);left:calc(100 * var(--u));max-width:calc(360 * var(--u));z-index:6;background:#f3e9c9;color:#2a2416;border-radius:calc(8 * var(--u));padding:calc(6 * var(--u)) calc(10 * var(--u));font-size:calc(13 * var(--u));box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;transition:left .25s}
 .sh-say:after{content:"";position:absolute;left:calc(20 * var(--u));top:100%;border:calc(7 * var(--u)) solid transparent;border-top-color:#f3e9c9}
 .sh-say b{color:#6b3f1d}
+.sh-say[data-side="left"]:after{left:calc(8 * var(--u));border-top-color:transparent;border-right-color:#f3e9c9;top:40%;left:-14px}
+.sh-say[data-side="right"]:after{left:auto;right:-14px;border-top-color:transparent;border-left-color:#f3e9c9;top:40%}
 .sh-say[hidden]{display:none}

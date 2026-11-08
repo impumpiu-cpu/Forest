@@ -8,6 +8,7 @@
 import {$} from '../dom.js';
 import {realmLand} from '../../view/world.js';
 
+export const SAY_EVENT = 'camp-say';   // a word said in the company, from the screen's view to the shell (ui/campaignView.js announce → ui/shell/campShell.js speak)
 const BASE_H = 1080;   // the window height the sizes of shell.css are drawn for (--u: 1px)
 export const el = (tag, cls, html) => { const d = document.createElement(tag); if (cls) d.className = cls; if (html != null) d.innerHTML = html; return d; };
 
