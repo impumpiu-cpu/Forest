@@ -61,6 +61,7 @@ import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 import {share, levelEvening, levelsNow, autoWork} from './experience.js';
+import {companyVal} from './perks.js';
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -526,10 +527,10 @@ function dayMeetings(a, K, r, marched) {
   }
   // what the scouts see: the first sight of a strong thing near
   // a pursuer stronger than they are: they muddle the trail and try to slip away
-  const sight = (CAMPAIGN.fog.sight + (guided(K) ? HIRES.guide.sight : 0)) * scaleOf(a), P = caravanMight(K);
+  const sight = (CAMPAIGN.fog.sight + (guided(K) ? HIRES.guide.sight : 0) + companyVal(K, 'sight')) * scaleOf(a), P = caravanMight(K);   // (and a pathfinder's eye: campaign/perks.js)
   for (const t of pursuers(a, K, sight)) {
     if (FOES[THINGS[t.kind].foe].might * t.strength <= P * BUBBLE.evadeAt) continue;
-    if (r() < BUBBLE.evade + (guided(K) ? BUBBLE.guideEvade : 0)) {
+    if (r() < BUBBLE.evade + (guided(K) ? BUBBLE.guideEvade : 0) + companyVal(K, 'evade')) {   // (a gnoll smells the pursuit: campaign/perks.js)
       lose(K, t, BUBBLE.lost); K.stats.evaded = (K.stats.evaded || 0) + 1;
       if (r() < BUBBLE.evadeTold) say(a, K, `За караваном шли ${t.label}: путали следы${guided(K) ? ' по тропам проводника' : ''} и ушли от погони.`, 'sight');
     }
@@ -662,7 +663,7 @@ export function caravanDay(a, K, day) {
   if (!ended(K) && K.day >= yearsOf(K) * YEAR_DAYS) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
-  reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
+  reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0) + companyVal(K, 'sight') * scaleOf(a));
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit (none over the water)
   if (K.quest && !ended(K) && !sailing) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');

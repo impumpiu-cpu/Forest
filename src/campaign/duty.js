@@ -21,6 +21,7 @@ import {fateOf} from '../social/fate.js';
 import {tracing, noteDecision, r3} from '../core/decide.js';
 import {TRAITS} from '../data/traits.js';
 import {award} from './experience.js';
+import {perkMul, perkVal} from './perks.js';
 
 const loadOf = m => ((m.social ||= {}).load ||= {tired: 0, watched: 0, lastWatch: null});
 export const tiredOf = m => m.social?.load?.tired || 0;
@@ -55,7 +56,7 @@ function whomToAsk(K, asker, free) {
 function answer(K, asked, asker, r) {
   const A = DUTY.answer, t = traitsOf(asked), w = wordOf(K, asked, asker);
   const why = {base: A.base, bond: A.bond * bondOf(K, asked.id, asker.id), tired: A.tired * tiredOf(asked), owes: A.owes * owes(K, asked, asker), broke: A.broke * w.broke,
-    ...(t.includes('lazy') ? {lazy: A.lazy} : {}), ...(t.includes('diligent') ? {diligent: A.diligent} : {}), noise: A.noise * (2 * r() - 1)};
+    ...(t.includes('lazy') ? {lazy: A.lazy} : {}), ...(t.includes('diligent') ? {diligent: A.diligent} : {}), ...(perkVal(asked, 'swapYes') ? {relief: perkVal(asked, 'swapYes')} : {}), noise: A.noise * (2 * r() - 1)};   // (relief: a perk, «Сменщик» — campaign/perks.js)
   const v = Object.values(why).reduce((x, y) => x + y, 0);
   return {say: v >= 0 ? 'yes' : v >= -DUTY.later ? 'later' : 'no', v, why};
 }
@@ -110,7 +111,7 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
     }
   } finally { done(); }
   // the night: the watchmen tire, the others sleep
-  for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch); L.watched++; L.lastWatch = K.day; award(K, m, 'watch'); } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
+  for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch * perkMul(m, 'watchTired')); L.watched++; L.lastWatch = K.day; award(K, m, 'watch'); } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
   // to the end of the queue go those who stood (or would have stood: the one relieved too — its turn is taken)
   const went = new Set([...on.map(m => m.id), ...relieved, ...S.commitments.filter(c => c.end === K.day && c.status === 'fulfilled').map(c => c.creditor)]);
   D.queue = [...D.queue.filter(id => !went.has(id)), ...D.queue.filter(id => went.has(id))];

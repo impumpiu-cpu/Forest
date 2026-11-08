@@ -160,6 +160,7 @@ export function openCamp(S) {
     if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + sunTicks(w, e.ticks)}));
     if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + sunTicks(w, x.ticks)}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
+    if (m.perks?.length) { ag.perks = m.perks.map(p => ({id: p.id, rank: p.rank})); ag.kinHere = S.members.filter(x => x.alive && !x.captive && x.race === m.race).length; }   // its perks (data/perks.js), and how many of its kind are in the company (a goblin's herd)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped

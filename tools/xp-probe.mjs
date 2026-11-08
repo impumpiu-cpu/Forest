@@ -9,6 +9,7 @@ import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {COMBAT_ROLES} from '../src/data/roles.js';
 import {ACTS} from '../src/data/experience.js';
+import {PERKS} from '../src/data/perks.js';
 import {need} from '../src/campaign/experience.js';
 
 const worlds = +(process.argv[2] || 2), arg = process.argv[3] || 'auto', asJson = process.argv.includes('--json');
@@ -20,7 +21,7 @@ const add = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 
 const out = {};
 for (const mode of modes) {
-  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0};
+  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0, perks: {}, firstPerk: [], perksAt130: []};
   for (let s = 0; s < worlds; s++) {
     const base = generateAtlas({seed: String(777 + s * 13), size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
     const fz = JSON.stringify(saveAtlas(base));
@@ -38,6 +39,9 @@ for (const mode of modes) {
         R.members.push(row);
         for (const [id, xp] of Object.entries(m.xpOf || {})) { add(R.srcBy, id, xp); R.src[ACTS.get(id).ground ? 'ground' : 'act'] += xp; }
         for (const g of m.grew || []) { add(R.letters, g.stat ?? '—'); (R.levelDays[g.level] ||= []).push(g.day - (m.joined ?? 0)); }
+        for (const p of m.perks || []) add(R.perks, p.id);
+        if (m.perks?.length) R.firstPerk.push(Math.min(...m.perks.map(p => p.day)) - (m.joined ?? 0));
+        if (days >= 130) R.perksAt130.push((m.perks || []).filter(p => p.day - (m.joined ?? 0) <= 130).length);
         (R.byRole[role] ||= []).push(row); (R.byRace[m.race] ||= []).push(row);
         if (m.fight && COMBAT_ROLES.get(m.fight).holdsLine && !(m.acts?.killBlow || m.acts?.killShot)) R.cases.shieldNoKill.push(row);
         if (m.master || Object.values(m.local?.skill || {}).some(v => v >= 0.45)) R.cases.master.push(row);
@@ -58,6 +62,8 @@ for (const mode of modes) {
     byRole: Object.fromEntries(Object.entries(R.byRole).map(([k, v]) => [k, sumUp(v)])),
     byRace: Object.fromEntries(Object.entries(R.byRace).map(([k, v]) => [k, sumUp(v)])),
     cases: Object.fromEntries(Object.entries(R.cases).map(([k, v]) => [k, sumUp(v)])),
+    perks: Object.fromEntries(Object.entries(R.perks).sort((p, q) => q[1] - p[1])), neverTaken: PERKS.all().map(P => P.id).filter(id => !R.perks[id]),
+    firstPerkDay: median(R.firstPerk), perksBy130: median(R.perksAt130),
     mean: sumUp(all)};
 }
 console.log(asJson ? JSON.stringify(out) : JSON.stringify(out, null, 1));

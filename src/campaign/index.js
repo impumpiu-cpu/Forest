@@ -87,5 +87,6 @@ export {dateOf, lineLevel, readLines} from './chronicle.js';
 export {baggageText, isCore, rank} from './march.js';
 export {reasonsOf} from './social.js';
 export {levelOn, need, specialOn, grewBy, growText} from './experience.js';
+export {perksBy, perkLabel, perkAbout, perkWhy} from './perks.js';
 export {FATES, HOWS, fightReportText, fightStats, groupText, walkReportText, walkStats} from './stats.js';
 export {workText} from './works.js';

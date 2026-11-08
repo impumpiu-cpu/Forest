@@ -18,6 +18,7 @@ import {EFFECTS, NORM} from '../data/special.js';
 import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, CAMP_KIT, FIELD_BUILD, kitOf} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {potionKeep} from '../data/potions.js';
+import {perkVal} from './perks.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const bulk = id => (RESOURCES.has(id) ? RESOURCES.get(id).bulk ?? 1 : 1);
@@ -71,7 +72,8 @@ export function assign(K) {
 // ── room
 export function capacity(K) {
   let u = 0;
-  for (const m of alive(K)) u += (m.back ?? 1) * CELL + (m.captive ? (kitOf(K).bearers || 0) * BOX : 0);   // (the greenskins' captives carry a box besides)
+  for (const m of alive(K)) u += (m.back ?? 1) * CELL * (1 + perkVal(m, 'carry')) +   // (a strong back carries more: «Крепкая спина», campaign/perks.js)
+     (m.captive ? (kitOf(K).bearers || 0) * BOX : 0);   // (the greenskins' captives carry a box besides)
   for (const b of K.beasts) if (b.hp > 0) { const B = BEASTS[b.kind]; u += (B.cells || 0) * CELL + (B.boxes || 0) * BOX; }
   for (const v of K.vehicles) if (v.pulled) u += VEHICLES[v.kind].boxes * BOX;
   return u;

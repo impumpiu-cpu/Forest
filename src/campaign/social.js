@@ -14,6 +14,7 @@ import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
 import {FACT_KINDS} from '../data/social.js';
 import {factActs} from './experience.js';
+import {perkMul} from './perks.js';
 const FACT_KINDS_OF = f => FACT_KINDS[f.kind] || {weight: {}};
 
 export const SOCIAL_VERSION = 1;
@@ -119,6 +120,7 @@ export function campaignFact(K, kind, parts) {
 // a bond moved by a deed of the campaign's day (the watch, campaign/duty.js): the one place it is moved, the fact its reason
 export function bondBy(K, from, to, v, f) {
   if (!v) return;
+  if (v > 0) { const A = K.members.find(m => m.id === from), B = K.members.find(m => m.id === to); if (A && B && A.race !== B.race) v *= perkMul(A, 'bondOther'); }   // (one of another race grows dear faster: «Свой среди чужих», campaign/perks.js)
   const S = ensureSocial(K), row = S.relations[from] ||= {};
   row[to] = clampV((row[to] || 0) + v);
   if (f) { const l = (S.why[from] ||= {})[to] ||= []; if (!l.includes(f.id)) l.push(f.id); if (l.length > SOCIAL.whyMax) l.shift(); }

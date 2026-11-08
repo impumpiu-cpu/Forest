@@ -17,6 +17,7 @@ import {SKILLS} from '../data/skills.js';
 import {RETINUE} from '../data/campaign.js';
 import {COMBAT_ROLES} from '../data/roles.js';
 import {campaignFact} from './social.js';
+import {pickPerk, perkLabel} from './perks.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const r2 = v => Math.round(v * 100) / 100;
@@ -89,6 +90,11 @@ export function fightActs(K, d, how, win, rec, present) {
   const danger = clamp(theirs / ours, XP.danger[0], XP.danger[1]);
   const ms = present.filter(m => m.alive && !m.captive);
   share(K, ms, 'fight', 1, {xp: ACTS.get('fight').xp * danger});
+  // the counts the perks ask, both modes see them: fights in a role of its group, fights beside one of another race
+  for (const m of ms) {
+    const g = groupOf(m); if (g) m.acts[`fight:${g}`] = (m.acts[`fight:${g}`] || 0) + 1;
+    if (ms.some(o => o !== m && o.race !== m.race)) m.acts.beside = (m.acts.beside || 0) + 1;
+  }
   if (how === 'guard' && win) share(K, ms, 'storm');
   if (d.boss && win) share(K, ms, 'boss');
   for (const m of ms) if (!rec.acted?.has(m.id)) award(K, m, 'role');
@@ -128,11 +134,11 @@ export function factActs(K, f) {
 export function levelEvening(a, K, say = () => {}) {
   for (const m of alive(K)) {
     ensureXp(m);
-    const picks = [], grown = new Set();
-    while (m.xp >= need(m.level + 1)) picks.push(levelUp(K, m, grown));
+    const picks = [], grown = new Set(), perks = [];
+    while (m.xp >= need(m.level + 1)) { picks.push(levelUp(K, m, grown)); const p = pickPerk(K, m); if (p) perks.push(p); }   // a perk a level, while there is one it may take (campaign/perks.js)
     if (!picks.length) continue;
     m.xpBy = {}; m.lvOf = {}; m.lvWork = {};
-    say(levelLine(m, picks), [m.id]);
+    say(levelLine(m, picks) + perkLine(m, perks), [m.id]);
   }
 }
 const capOf = (m, s) => SPECIES.get(m.race).special?.[s]?.[1] ?? Infinity;
@@ -184,6 +190,12 @@ export function levelLine(m, picks) {
   const vals = got.map(p => `${STAT_LABEL[p.stat]} ${m.special[p.stat]}`).join(', ');
   const more = picks.length > 1 ? (got.length < picks.length ? `, сразу ${picks.length} уровня — дальше расти ${f ? 'ей' : 'ему'} уже некуда` : `, сразу ${picks.length} уровня`) : '';
   return `${m.name} ${join(grew)}${whys.length ? ` — не зря ${join(whys)}` : ''} (${vals}; ${lv}${more}).`;
+}
+// «Выучил „Плечом к плечу“.»
+function perkLine(m, perks) {
+  if (!perks.length) return '';
+  const f = m.gender === 'f', ls = perks.map(p => perkLabel(p.id, p.rank));
+  return ` ${f ? 'Выучила' : 'Выучил'} ${ls.length > 1 ? `${ls.slice(0, -1).join(', ')} и ${ls.at(-1)}` : ls[0]}.`;
 }
 const STAT_LABEL = {S: 'Сила', P: 'Восприятие', E: 'Выносливость', C: 'Харизма', I: 'Интеллект', A: 'Ловкость'};
 function whyText(why, f) {

@@ -27,6 +27,8 @@ import {degreeOf, passed, degreeValue} from '../data/checks.js';
 import {caughtFrom} from '../data/afflictions.js';
 import {catchIll} from './afflictions.js';
 import {noteKill} from './acts.js';
+import {perkOf, hasPerkA, PERKS} from '../data/perks.js';
+import {CONDITIONS} from '../data/conditions.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 // the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
@@ -70,6 +72,7 @@ function fall(w, a, cause, by, trauma) {
   releaseAll(w, a);
   noteHuntDeath(w, a);
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
+  if (a.member != null) bloodPrice(w, a);   // one of the caravan down: the orcs who took the blood price rage (data/perks.js)
   if (a.faction !== 'colony') { noteFallen(w, a); noteKill(a, by, a.hurtBy?.id === by?.id && !!a.hurtBy?.far, false); }   // a raider down is one lost to its band (agents/squad.js), and the downer's act (agents/acts.js)
   a.downed = {since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma};
   if (a.bleeding) a.bleeding = null; if (a.stunned) a.stunned = null;   // the fall is the wound now: it bleeds by its own clock (the curve 'bleed')
@@ -106,6 +109,7 @@ export function dressWound(w, a, medicine = 0) {
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
   const d = dressWound(w, a, helper?.skill?.medicine || 0); if (!d) return;
+  const up = perkOf(helper, 'dressHp'); if (up > 0) a.hp = Math.min(maxHp(a), a.hp + up * maxHp(a));   // stands up stronger (a perk: «Полевая перевязь», data/perks.js)
   // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)
   const FV = caughtFrom('dressed');
   if (FV && FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, FV.id);
@@ -126,3 +130,16 @@ export function healWounds(w, a) {
   think(w, a, 'woundHealed');
 }
 
+
+// «Кровная плата» (data/perks.js): one of the caravan falls — those of its own who took the perk and stand within reach
+// of it are seized by a rage (data/conditions.js 'bloodrage': its strength, pace and nerve for its time)
+function bloodPrice(w, a) {
+  const P = PERKS.get('bloodPrice').fight;
+  for (const o of w.agents) {
+    if (o === a || o.dead || o.downed || o.member == null || !hasPerkA(o, 'bloodPrice')) continue;
+    if (Math.hypot(o.x - a.x, o.y - a.y) > P.bloodReach) continue;
+    if ((o.effects || []).some(e => e.id === P.bloodrage && w.tick < e.until)) continue;
+    o.effects = [...(o.effects || []), {id: P.bloodrage, until: w.tick + sunTicks(w, CONDITIONS.get(P.bloodrage).ticks)}];
+    refreshBody(o); o.flash = 4;
+  }
+}

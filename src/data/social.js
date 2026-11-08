@@ -50,6 +50,7 @@ export const FACT_KINDS = {
   frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
   // experience (campaign/experience.js): a member grew a level
   levelUp:   {label: 'набрался опыта', weight: {by: 0.3, saw: 0.05}},
+  perkTaken: {label: 'выучил новое', weight: {by: 0.3, saw: 0.05}},
 };
 // the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
 // one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);

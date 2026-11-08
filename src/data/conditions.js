@@ -49,6 +49,8 @@ CONDITIONS.registerAll([
     note: 'берсерк после раны (data/roles.js FRENZY): удар сильнее, шаг быстрее, увёртливее; потом — усталость'},
   {id: 'spent', kind: 'state', where: 'effects', label: 'усталость после бешенства', ticks: 120, mods: {speed: 0.8},
     note: 'столько же, сколько длилось бешенство: шаг медленнее; пока не пройдёт, бешенства нет'},
+  {id: 'bloodrage', kind: 'state', where: 'effects', label: 'кровная ярость', ticks: 80, mods: {str: 1.2, speed: 1.1, bravery: 1},
+    note: 'перк орка «Кровная плата» (data/perks.js): рядом упал свой — удар сильнее, шаг быстрее, страха нет; без усталости после'},
   {id: 'drunk', kind: 'state', where: 'drankAt', label: 'во хмелю', ticks: 300, note: 'кружка браги на вечернем совете (settlement/life.js): ticks тиков; у рас, что живут брагой, — их работа и срок (brew у расы)'},
   // ── an illness, withdrawal, the rot (data/afflictions.js: how they are caught, the stages of an illness)
   {id: 'ill', kind: 'state', where: 'ill', label: 'болен', note: 'недуг со стадиями («Недуги»): стадия — что делает с телом'},

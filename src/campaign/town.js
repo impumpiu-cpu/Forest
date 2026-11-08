@@ -42,6 +42,7 @@ import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {allowed} from '../data/commands.js';
 import {award} from './experience.js';
+import {companyVal, companyMul} from './perks.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => lineHas(t.built, id));   // (a tier stands for its base: a town of deep mines has a mine)
@@ -107,8 +108,8 @@ function wareOffers(t, a) {
   for (const id of shelf) for (const w of WARES[id] || []) if ((t.stock?.[offerGood({kind: 'item', id: w})] || 0) > 0) ids.add(w);
   return [...ids].map(id => ({kind: 'item', id}));
 }
-export const offers = (t, a = null) => [...OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!o.peoples || o.peoples.includes(t.people))), ...wareOffers(t, a)]
-  .filter(o => (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
+export const offers = (t, a = null, better = 0) => [...OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!o.peoples || o.peoples.includes(t.people))), ...wareOffers(t, a)]
+  .filter(o => (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t, better));   // (better: a step above what the town sells to all — «Найти получше», campaign/perks.js)
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
@@ -155,7 +156,7 @@ function wants(a, K, t, st) {
   };
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
-  for (const o of offers(t, a)) {
+  for (const o of offers(t, a, companyVal(K, 'better'))) {
     if (o.kind === 'item' && !free(K).some(m => !m.former && mayTake(m.race, o.id))) continue;   // nobody free of the caravan would carry it (the elves and iron): the same as equip() gives to
     if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) want('golem', o); continue; }
     if (o.kind === 'beast' && BEASTS[o.id].use === 'food') { if (herdOf(K) < herdMax(K)) want('herd', o); continue; }   // the herd: milk and meat on the way   // a golem: one guard of the caravan, after the arms
@@ -275,7 +276,8 @@ function tradeNow(a, K, t, st) {
   sell(id => ore.has(id));   // the ore for the smith kept (and the potions with a few of their makings: potionKeep)
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
   if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, townPurse(t))) unsold.push('spoils');
-  else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  // (the spoils dearer when a dwarf wastes nothing: «Всё в дело», campaign/perks.js companyMul)
+  else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell * companyMul(K, 'spoils')); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);

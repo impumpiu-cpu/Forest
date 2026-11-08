@@ -8,7 +8,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
-import {reasonsOf, levelOn, need, specialOn, grewBy, growText} from '../view/campaign.js';
+import {reasonsOf, levelOn, need, specialOn, grewBy, growText, perksBy, perkLabel, perkAbout, perkWhy} from '../view/campaign.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
 import {dress, gearDef} from '../view/local.js';
@@ -90,9 +90,11 @@ export function memberCardHtml(K, m, day = Infinity) {
   const lv = levelOn(K, m, day), sp = specialOn(K, m, day), now = day >= K.day;
   const letters = ['S', 'P', 'E', 'C', 'I', 'A', 'L'].filter(k => sp[k] != null).map(k => `${{S: 'СИЛ', P: 'ВОС', E: 'ВЫН', C: 'ХАР', I: 'ИНТ', A: 'ЛОВ', L: 'УДЧ'}[k]} ${sp[k]}`).join(' · ');
   const grew = grewBy(K, m, day).slice(-4).reverse().map(g => `<li>${g.level}-й, день ${g.day + 1}: ${esc(growText(m, g))}</li>`).join('');
+  const perks = perksBy(K, m, day).map(p => `<li><b>${esc(perkLabel(p.id, p.rank))}</b> — ${esc(perkAbout(p.id))}${p.why && p.why !== 'level' ? ` <small class="muted">(${esc(perkWhy(p.why))})</small>` : ''}</li>`).join('');   // (campaign/perks.js)
   const xpLine = m.captive ? '' : `<p>Уровень ${lv}${now && m.xp != null ? ` · опыт ${Math.floor(m.xp)} из ${need((m.level || 1) + 1)}` : ''}</p>`;
   return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${xpLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${grew ? `<h5>Рост</h5><ul>${grew}</ul>` : ''}` +
+    `${perks ? `<h5>Перки</h5><ul>${perks}</ul>` : ''}` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;
 }
 
