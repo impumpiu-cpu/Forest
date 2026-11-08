@@ -10,7 +10,7 @@
 import {CAMP_WORKS} from '../data/camp.js';
 import {VEHICLES} from '../data/transport.js';
 import {T} from '../data/terrain.js';
-import {worksOf, workDone, spotNear, addWork, freeCell} from '../settlement/works.js';
+import {worksOf, workDone, spotNear, addWork, freeCell} from '../local/index.js';
 
 const W = () => CAMP_WORKS;
 

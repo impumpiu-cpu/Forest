@@ -5,9 +5,9 @@
 // runs) settles it at once instead: the foe's might against the caravan's.
 import {takeEscorts} from './duty.js';
 import {isFighter, inLine, toolOf} from '../data/campaign.js';
-import {memberFate} from '../atlas/persons.js';
+import {memberFate} from '../atlas/index.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
-import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
+import {gearDef, gearType, gearValue, mayTake} from '../local/index.js';
 import {CAMP} from '../data/camp.js';
 import {AMBUSH} from '../data/bubble.js';
 import {BEASTS, VEHICLES, GETTING} from '../data/transport.js';

@@ -8,10 +8,10 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
-import {reasonsOf} from '../campaign/social.js';
+import {reasonsOf} from '../view/campaign.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
-import {dress, gearDef} from '../agents/equipment.js';
+import {dress, gearDef} from '../view/local.js';
 import {SPECIES} from '../data/species.js';
 
 // a variant by the meeting and the speaker, no stream drawn

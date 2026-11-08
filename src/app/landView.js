@@ -11,12 +11,12 @@
 import {MapView, ATLAS_OPTS} from '../ui/atlasView.js';
 import {ATLAS_SIZES, DEFAULT_ATLAS_CFG, SHAPE} from '../data/atlas.js';
 import {HEMISPHERES} from '../data/geology.js';
-import {ATLAS_STAGES} from '../atlas/stages.js';
-import {landDone} from '../atlas/generate.js';
-import {shapeCount} from '../atlas/shape.js';
-import {LandMaker} from '../atlas/landMaker.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {LAND_KIND} from '../atlas/save.js';
+import {ATLAS_STAGES} from '../view/world.js';
+import {landDone} from '../view/world.js';
+import {shapeCount} from '../view/world.js';
+import {LandMaker} from '../view/world.js';
+import {scaleOf} from '../view/world.js';
+import {LAND_KIND} from '../view/world.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadLand, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';

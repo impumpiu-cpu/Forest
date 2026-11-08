@@ -9,18 +9,18 @@
 //
 // Q (as campaign/quest.js) + {epic: true, calamity, hunt (0 … 2), nextHunt, started}; a clue: + {epitaph, grave,
 //   mini: {name, add}, nextServ}; the crown (the lair): kind 'seat', guard.boss: {name, add}
-import {scaleOf} from '../atlas/tectonics.js';
-import {killShare} from '../atlas/population.js';
+import {scaleOf} from '../atlas/index.js';
+import {killShare} from '../atlas/index.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {EPIC} from '../data/calamities.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 import {BUBBLE} from '../data/bubble.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {gatherFourth, tell as tellWorld, fallToCaravan, questCalamity, questHint} from '../atlas/calamity.js';
-import {wherePhrase} from '../atlas/lairs.js';
-import {raidGraves} from '../atlas/diplomacy.js';
-import {townLabel} from '../atlas/towns.js';
+import {gatherFourth, tell as tellWorld, fallToCaravan, questCalamity, questHint} from '../atlas/index.js';
+import {wherePhrase} from '../atlas/index.js';
+import {raidGraves} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
 import {reachable, foot, circle} from './quest.js';
 import {overSea} from './ferry.js';
 import {lairGuard} from './land.js';

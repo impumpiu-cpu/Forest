@@ -1,36 +1,36 @@
 // The inspector of the world map (docs/GAME.md «Наблюдатель»): what a click on the map selects — a party, a town (and
 // its realm), a lair, a ruin or the cell — and its card: what it is, what it has, what it thinks and plans. The card is
 // a view of the live objects (the selection keeps ids and is resolved anew each season), so it changes as the world does.
-import {moodOf} from '../atlas/mood.js';
+import {moodOf} from '../view/world.js';
 import {DEEDS, DEED_BAND_LABELS, deedLabel} from '../data/deeds.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
-import {necroLabel, zoneOf} from '../atlas/necro.js';
+import {necroLabel, zoneOf} from '../view/world.js';
 import {WORLD_PEOPLES, TOWN_LIFE} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
-import {seasonLabel} from '../atlas/history.js';
+import {seasonLabel} from '../view/world.js';
 import {alignLabel} from '../data/values.js';
-import {townAt} from '../atlas/peoples.js';
-import {townLabel} from '../atlas/towns.js';
-import {townFx, room, realmMetalWords, slotsUsed, slotsOf} from '../atlas/towns.js';
-import {siteRadius} from '../atlas/sites.js';
-import {partyAt} from '../atlas/parties.js';
-import {captiveCount, power} from '../atlas/lairs.js';
-import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
-import {stateOf, stateLabel, relation, ruinAt} from '../atlas/diplomacy.js';
-import {leaderName} from '../atlas/leaders.js';
-import {personOf} from '../atlas/persons.js';
-import {profileOf, rulerOf, rulerTitle} from '../atlas/polities.js';
-import {headsOf, bandSum} from '../atlas/population.js';
-import {townKin} from '../atlas/towns.js';
-import {scaleOf} from '../atlas/tectonics.js';
+import {townAt} from '../view/world.js';
+import {townLabel} from '../view/world.js';
+import {townFx, room, realmMetalWords, slotsUsed, slotsOf} from '../view/world.js';
+import {siteRadius} from '../view/world.js';
+import {partyAt} from '../view/world.js';
+import {captiveCount, power} from '../view/world.js';
+import {realmOf, realmLabel, realmTowns} from '../view/world.js';
+import {stateOf, stateLabel, relation, ruinAt} from '../view/world.js';
+import {leaderName} from '../view/world.js';
+import {personOf} from '../view/world.js';
+import {profileOf, rulerOf, rulerTitle} from '../view/world.js';
+import {headsOf, bandSum} from '../view/world.js';
+import {townKin} from '../view/world.js';
+import {scaleOf} from '../view/world.js';
 import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
-import {roseOf, townLean} from '../atlas/mind.js';
-import {projectOf, crewDays} from '../atlas/build.js';
-import {needsOf} from '../atlas/townNeeds.js';
+import {roseOf, townLean} from '../view/world.js';
+import {projectOf, crewDays} from '../view/world.js';
+import {needsOf} from '../view/world.js';
 import {ANSWERS} from '../data/townNeeds.js';
 import {LOSS_CAUSES, PARTY_KINDS, PARTY_STATES, MIND_FLAGS, RULES} from '../data/labels.js';
 

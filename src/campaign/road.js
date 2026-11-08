@@ -10,7 +10,7 @@ import {TONGUE, shareTongue} from '../data/tongues.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {free} from './captives.js';
 import {dangers} from './land.js';
-import {scaleOf} from '../atlas/tectonics.js';
+import {scaleOf} from '../atlas/index.js';
 import {allowed} from '../data/commands.js';
 
 const fameOf = (K, realm) => K.fame?.[realm] || {fame: 0, infamy: 0};

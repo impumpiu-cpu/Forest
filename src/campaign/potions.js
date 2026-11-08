@@ -13,9 +13,9 @@ import {SPECIES} from '../data/species.js';
 import {POTION, POTIONS, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
 import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
-import {gearDef} from '../agents/equipment.js';
+import {gearDef} from '../local/index.js';
 import {CONDITIONS} from '../data/conditions.js';
-import {useOfEffect, threatOf, rebelt, beltNeed} from '../agents/potions.js';
+import {useOfEffect, threatOf, rebelt, beltNeed} from '../local/index.js';
 import {DAY} from '../core/time.js';
 
 const carriers = K => alive(K).filter(m => !m.captive && !m.former);

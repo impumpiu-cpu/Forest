@@ -1,9 +1,9 @@
 // The land as the caravan sees it: how much food a cell gives to those who hunt and gather there, and
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
-import {realmBand} from '../atlas/towns.js';
-import {isAt} from '../atlas/persons.js';
-import {cellRegion as regionOf} from '../seam/cell.js';
+import {realmBand} from '../atlas/index.js';
+import {isAt} from '../atlas/index.js';
+import {cellRegion as regionOf} from '../seam/index.js';
 
 // a cell's region (seam/cell.js) is asked several times a day; the beasts in it change once a season, so it
 // is kept per cell until the world's season moves on (beside the world, never saved)
@@ -16,17 +16,17 @@ export function cellRegion(a, i) {
   if (!r) c.map.set(i, r = regionOf(a, i));
   return r;
 }
-import {faunaLevel} from '../world/region.js';
-import {lairAt} from '../atlas/lairs.js';
-import {faunaCell} from '../atlas/fauna.js';
-import {roadAccess} from '../atlas/roads.js';
+import {faunaLevel} from '../local/index.js';
+import {lairAt} from '../atlas/index.js';
+import {faunaCell} from '../atlas/index.js';
+import {roadAccess} from '../atlas/index.js';
 import {BIOMES} from '../data/biomes.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS, HOST_BANDS} from '../data/seam.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {RELATIONS} from '../data/relations.js';
-import {atWar} from '../atlas/diplomacy.js';
-import {cultPool, towerAt, necroLabel} from '../atlas/necro.js';
+import {atWar} from '../atlas/index.js';
+import {cultPool, towerAt, necroLabel} from '../atlas/index.js';
 import {NECRO} from '../data/lairs.js';
 import {SPECIES, onSpeciesChange} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
