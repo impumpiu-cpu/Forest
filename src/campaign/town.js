@@ -41,6 +41,7 @@ import {CAPTIVE} from '../data/captives.js';
 import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {allowed} from '../data/commands.js';
+import {award} from './experience.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => lineHas(t.built, id));   // (a tier stands for its base: a town of deep mines has a mine)
@@ -275,6 +276,7 @@ function tradeNow(a, K, t, st) {
   if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, townPurse(t))) unsold.push('spoils');
   else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
+  if (done.length) { const best = free(K).filter(m => !m.former).sort((p, q) => (q.local?.skill?.barter || 0) - (p.local?.skill?.barter || 0) || (q.special?.C || 0) - (p.special?.C || 0))[0]; award(K, best, 'trade'); }   // the best of them at the market struck the deals (campaign/experience.js)
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)

@@ -26,6 +26,7 @@ import {load} from './jobRunners.js';
 import {captiveDied} from '../settlement/captives.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {LEANS, DRAWN_AXES} from '../data/leans.js';
+import {noteKill} from './acts.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -119,6 +120,7 @@ function takeBackLoot(w, a, by) {
 
 export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.dead) return;
+  if (!a.downed) noteKill(a, by, a.hurtBy?.id === by?.id && !!a.hurtBy?.far);   // a caravan member's act (agents/acts.js); a fallen one was its downer's already
   a.dead = true; a.hp = 0;
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
   noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)

@@ -8,7 +8,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
-import {reasonsOf} from '../view/campaign.js';
+import {reasonsOf, levelOn, need, specialOn, grewBy, growText} from '../view/campaign.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
 import {dress, gearDef} from '../view/local.js';
@@ -86,7 +86,13 @@ export function memberCardHtml(K, m, day = Infinity) {
   const vows = (S.commitments || []).filter(c => (c.debtor === m.id || c.creditor === m.id) && c.made <= day).slice(-4).map(c =>
     `<li>${c.debtor === m.id ? `обещал${m.gender === 'f' ? 'а' : ''} ${esc(nameOf(K, c.creditor))}` : `${esc(nameOf(K, c.debtor))} обещал${K.members.find(x => x.id === c.debtor)?.gender === 'f' ? 'а' : ''}`} ${c.kind === 'escort' ? 'пойти рядом за едой' : 'подмену в дозоре'} — ${ST[asOf(c)] || asOf(c)}</li>`).join('');
   const fate = fateOf(m);
-  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
+  // experience (campaign/experience.js): the level and the letters as they stood on the day shown, the levels taken by then
+  const lv = levelOn(K, m, day), sp = specialOn(K, m, day), now = day >= K.day;
+  const letters = ['S', 'P', 'E', 'C', 'I', 'A', 'L'].filter(k => sp[k] != null).map(k => `${{S: 'СИЛ', P: 'ВОС', E: 'ВЫН', C: 'ХАР', I: 'ИНТ', A: 'ЛОВ', L: 'УДЧ'}[k]} ${sp[k]}`).join(' · ');
+  const grew = grewBy(K, m, day).slice(-4).reverse().map(g => `<li>${g.level}-й, день ${g.day + 1}: ${esc(growText(m, g))}</li>`).join('');
+  const xpLine = m.captive ? '' : `<p>Уровень ${lv}${now && m.xp != null ? ` · опыт ${Math.floor(m.xp)} из ${need((m.level || 1) + 1)}` : ''}</p>`;
+  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${xpLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
+    `${grew ? `<h5>Рост</h5><ul>${grew}</ul>` : ''}` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;
 }
 

@@ -21,6 +21,7 @@ import {pointCommands, allowed, leansOn} from '../data/commands.js';
 import {pickLanes, tracing, noteDecision, r3} from '../core/decide.js';
 import {COUNCIL} from '../data/campaign.js';
 import {councilChoose} from './council.js';
+import {share} from './experience.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -112,6 +113,7 @@ export function enterTown(a, K, t) {
   if (ofLeader) parts.push(ofLeader);
   done();
   K.inTown = {id: t.id, since: K.day, why}; K.lastVisit = K.day; K.stats.towns = (K.stats.towns || 0) + 1;
+  if (!(K.townsSeen ||= []).includes(t.id)) { K.townsSeen.push(t.id); share(K, K.members.filter(m => m.alive), 'town'); }   // a town of their first sight: the ground (campaign/experience.js)
   if (why === 'winter') K.winterYear = a.hist.year;
   say(a, K, `Караван вошёл в ${townLine(a, t, st)}${why === 'winter' ? ' на зимовку' : ''}${parts.length ? ': ' + parts.join('; ') : ''}. Казна: ${K.gold} зол.`, 'town');
 }

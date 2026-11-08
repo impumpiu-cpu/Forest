@@ -42,7 +42,7 @@ import {BUBBLE, THINGS} from '../data/bubble.js';
 import {scaleOf} from '../view/world.js';
 import {townLabel} from '../view/world.js';
 import {capacity, load, wheeled} from '../view/campaign.js';
-import {baggageText, rank, isCore} from '../view/campaign.js';
+import {baggageText, rank, isCore, levelOn} from '../view/campaign.js';
 import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps, fireLines} from './campSocial.js';
 const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
@@ -504,7 +504,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
     const day = sd; this.sideDay = day;
     $('campRoster').innerHTML = K.members.map(m => this.seenAs(m, day)).filter(Boolean).sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
-      const sp = SPECIES.get(m.race), rk = rank(K, m);
+      const sp = SPECIES.get(m.race), rk = m.captive ? rank(K, m) : `${rank(K, m)}, ур. ${levelOn(K, m, day)}`;   // (the level beside the role: campaign/experience.js)
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : '', m.belt?.length ? `в поясе: ${m.belt.map(r => RESOURCES.get(r).short).join(', ')}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
         `<small>${esc(raceLabel(sp))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;

@@ -48,6 +48,8 @@ export const FACT_KINDS = {
   // the peaceful life (campaign/company.js welcome; social.js judge)
   welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
   frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
+  // experience (campaign/experience.js): a member grew a level
+  levelUp:   {label: 'набрался опыта', weight: {by: 0.3, saw: 0.05}},
 };
 // the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
 // one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);

@@ -30,6 +30,10 @@ import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
+import {campActs, fightActs} from './experience.js';
+
+// the acts of a fight (data/experience.js): one who did one of them in a fight fought by its own deeds, not only by its place
+const FIGHT_ACTS = new Set(['killBlow', 'killShot', 'hit', 'shield', 'cover', 'bind', 'dress', 'tend']);
 
 // how long the local camps of a campaign took on this machine (not part of the campaign)
 export const CAMP_TIME = new WeakMap();
@@ -48,7 +52,11 @@ export function fight(a, K, d, r, how = 'night') {
   const before = alive(K).map(m => [m.id, m.hp]);
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
   delete K.fightSrc;
+  const camp = K.lastCamp;
   recordFight(a, K, d, how, win, before);
+  // the ground of the fight for all who stood in it, and the role's letter for whoever did nothing of its own there (campaign/experience.js)
+  const ids = new Set(before.map(([id]) => id)), acted = new Set((camp?.members || []).filter(mo => Object.keys(mo.acts || {}).some(id => FIGHT_ACTS.has(id))).map(mo => mo.id));
+  fightActs(K, d, how, win, {...K.fights.at(-1), acted}, K.members.filter(m => ids.has(m.id)));
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); if (d.kind !== 'army') famed(a, K, 'win'); }   // fame with the realm about (campaign/road.js); not for beating that realm's own army
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
@@ -137,6 +145,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local; if (mo.align) m.align = mo.align; (m.social ||= {}).mood = mo.mood || []; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null; if (mo.effects) m.effects = effectsIn(K, mo.effects); if (mo.wounds) m.wounds = woundsIn(K, mo.wounds); if (mo.marks) m.marks = [...new Set([...(m.marks || []), ...mo.marks])];
   }
+  campActs(K, o);   // what each did here by its own hand: experience (campaign/experience.js)
   // the bonds the camp came to, between those who were there (the fallen too: what was felt for them is kept)
   takeBonds(K, S.members.map(m => m.id), o.bonds); takeFacts(K, o.facts);
   takeEscorts(K, o.promises, (text, who) => say(a, K, text, 'people', false, who));   // the promises kept on the map, or why not (campaign/duty.js)

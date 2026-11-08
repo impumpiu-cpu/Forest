@@ -15,6 +15,7 @@ import {TRAITS} from '../data/traits.js';
 import {ensureSocial, bondOf} from './social.js';
 import {tiredOf} from './duty.js';
 import {missionOf, councilWeight} from './visit.js';
+import {award} from './experience.js';
 
 const V = () => COUNCIL.voice;
 // what one is made of for the council: its leanings on the mission's axes (pace ← persistence, caution ← 1 − risk, side ←
@@ -120,6 +121,7 @@ export function councilChoose(a, K, point, cmds, ask, r, {allowed = () => true, 
   const first = scores.map(v => ({...v, s: {...v.s}}));   // (what each wanted before the talk: the fire tells it)
   const talk = debate(K, scores, opts);
   const {option, w} = pickVoices(opts, scores, r, V().eps);
+  if (talk && option?.id === (talk.answer === 'met' ? talk.meet : talk.answer === 'yielded' ? null : talk.proposal)) award(K, K.members.find(m => m.id === talk.by), 'propose');   // its word carried the council (campaign/experience.js)
   // the meeting, as it was (for the scene at the fire and the cards)
   const S = ensureSocial(K), meet = {day: K.day, point, pick: option?.id ?? null, w: Object.fromEntries(Object.entries(w).map(([k, v]) => [k, Math.round(v * 100) / 100])),
     voices: first.map((v, k) => { const top = topOf(v, opts), now = topOf(scores[k], opts); return {id: v.id, want: top.id, why: v.why[top.id] || [], s: v.s, ...(now.id !== top.id ? {now: now.id} : {})}; }),

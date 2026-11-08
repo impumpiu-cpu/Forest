@@ -13,6 +13,7 @@ import {SOCIAL, STORY, TRUST, GRIEF, WELCOME, JUDGE} from '../data/social.js';
 import {makeFact} from '../social/facts.js';
 import {knowers, memoryOf, remember, partIn as partOf} from '../social/facts.js';
 import {FACT_KINDS} from '../data/social.js';
+import {factActs} from './experience.js';
 const FACT_KINDS_OF = f => FACT_KINDS[f.kind] || {weight: {}};
 
 export const SOCIAL_VERSION = 1;
@@ -85,6 +86,7 @@ export function takeFacts(K, facts) {
   for (const f of facts) {
     if (seen.has(f.id)) continue;
     S.facts.push(f); seen.add(f.id);
+    factActs(K, f);   // a deed that is its doer's act: experience (campaign/experience.js)
     for (const id of knowers(f)) { const m = byId.get(id); if (m) (m.social ||= {}).memory = remember(m.social.memory || [], memoryOf(f, id)); }
     const why = (a, b) => { if (a == null || b == null) return; const row = S.why[a] ||= {}, l = row[b] ||= []; if (!l.includes(f.id)) l.push(f.id); if (l.length > SOCIAL.whyMax) l.shift(); };
     if (f.params?.bond?.to) why(f.to, f.by);

@@ -60,6 +60,7 @@ import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
+import {share, levelEvening, levelsNow, autoWork} from './experience.js';
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -568,7 +569,7 @@ export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: 
   council: K.council?.day === d ? {pick: K.council.pick, n: K.council.opts.length} : null,
   crown: K.quest ? {state: K.quest.crown.state, carrier: K.quest.crown.carrier, exact: K.quest.crown.exact, seen: K.quest.crown.seen, r: K.quest.crown.area?.r ?? null} : null,
   rel: Object.fromEntries(Object.entries(K.social?.relations || {}).map(([a, row]) => [a, {...row}])),
-  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0]))});
+  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0])), lv: levelsNow(K)});
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
@@ -593,7 +594,7 @@ export function caravanDay(a, K, day) {
     // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
     if (frosty(a, K, seasonId)) { K.stats.frostDays = (K.stats.frostDays || 0) + 1; if (brewTheDay(K, 'cold', ms)) K.warm = K.day; }
     if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
-    march(a, K, pace(a, K, seasonId));
+    if (march(a, K, pace(a, K, seasonId)) > 0) share(K, alive(K), 'road');   // a day on the road: the ground (campaign/experience.js)
   }
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
@@ -603,6 +604,7 @@ export function caravanDay(a, K, day) {
   const onMap = camping && K.why && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
+  if (camping && K.why && !onMap && K.mode === 'auto' && core(K).length) autoWork(K);   // the stop's work, as a played one gives it (campaign/experience.js)
   if (!town && !sailing && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   const forage = ms.length * (camping ? Fo.camp * stopFood(a, K) : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap && !sailing) K.food += forage;
@@ -626,6 +628,7 @@ export function caravanDay(a, K, day) {
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
+  levelEvening(a, K, (text, who) => say(a, K, text, 'people', false, who));   // a level for whoever has the experience for it (campaign/experience.js)
   tell(K);   // what one lived through, told at the fire to those who did not see it (campaign/social.js)
   reconcile(K, (text, who) => say(a, K, text, 'people', false, who));   // a quarrel made up after a good turn in need (campaign/social.js)
   fadeDay(K);   // the bonds fade by the campaign's day, once (campaign/social.js)

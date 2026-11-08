@@ -131,6 +131,7 @@ import {KOPPEN, FAUNA_FLOOR} from '../biomes.js';
 import {EPILOGUE} from '../epilogue.js';
 import {FOLK_RAIDS} from '../seam.js';
 import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
+import {ACTS, XP} from '../experience.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -572,6 +573,8 @@ TABLES.push(
   autoTable({id: 'thoughts', label: 'Мысли', group: 'Поселение', note: 'Мысли поселенцев и их вес в настроении (data/thoughts.js).', rows: () => THOUGHTS.all()}),
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
+  autoTable({id: 'acts', label: 'Дела и опыт', group: 'Караван', note: 'За что участник похода получает опыт (data/experience.js ACTS): основа (ground) — всем, кто был, без буквы; дела — тому, кто сделал, с буквой SPECIAL (stat; skill — буква навыка, role — буквы роли), которую растит вечер нового уровня (campaign/experience.js).', rows: () => ACTS.all()}),
+  {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × L × (L − 1), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
   fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},
     note: 'Всё, что с существом не так на время или навсегда (data/conditions.js), как состояния и истощение в D&D: тяжёлая рана и травмы (agent.wounds), без сознания, отравлен, в паутине, кровотечение, оглушён, во хмелю (поле существа), три ступени истощения (сколько нужд на исходе). mods — что делает с телом (ключи «Модификаторов существа»); у истощения пока пусто — готово под числа.'}),

@@ -1,6 +1,7 @@
 // Fighting: melee blows, shots from bows and slings, armour and shields.
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
+import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
 import {maxHp, hpShare} from './agent.js';
@@ -340,10 +341,12 @@ export function shoot(w, a, t) {
   if (!hit) return 'miss';
   // a shield-bearer between the shooter and the target catches the shot for it (COMBAT.cover)
   const guard = coverFor(w, a, t);
-  if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share) { wear(w, guard, guard.gear.coverItem); guard.flash = 3; return 'miss'; }
+  if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share) { wear(w, guard, guard.gear.coverItem); guard.flash = 3; noteAct(guard, 'shield'); return 'miss'; }   // (the shield held over another: an act, agents/acts.js)
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
   const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
-  return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
+  const out = t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
+  if (out !== 'miss' && (isHostile(a, t) || aggressor(a, t))) noteAct(a, 'hit');   // a shot that landed on a foe: an act (agents/acts.js)
+  return out;
 }
 

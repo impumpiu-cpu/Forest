@@ -1,3 +1,3 @@
 // What the screen shows of the campaign (docs/ARCHITECTURE.md «Оболочка и прослойка view»): the shell takes the
 // caravan's march, its camps and its company only through here, from the door campaign/index.js.
-export {FATES, HOWS, alive, baggageText, campDone, capacity, capitals, chronicleText, dateOf, ended, fightReportText, fightStats, finished, groupText, isCore, lineLevel, load, newCampaign, openCamp, pace, rank, readLines, reasonsOf, stepCamp, stepCampaign, walkReportText, walkStats, wheeled, workText} from '../campaign/index.js';
+export {FATES, HOWS, alive, baggageText, campDone, capacity, capitals, chronicleText, dateOf, ended, fightReportText, fightStats, finished, groupText, isCore, levelOn, need, specialOn, grewBy, growText, lineLevel, load, newCampaign, openCamp, pace, rank, readLines, reasonsOf, stepCamp, stepCampaign, walkReportText, walkStats, wheeled, workText} from '../campaign/index.js';

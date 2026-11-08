@@ -30,6 +30,7 @@ import {makeQuest, questTarget, questIntro} from './quest.js';
 import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
 import {CAMP_KIT} from '../data/transport.js';
+import {ensureXp} from './experience.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -59,6 +60,7 @@ export function makeMember(K, rnd, {race, role, gear, core = false, lean = null,
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
   m.gear = {hand: [...gear.hand], body: gear.body};
+  ensureXp(m);   // experience and level (campaign/experience.js)
   memberLocal(K, m);   // the working character, from the day one joins — not from the first camp (docs/CAMPAIGN.md «Живая команда: договор»)
   return m;
 }
@@ -91,7 +93,7 @@ function rollLocal(K, m) {
   return {likes: c.likes, dislikes: c.dislikes, prefs: c.prefs, traits: c.traits, food: c.food, own: c.own, skill: c.skill, leans: c.leans};
 }
 // a campaign of a save from before: every member gets the character it lacks (idempotent — memberLocal keeps what is there)
-export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) memberLocal(K, m); }
+export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) { memberLocal(K, m); ensureXp(m); } }
 
 // The core (data/campaign.js RETINUE): CAMPAIGN.fighters fighters of the realm's kinds — at most RETINUE.big.max of the great
 // ones — each of a fighting role drawn by its kind's weights; first the roles a core has at least (RETINUE.least: the line, a

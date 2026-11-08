@@ -33,6 +33,7 @@ import {overSea} from './ferry.js';
 import {cellDist, weighted} from '../core/util.js';
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickFirst, tracing, noteDecision} from '../core/decide.js';
+import {share} from './experience.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -312,6 +313,7 @@ function leaveFor(K, here, say, why) {
 function takeClue(a, K, c, rnd, say) {
   const Q = K.quest, C = Q.crown;
   c.found = true; c.day = K.day; Q.found++;
+  share(K, K.members.filter(m => m.alive), 'clue');   // (campaign/experience.js)
   const t = c.town != null ? a.towns.find(x => x.id === c.town) : null;
   const how = c.epitaph ? `${graveLine(c)} По ней и по старым летописям поняли` : t ? `В ${townLabel(t, 3)} ${t.name} летописец открыл старые свитки` : c.guard ? 'Среди добычи нашлась старая грамота' : 'Под камнями нашлась старая грамота';
   // the crown narrowed down
@@ -329,6 +331,7 @@ function takeCrown(a, K, say) {
   const Q = K.quest, C = Q.crown, m = bearer(K);
   const again = C.state === 'taken';
   C.state = 'carried'; C.carrier = m?.id ?? null; C.seen = false; C.exact = false;
+  if (!again) share(K, K.members.filter(x => x.alive), 'crown');   // (campaign/experience.js)
   K.phase = 'back'; K.goal = K.home; Q.next = K.day + QUEST.pursuit.first; Q.carriedFrom = K.day;
   if (Q.epic && !again) { epicTaken(a, K, m?.name || 'караван'); say(`${C.label[0].toUpperCase()}${C.label.slice(1)} взято штурмом: ${C.guard?.boss?.name || 'босс'} пал${(C.guard?.boss?.g ?? a.calamities?.find(c => c.id === Q.calamity)?.boss?.g) === 'f' ? 'а' : ''}. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой! Весть летит быстрее каравана, и враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null); return; }
   say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null);

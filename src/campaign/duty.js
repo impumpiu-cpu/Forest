@@ -20,6 +20,7 @@ import {draw} from './start.js';
 import {fateOf} from '../social/fate.js';
 import {tracing, noteDecision, r3} from '../core/decide.js';
 import {TRAITS} from '../data/traits.js';
+import {award} from './experience.js';
 
 const loadOf = m => ((m.social ||= {}).load ||= {tired: 0, watched: 0, lastWatch: null});
 export const tiredOf = m => m.social?.load?.tired || 0;
@@ -109,7 +110,7 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
     }
   } finally { done(); }
   // the night: the watchmen tire, the others sleep
-  for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch); L.watched++; L.lastWatch = K.day; } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
+  for (const m of ms) if (on.includes(m)) { const L = loadOf(m); L.tired = Math.min(1, L.tired + DUTY.tiredWatch); L.watched++; L.lastWatch = K.day; award(K, m, 'watch'); } else rest(m, camping ? DUTY.rest.camp : DUTY.rest.march);
   // to the end of the queue go those who stood (or would have stood: the one relieved too — its turn is taken)
   const went = new Set([...on.map(m => m.id), ...relieved, ...S.commitments.filter(c => c.end === K.day && c.status === 'fulfilled').map(c => c.creditor)]);
   D.queue = [...D.queue.filter(id => !went.has(id)), ...D.queue.filter(id => went.has(id))];
