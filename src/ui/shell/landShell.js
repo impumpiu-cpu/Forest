@@ -16,7 +16,7 @@ export class LandShell extends Shell {
         climate: [() => this.climateBox, 'Климат и правки'],
         hand: [() => S().querySelector('.land-tools'), 'Рука'],
         layers: [() => S().querySelector('.atlas-tools [data-lkey="layer"]'), 'Слои карты'],
-        saves: [() => S().querySelector('.field.saves'), 'Сохранённые земли'],
+        saves: [() => this.savesBox, 'Сохранённые земли'],
       },
       map: () => S().querySelector('.atlas-map'),
       mini: false,
@@ -24,7 +24,8 @@ export class LandShell extends Shell {
       strip: {title: 'Летопись земли', node: () => $('landChron')},
       onEnter: sh => { const z = S().querySelector('.zoomseg'); if (z) sh.take(z, sh.map.querySelector('.atlas-map') || sh.map); const lg = $('landLegend'); if (lg) sh.take(lg, sh.slot('sum'));
         // the climate's sliders and the edits' row leave the land's form for a menu of their own
-        const box = sh.climateBox ||= el('div'), F = S().querySelector('.atlas-form'); sh.take($('landEq').closest('.field'), box); sh.take($('landReset').closest('.row'), box); F.after(box); },
+        const box = sh.climateBox ||= el('div'), F = S().querySelector('.atlas-form'); sh.take($('landEq').closest('.field'), box); sh.take($('landReset').closest('.row'), box); F.after(box);
+        const sv = sh.savesBox ||= el('div'); sh.take(S().querySelector('.field.saves'), sv); F.after(sv); },
       opens: 'land',
     });
     const back = S().querySelector('.app-head [data-go="home"]'); if (back) this.spec.topEnd.push(back.id ||= 'landBack');
