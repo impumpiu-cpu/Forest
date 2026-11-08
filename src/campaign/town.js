@@ -260,6 +260,7 @@ function tradeNow(a, K, t, st) {
   const M = marketTierOf(t), T = termsOf(a, K, t);   // the town's market by its step; its tongue and the caravan's name (campaign/road.js)
   // the town's purse lasts the whole visit (trade on entering and on leaving): kept on the caravan only while a purse is set
   if (M.purse != null && (!K.inTown || K.townPurse?.id !== t.id)) K.townPurse = {id: t.id, left: M.purse};
+  const goldIn = K.gold;   // (a deal is struck when gold changed hands: campaign/experience.js)
   const P = M.purse != null ? K.townPurse : {left: Infinity}, unsold = [];
   const sell = keep => {
     let got = 0;
@@ -276,7 +277,6 @@ function tradeNow(a, K, t, st) {
   if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, townPurse(t))) unsold.push('spoils');
   else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
-  if (done.length) { const best = free(K).filter(m => !m.former).sort((p, q) => (q.local?.skill?.barter || 0) - (p.local?.skill?.barter || 0) || (q.special?.C || 0) - (p.special?.C || 0))[0]; award(K, best, 'trade'); }   // the best of them at the market struck the deals (campaign/experience.js)
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)
@@ -317,6 +317,8 @@ function tradeNow(a, K, t, st) {
     else { const m = equip(K, o.id); done.push(`${gearDef(o.id).label.toLowerCase()} для ${m.name} за ${gold(p)}`); }
     assign(K); K.path = null;
   }
+  // a deal struck — something bought or sold, after the exchange: the best of them at the market struck it (campaign/experience.js)
+  if (K.gold !== goldIn) { const best = free(K).filter(m => !m.former).sort((p, q) => (q.local?.skill?.barter || 0) - (p.local?.skill?.barter || 0) || (q.special?.C || 0) - (p.special?.C || 0))[0]; award(K, best, 'trade'); }
   return done;
 }
 

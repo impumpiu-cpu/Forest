@@ -28,15 +28,16 @@ ACTS.registerAll([
   {id: 'crown',   ground: true, label: 'корона найдена', xp: 100},
   {id: 'town',    ground: true, label: 'новый город', xp: 2},
   // ── the acts of a fight
-  {id: 'killBlow', stat: 'S', label: 'убил в рукопашной', why: 'бил врага в рукопашной', whyF: 'била врага в рукопашной', xp: 3, note: '× вес врага (его КС / 100)'},
-  {id: 'killShot', stat: 'P', label: 'убил выстрелом', why: 'бил врага издали', whyF: 'била врага издали', xp: 3, note: '× вес врага'},
+  {id: 'killBlow', stat: 'S', label: 'поверг в рукопашной', why: 'бил врага в рукопашной', whyF: 'била врага в рукопашной', xp: 3, note: 'счёт — поверженные враги (убит или сбит с ног: один враг — один раз); опыт — × вес врага (его КС / 100)'},
+  {id: 'killShot', stat: 'P', label: 'поверг выстрелом', why: 'бил врага издали', whyF: 'била врага издали', xp: 3, note: '× вес врага'},
   {id: 'hit',     stat: 'P', label: 'попал', why: 'стрелял без промаха', whyF: 'стреляла без промаха', xp: 0.2},
   {id: 'shield',  stat: 'E', label: 'поймал стрелу щитом за другого', why: 'закрывал своих щитом', whyF: 'закрывала своих щитом', xp: 0.6},
   {id: 'cover',   stat: 'E', label: 'заступился', why: 'вставал за своих', whyF: 'вставала за своих', xp: 2},
   {id: 'bind',    stat: 'A', label: 'связал врага', why: 'вязал врагов живыми', whyF: 'вязала врагов живыми', xp: 3},
   {id: 'dress',   stat: 'I', label: 'вытащил упавшего', why: 'вытаскивал упавших с того света', whyF: 'вытаскивала упавших с того света', xp: 6},
   {id: 'tend',    stat: 'I', label: 'перевязал раненого', why: 'перевязывал раненых', whyF: 'перевязывала раненых', xp: 1.5},
-  {id: 'role',    stat: 'role', label: 'бился в своей роли', why: 'держал своё место в строю', whyF: 'держала своё место в строю', xp: 0, note: 'без опыта: только буква роли — тому, кто бился, но своих дел в бою не набрал'},
+  {id: 'slew',    stat: null, label: 'добил врага насмерть', xp: 0, note: 'только счёт: враг умер от его руки (сбитый с ног и потом добитый — у добившего; взятый живым — нет)'},
+  {id: 'role',    stat: 'role', label: 'бился в своей роли', why: 'держал своё место в строю', whyF: 'держала своё место в строю', xp: 0, note: 'без опыта: буква роли с весом XP.roleWeight — тому, кто бился, но своих дел в бою не набрал'},
   // ── the acts of the road
   {id: 'work',    stat: 'skill', captive: true, label: 'работа', why: 'трудился', whyF: 'трудилась', xp: 0.02, note: 'за единицу практики (agents/skills.js practice units): 100 единиц ≈ полдня работы'},
   {id: 'game',    stat: 'P', label: 'добыл дичь', why: 'добывал дичь', whyF: 'добывала дичь', xp: 3},
@@ -63,7 +64,13 @@ ACTS.registerAll([
 //   autoWork — the units of work a day of a stop gives each one in the quick mode, where the stop is not played on the map:
 //            as many as a played stop writes into a member's hands on average (tools/xp-probe.mjs), on its best skill — so the
 //            choice of the mode does not change a career
-export const XP = {need: 5, lead: 4, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270};
+//   roleWeight — what a fight without one's own acts writes into the role's letters (split between them): a weight, not
+//            experience — as one dressing of a wound; it points the way when nothing else does
+//   autoBy   — the skills a quick-mode stop's work is on, by the stop's purpose (campaign/march.js K.why): the member's best of
+//            them; none — its best skill outside the fight's (the fight's skills are trained only in a fight)
+export const XP = {need: 5, lead: 4, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270, roleWeight: 1.5,
+  autoBy: {food: ['hunting', 'gathering', 'fishing', 'cooking'], heal: ['medicine', 'gathering', 'cooking'], build: ['construction', 'woodcutting', 'carpentry'], mine: ['mining', 'smithing'], tame: ['husbandry']},
+  fightSkills: ['melee', 'ranged']};
 
 // the reason a level names for work by its skill («не зря рубился в бою»); any other: «трудился: рубка леса»
 // the reason a level names for the role's letter, by the role's group (data/roles.js)
@@ -72,8 +79,8 @@ export const ROLE_WHY = {'линия': ['держал своё место в с�
 export const WORK_WHY = {melee: ['бился врукопашную', 'билась врукопашную'], ranged: ['стрелял', 'стреляла'], medicine: ['лечил раненых', 'лечила раненых']};
 
 // a foe's worth in a kill (agents/acts.js noteKill): its strength (КС) / `per` — a plain human with a spear is 1 — to a `round`th,
-// at least `least`
-export const KILL = {per: 100, round: 10, least: 0.1};
+// at least `least`; × `xp` experience
+export const KILL = {per: 100, round: 10, least: 0.1, xp: 3};   // (xp: the experience of a foe of weight 1)
 
 // what a new level says of the letter grown: «Хрольф окреп»
 export const GREW = {S: 'окреп', P: 'стал зорче', E: 'стал выносливее', C: 'научился ладить с людьми', I: 'стал смекалистее', A: 'стал ловчее'};

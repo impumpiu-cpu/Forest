@@ -517,9 +517,13 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const box = $('campFire'), K = this.atlas?.campaign; if (!box || !K) return;
     const m = this.who != null ? K.members.find(x => x.id === this.who) : null, meets = meetingsOf(K, day), meet = meets.at(-1);
     const key = meet ? `${meet.day}:${meet.point}:${this.who}` : `none:${this.who}`;
-    if (key === this.fireKey) return;   // (the same meeting: the scene plays on)
-    this.fireKey = key;
-    box.innerHTML = (m ? memberCardHtml(K, m, day) : '') + (meet ? `<div class="fire-scene"><canvas id="campFireCv"></canvas><div class="fire-words" id="campFireWords"></div>
+    const cardKey = `${key}:${day}:${K.day}`;   // (the card is of the day shown: it follows the day even while the scene plays on)
+    if (key === this.fireKey) {   // the same meeting: the scene plays on, the card follows the day
+      if (cardKey !== this.cardKey) { this.cardKey = cardKey; const c = $('campFireCard'); if (c) c.innerHTML = m ? memberCardHtml(K, m, day) : ''; }
+      return;
+    }
+    this.fireKey = key; this.cardKey = cardKey;
+    box.innerHTML = `<div id="campFireCard">${m ? memberCardHtml(K, m, day) : ''}</div>` + (meet ? `<div class="fire-scene"><canvas id="campFireCv"></canvas><div class="fire-words" id="campFireWords"></div>
       <div class="row"><button type="button" class="quiet mini" id="campFirePlay">⏸</button><button type="button" class="quiet mini" id="campFireSkip">⏭</button><button type="button" class="quiet mini" id="campFireAgain">↺</button></div></div>` : '') +
       (meets.length ? meets.map(x => meetingHtml(K, x)).join('') : '<p class="muted">Совет ещё не собирался.</p>');
     if (!meet) return;

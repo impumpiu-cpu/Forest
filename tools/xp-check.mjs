@@ -15,9 +15,18 @@ import {capitals, newCampaign, runCampaign, levelOn} from '../src/campaign/index
 import {makeMember, upgradeMembers} from '../src/campaign/start.js';
 import {campSetup, runCamp, campOutcome} from '../src/campaign/camp.js';
 import {applyCamp} from '../src/campaign/fight.js';
+import {takeFromCamp} from '../src/campaign/captives.js';
+import {trade} from '../src/campaign/town.js';
+import {noteKill} from '../src/agents/acts.js';
+import {newGame} from '../src/sim.js';
+import {DEFAULT_CFG} from '../src/data/presets.js';
+import {createAgent} from '../src/agents/agent.js';
+import {autoWork} from '../src/campaign/experience.js';
 import {need, levelAt, award, ensureXp, levelEvening, letterFor, fightActs, factActs, campActs, specialOn} from '../src/campaign/experience.js';
-import {ACTS, XP} from '../src/data/experience.js';
+import {ACTS, XP, KILL} from '../src/data/experience.js';
 import {SPECIES} from '../src/data/species.js';
+import {COMBAT_ROLES} from '../src/data/roles.js';
+import {RETINUE} from '../src/data/campaign.js';
 import {practice} from '../src/agents/skills.js';
 import {mulberry} from '../src/core/rng.js';
 
@@ -99,12 +108,75 @@ const caps = capitals(base), cap = caps.find(c => c.people === 'humans') || caps
   fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 10, ours: 5, foes: 6, acted}, ms);
   const want = ACTS.get('fight').xp * 2;
   ok(ms.every(m => m.xp === want), 'бой вдвое сильнее отряда: основа ×2 всем бившимся', `${ms[0].xp} у каждого`);
-  ok(!Object.keys(ms[0].xpBy).length && ms.slice(1).every(m => Object.keys(m.xpBy).length), 'кто бился своими делами — без буквы роли; кто нет — с буквой роли');
+  ok(!Object.keys(ms[0].xpBy).length && ms.slice(1).every(m => Object.values(m.xpBy).some(v => v > 0)), 'кто бился своими делами — без буквы роли; кто нет — с буквой роли (с весом)');
   const m = ms[1]; m.xp = 0;
   fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 1000, ours: 1, foes: 9, acted}, [m]);
   ok(m.xp === ACTS.get('fight').xp * XP.danger[1], 'опасность боя в пределах', `${m.xp}`);
   m.xp = 0; fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 0, ours: 5, foes: 0, acted}, [m]);
   ok(m.xp === 0, 'никто не пришёл — нет и боя');
+}
+
+
+// ── Р1: what counts as an act (the expert's review of 9776460)
+{
+  // 1. a foe brought down is one, however heavy; its weight is experience; its death apart; taken alive — brought down, not slain
+  const w = newGame({...DEFAULT_CFG, seed: 'xp', size: 'small', colonists: 0, wildlife: 'none', predators: 'none', raids: 'off'});
+  const put = (sp, fac) => createAgent(w, sp, fac, 20.5, 20.5);
+  const ogre = put('ogre', 'raiders');
+  const by = {member: 1}, other = {member: 2};
+  noteKill(ogre, by, false, false); ogre.downed = {since: 0};   // knocked down
+  noteKill(ogre, other, false, true);                           // finished by another
+  ok(by.acts.killBlow === 1 && by.actXp.killBlow > KILL.xp && !by.acts.slew && other.acts.slew === 1 && !other.acts.killBlow,
+    'огр: один поверженный, вес — опытом; добивший получает «добил», не второго поверженного', `счёт ${by.acts.killBlow}, опыт ${by.actXp.killBlow}, добил: ${other.acts.slew}`);
+  const raider = put('human', 'raiders'), binder = {member: 3};
+  noteKill(raider, binder, true, false); raider.downed = {since: 0}; delete raider.downed; noteKill(raider, binder, true, false);
+  ok(binder.acts.killShot === 1 && !binder.acts.slew, 'сбитый с ног, вставший и сбитый снова — всё тот же один поверженный; взятый живым не убит');
+  const deer = {faction: 'wild', mods: {}}, hunter = {member: 4};
+  noteKill(deer, hunter, true, false); noteKill(deer, hunter, true, true);
+  ok(hunter.acts.game === 1 && !hunter.acts.killShot, 'дичь — добыча охотника, не поверженный враг');
+
+  // 2. the quick mode's stop: the work is on the stop's purpose, never on the fight's skills
+  const a = fresh(), K = newCampaign(a, cap.town, {mode: 'auto'}), m = K.members.find(x => !x.captive);
+  m.local.skill = {melee: 0.9, ranged: 0.8, gathering: 0.2, cooking: 0.1, woodcutting: 0.5}; m.workBy = {}; m.lvWork = {};
+  autoWork(K, 'food');
+  ok(m.workBy.gathering > 0 && !m.workBy.melee && !m.workBy.woodcutting, 'быстрый режим, стоянка за едой: работа — по делу стоянки (собирательство), не по рукопашной', JSON.stringify(m.workBy));
+  m.workBy = {}; autoWork(K, 'camp');
+  ok(m.workBy.woodcutting > 0 && !m.workBy.melee, 'стоянка без особого дела — лучший мирный навык', JSON.stringify(m.workBy));
+
+  // 3. a deal is struck after the exchange: buying counts, a visit without one does not
+  const t = a.towns.find(x => x.id === K.home) || a.towns.find(x => x.id === cap.town.id) || a.towns[0];
+  const ms = K.members.filter(x => !x.captive);
+  const tr0 = ms.reduce((n, x) => n + (x.acts.trade || 0), 0);
+  K.food = 0; K.gold = 500; trade(a, K, t, 'friend');
+  const tr1 = ms.reduce((n, x) => n + (x.acts.trade || 0), 0);
+  ok(tr1 === tr0 + 1, 'купили пайки — сделка засчитана лучшему торговцу', `сделок ${tr0} → ${tr1}`);
+  const g = K.gold; K.gold = 0; K.cargo = {}; K.spoils = []; K.food = 1e6; trade(a, K, t, 'friend');
+  ok(ms.reduce((n, x) => n + (x.acts.trade || 0), 0) === tr1 && K.gold === 0, 'ни купить, ни продать — сделки нет'); K.gold = g;
+
+  // 4. the role's letter has weight, and it is what the level grows
+  const f = ms.find(x => x.fight && COMBAT_ROLES.get(x.fight).group === 'линия') || ms[0];
+  f.xpBy = {}; f.lvOf = {};
+  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 5, ours: 5, foes: 6, acted: new Set()}, [f]);
+  const lean = RETINUE.lean[COMBAT_ROLES.get(f.fight).group].filter(x => x !== 'L');
+  ok(lean.every(x => f.xpBy[x] === Math.round(XP.roleWeight / lean.length * 100) / 100) && lean.includes(letterFor(f)?.stat), 'бой без своих дел: буквы роли с весом, и уровень растит одну из них', `${JSON.stringify(f.xpBy)} → ${letterFor(f)?.stat} (${letterFor(f)?.why})`);
+
+  // 5. the reason is of this level: medicine grew the last one, cooking this one
+  const h = ms.at(-1); h.lvOf = {}; h.lvWork = {}; h.xpBy = {}; h.workBy = {};
+  for (const s2 of XP.letters) h.special[s2] = Math.min(h.special[s2], SPECIES.get(h.race).special[s2][1] - 1);
+  award(K, h, 'work', 1000, {skill: 'medicine'}); h.xp = need(h.level + 1); levelEvening(a, K);
+  const first = h.grew.at(-1);
+  award(K, h, 'work', 300, {skill: 'cooking'}); h.xp = need(h.level + 1); levelEvening(a, K);
+  ok(first.why === 'work:medicine' && h.grew.at(-1).why === 'work:cooking', 'причина роста — дела этого уровня: сначала медицина, потом готовка', `${first.why} → ${h.grew.at(-1).why}`);
+
+  // 6. a captive taken on the map comes with its level and empty counts at once
+  const before = K.members.length;
+  takeFromCamp(a, K, {taken: [{name: 'Пленник', gender: 'm', race: 'human', hp: 0.3, special: {...m.special}, gear: {hand: [], body: null}, bonds: 'rope'}]}, () => {});
+  const c = K.members[before];
+  ok(c && c.level === 1 && c.xp === 0 && c.acts && c.maims === 0, 'взятый на карте пленный — сразу с уровнем 1 и пустыми счетами');
+
+  // 7. one gone keeps the level it left with on the days after
+  const gone = ms[1]; gone.level = 6; K.daily = [{d: 0, lv: {[gone.id]: 5}}, {d: 1, lv: {}}]; K.day = 4;
+  ok(levelOn(K, gone, 3) === 5, 'выбывший на следующих днях — с уровнем, с которым ушёл', `${levelOn(K, gone, 3)}`);
 }
 
 // ── Э2: the evening of a level

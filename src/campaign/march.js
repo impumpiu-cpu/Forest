@@ -604,7 +604,7 @@ export function caravanDay(a, K, day) {
   const onMap = camping && K.why && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
-  if (camping && K.why && !onMap && K.mode === 'auto' && core(K).length) autoWork(K);   // the stop's work, as a played one gives it (campaign/experience.js)
+  if (camping && K.why && !onMap && K.mode === 'auto' && core(K).length) autoWork(K, K.why);   // the stop's work, as a played one gives it (campaign/experience.js)
   if (!town && !sailing && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   const forage = ms.length * (camping ? Fo.camp * stopFood(a, K) : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap && !sailing) K.food += forage;
@@ -628,7 +628,6 @@ export function caravanDay(a, K, day) {
   }
   if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
-  levelEvening(a, K, (text, who) => say(a, K, text, 'people', false, who));   // a level for whoever has the experience for it (campaign/experience.js)
   tell(K);   // what one lived through, told at the fire to those who did not see it (campaign/social.js)
   reconcile(K, (text, who) => say(a, K, text, 'people', false, who));   // a quarrel made up after a good turn in need (campaign/social.js)
   fadeDay(K);   // the bonds fade by the campaign's day, once (campaign/social.js)
@@ -651,6 +650,8 @@ export function caravanDay(a, K, day) {
     if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
     if (core(K).length && !ended(K)) night(a, K);
   }
+  // a level for whoever has the experience for it — after the night's fight and the quest's last word, before the day's summary (campaign/experience.js)
+  if (core(K).length) levelEvening(a, K, (text, who) => say(a, K, text, 'people', false, who));
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
     K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)

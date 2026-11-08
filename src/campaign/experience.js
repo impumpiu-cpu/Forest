@@ -6,6 +6,7 @@
 //              level grows is read from it, then it is cleared
 //   m.acts   — {act id: units}: what one has done in all (the perks' requirements read it: Ver_E Э3)
 //   m.xpOf   — {act id: experience}: where the experience came from (the probe and the card)
+//   m.lvOf, m.lvWork — {act id: experience}, {skill id: experience} since the last level: the reason a level names (cleared with it)
 //   m.grew   — [{level, day, stat, from, to, why}]: the levels taken, the letter each grew, the act that grew it
 //   m.perks, m.maims — the perks taken and the maims borne (Э3, Э4)
 // Who earns: the free living members (the core, the hired, the joined, the freed, the former slaves); a captive only by its
@@ -29,7 +30,7 @@ export function levelAt(xp) { let L = 1; while (xp >= need(L + 1)) L++; return L
 // a member's fields, as they come: a newcomer, a captive bound on the map, a save from before (the user's call: no back-filling,
 // everyone of an old save starts at 1 with nothing)
 export function ensureXp(m) {
-  m.xp ??= 0; m.level ??= 1; m.xpBy ??= {}; m.acts ??= {}; m.xpOf ??= {}; m.workBy ??= {}; m.grew ??= []; m.perks ??= []; m.maims ??= 0;
+  m.xp ??= 0; m.level ??= 1; m.xpBy ??= {}; m.acts ??= {}; m.xpOf ??= {}; m.workBy ??= {}; m.lvOf ??= {}; m.lvWork ??= {}; m.grew ??= []; m.perks ??= []; m.maims ??= 0;
   return m;
 }
 
@@ -57,8 +58,11 @@ export function award(K, m, id, n = 1, opt = {}) {
   ensureXp(m);
   const xp = (opt.xp ?? A.xp * n) * (m.captive ? XP.captive : 1);
   m.acts[id] = r2((m.acts[id] || 0) + n);
-  if (!(xp > 0)) { const ls = lettersOf(m, A, opt); for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + 1e-3); return 0; }   // (an act with no experience still points the way: the role's letter)
-  m.xp = r2(m.xp + xp); m.xpOf[id] = r2((m.xpOf[id] || 0) + xp);
+  if (!(xp > 0)) {   // an act with no experience: a count (slew); the role's still points the way, by its weight
+    if (A.stat === 'role') { const ls = lettersOf(m, A, opt); for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + XP.roleWeight * n / ls.length); m.lvOf[id] = r2((m.lvOf[id] || 0) + XP.roleWeight * n); }
+    return 0;
+  }
+  m.xp = r2(m.xp + xp); m.xpOf[id] = r2((m.xpOf[id] || 0) + xp); m.lvOf[id] = r2((m.lvOf[id] || 0) + xp);
   if (id === 'work' && opt.skill) noteWork(m, opt.skill, xp);
   const ls = lettersOf(m, A, opt);
   for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + xp / ls.length);
@@ -72,7 +76,7 @@ export function campActs(K, o) {
   for (const mo of o.members) {
     if (!mo.alive) continue;
     const m = K.members.find(x => x.id === mo.id); if (!m?.alive) continue;
-    for (const [id, n] of Object.entries(mo.acts || {})) award(K, m, id, n);
+    for (const [id, n] of Object.entries(mo.acts || {})) award(K, m, id, n, mo.actXp?.[id] != null ? {xp: mo.actXp[id]} : {});   // (a foe brought down: counted once, worth its weight)
     for (const [skill, n] of Object.entries(mo.practiced || {})) award(K, m, 'work', n, {skill});
   }
 }
@@ -91,11 +95,13 @@ export function fightActs(K, d, how, win, rec, present) {
 }
 
 // ── a day of a stop in the quick mode (campaign/march.js caravanDay): not played on the map, so each one's work is what a played
-// stop gives on average (XP.autoWork units), on what it does best (its best skill; none — its liked job's skill is not known
-// here, so nothing)
-export function autoWork(K) {
+// stop gives on average (XP.autoWork units) — on the stop's purpose (XP.autoBy: its best skill of those), else on its best skill
+// outside the fight's: the fight's skills are trained in a fight, not at a stop for food
+export function autoWork(K, why = '') {
+  const of = XP.autoBy[why.split(':')[0]] || null;
   for (const m of alive(K)) {
-    const best = Object.entries(m.local?.skill || {}).filter(([id]) => SKILLS.has(id) && SKILLS.get(id).status !== 'reserved').sort((p, q) => q[1] - p[1])[0];
+    const sk = Object.entries(m.local?.skill || {}).filter(([id]) => SKILLS.has(id) && SKILLS.get(id).status !== 'reserved' && !XP.fightSkills.includes(id)).sort((p, q) => q[1] - p[1]);
+    const best = (of && sk.find(([id]) => of.includes(id))) || sk[0];
     if (best) award(K, m, 'work', XP.autoWork, {skill: best[0]});
   }
 }
@@ -129,25 +135,25 @@ export function letterFor(m) {
   if (!may.length) return null;
   const by = m.xpBy || {}, rank = s => (lean.includes(s) ? 1 : 0);
   const done = may.filter(s => (by[s] || 0) > 0).sort((p, q) => (by[q] - by[p]) || (rank(q) - rank(p)) || (XP.letters.indexOf(p) - XP.letters.indexOf(q)));
-  if (done.length) return {stat: done[0], why: whyOf(m, done[0]) ?? (lean.includes(done[0]) && m.acts?.role ? `role:${groupOf(m)}` : null)};
+  if (done.length) return {stat: done[0], why: whyOf(m, done[0])};
   const l = lean.find(s => may.includes(s));
   if (l) return {stat: l, why: m.acts?.role ? `role:${groupOf(m)}` : null};
   // nothing done and nothing to lean to: the letter of its best skill, if it can still grow
   const best = Object.entries(m.local?.skill || {}).filter(([id]) => SKILLS.has(id) && may.includes(SKILLS.get(id).stat)).sort((p, q) => q[1] - p[1])[0];
   return best ? {stat: SKILLS.get(best[0]).stat, why: null} : null;
 }
-// the act that wrote this letter most since the last level: the experience of each act since then is not kept apart, so the
-// act of all the time that writes this letter most is named (the probe shows both)
+// the act that wrote this letter most since the last level (m.lvOf, m.lvWork): the reason is of this level, not of a life
 function whyOf(m, stat) {
   let best = null, top = 0;
-  for (const [id, xp] of Object.entries(m.xpOf || {})) {
+  for (const [id, xp] of Object.entries(m.lvOf || {})) {
     const A = ACTS.get(id); if (A.ground) continue;
     const ls = A.stat === 'skill' ? null : lettersOf(m, A, {});
     if (ls && !ls.includes(stat)) continue;
     if (!ls) continue;   // (a work's letter is its skill's: named apart below)
+    if (A.stat === 'role') { if (xp > top) { top = xp; best = `role:${groupOf(m)}`; } continue; }
     if (xp > top) { top = xp; best = id; }
   }
-  const work = Object.entries(m.workBy || {}).filter(([sk]) => SKILLS.has(sk) && SKILLS.get(sk).stat === stat).sort((p, q) => q[1] - p[1])[0];
+  const work = Object.entries(m.lvWork || {}).filter(([sk]) => SKILLS.has(sk) && SKILLS.get(sk).stat === stat).sort((p, q) => q[1] - p[1])[0];
   if (work && work[1] > top) return `work:${work[0]}`;
   return best;
 }
@@ -156,7 +162,7 @@ function levelUp(K, m, say) {
   const pick = letterFor(m), from = pick ? m.special[pick.stat] : null;
   if (pick) m.special[pick.stat] = from + 1;
   m.grew.push({level: m.level, day: K.day, stat: pick?.stat ?? null, from, to: pick ? from + 1 : null, why: pick?.why ?? null});
-  m.xpBy = {};
+  m.xpBy = {}; m.lvOf = {}; m.lvWork = {};
   const saw = alive(K).filter(x => x !== m && !x.captive).map(x => x.id);
   campaignFact(K, 'levelUp', {by: m.id, saw, params: {level: m.level, stat: pick?.stat ?? null}});
   say(levelLine(m, pick), [m.id]);
@@ -177,13 +183,19 @@ function whyText(why, f) {
 }
 
 // the work a member did, by skill (for the reason of a level): kept beside m.xpOf
-export function noteWork(m, skill, xp) { if (xp > 0) { const w = m.workBy ||= {}; w[skill] = r2((w[skill] || 0) + xp); } }
+export function noteWork(m, skill, xp) { if (xp > 0) { const w = m.workBy ||= {}, l = m.lvWork ||= {}; w[skill] = r2((w[skill] || 0) + xp); l[skill] = r2((l[skill] || 0) + xp); } }
 
 // a member's level on a day shown (the screen plays the days back: campaign/march.js dayShot `lv`)
 // (as the screen reads a day: the summary of the day before it — ui/campaignView.js; the day not yet stepped: as it is now)
-export const levelOn = (K, m, day) => (day < K.day ? (K.daily || []).filter(x => x.d < day).at(-1)?.lv?.[m.id] ?? 1 : m.level ?? 1);
-// the levels of the living at the end of a day, for the day's summary
-export const levelsNow = K => Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.level || 1]));
+// (one gone by then keeps the level it left with: the last summary that knew it, else its own)
+export function levelOn(K, m, day) {
+  if (day >= K.day) return m.level ?? 1;
+  const D = K.daily || [];
+  for (let k = D.length - 1; k >= 0; k--) if (D[k].d < day && D[k].lv?.[m.id] != null) return D[k].lv[m.id];
+  return 1;
+}
+// the levels of all, the gone as they left, at the end of a day: for the day's summary
+export const levelsNow = K => Object.fromEntries(K.members.map(m => [m.id, m.level || 1]));
 
 // ── for the card (ui/campSocial.js), as of a day shown
 // the letters as they stood on a day shown (the levels taken on it or after taken back; the day not yet stepped: as now)

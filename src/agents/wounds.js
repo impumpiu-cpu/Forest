@@ -70,7 +70,7 @@ function fall(w, a, cause, by, trauma) {
   releaseAll(w, a);
   noteHuntDeath(w, a);
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
-  if (a.faction !== 'colony') { noteFallen(w, a); noteKill(a, by, a.hurtBy?.id === by?.id && !!a.hurtBy?.far); }   // a raider down is one lost to its band (agents/squad.js), and the downer's act (agents/acts.js)
+  if (a.faction !== 'colony') { noteFallen(w, a); noteKill(a, by, a.hurtBy?.id === by?.id && !!a.hurtBy?.far, false); }   // a raider down is one lost to its band (agents/squad.js), and the downer's act (agents/acts.js)
   a.downed = {since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma};
   if (a.bleeding) a.bleeding = null; if (a.stunned) a.stunned = null;   // the fall is the wound now: it bleeds by its own clock (the curve 'bleed')
   a.hp = DEATHBLOW.hpLeft * maxHp(a);
