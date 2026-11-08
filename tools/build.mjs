@@ -15,7 +15,7 @@ const res = await build({entryPoints: ['src/app/main.js'], bundle: true, format:
 const js = res.outputFiles[0].text;
 const css = readFileSync('style.css', 'utf8'), shell = readFileSync('shell.css', 'utf8');
 // the fonts go in as data: the one file needs no fonts/ beside it
-const fonts = readFileSync('fonts/fonts.css', 'utf8').replace(/url\((fonts\/[^)]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync(f).toString('base64')})`);
+const fonts = readFileSync('fonts/fonts.css', 'utf8').replace(/url\(([^)]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync('fonts/' + f).toString('base64')})`);
 const html = readFileSync('forest.html', 'utf8')
   .replace('<link rel="stylesheet" href="fonts/fonts.css">', () => `<style>\n${fonts}</style>`)
   .replace('<link rel="stylesheet" href="style.css">', () => `<style>\n${css}</style>`)
