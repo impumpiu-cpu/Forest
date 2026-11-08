@@ -161,8 +161,9 @@ for (const g of Object.keys(LUX.take)) {
 
 // The mint: coin of gold or silver or of gems, `take` of each a year for every `per` people of its realm, worth × `markup`
 // more than went in, into the purse; it strikes of each as the store holds them (a pool shared by what there is: POOL_SHARE),
-// and what it lacks it buys of the towns of its realm and of those it trades with, of all three alike (atlas/economy.js)
-export const MINT = {markup: 1.6, per: 1000, take: {goldbar: 3, silver: 5, gems: 2}};
+// and what it lacks it buys of the towns of its realm and of those it trades with, of all three alike (atlas/economy.js);
+// it strikes no more than `cap` of what its realm took in taxes last year (realm.fisc.last.tax)
+export const MINT = {markup: 1.6, per: 1000, cap: 0.5, take: {goldbar: 3, silver: 5, gems: 2}};
 export const COIN = {}, MINT_YIELDS = {};
 for (const g of Object.keys(MINT.take)) {
   Object.defineProperty(COIN, g, {enumerable: true, get: () => 1 / MINT.take[g]});

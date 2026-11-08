@@ -80,11 +80,15 @@ function drawPool(id, want, left) {
 // (the ore fields, the cell and the people's stone lore do not change in history: what a mine gives is worked out once a cell,
 // a building and a people, kept beside the world (a.digCache, frozen: read, never changed) and again after an edit of the tables)
 let DIG_EDIT = 0; onEdit(() => { DIG_EDIT++; });
-// the mint's strength: its realm's people by MINT.per (at least one share; a town with no world — a test — one)
+// the mint's strength: its realm's people by MINT.per (at least one share; a town with no world — a test — one), and no
+// more than strikes MINT.cap of its realm's taxes of last year (no cap before the realm's first year is reckoned)
 export function mintScale(a, t) {
   if (!a?.towns || t.realm == null) return 1;
   const pop = a.towns.reduce((s, o) => s + (o.alive && o.realm === t.realm ? o.pop || 0 : 0), 0);
-  return Math.max(1, pop / MINT.per);
+  const k = Math.max(1, pop / MINT.per), tax = a.realms?.find(r => r.id === t.realm)?.fisc?.last?.tax;
+  if (tax == null) return k;
+  const share = Object.entries(MINT.take).reduce((s, [g, n]) => s + n * goodPrice(g), 0) * MINT.markup;   // (one share's coin, in gold)
+  return Math.min(k, MINT.cap * Math.max(0, tax) / share);
 }
 export function digOf(a, t, b) {
   const site = (t.sites || []).map(id => a?.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
