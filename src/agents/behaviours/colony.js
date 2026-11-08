@@ -52,13 +52,13 @@ export const douse = {want(w, a) {
 
 // something is hunting me (a beast mauls, a raider fights): brave and healthy people fight back, the rest run for
 // the camp — nobody keeps digging clay, lies at the healer's or sits at the council under the blows. Above every
-// bodily need: nobody sleeps on while being mauled. Already inside the settlement there is nowhere to run to: stand
-// and fight, however badly hurt. A reflex: no skip from an earlier fight with the same foe holds it back
+// bodily need: nobody sleeps on while being mauled. Already inside the settlement there is little room to run to: the
+// line to stand is lower (COLONIST.zoneStand), but one badly hurt and faint-hearted still runs for the fire. A reflex: no skip from an earlier fight with the same foe holds it back
 export const defend = {want(w, a) {
   const hunter = attackerOf(w, a);
   if (!hunter) return null;
   const who = SPECIES.get(hunter.species).label, brave = a.mods.bravery;
-  const stand = brave * hpShare(a) > COLONIST.standHp || agentInZone(w, a);
+  const stand = brave * hpShare(a) > COLONIST.standHp * (agentInZone(w, a) ? COLONIST.zoneStand : 1);   // (inside the zone the line is lower, not gone: the faint-hearted and badly hurt still run for the fire)
   return [stand ? [{id: 'fight', target: hunter, reflex: true}, ROSTER.attacked, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ROSTER.attacked, () => `напал ${who}: бежать к своим`]];
 }, pick(w, a, t) {   // (taken up: a wolf's attack remembered once — the palisade and the watchtower read it, data/buildings.js)
   const hunter = attackerOf(w, a); if (hunter && SPECIES.get(hunter.species).remembers === 'wolf') a.mem.wolf += COLONIST.memWolf;

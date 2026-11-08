@@ -24,6 +24,21 @@ export function pickDraw(opts, r) {
   if (opts.length > 1) { let u = r() * opts.reduce((s, x) => s + x.score, 0); for (const x of opts) { u -= x.score; if (u <= 0) { o = x; break; } } }
   return o;
 }
+// many voices (plan claude/caravan-ver_d.md D5): each who has a say scores every option; an option's weight is the mean of
+// what they give it (+ eps, so none is ruled out by the voices alone), and the options are drawn from by it. A company whose
+// every one thinks as its people do draws as the old council did (its weights are COUNCIL.want × the people's profile); each
+// one's own leanings, needs and losses move the weights from there. (The plan's first sketch — each one's margin over its
+// least liked option — turned a mild consensus into near certainty: the side work was taken nine times in ten instead of
+// two in three; the mean keeps the council's draw.) `scores` — [{id, s: {option id → score}}]. → {option, w}
+export function pickVoices(opts, scores, r, eps = 0) {
+  if (!opts.length) return {option: null, w: {}};
+  const w = Object.fromEntries(opts.map(o => [o.id, eps]));
+  const n = Math.max(1, scores.length);
+  for (const v of scores) for (const o of opts) w[o.id] += Math.max(0, v.s[o.id] ?? 0) / n;
+  const weighted = opts.map(o => ({...o, score: w[o.id]}));
+  const total = weighted.reduce((x, o) => x + o.score, 0);
+  return {option: total > 0 ? pickDraw(weighted, r) : opts[0], w};
+}
 // the old order: the commands are asked one by one, and the first that offers anything is taken — the rest are not asked
 // (`ask(cmd)` → an option or null; `allowed(cmd)` — the run's profile). → {option, asked: [ids asked]} or {option: null, asked}
 export function pickFirst(cmds, ask, allowed = () => true) {

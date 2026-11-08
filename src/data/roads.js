@@ -7,8 +7,9 @@
 //   traffic:   how much a pair of towns wears into the road: √(pop·pop) / traffic
 //   decay:     share of the wear that stays after `every` years when nobody walks there
 //   levels:    wear from which a cell is a path, a road, a highway
+//   hopDepth:  a trade route (atlas/treasury.js) wears the roads of the links of its way, routes on it down to this depth
 export const ROADS = {
-  every: 2, links: 3, reach: 70, roadEase: 0.75, slope: 6, river: 3, traffic: 900, decay: 0.8,
+  every: 2, links: 3, reach: 70, hopDepth: 3, roadEase: 0.75, slope: 6, river: 3, traffic: 900, decay: 0.8,
   feet: 3000,   // a party on foot wears each cell it enters by its men / feet (atlas/parties.js walk): an army's road, a settlers' trail
   cost: {meadow: 1, steppe: 1, savanna: 1.1, shrubland: 1.3, forest: 1.6, taiga: 1.8, jungle: 2.6, tundra: 1.6, desert: 2,
     foothills: 2.4, highlands: 4, swamp: 3.5, volcano: 4, ice: 8, water: 25},

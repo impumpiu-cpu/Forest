@@ -1,7 +1,8 @@
 // Maul: go for a person — a lone colonist far from the camp, or a pair when desperate — once hunger (and the cover
 // of night) has made the pack bold enough; a member joins the leader's attack. Help arriving or the victim
 // reaching the settlement makes the pack back off for a while, shorter when starving; a victim it cannot get at
-// is given up. A kill feeds the whole pack. In the `lair` mode (defendLair) nothing frightens it and it does not
+// is given up. A kill feeds the whole pack. A pack come for a caravan's camp (`a.hunger`, campaign/camp.js) goes for
+// one in the camp itself, and backs off only from help that outnumbers the pack and its fear together. In the `lair` mode (defendLair) nothing frightens it and it does not
 // let go; in the `kick` mode a big grazer kicks back (standGround), in the `strike` mode the nechist hits whoever hurt it. Reads: predator {victims, sight, loneRadius,
 // boldPeople, calm, sprint, stamina, bigMeal}.
 import {SPECIES} from '../../data/species.js';
@@ -30,9 +31,9 @@ export const maul = {
     // people: only when boldness (plus the cover of night) is high enough
     const b = boldness(a, P), PP = PROWL.people;
     if (w.tick > (a.calmUntil || 0) && b + night * PP.night >= P.boldPeople) {
-      const v = nearest(w, a, P.victims, P.sight * (PP.sightBase + PP.sightBold * b), o => o.faction === 'colony' && !o.downed && !agentInZone(w, o) &&
+      const v = nearest(w, a, P.victims, P.sight * (PP.sightBase + PP.sightBold * b), o => o.faction === 'colony' && !o.downed && (a.hunger || !agentInZone(w, o)) &&
         company(w, o, P.loneRadius) <= (b > PROWL.desperate ? Math.max(0, pack.length - 2) : 0));
-      if (v) return [[{id: 'maul', target: v, start: true}, W.people, () => `${v.name} далеко от лагеря`]];
+      if (v) return [[{id: 'maul', target: v, start: true}, W.people, () => (a.hunger ? `${v.name}: стая голодна` : `${v.name} далеко от лагеря`)]];
     }
     return null;
   },
@@ -53,7 +54,7 @@ export const maul = {
     if (t.mode === 'lair') { lair(w, a, t, P, v); return; }
     const b = boldness(a, P), pack = packOf(w, a);
     // help arrived or the victim reached the settlement: back off for a while (shorter when starving)
-    if (gone(w, v) || company(w, v, M.helpNear) >= M.help + Math.floor(b * M.helpBold) || agentInZone(w, v)) {
+    if (gone(w, v) || company(w, v, M.helpNear) >= M.help + Math.floor(b * M.helpBold) + (a.hunger ? pack.length : 0) || (!a.hunger && agentInZone(w, v))) {
       const h = huntOf(w, a);
       if (h) endHunt(w, h, gone(w, v) && (!v || v.dead) ? 'taken' : agentInZone(w, v) ? 'zone' : 'help');
       if (v && !v.dead && !v.downed) think(w, v, 'escapedWolves', {who: SPECIES.get(a.species).plural});

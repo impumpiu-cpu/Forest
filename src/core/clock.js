@@ -13,7 +13,7 @@ import {TICK_MS} from './time.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 
 export const PACE = [
-  {id: 'watch', label: 'Наблюдатель', season: 6000, local: 1, title: 'Полмесяца в секунду: сезон за 6 с, 2,5 года в минуту. На локальной карте — час за 2,5 с'},
+  {id: 'watch', label: 'Наблюдатель', season: 6000, local: 1, title: 'Полмесяца в секунду: сезон за 6 с, 2,5 года в минуту. На локальной карте — час стоянки за 10 с; ночь без врага мотается сама'},
   {id: 'x4', label: '×4', season: 1500, local: 4, title: 'Сезон за 1,5 с, 10 лет в минуту'},
   {id: 'x16', label: '×16', season: 375, local: 16, title: 'Сезон за 0,4 с, 40 лет в минуту'},
   {id: 'max', label: 'Сразу', season: 0, local: 0, title: 'Так быстро, как успевает экран; стоянки не показываются'},
@@ -33,6 +33,7 @@ export class SeasonClock {
   // how far between the last step and the next the screen is, 0 … 1 (1 when paused or at `max`)
   phase() {
     if (this.held != null) return this.held;
+    if (this.paused && this.frozen != null) return this.frozen;   // paused mid-season: the screen stays where it was
     if (!this.tickAt || this.paused || !this.tickWait) return 1;
     return Math.min(1, (performance.now() - this.tickAt) / this.tickWait);
   }
@@ -64,7 +65,7 @@ export class SeasonClock {
     };
     this.timer = setTimeout(this.next, delay);
   }
-  stop() { clearTimeout(this.timer); this.timer = 0; this.gen++; this.held = null; }
+  stop() { clearTimeout(this.timer); this.timer = 0; this.gen++; this.held = null; this.frozen = null; }
   // the season's wait is held (a camp on the local map is being watched) and let go from where it stood. Held, the clock
   // has no timer: nothing (a new pace, a stray start) runs the world on while the camp is watched
   // `at` — the phase to hold at (the camp's own day: the frame that noticed it may be a little past it)
@@ -76,8 +77,21 @@ export class SeasonClock {
     this.timer = setTimeout(this.next, Math.max(0, (1 - frac) * wait));
   }
   get running() { return !!this.timer || this.held != null; }
-  pause() { this.paused = true; this.stop(); }
-  resume() { if (this.paused) { this.paused = false; this.start(); } }
+  // a pause holds the season's playback where it stands (the phase is kept); going on plays the rest of the season out
+  // before the next one is run — not the next one at once
+  pause() {
+    if (this.paused) return;
+    const f = this.held ?? this.phase(), mid = !!this.timer && this.tickWait > 0 && f < 1;
+    clearTimeout(this.timer); this.timer = 0;
+    this.paused = true; this.frozen = mid ? f : null;
+    if (!mid) this.stop();
+  }
+  resume() {
+    if (!this.paused) return;
+    this.paused = false;
+    if (this.frozen != null && this.next) { const f = this.frozen, wait = paceOf(this.pace).season || this.tickWait; this.frozen = null; this.tickWait = wait; this.tickAt = performance.now() - f * wait; this.timer = setTimeout(this.next, Math.max(0, (1 - f) * wait)); return; }
+    this.start();
+  }
   toggle() { if (this.paused) this.resume(); else this.pause(); }
   // a step done by hand (a stretch set while paused): the phase starts anew
   mark() { this.tickAt = performance.now(); this.tickWait = paceOf(this.pace).season; }
@@ -86,13 +100,13 @@ export class SeasonClock {
 // the local map's clock: real milliseconds into ticks at the pace (`local` × the base pace of TICK_MS), at most `cap` a frame
 export class TickClock {
   constructor() { this.pace = DEFAULT_PACE; this.acc = 0; this.last = 0; this.paused = false; }
-  // ticks to run this frame
-  ticks(now, cap = 40) {
+  // ticks to run this frame; `wind` × the pace — the night wound on while nothing happens (ui/campLocal.js)
+  ticks(now, cap = 40, wind = 1) {
     const dt = this.last ? Math.min(250, now - this.last) : 0; this.last = now;
     const P = paceOf(this.pace);
     if (this.paused) { this.acc = 0; return 0; }
     if (!P.local) return cap;   // `max`: as many as the frame allows
-    this.acc += dt * P.local;
+    this.acc += dt * P.local * wind;
     const n = Math.min(cap, Math.floor(this.acc / TICK_MS));
     this.acc -= n * TICK_MS;
     if (this.acc > 500) this.acc = 0;
@@ -103,6 +117,6 @@ export class TickClock {
 // the date of a world with the day of the season the screen is at: «год 181, весна, день 12»
 export function dateText(a, clock, seasonLabel) {
   const H = a.hist; if (!H) return '';
-  const day = clock && clock.running ? clock.day() : null;
+  const day = clock && (clock.running || clock.frozen != null) ? clock.day() : null;   // (paused mid-season: that day)
   return `год ${H.year}, ${seasonLabel(H.season)}${day ? `, день ${day}` : ''}`;
 }

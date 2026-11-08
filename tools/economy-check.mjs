@@ -10,6 +10,7 @@ import {seaFeed} from '../src/atlas/sea.js';
 import {stepGolems} from '../src/atlas/golems.js';
 import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, realmKeep, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet, GOLEMS} from '../src/data/townBuildings.js';
+import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {rationPrice} from '../src/campaign/town.js';
 import {stepHistory} from '../src/atlas/history.js';
 import {SEASONS_PER_YEAR} from '../src/data/atlas.js';
@@ -35,7 +36,7 @@ const T = a.towns.filter(t => t.alive);
   check('море кормит город с рыбаками, без рыбаков — нет', none === 0 && (sea > 0 || t.place.sea === 0), `${t.name}: доля моря ${t.place.sea}, кормит ${sea.toFixed(2)}`);
   const h = T.find(x => x.people === 'humans' && x.tier >= 2) || T[0], was = h.built;
   h.built = [...was.filter(id => id !== 'pier' && id !== 'harbor'), 'shipyard', 'fishhut'];
-  const e = townEconomy(a, h, undefined, {planks: 1e4, fiber: 1e4, cloth: 1e4}); const boats = e.boats;   // the yard with all it takes
+  const e = townEconomy(a, h, undefined, {wood: 1e4, fiber: 1e4, cloth: 1e4}); const boats = e.boats;   // the yard with all it takes
   h.built = was;
   check('верфь даёт лодки: рыбаки ловят больше', boats > 1, `×${boats.toFixed(2)}`);
   const c = {...h, built: [...was.filter(id => id !== 'pier' && id !== 'harbor')], tier: 2, place: {coast: true}};
@@ -67,11 +68,11 @@ const T = a.towns.filter(t => t.alive);
 }
 // the caravan's market
 {
-  const t = T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.makersGold;
+  const t = T.find(x => x.market && Object.values(x.market).some(k => k > 1)) || T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.makersGold;   // (a town where something is dear, if any is)
   toTown(t, 10); const after = t.makersGold; const paid = fromTown({makersGold: 5}, 20);
   const dear = Object.entries(t.market || {}).find(([, k]) => k > 1), cheap = Object.entries(t.market || {}).find(([, k]) => k < 1);
   check('караван платит мастерам города; они платят не больше, чем у них есть; цены рынка — от склада и нехватки',
-    Math.abs(after - g0 - 10) < 0.01 && paid === 5 && (!!dear || !!cheap) && marketK(t, dear?.[0]) > 1, `${t.name}: дороже ${dear?.join(' ×') || '—'}, дешевле ${cheap?.join(' ×') || '—'}`);
+    Math.abs(after - g0 - 10) < 0.01 && paid === 5 && (!!dear || !!cheap) && (!dear || marketK(t, dear[0]) > 1) && (!cheap || marketK(t, cheap[0]) < 1), `${t.name}: дороже ${dear?.join(' ×') || '—'}, дешевле ${cheap?.join(' ×') || '—'}`);
   const fed = {...t, supply: {own: 3 * t.pop, got: 0, gave: 0}}, hungry = {...t, supply: {own: 0.5 * t.pop, got: 0, gave: 0}};
   check('паёк дешевле, где у города излишек еды', rationPrice(fed, 'own') < rationPrice(hungry, 'own'), `${rationPrice(fed, 'own').toFixed(3)} против ${rationPrice(hungry, 'own').toFixed(3)}`);
   check('цены в пределах', T.every(x => Object.values(x.market || {}).every(k => k >= TOWN_MONEY.price.lo && k <= TOWN_MONEY.price.hi)));
@@ -80,7 +81,7 @@ const T = a.towns.filter(t => t.alive);
 // the stores, the realm back to the world, the beasts
 {
   const fed = TOWN_BUILDINGS.all().filter(b => b.fx.food).map(b => b.id), field = foodNet(TOWN_BUILDINGS.get('field'));
-  check('эффект «запасы» — только у амбара, погребов, заготовительного двора и соляного промысла; поле кормит своей сырой едой', fed.every(id => ['granary', 'cellar', 'dryrack', 'saltworks'].includes(id)) && field > 0, `${fed.join(', ')}; поле ${field}`);
+  check('эффект «запасы» — только у амбара, погребов и заготовительного двора; поле кормит своей сырой едой', fed.every(id => ['granary', 'cellar', 'dryrack'].includes(id)) && field > 0, `${fed.join(', ')}; поле ${field}`);
   const R = a.realms.find(r => r.kingdom && r.fallen == null), t = T.find(x => x.realm === R.id);
   check('показатели державы правят миром: рост городов от экономики, сила — от стабильности, расколы — от лояльности и раздоров',
     t.realmFx && t.realmFx.grow > 0 && t.realmFx.might > 0 && schismFactor({kingdom: {stats: {loyalty: 0}, ruin: {strife: 5}}}) > 1, JSON.stringify(t.realmFx));
@@ -112,13 +113,13 @@ const T = a.towns.filter(t => t.alive);
     `за сезон зарплат ${Math.round(w)}, налогов ${Math.round(tx)}, жители купили на ${Math.round(pp)}`);
   const nb = T.reduce((s, t) => s + (t.needs?.basic ?? 0), 0) / T.length;
   check('нужды жителей считаются, их нехватка тянет стройку', nb > 0 && T.some(t => Object.keys(t.needs?.lack || {}).length), `закрыто ${Math.round(nb * 100)}%`);
-  const x = {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
+  const x = {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50, stone: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
   const pl = planBuild(a, x, B); if (pl) doBuild(pl);
   // (a home is raised of logs: no wood to be had — and none to gather, the town has no hands — it is not built; boards are the home's yearly take)
-  const noWood = planBuild(a, {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {planks: 20}, built: [], market: {}, id: -1, econ: {freeHands: 0}}, B);
-  const poor = planBuild(a, {pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}, id: -2}, B);
+  const noWood = planBuild(a, {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {stone: 20}, built: [], market: {}, id: -1, econ: {freeHands: 0}}, B);
+  const poor = planBuild(a, {pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {wood: 50, stone: 20}, built: [], market: {}, id: -2}, B);
   check('стройка требует материалов и денег: дома — на деньги жителей, материалы со склада мастерам; без брёвен (и рук, чтобы их собрать) и без денег не строят',
-    !!pl && !noWood && !poor && x.stock.wood < 50 && x.stock.planks === 20 && x.makersGold > 0 && x.peopleGold < 100, `мастерам ${x.makersGold}, у жителей осталось ${x.peopleGold}`);
+    !!pl && !noWood && !poor && x.stock.wood < 50 && x.stock.stone === 20 && x.makersGold > 0 && x.peopleGold < 100, `мастерам ${x.makersGold}, у жителей осталось ${x.peopleGold}`);
   const l = [...a.net.links.values()];
   check('связи сети крепнут и от товаров', l.length > 0);
 }
@@ -141,26 +142,23 @@ const T = a.towns.filter(t => t.alive);
 
 // the second review: building's earnings taxed, the upkeep paid after the taxes, the peoples' swaps in needs and building
 {
-  const x = {pop: 200, people: 'humans', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}};
+  const x = {pop: 200, people: 'humans', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 50, stone: 20}, built: [], market: {}};
   const pl = planBuild(a, x, {tier: 1, cat: 'housing'}); doBuild(pl);
   check('доход от стройки облагается налогом в следующем сезоне', (x.carry?.makersIn || 0) > 0 && (x.carry?.peopleIn || 0) > 0, JSON.stringify(x.carry));
-  const o = {pop: 200, people: 'orcs', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 60}, built: [], market: {}};
-  check('у зеленокожих дом строится из брёвен вместо тёса', !!planBuild(a, o, {tier: 1, cat: 'housing'}));
-  const t = T.find(x => x.people === 'orcs'), lack = Object.keys(t?.needs?.lack || {});
-  check('зеленокожим не нужна соль (дерево вместо неё), тара у них — бурдюки мастерской, и благ им нужно вдвое меньше', !!t && !lack.includes('salt') && (t.econ.people?.ware?.want || 0) > 0
-    && TOWN_BUILDINGS.get('handshop').recipes.some(q => q.out?.ware && q.req.includes('people:orcs')),
-    t ? `${t.name}: не хватает ${lack.join(', ') || '—'}` : 'нет города');
+  const t = T.find(x => x.people === 'orcs');
+  check('зеленокожим благ нужно вдвое меньше, а оружие — их нужда', !!t && WORLD_PEOPLES.get('orcs').needs === 0.5 && (t.econ.people?.arms?.want || 0) > 0,
+    t ? `${t.name}: не хватает ${Object.keys(t.needs?.lack || {}).join(', ') || '—'}` : 'нет города');
   check('содержание платится после налогов: неоплаченного почти нет', T.filter(x => x.unpaid > 0).length <= T.length * 0.2, `${T.filter(x => x.unpaid > 0).length} из ${T.length}`);
 }
 
 // the golem forge works of the forge's work and the store's metal
 {
-  const t = {built: ['golemforge', 'forge', 'smelter'], pop: 800, realm: null, stock: {}, work: {golemforge: 1}}, ar = {hist: {year: 1}};
-  // (of its own metal: the forge and the smelter give iron and bronze; the store holds the golem's metal)
+  const t = {built: ['golemforge', 'forge', 'mineshaft'], pop: 800, realm: null, stock: {}, work: {golemforge: 1}}, ar = {hist: {year: 1}};
+  // (of its own metal: the forge and the mine give iron and bronze; the store holds the golem's metal)
   stepGolems(ar, t); const none = stepGolems(ar, t);
-  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[`bar_${m}`] = 50;   // (its ingots: data/townBuildings.js METALS)
-  const one = stepGolems(ar, t), spent = one && t.stock[`bar_${one.metal}`] === 50 - GOLEMS.make.metal;
-  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[`bar_${m}`] = 50;
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;   // (its metal: data/townBuildings.js METALS)
+  const one = stepGolems(ar, t), spent = one && t.stock[one.metal] === 50 - GOLEMS.make.metal;
+  for (const m of ['bronze', 'iron', 'steel', 'mithril']) t.stock[m] = 50;
   t.work.golemforge = 0.1; const idle = stepGolems(ar, t);
   check('голема не делают без металла на складе и без работы кузни; делают — его металл уходит', !none && !!one && spent && !idle, `${JSON.stringify(one)}`);
 }

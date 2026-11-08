@@ -84,7 +84,7 @@ function crewCap(w, job) {
 
 // the vacancies: needs → places. `reason` says what called for it (the journal)
 export function makePlan(w, reason = '') {
-  const col = colonists(w).filter(a => !a.downed), day = dayOf(w.tick);
+  const col = colonists(w).filter(a => !a.downed), day = dayOf(w.tick, w);
   const need = needs(w), jobs = Object.keys(need).sort((x, y) => need[y].w - need[x].w);
   const total = jobs.reduce((s, j) => s + need[j].w, 0) || 1;
   // places: each job's share of the hands, at least one for anything wanted enough, no more than it can take
@@ -135,7 +135,7 @@ export function makePlan(w, reason = '') {
 // who holds a place today, by job: the colonists signed up (a.shift) for today. Counted once a tick;
 // a colonist who signs up in the middle of the tick is added at once (signUp), so the next one to weigh
 // that job already sees the place taken
-const today = w => dayOf(w.tick);
+const today = w => dayOf(w.tick, w);
 const holders = w => perTick(w, 'plan.holders', () => {
   const by = {}, d = today(w);
   for (const a of colonists(w)) if (!a.dead && !a.downed && a.shift?.day === d && a.shift.job) (by[a.shift.job] ||= []).push(a);
@@ -190,7 +190,7 @@ export function vacancyLines(w, who = false) {
 export function planStale(w) {
   const p = w.plan; if (!p?.vac) return true;   // an old save's roster by names: post vacancies instead
   const col = colonists(w).filter(a => !a.downed);
-  return p.pop !== col.length || p.built !== w.buildings.filter(b => b.done).length || dayOf(w.tick) > p.day + 1;
+  return p.pop !== col.length || p.built !== w.buildings.filter(b => b.done).length || dayOf(w.tick, w) > p.day + 1;
 }
 export function ensurePlan(w) {
   if (planStale(w)) makePlan(w, w.plan ? 'перемены в поселении' : 'первый день');

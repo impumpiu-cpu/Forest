@@ -123,7 +123,10 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     const nowSeat = capitalOf(a, r.id);
     check('столица сожжена, король был в другом городе: столица перенесена, король жив', king.alive && nowSeat && nowSeat !== seat && r.fallen == null, `${king.name} жив: ${king.alive}; столица — ${nowSeat?.name}`);
     const king2 = rulerOf(a, r), court = Object.values(r.kingdom.court).filter(Boolean).map(h => personOf(a, h.person));
-    townStormed(a, nowSeat, false, () => 0, say);   // stormed again, the king there now: it falls by the profile's `storm`
+    // stormed again, the king there now (the new seat need not be the town he waited in: a realm of three towns picks its
+    // biggest — he is brought to it): he falls by the profile's `storm`
+    if (king2 && !isAt(king2, 'town', nowSeat.id)) moveTo(king2, 'town', nowSeat.id);
+    townStormed(a, nowSeat, false, () => 0, say);
     check('штурм столицы с королём в ней: король гибнет по укладу, двор — с ним', !!king2 && !king2.alive && king2.died.how === 'storm' && court.every(p => !p.alive || !isAt(p, 'town', nowSeat.id)), `${king2?.name}: ${king2?.died?.how}`);
   }
 }
@@ -280,7 +283,7 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   // the builders and the council ask the same checker: canBuild agrees with the requirement for every building
   const agree = TOWN_BUILDINGS.all().every(b2 => { const ok = meets([needsOf(b2)].filter(Boolean), townFacts(a, t)); return ok || !canBuild(a, t, b2); });
   check('стройка и совет спрашивают одну проверку: что не проходит требование, того нельзя построить', agree);
-  check('рецепт: req читается как требование («kin:ogre» — доля огров не меньше KIN.least)', JSON.stringify(reqNeeds(['kin:ogre'])) === JSON.stringify(ALL(C('kinShare', 'ogre', '>=', KIN.least))) && JSON.stringify(reqNeeds(['a|b'])) === JSON.stringify(ALL(ANY(C('opens', 'a', '=', true), C('opens', 'b', '=', true)))));
+  check('рецепт: req читается как требование («kin:ogre» — доля огров не меньше KIN.least)', JSON.stringify(reqNeeds(['kin:ogre'])) === JSON.stringify(ALL(C('kinShare', 'ogre', '>=', KIN.least))) && JSON.stringify(reqNeeds(['people:elves|kin:ogre'])) === JSON.stringify(ALL(ANY(C('people', '=', 'elves'), C('kinShare', 'ogre', '>=', KIN.least)))));
   const bad = TOWN_BUILDINGS.all().flatMap(b2 => reqErrors(needsOf(b2), b2.id));
   check('требования всех построек правильно сложены', bad.length === 0, bad.slice(0, 3).join('; '));
   check('таблица укладов: у каждого народа свой', WORLD_PEOPLES.all().every(P => POLITIES.has(P.polity || P.id)));
@@ -383,10 +386,10 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
   addHeads(a, t, 'human', 100, 1); const p0 = t.pop;
   (await import('../src/atlas/diplomacy.js')).stepDiplomacy(a, mulberry(1), say, () => 0);
   check('F12: выселять некуда — чужаки остаются, жители не пропадают', Math.abs(t.pop - p0) < 1e-6, `${p0} → ${t.pop}`);
-  const b = copy(), r = realmsOf(b, 'humans')[0], seat = capitalOf(b, r.id), n0 = seat.pop;
+  const b = copy(), r = realmsOf(b, 'humans')[0], seat = capitalOf(b, r.id), n0 = seat.pop, named0 = seat.book?.named || 0;   // (the book may already hold this year's named: count from it)
   for (const o of Object.keys(r.kingdom.court)) r.kingdom.court[o] = null;
   makeRuler(b, r);   // (crownRuler names it out of the seat)
-  check('A4: именованный ко двору — из счёта города: жителей на одного меньше, в книге «ко двору»', Math.abs(seat.pop - (n0 - 1)) < 1e-6 && seat.book?.named === 1, `${n0} → ${seat.pop}`);
+  check('A4: именованный ко двору — из счёта города: жителей на одного меньше, в книге «ко двору»', Math.abs(seat.pop - (n0 - 1)) < 1e-6 && seat.book?.named === named0 + 1, `${n0} → ${seat.pop}, в книге ${named0} → ${seat.book?.named}`);
   const tw = lairOf(b, 'necromancer');
   if (tw) {
     const master = tw.leader || lead(b, tw);
@@ -479,6 +482,8 @@ const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l.le
     const a = copy(), r = realmsOf(a, 'humans').find(x => realmTowns(a, x.id).length >= 2) || realmsOf(a, 'humans')[0], seat = capitalOf(a, r.id), goal = a.towns.find(x => x.alive && x !== seat).i;
     seat.heads = {human: [0, 500, 0]}; sync(seat); seat.book = null;
     const hp = makeRuler(a, r), army = send(a, seat, goal, 50, {owner: r.id}); moveTo(hp, 'party', army.id);
+    // (the other chairs' terms put off: a chair of the world's own whose years run out this spring would step off into the count too)
+    for (const [k, h] of Object.entries(r.kingdom.court)) if (k !== 'ruler' && h) h.until = Infinity;
     const n0 = seat.pop; r.kingdom.court.ruler.until = a.hist.year; a.hist.season = SEASONS_PER_YEAR - 1;
     const fill = COURT.fill; COURT.fill = 0; stepKingdom(a, say); COURT.fill = fill;   // (no other office filled from the seat this year: the count is the ruler's alone)
     const apart = hp.alive && !hp.inCount && hp.crowd && isAt(hp, 'party', army.id) && livingPersons(a).includes(hp) && !r.kingdom.court.ruler?.person && Math.abs(seat.pop - n0) < 1e-6;

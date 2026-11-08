@@ -57,8 +57,9 @@ export function mindOf(a, r) {
 
 // how far a realm's corruption keeps its towns from following it (data/kingdom.js RUINS corruption), 0 … MIND.obey.corruptMax
 export const corruptShare = r => Math.min(MIND.obey.corruptMax, MIND.obey.corrupt * (r.kingdom?.ruin?.corruption || 0));
-// how well a town's people live, 0 … 1: the basic needs they met this season (atlas/treasury.js t.needs; a new town: 1)
-const fedOf = t => t.needs?.basic ?? 1;
+// how well a town is fed, 0 … 1: 1 less the strength of its council's need of food (atlas/townNeeds.js: its people against what
+// feeds them; a town that has not sensed it yet — 1)
+const fedOf = t => 1 - (t.need?.food?.s ?? 0);
 
 // the season's needs of a realm, and its obedience
 function sense(a, r, towns) {

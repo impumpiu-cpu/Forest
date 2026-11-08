@@ -13,6 +13,7 @@
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
 import {PLURAL_INSTR} from '../data/names.js';
+import {TOWN_BUILDINGS, PLACE_AT} from '../data/townBuildings.js';
 import {LAND_BIOMES, LAIR_GROUND as LG, ROCK_CAVES, TOWN_ROLES} from '../data/worldLand.js';
 import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX, NECRO} from '../data/lairs.js';
 import {killShare, strangersOf} from './population.js';
@@ -241,6 +242,7 @@ export function seedRot(a, rnd) {
     if (spots.some(q => Math.hypot(q % a.w - i % a.w, ((q / a.w) | 0) - ((i / a.w) | 0)) < 25 * k)) continue;
     spots.push(i); barrows(a, i, Math.max(2, Math.round(3 * k)), ROT.ancientGraves);
   }
+  if (a.f.barrows) a.f.barrowsOld = Float32Array.from(a.f.barrows);   // the barrows of before the chronicle: they do not settle (stepRot)
   return spots;
 }
 
@@ -258,6 +260,18 @@ export function stepRot(a) {
     const j = cell[t.i], x0 = j % F.W, y0 = (j / F.W) | 0;
     for (let y = Math.max(0, y0 - 1); y <= Math.min(F.H - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(F.W - 1, x0 + 1); x++) ward[y * F.W + x] = Math.max(ward[y * F.W + x], w);
   }
+  // the graves settle: what history laid down sinks back towards the barrows older than the chronicle (a.f.barrowsOld),
+  // ROT.graveSettle of the rest a season — a battlefield's or a raid's dead feed the rot for some generations, not for ever
+  // — but not the graves a town tends: around a town with funeral rites (a building that needs graves near, data/townBuildings.js
+  // `needs: ['graves']`) they stay as they are, as long as the rites go on
+  if (a.f.barrows) {
+    const G = a.f.barrows, O = a.f.barrowsOld, k = ROT.graveSettle, tended = new Set(), r = PLACE_AT.graves;
+    for (const t of a.towns || []) if (t.alive && t.built.some(id => TOWN_BUILDINGS.get(id)?.needs?.includes('graves'))) {
+      const x0 = t.i % a.w, y0 = (t.i / a.w) | 0;
+      for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(a.w - 1, x0 + r); x++) tended.add(y * a.w + x);
+    }
+    for (let i = 0; i < a.n; i++) { const o = O ? O[i] : 0; if (G[i] > o && !tended.has(i)) G[i] = o + (G[i] - o) * (1 - k); }
+  }
   src.fill(0); cnt.fill(0);
   if (a.f.barrows) for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j < 0) continue; src[j] += a.f.barrows[i]; cnt[j]++; }
   else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
@@ -270,9 +284,13 @@ export function stepRot(a) {
       if (!t || !o || !t.alive || !o.alive) continue;
       for (const [from, to] of [[t, o], [o, t]]) {
         const jf = cell[from.i], jt = cell[to.i];
-        if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom) continue;
+        if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom || rot[jf] <= rot[jt]) continue;
+        // the rats carry the rot down its slope, from the thicker town to the thinner: by the difference, not by the
+        // source's whole — else every road out of a rotten town fed the rot as a grave would, regardless of what the
+        // other town had, the towns of a road net kept each other in the rot for good (fed more than the rot fades),
+        // and the rot ran over whole realms with no graves near
         const keep = 1 - ROT.ratsHealth * healthOf(to);
-        src[jt] += ROT.rats * rot[jf] * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
+        src[jt] += ROT.rats * (rot[jf] - rot[jt]) * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
         if (rot[jt] < ROT.ratsFrom && !to.ratsTold) { to.ratsTold = true; (a.ratsLines ||= []).push(`Крысы с обозами занесли гниль в ${townLabel(to, 1)} ${to.name}.`); }
       }
     }

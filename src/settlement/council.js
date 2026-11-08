@@ -36,8 +36,8 @@ export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.ge
 
 
 export function councilDue(w) {
-  const h = hourOf(w.tick);
-  return !w.light && h >= COUNCIL.from && h < COUNCIL.to && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+  const h = hourOf(w.tick, w);
+  return !w.light && h >= COUNCIL.from && h < COUNCIL.to && w.council.lastDay !== dayOf(w.tick, w) && colonists(w).length > 0;
 }
 
 // extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way
@@ -106,7 +106,7 @@ export function councilWish(w, a) {
 }
 
 export function stepCouncil(w) {
-  const day = dayOf(w.tick), h = hourOf(w.tick);
+  const day = dayOf(w.tick, w), h = hourOf(w.tick, w);
   if (!councilDue(w)) {
     if (w.council.lastDay !== day && h >= COUNCIL.to && colonists(w).length) w.council.lastDay = day;   // nobody came
     return;
@@ -118,11 +118,11 @@ export function stepCouncil(w) {
 
 function hold(w, present, total) {
   const c = w.council;
-  c.lastDay = dayOf(w.tick);
+  c.lastDay = dayOf(w.tick, w);
   for (const a of present) shiftAlign(a, 'order', ALIGN_DRIFT.pawn.council, (a.alignRoot?.order ?? a.align?.order ?? 0) + ALIGN_DRIFT.pawn.councilCap);   // an evening of law: a little more of it in each
   const site = openSites(w)[0];
   const args = [];
-  let decision;
+  let decision, winner = null;   // the proposal the council settled on: the second round's when there was one
   if (site) {
     const d = BUILDINGS.get(site.key);
     decision = `Решили сначала достроить: ${d.name.toLowerCase()} (${Math.floor(site.progress / d.work * 100)}%).`;
@@ -139,7 +139,7 @@ function hold(w, present, total) {
         let best = null, bs = -1, why = '';
         for (const k of cands) { const [sc, r] = motive(w, a, BUILDINGS.get(k), ctx); if (sc > bs) { bs = sc; best = k; why = r; } }
         tally[best] = (tally[best] || 0) + 1; weight[best] = (weight[best] || 0) + bs;
-        args.push({name: a.name, key: best, why});
+        args.push({id: a.id, name: a.name, key: best, why});
       }
       const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
       c.votes = ranked.map(k => [k, tally[k]]);
@@ -155,6 +155,7 @@ function hold(w, present, total) {
         win = t2[p1] >= t2[p2] ? p1 : p2; votes = t2[win];
         round2 = ` Во втором туре: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
       }
+      winner = win;
       const d = BUILDINGS.get(win);
       if (tracing()) noteDecision({point: 'settlement.council', who: 'council', at: w.tick, band: 'routine', policy: 'vote',
         opts: ranked.map(k => ({cmd: 'settlement.council.build', key: `settlement.council.build(${k})`, score: tally[k]})), pick: `settlement.council.build(${win})`, round2: !!round2});
@@ -173,12 +174,11 @@ function hold(w, present, total) {
       }
     }
   }
-  c.decision = decision; c.args = args.slice(0, 6); c.present = present.length; c.total = total;
-  // everyone who spoke remembers how it went
-  const winner = c.votes[0]?.[0];
+  c.decision = decision; c.winner = winner; c.args = args.slice(0, 6); c.present = present.length; c.total = total;
+  // everyone who spoke remembers how it went — by the proposal that won (after a second round, not the first's leader)
   w.chronicle.councils++;
   for (const x of args) {
-    const a = present.find(p => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
+    const a = present.find(p => p.id === x.id), choice = BUILDINGS.get(x.key).name.toLowerCase();
     const id = x.key !== winner ? 'councilLost' : c.goal ? 'councilSaving' : 'councilWon';
     think(w, a, id, {choice, why: x.why, decision: winner ? BUILDINGS.get(winner).name.toLowerCase() : ''});
   }

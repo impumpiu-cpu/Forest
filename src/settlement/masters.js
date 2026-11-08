@@ -103,8 +103,8 @@ function nameMasters(w) {
 // once a tick (sim.js): the council's naming; the learners learn beside a master at work
 export function stepMasters(w) {
   const S = (w.mastersState ??= {named: -1});
-  const day = dayOf(w.tick);
-  if (!w.light && S.named !== day && hourOf(w.tick) >= COUNCIL.from && w.council?.lastDay === day) { S.named = day; nameMasters(w); }
+  const day = dayOf(w.tick, w);
+  if (!w.light && S.named !== day && hourOf(w.tick, w) >= COUNCIL.from && w.council?.lastDay === day) { S.named = day; nameMasters(w); }
   // a captive working the master's craft beside the master at work earns half a learner's service: it learns
   // under the master's eye (the way out of captivity, settlement/freedom.js)
   for (const m of masters(w)) {

@@ -19,7 +19,7 @@ import {SITES, NET} from '../data/sites.js';
 import {killHeads} from './population.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
-import {placeHas} from './towns.js';
+import {placeHas, builtChanged} from './towns.js';
 import {placeNeed} from '../data/peoples.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
@@ -112,7 +112,7 @@ export function razeSite(a, s, year) {
   if (!s.alive) return;
   const t = a.towns.find(t => t.id === s.town);
   if (t) {
-    const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1);
+    const k = t.built.indexOf(s.kind); if (k >= 0) { t.built.splice(k, 1); builtChanged(a); }
     if (t.alive !== false && t.built.includes(s.kind)) return;   // the rest of the farmland stands
     t.sites = (t.sites || []).filter(id => id !== s.id);
   }
@@ -134,6 +134,7 @@ export function razeSites(a, t, year) {
   for (const id of t.sites || []) razeSite(a, a.sites[id - 1], year);
   // the net forgets the town at once: no link keeps a share of a living town's surplus for a dead end
   if (a.net) for (const [key, l] of a.net.links) if (l.p === t || l.q === t) a.net.links.delete(key);
+  a.netIdx = null;   // (the index of the links by town: made again — atlas/treasury.js linksOf)
 }
 
 // old stumps are forgotten
@@ -158,8 +159,10 @@ export function stepNet(a, feeds) {
   const alive = new Set();
   for (const [t, o] of tradeLinks(a, NET.links, NET.reach)) {
     const key = linkKey(t, o); alive.add(key);
-    if (!L.has(key)) L.set(key, {p: t, q: o, c: NET.start, flow: 0});
+    if (!L.has(key)) L.set(key, {p: t, q: o, c: NET.start, flow: 0, near: true});
+    else { const l = L.get(key); delete l.via; delete l.hops; l.near = true; }   // (a route whose ends have come to neighbour: a link like any, with its own road — atlas/treasury.js farWays, atlas/roads.js)
   }
+  for (const [key, l] of L) if (l.near && !alive.has(key)) delete l.near;   // (no more neighbours: the link lives on as a route)
   // a link to a razed town dies with it: a dead end must not keep a share of the living town's surplus
   for (const [key, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key); else if (!alive.has(key)) { l.c *= 1 - NET.decay; if (l.c < NET.min) L.delete(key); }
   // what each town has over its need, or lacks
@@ -193,6 +196,7 @@ export function stepNet(a, feeds) {
     l.c = Math.min(1, l.c * (1 - NET.decay) + NET.grow * Math.min(1, l.flow / need));
     if (l.c < NET.min) L.delete(linkKey(l.p, l.q));
   }
+  a.netIdx = null;   // (the index of the links by town: made again — atlas/treasury.js linksOf)
 }
 
 // towns that have come to live by their links: told once each

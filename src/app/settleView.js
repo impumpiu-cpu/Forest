@@ -66,8 +66,8 @@ export class SettleView extends MapView {
     });
     // the observer's clock (core/clock.js): a season a step at the pace; the stretch («+N лет») is what it has to run
     this.syncPaceBox = mountPace($('setPace'), this.clock, {pauseId: 'setPause', active: () => !$('settle').hidden,
-      onPace: id => { this.clock.setPace(id); if (this.clock.paused) this.clock.resume(); this.syncRun(); },
-      onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); this.syncRun(); }});
+      onPace: id => { this.clock.setPace(id); if (this.clock.paused) { this.clock.resume(); this.animate?.(); } this.syncRun(); },
+      onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); if (!this.clock.paused) this.animate?.(); this.syncRun(); }});
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
     this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', skin: 'setSkin', screen: 'settle', legend: 'setLegend', hint: NOTES.look});

@@ -73,7 +73,7 @@ function council(w) {
 // once a tick (sim.js): the bond at dawn, the council, who fought in a red alarm
 export function stepFreedom(w) {
   const fs = formers(w), S = (w.freedom ??= {dawn: -1, council: -1});
-  const day = dayOf(w.tick), h = hourOf(w.tick);
+  const day = dayOf(w.tick, w), h = hourOf(w.tick, w);
   if (!w.light && S.council !== day && h >= COUNCIL.from && w.council?.lastDay === day) { S.council = day; council(w); }
   if (!fs.length) return;
   if (h >= 6 && S.dawn !== day) {

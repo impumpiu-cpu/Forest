@@ -193,6 +193,7 @@ export class Renderer {
     if (view.layer === 'nav') this.drawArrows(w);
     this.drawZone(w);
     this.drawBuildings(w);
+    if (w.works?.length) this.drawWorks(w);
     this.drawPick(w, view);
     this.drawAgents(w, view.selected);
     this.drawShots(w);
@@ -271,6 +272,57 @@ export class Renderer {
       const px = (x + 0.5) * S, py = (y + 0.5) * S, ux = ddx / l, uy = ddy / l, L = S * 1.4;
       ctx.beginPath(); ctx.moveTo(px - ux * L, py - uy * L); ctx.lineTo(px + ux * L, py + uy * L);
       ctx.lineTo(px + ux * L - (ux * 0.8 - uy * 0.5) * S * 0.8, py + uy * L - (uy * 0.8 + ux * 0.5) * S * 0.8); ctx.stroke();
+    }
+  }
+
+  // The caravan's camp set up for the night (campaign/works.js): the cart by the fire, the tether's posts and rope, the
+  // poles with hides, the spit, the smoking rack, the stakes — drawn as small things on the ground, in the making dashed
+  drawWorks(w) {
+    const ctx = this.ctx, S = this.S, dark = '#2a2016', wood = '#8a6a3c', post = '#5a4428';
+    const pole = (x, y, h = 0.9) => { ctx.fillStyle = post; ctx.fillRect(x - S * 0.08, y - S * h, S * 0.16, S * h); };
+    for (const x of w.works) {
+      const px = x.x * S, py = x.y * S, k = x.done ? 1 : Math.min(1, x.progress / x.ticks);
+      ctx.save();
+      if (!x.done) ctx.globalAlpha = 0.35 + 0.65 * k;
+      if (x.key === 'stakes') {
+        // sharpened poles leaning out from the fire
+        const i = x.cells[0], cxp = ((i % w.w) + 0.5) * S, cyp = (((i / w.w) | 0) + 0.5) * S, ang = Math.atan2(cyp - (w.camp.y + 0.5) * S, cxp - (w.camp.x + 0.5) * S);
+        ctx.strokeStyle = x.done ? wood : 'rgba(138,106,60,0.6)'; ctx.lineWidth = Math.max(1.2, S * 0.14); ctx.lineCap = 'round';
+        for (let m = -1; m <= 1; m++) {
+          const ox = Math.cos(ang + Math.PI / 2) * m * S * 0.3, oy = Math.sin(ang + Math.PI / 2) * m * S * 0.3;
+          ctx.beginPath(); ctx.moveTo(cxp + ox - Math.cos(ang) * S * 0.3, cyp + oy - Math.sin(ang) * S * 0.3); ctx.lineTo(cxp + ox + Math.cos(ang) * S * 0.45, cyp + oy + Math.sin(ang) * S * 0.45 - S * 0.25); ctx.stroke();
+        }
+      } else if (x.key === 'wagon') {
+        // the cart: a box on two wheels, the shafts toward the fire
+        const bw = S * 1.7, bh = S * 0.9;
+        ctx.fillStyle = wood; ctx.fillRect(px - bw / 2, py - bh / 2 - S * 0.2, bw, bh);
+        ctx.strokeStyle = dark; ctx.lineWidth = 1.2; ctx.strokeRect(px - bw / 2, py - bh / 2 - S * 0.2, bw, bh);
+        ctx.fillStyle = '#c9b48a'; ctx.fillRect(px - bw / 2 + 2, py - bh / 2 - S * 0.2 + 2, bw - 4, bh * 0.5);   // the load under its cloth
+        ctx.fillStyle = dark; for (const dx of [-0.55, 0.55]) { ctx.beginPath(); ctx.arc(px + dx * S, py + bh * 0.35, S * 0.3, 0, Math.PI * 2); ctx.fill(); }
+      } else if (x.key === 'tether') {
+        // posts with a rope between them, the beasts' hay at their feet
+        const a = x.cells[0], b = x.cells[x.cells.length - 1], ax = ((a % w.w) + 0.5) * S, ay = (((a / w.w) | 0) + 0.5) * S, bx = ((b % w.w) + 0.5) * S, by = (((b / w.w) | 0) + 0.5) * S;
+        pole(ax, ay); pole(bx, by);
+        if (x.done) { ctx.strokeStyle = '#d8c89a'; ctx.lineWidth = Math.max(1, S * 0.08); ctx.beginPath(); ctx.moveTo(ax, ay - S * 0.75); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 - S * 0.55, bx, by - S * 0.75); ctx.stroke(); }
+      } else if (x.key === 'racks') {
+        // two poles with a hide stretched between them
+        const a = x.cells[0], b = x.cells[x.cells.length - 1], ax = ((a % w.w) + 0.5) * S, ay = (((a / w.w) | 0) + 0.5) * S, bx = ((b % w.w) + 0.5) * S, by = (((b / w.w) | 0) + 0.5) * S;
+        pole(ax, ay, 1.1); pole(bx, by, 1.1);
+        if (x.done) { ctx.fillStyle = '#b08a5a'; ctx.beginPath(); ctx.moveTo(ax + S * 0.1, ay - S * 1.0); ctx.lineTo(bx - S * 0.1, by - S * 1.0); ctx.lineTo(bx - S * 0.2, by - S * 0.35); ctx.lineTo(ax + S * 0.2, ay - S * 0.35); ctx.closePath(); ctx.fill(); ctx.strokeStyle = dark; ctx.lineWidth = 0.8; ctx.stroke(); }
+      } else if (x.key === 'spit') {
+        // a spit on two forks beside the fire, the meat on it
+        pole(px - S * 0.45, py + S * 0.2, 0.7); pole(px + S * 0.45, py + S * 0.2, 0.7);
+        ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = Math.max(1, S * 0.08); ctx.beginPath(); ctx.moveTo(px - S * 0.55, py - S * 0.45); ctx.lineTo(px + S * 0.55, py - S * 0.45); ctx.stroke();
+        if (x.done) { ctx.fillStyle = '#a0563c'; ctx.beginPath(); ctx.ellipse(px, py - S * 0.45, S * 0.3, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+      } else if (x.key === 'smoke') {
+        // a rack over a smouldering pit, smoke above it
+        pole(px - S * 0.4, py + S * 0.3, 0.9); pole(px + S * 0.4, py + S * 0.3, 0.9);
+        ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = Math.max(1, S * 0.08); ctx.beginPath(); ctx.moveTo(px - S * 0.5, py - S * 0.5); ctx.lineTo(px + S * 0.5, py - S * 0.5); ctx.stroke();
+        ctx.fillStyle = '#4a3a2a'; ctx.beginPath(); ctx.ellipse(px, py + S * 0.3, S * 0.4, S * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+        if (x.done) { ctx.fillStyle = 'rgba(200,200,190,0.45)'; for (let m = 0; m < 3; m++) { ctx.beginPath(); ctx.arc(px + Math.sin(w.tick / 9 + m * 2) * S * 0.2, py - S * (0.8 + m * 0.35), S * (0.18 + m * 0.08), 0, Math.PI * 2); ctx.fill(); } }
+      }
+      ctx.restore();
+      if (!x.done && S >= 5) { ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(px - S * 0.6, py + S * 0.55, S * 1.2, 3); ctx.fillStyle = '#d8b25a'; ctx.fillRect(px - S * 0.6, py + S * 0.55, S * 1.2 * k, 3); }
     }
   }
 

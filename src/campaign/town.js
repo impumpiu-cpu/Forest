@@ -34,6 +34,7 @@ import {ORES} from '../data/ores.js';
 import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
 import {makeMember} from './start.js';
+import {welcome} from './social.js';
 import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
@@ -42,7 +43,7 @@ import {MATERIALS} from '../data/balance/materials.js';
 import {allowed} from '../data/commands.js';
 
 const alive = K => K.members.filter(m => m.alive);
-const has = (t, ids) => ids.some(id => lineHas(t.built, id));   // (a tier stands for its base: a town of a developed smelter has a smelter)
+const has = (t, ids) => ids.some(id => lineHas(t.built, id));   // (a tier stands for its base: a town of deep mines has a mine)
 const gold = v => Math.round(v * 10) / 10;
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
 
@@ -63,7 +64,7 @@ export function rationPrice(t, st, terms = 1) {
   return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * plenty * STANDING[st].buy * terms;
 }
 // the town good of a stock resource (an ore by its kind: atlas ore goods) and of an offer
-const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ore_iron' : null);   // (an ore of no town good of its own — as iron ore)
+const goodOf = id => goodOfRes(id)?.[0] || null;   // (ore is no good of the towns: their mines give metal — the caravan's ore goes to the smith, SMITH)
 const offerGood = o => (o.kind === 'goods' ? goodOf(o.id) : o.kind === 'beast' ? 'beasts' : o.kind === 'item' ? (gearDef(o.id)?.tool ? 'tools' : gearDef(o.id)?.slot === 'body' || gearType(o.id) === 'shield' ? 'armor' : 'arms') : null);
 const sellPrice = (t, st, id) => {
   const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
@@ -98,7 +99,7 @@ function wareOffers(t, a) {
   // the recipes that run and the works that stand; and the recipes of a standing work that do not run here (a forge without
   // ingots) — their wares while the store holds the kind and a forge of the realm ran the metal
   // (no world — a town alone, as the checks ask: its works, and the recipes they run by its people and kinds, the store unasked)
-  const bare = () => { const L = townLights(null, t), out = []; for (const id of new Set(t.built)) { out.push(id); for (const q of recipesOf(TOWN_BUILDINGS.get(id))) if (reqLit((q.req || []).filter(x => !String(x).startsWith('stock:')), L)) out.push(`${id}:${q.id}`); } return out; };
+  const bare = () => { const L = townLights(null, t), out = []; for (const id of new Set(t.built)) { out.push(id); for (const q of recipesOf(TOWN_BUILDINGS.get(id))) if (reqLit(q.req, L)) out.push(`${id}:${q.id}`); } return out; };
   const runs = u ? [...u.recipes, ...u.works] : bare(), forged = a ? realmForges(a, t) : null;
   const shelf = []; if (u) for (const b of u.works) for (const q of recipesOf(TOWN_BUILDINGS.get(b))) { const id = `${b}:${q.id}`; if (!u.recipes.includes(id) && forged.has(q.id)) shelf.push(id); }
   for (const id of runs) for (const w of WARES[id] || []) ids.add(w);
@@ -343,7 +344,7 @@ export function hire(a, K, t, st, r) {
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve, a)) continue;
     K.gold = gold(K.gold - toTown(t, cost));
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
-    K.members.push(m);
+    K.members.push(m); welcome(K, m);   // (one of the company takes the newcomer in: campaign/social.js)
     said.push(`наняли ${H.label}а ${m.name} на ${pieces(days, 'день', 'дня', 'дней')} за ${cost} зол.`);
   }
   return said;
@@ -360,7 +361,7 @@ export function companion(a, K, t, st, r) {
   const race = minor || WORLD_PEOPLES.get(t.people).race;
   if (!gratis) K.gold = gold(K.gold - toTown(t, C.fee));
   const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty, align: !minor && t.realm ? realmAlign(a, t.realm) : null});
-  K.members.push(m);
+  K.members.push(m); welcome(K, m);
   const sp = SPECIES.get(race);
   return `к каравану ${gratis ? 'по доброй воле' : `за ${C.fee} зол.`} пристал${m.gender === 'f' ? 'а' : ''} ${m.name}${minor ? ` из народа ${sp.gen || sp.plural}` : ''}`;
 }

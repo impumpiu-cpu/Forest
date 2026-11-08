@@ -51,11 +51,11 @@ export const OFFERS = [
   // a golem of the town's golem forge (data/constructs.js): of the metal the town chooses — one of its guard golems
   // (atlas/golems.js), else its realm's best (campaign/town.js offers)
   {kind: 'beast', id: 'golem', golem: true, at: ['golemforge']},
-  {kind: 'vehicle', id: 'cart', at: ['crafthut', 'sawmill', 'woodcut'], price: CAMPAIGN.vehicles.cart},
-  {kind: 'vehicle', id: 'wagon', at: ['sawmill', 'crafthut'], also: ['forge', 'smelter'], price: CAMPAIGN.vehicles.wagon},
+  {kind: 'vehicle', id: 'cart', at: ['crafthut', 'woodcut'], price: CAMPAIGN.vehicles.cart},
+  {kind: 'vehicle', id: 'wagon', at: ['crafthut'], also: ['forge', 'mineshaft'], price: CAMPAIGN.vehicles.wagon},
   // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
   {kind: 'goods', id: 'rope', n: 4, any: true, at: [], need: 'bonds'},
-  {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry'], need: 'bonds'},
+  {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'foundry'], need: 'bonds'},
   {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry'], need: 'bonds'},
   // the healing potion (data/potions.js), one at a time, where healers work
   {kind: 'goods', id: 'potion', n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'heal'},
@@ -158,6 +158,6 @@ export const EARN = {hide: 0.3, pan: 0.4, hideCap: 1.5, panRoll: 0.5,
 // potion's price × `fee` for the work; the caravan keeps `pots` pots for its own healer's hut (it sets out with as many)
 export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, get pots() { return POTION.keep.pots; }};   // (pots: data/potions.js POTION.keep)
 
-export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
+export const SMITH = {at: ['forge', 'foundry', 'armory'], discount: 0.45, reserve: 3,
   bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};
 

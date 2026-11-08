@@ -23,7 +23,7 @@
 import {colonists} from './query.js';
 import {walkable} from '../world/grid.js';
 import {campFuel} from './stock.js';
-import {nightness} from '../core/time.js';
+import {nightness, tickOfDay, dayLen} from '../core/time.js';
 import {holdersOf} from './plan.js';
 import {DAY} from '../core/time.js';
 
@@ -51,7 +51,7 @@ export function sampleBehaviour(w) {
     if (!walkable(w, (a.y | 0) * w.w + (a.x | 0))) bad(w, 'в скале или воде');
   }
   // the vacancies at noon: how many of the day's places the colonists took (settlement/plan.js)
-  if (w.tick % DAY === DAY / 2 && w.plan?.vac) {
+  if (tickOfDay(w) === dayLen(w) / 2 && w.plan?.vac) {
     const v = b.vacancies ||= {places: 0, held: 0, days: 0};
     for (const [j, x] of Object.entries(w.plan.vac)) { v.places += x.places; v.held += Math.min(x.places, holdersOf(w, j).length); }
     v.days++;

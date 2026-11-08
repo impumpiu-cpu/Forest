@@ -8,12 +8,14 @@
 //   settlers (a year, after the growth, atlas/peoples.js sendSettlers): a full town sends `settlers.pop` of its people to
 //     found a town of its realm on a free spot within its reach; they carry what it can spare of `settlers.goods`;
 //   migration (each season, here): people move from the towns they like less to those they like more — fame (the town's
-//     prestige) and how well their needs are met (atlas/treasury.js t.needs) draw them, free room lets them in; a town
+//     prestige) and how content its people are (atlas/mood.js t.mood) draw them, free room lets them in; a town
 //     over its room sends the surplus away. They move within their realm, and to a near town of a realm that trades with
 //     theirs (TOWN_LIFE.abroad as dear) of their own people or of a people that welcomes them (data/peoples.js `welcome`);
 //   a town left with fewer than TOWN_LIFE.abandon people is left: they go to the nearest town of their realm;
 //   the captives of a lair gone go home (freeCaptives); an army whose town fell comes back to the nearest town of its realm
 //   (atlas/army.js); the crowned seat draws people from its realm's towns (drawTo), it does not make them.
+import {townDist, withFrame, frameChanged} from './frame.js';
+import {moodOf} from './mood.js';
 import {WORLD_PEOPLES, TOWN_LIFE as TL} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {townFx, room, townLabel, townKin} from './towns.js';
@@ -85,7 +87,7 @@ export function lifeYear(a, t, born, want = 0, fx = townFx(t)) {
 }
 
 // how much people like a town: its fame and how well its people live (a town not counted yet: as well as can be)
-const pull = (t, fx = townFx(t)) => (1 + Math.max(0, fx.prestige)) * (t.needs?.basic ?? 1);
+const pull = (t, fx = townFx(t)) => (1 + Math.max(0, fx.prestige)) * moodOf(t) / 100;
 
 // whether folk of a town may move to another: the same realm; or another realm that trades with theirs, near enough,
 // of their own people or of a people that welcomes them (data/peoples.js `welcome`), up to the folk the town keeps
@@ -93,13 +95,14 @@ export function mayMove(a, s, d) {
   if (s.realm === d.realm) return true;
   if (s.realm == null || d.realm == null || !trades(a, s.realm, d.realm)) return false;
   if (d.people !== s.people && (!(WORLD_PEOPLES.get(d.people).welcome || []).includes(s.people) || shareOfPeople(a, d, s.people) >= DIPLOMACY.mingleMax)) return false;
-  return Math.hypot(d.x - s.x, d.y - s.y) <= TL.moveReach * WORLD_PEOPLES.get(s.people).spacing * scaleOf(a);
+  return townDist(a, d, s) <= TL.moveReach * WORLD_PEOPLES.get(s.people).spacing * scaleOf(a);
 }
 
 // a season of moving: people go where they like it better, as far as there is room — a town of another realm counts
 // TOWN_LIFE.abroad as much (home is home); folk of another people settle as their own races among the town's (atlas/
 // population.js), up to DIPLOMACY.mingleMax of it. → people moved
-export function migrate(a) {
+export function migrate(a) { return withFrame(a, () => migratePass(a)); }   // (the season's frame: atlas/frame.js)
+function migratePass(a) {
   const live = (a.towns || []).filter(t => t.alive);
   if (live.length < 2) return 0;
   const X = new Map(live.map(t => { const fx = townFx(t), rm = room(fx); return [t, {t, A: pull(t, fx), free: Math.max(0, rm - t.pop), over: Math.max(0, t.pop - rm)}]; }));   // (the town's effects once: for its room and its pull)
@@ -148,7 +151,7 @@ export function abandonEmpty(a, rnd, say) {
     for (const o of a.towns) if (o !== t && o.alive && (t.realm != null ? o.realm === t.realm : o.people === t.people)) { const d = Math.hypot(o.x - t.x, o.y - t.y); if (d < bd) { bd = d; best = o; } }
     if (best) moveHeads(a, t, best, t.pop, 'left');
     else { (a.hist.lost ||= {}).abandoned = (a.hist.lost?.abandoned || 0) + t.pop; takeHeads(a, t, t.pop, {how: 'scattered'}); }   // the last of a people: they scatter
-    t.alive = false; t.died = a.hist.year;
+    t.alive = false; t.died = a.hist.year; frameChanged(a);
     razeSites(a, t, a.hist.year);
     (a.ruins ||= []).push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by: null, year: a.hist.year, how: 'опустел'});
     say(`Последние жители покинули ${townLabel(t, 1)} ${t.name}${best ? ` и ушли в ${townLabel(best, 1)} ${best.name}` : ''}.`);

@@ -103,7 +103,7 @@ export const scripted = {
     caravan: {from: 'empire',
       first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
       offer: (w, rng) => (rng() < caravanChance(w) ? 1 : 0),
-      next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
+      next: (w, rng) => caravanDay(w, dayOf(w.tick, w) + TRADE.everyDays, rng)},
     // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
     // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover.
     // Which band comes is drawn from data/raids.js: bandits, orcs, goblins, gnolls, the dead…

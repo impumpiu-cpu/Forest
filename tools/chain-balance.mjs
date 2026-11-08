@@ -39,8 +39,9 @@ function measure(worlds) {
   return {lack: ask ? lack / ask : 0, idle: rows ? idle / rows : 0, waste: made ? waste / made : 0, unmet: people ? unmet / people : 0, by: Object.fromEntries(Object.entries(by).map(([g, [s, v]]) => [g, v ? s / v : 0]))};
 }
 // the fast stage: the worlds' towns run their seasons again from the stores and treasuries they had
-// (everything a season changes: the stores and purses, the market's prices, the people's needs, the realms' treasuries)
-function snapshot(a) { return [...a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid, market: t.market || {}, needs: t.needs || null, grant: t.grant || 0, carry: t.carry || null})]), ...(a.realms || []).map(r => [r, JSON.stringify({gold: r.gold || 0})])]; }
+// (everything a season changes: the stores and purses — the realm's budgets for buying too (atlas/townNeeds.js) — the market's
+// prices and how much they moved, the works' load, what is taken from the store, the people's needs, the realms' treasuries; the links' memory of who bought what)
+function snapshot(a) { return [...a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid, market: t.market || {}, needs: t.needs || null, grant: t.grant || 0, carry: t.carry || null, budget: t.budget || null, swing: t.swing || null, load: t.load || null, taken: t.taken || null})]), ...(a.realms || []).map(r => [r, JSON.stringify({gold: r.gold || 0})])]; }
 function rerun(worlds, snaps, m) {
   apply(m);
   worlds.forEach((a, k) => {
@@ -48,7 +49,8 @@ function rerun(worlds, snaps, m) {
     const T = a.towns.filter(t => t.alive);
     // (the links as they were: the buying adds trade routes to the net — atlas/treasury.js realmPool — and a rerun starts without them)
     a.netKeys ||= new Set(a.net?.links.keys() || []);
-    for (const [key, l] of a.net?.links || []) { if (!a.netKeys.has(key)) a.net.links.delete(key); else l.goods = 0; }
+    a.netVol ||= new Map([...(a.net?.links || [])].map(([key, l]) => [key, JSON.stringify(l.vol || null)]));
+    for (const [key, l] of a.net?.links || []) { if (!a.netKeys.has(key)) a.net.links.delete(key); else { l.goods = 0; const v = JSON.parse(a.netVol.get(key)); if (v) l.vol = v; else delete l.vol; } }
     for (let q = 0; q < SEASONS; q++) seasonMoney(a, T);
   });
   const M = measure(worlds);

@@ -38,7 +38,7 @@ import {nearAgents} from '../agents/spatial.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {clamp, esc, g} from '../core/util.js';
-import {hourOf, dayOf, DAY, HOUR} from '../core/time.js';
+import {hourOf, dayOf, dayLen, atHour, DAY, HOUR} from '../core/time.js';
 import {wake} from '../agents/attention.js';
 import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
 import {BOARD} from '../data/colony.js';
@@ -251,7 +251,7 @@ export function noteBoardDeath(w, a) {
 }
 
 // ── the night watch
-const watchNight = w => { const h = hourOf(w.tick); return h >= WATCH.from || h < WATCH.till ? dayOf(w.tick) - (h < WATCH.till ? 1 : 0) : null; };
+const watchNight = w => { const h = hourOf(w.tick, w); return h >= WATCH.from || h < WATCH.till ? dayOf(w.tick, w) - (h < WATCH.till ? 1 : 0) : null; };
 export const isWatchman = (w, a) => { const W = w.board?.watch; return !!W && W.by === a.id && W.night === watchNight(w) && a.task?.id === 'watch'; };
 export const watchOnPost = w => { const W = w.board?.watch; if (!W || W.by == null || W.night !== watchNight(w)) return false; const a = liveById(w, W.by); return !!a && a.task?.id === 'watch' && !a.sleeping; };
 
@@ -277,7 +277,7 @@ function endWatch(w, W) {
   if (!a) { if (b) b.unwatched = (b.unwatched || 0) + 1; if (colonists(w).some(c => !c.dead)) log(w, 'Ночью у огня никто не дежурил.', 'people'); return; }
   if (b) b.watched = (b.watched || 0) + 1;
   a.lastWatch = W.night;
-  a.offDuty = dayOf(w.tick) * DAY + WATCH.noon * HOUR;
+  a.offDuty = dayOf(w.tick, w) * dayLen(w) + atHour(w, WATCH.noon);
   if (a.task?.id === 'watch') a.task.over = true;
   think(w, a, 'watchDone');
 }

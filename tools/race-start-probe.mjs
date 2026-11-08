@@ -35,7 +35,7 @@ const hook = () => {
     }
   };
 };
-const GOODS = ['raw', 'food', 'stores', 'tools', 'arms', 'armor', 'leather', 'hide', 'cloth', 'fiber', 'ware', 'drink', 'salt', 'herbs', 'potions', 'wood', 'planks', 'stone', 'fuel', 'lux', 'beasts', 'gold'];
+const GOODS = ['raw', 'food', 'stores', 'tools', 'arms', 'armor', 'leather', 'hide', 'cloth', 'fiber', 'drink', 'herbs', 'potions', 'wood', 'stone', 'fuel', 'lux', 'beasts', 'gold'];
 const CATS = ['housing', 'food', 'raw', 'craft', 'trade', 'defence', 'faith', 'lore', 'power', 'life'];
 function yearRow() {
   const by = {};

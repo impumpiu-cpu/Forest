@@ -68,7 +68,8 @@ E.resetAll();
   const base = generateAtlas({seed: '790', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
   const frozen = JSON.stringify(saveAtlas(base)), c = capitals(base)[0];
   const visit = () => { const w = loadAtlas(JSON.parse(frozen)), K = newCampaign(w, c.town, {mode: 'auto'}), t = w.towns.find(x => x.id === c.town);
-    K.gold = 500; K.cargo = {hide: 4}; const done = trade(w, K, t, standing(w, K, t)); return {done, K, t}; };
+    // (the town's makers given a purse of their own: the check is of the market's limits, not of how rich the history left the town)
+    t.makersGold = 100; K.gold = 500; K.cargo = {hide: 4}; const done = trade(w, K, t, standing(w, K, t)); return {done, K, t}; };
   expect(MARKET_TIERS.all().every(m => m.maxPrice == null && m.purse == null), 'рынок по ступени ограничен по умолчанию');
   const free = visit(), tier = marketTierOf(free.t).id;
   expect(free.done.some(x => x.startsWith('продали шкуры')), 'без предела город не купил шкуры');

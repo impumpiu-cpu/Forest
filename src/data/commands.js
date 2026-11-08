@@ -6,7 +6,7 @@
 //
 //   POINTS    a decision point: who decides (`level`), how often (`clock`), how it picks (`policy`: max — the highest
 //             score, draw — by weight, first — the first in the old order that offers anything, vote — the council's
-//             vote, rule — a rule that may only be allowed or not), where the code is (`code`)
+//             vote, voices — each with a say scores the options, drawn from by the mean (campaign/council.js), rule — a rule that may only be allowed or not), where the code is (`code`)
 //   COMMANDS  a command: its point, its lane (`band`), its marks, the source row (`src`)
 //   MARKS     what a command leads to, for the profiles: hostile — it starts a hostility (a raid, a war, a lair burnt,
 //             a fallen foe bound), trade — it is a trade, side — a side pursuit of the caravan (wheels, beasts, ore),
@@ -24,7 +24,7 @@ import {Registry} from '../core/registry.js';
 import {BEHAVIOURS} from './behaviours.js';
 import {DEEDS} from './deeds.js';
 
-export const POLICIES = {max: 'наибольшая оценка', draw: 'жребий по весу', first: 'первое по прежнему порядку', vote: 'голосование', rule: 'правило'};
+export const POLICIES = {max: 'наибольшая оценка', draw: 'жребий по весу', first: 'первое по прежнему порядку', vote: 'голосование', voices: 'голоса: жребий по среднему', rule: 'правило'};
 export const LEVELS = {local: 'пешка и существо', world: 'держава и логово', settlement: 'поселение', town: 'город', caravan: 'караван'};
 
 export const POINTS = new Registry('decision point');
@@ -41,8 +41,10 @@ POINTS.registerAll([
   {id: 'town.raze', level: 'town', label: 'освободить место', clock: 'сезон', policy: 'rule', code: 'atlas/build.js'},
   {id: 'town.buy', level: 'town', label: 'закупки мастерских', clock: 'сезон', policy: 'rule', code: 'atlas/treasury.js worksBuying'},
   {id: 'town.settle', level: 'town', label: 'поселенцы', clock: 'год', policy: 'rule', code: 'atlas/peoples.js sendSettlers'},
-  {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'draw', code: 'campaign/visit.js wantVisit'},
-  {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'draw', code: 'campaign/march.js evening'},
+  {id: 'town.need', level: 'town', label: 'ответ на нужду', clock: 'сезон', policy: 'max', code: 'atlas/townNeeds.js stepNeeds'},
+  {id: 'caravan.visit', level: 'caravan', label: 'свернуть в город', clock: 'вечер', policy: 'voices', code: 'campaign/visit.js wantVisit, campaign/council.js'},
+  {id: 'caravan.camp', level: 'caravan', label: 'встать лагерем', clock: 'вечер', policy: 'voices', code: 'campaign/march.js evening, campaign/council.js'},
+  {id: 'caravan.watch', level: 'caravan', label: 'подмена в дозоре', clock: 'вечер', policy: 'rule', code: 'campaign/duty.js nightWatch'},
   {id: 'caravan.quest', level: 'caravan', label: 'куда идти по квесту', clock: 'вечер', policy: 'first', code: 'campaign/quest.js questTarget'},
   {id: 'caravan.pace', level: 'caravan', label: 'темп', clock: 'день', policy: 'rule', code: 'campaign/road.js choosePace'},
   {id: 'caravan.buy', level: 'caravan', label: 'что купить в городе', clock: 'в городе', policy: 'rule', code: 'campaign/town.js wants'},
@@ -60,6 +62,10 @@ const OWN = [
   {id: 'town.raze.worst', point: 'town.raze', label: 'снести худшее', note: 'строить нечего, места полны: худшая работа ниже половины'},
   {id: 'town.buy.works', point: 'town.buy', label: 'купить для мастерских', note: 'нехватку мастерских — у городов по связям'},
   {id: 'town.settle.send', point: 'town.settle', label: 'послать поселенцев', note: 'людный город шлёт поселенцев на новое место'},
+  // the councils' answers to their needs (atlas/townNeeds.js; data/townNeeds.js): each a plan for a point already there
+  {id: 'town.need.build', point: 'town.need', label: 'цель стройки', note: 'жильё тесному городу, рудник или сталеварня — металлу державы: строится раньше выбора совета'},
+  {id: 'town.need.settle', point: 'town.need', label: 'выслать поселенцев', note: 'тесный город шлёт поселенцев, не дожидаясь своего жребия'},
+  {id: 'town.need.budget', point: 'town.need', label: 'казна на привоз', note: 'держава даёт мастерам города золото на металл, которого им не хватило из-за денег'},
   // the caravan's council (policy draw, as a realm's court): the first lane with anything on offer, a draw by weight in it —
   // data/campaign.js COUNCIL.want, × the caravan's mission (COUNCIL.mission); the order is the old one
   {id: 'caravan.visit.winter', point: 'caravan.visit', band: 'yellow', label: 'перезимовать', note: 'тощее время года и мороз: в город на зимовку'},
@@ -72,6 +78,8 @@ const OWN = [
   {id: 'caravan.camp.build', point: 'caravan.camp', label: 'стоянка: тележка, повозка, постройка', note: 'сыты, целы, тихо: колёса, если пригодятся в пути, иначе постройка лагеря'},
   {id: 'caravan.camp.tame', point: 'caravan.camp', label: 'стоянка: приручить', note: 'сыты, целы, тихо: здесь пасутся звери, которых не хватает'},
   {id: 'caravan.camp.mine', point: 'caravan.camp', label: 'стоянка: добыча', note: 'сыты, целы, тихо: здесь выходит руда, за которой стоит встать'},
+  {id: 'caravan.watch.ask', point: 'caravan.watch', label: 'попросить подмену', note: 'уставший в дозоре просит заметно менее уставшего: кого — по связи, отдыху и его слову'},
+  {id: 'caravan.watch.answer', point: 'caravan.watch', label: 'ответить на просьбу', note: 'тот, кого просят, отвечает своими правилами: да, «позже», нет'},
   {id: 'caravan.camp.goOn', point: 'caravan.camp', label: 'не вставать', note: 'когда стоянка хочется, но не нужна: идти дальше — соперник промыслов в жребии'},
   // the quest's way (policy first: the order is the search's own — the crown carried home before all, a place seen before an area)
   {id: 'caravan.quest.home', point: 'caravan.quest', label: 'домой с короной', note: 'корона у каравана: в столицу'},
@@ -103,7 +111,7 @@ export const MARKS = {
   hostile: ['local.behaviour.maul', 'local.behaviour.raid', 'local.behaviour.capture', 'local.behaviour.bind',
     'world.deed.raid', 'world.deed.captives', 'world.deed.subdue', 'world.deed.rival', 'world.deed.strike',
     'world.deed.warOn', 'world.deed.march', 'world.deed.raidTown', 'world.deed.clearLair', 'world.deed.liberate'],
-  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'caravan.visit.smith', 'caravan.visit.shop',
+  trade: ['local.behaviour.trade', 'local.behaviour.peddle', 'town.buy.works', 'town.need.budget', 'caravan.visit.smith', 'caravan.visit.shop',
     'caravan.buy.tool', 'caravan.buy.pack', 'caravan.buy.pots', 'caravan.buy.herd', 'caravan.buy.cart', 'caravan.buy.mount', 'caravan.buy.golem',
     'caravan.buy.wagon', 'caravan.buy.building', 'caravan.buy.armor', 'caravan.buy.weapon', 'caravan.buy.potion', 'caravan.buy.bonds'],
   side: ['caravan.camp.build', 'caravan.camp.tame', 'caravan.camp.mine'],

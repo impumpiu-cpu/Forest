@@ -22,6 +22,7 @@ import {wherePhrase} from '../atlas/lairs.js';
 import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {reachable, foot, circle} from './quest.js';
+import {overSea} from './ferry.js';
 import {lairGuard} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {QUEST} from '../data/quest.js';
@@ -64,6 +65,13 @@ const grown = (r, M) => Object.fromEntries(['S', 'E', 'A'].map(id => [id, Math.r
 // itself — atlas/calamity.js questCalamity; with none, the graves of its bosses and a fourth, as in an epic world)
 export const epicWorld = a => !!questHint(a);
 
+// the walk's cell nearest a place that `ok` takes (−1: none)
+function nearestFree(a, cells, i, ok) {
+  let best = -1, bd = Infinity;
+  for (const j of cells) { const d = dist(a, i, j); if (d < bd && ok(j)) { bd = d; best = j; } }
+  return best;
+}
+
 export function makeEpicQuest(a, K, rnd) {
   const {mask, cells} = reachable(a, K), hint = questHint(a);
   // (the artifact brought home by a caravan before: the world's story is told — a quest of any world, campaign/quest.js)
@@ -89,14 +97,19 @@ export function makeEpicQuest(a, K, rnd) {
   }
   const c4 = old || gatherFourth(a, seat.at, EPIC.doom), lair = a.lairs.find(l => l.id === c4.lair), A = a.artifact;
   // the graves: each a clue, guarded by a miniboss of its boss's retinue
-  const clues = [];
+  const clues = [], sea = overSea(a, K, mask) || mask;   // (a grave over the water is sought there: the ferry — campaign/ferry.js)
   for (const g of a.graves || []) {
     const c = a.calamities.find(x => x.id === g.calamity), gl = a.lairs.find(l => l.id === c?.lair);
-    const at = foot(a, mask, g.i, 6); if (at < 0 || at === seat.at || clues.some(x => x.i === at)) continue;
+    // a grave the caravan cannot reach even by a ferry (no boats at the sea on its land) or on a place taken already (the
+    // seat, another clue): its clue is a cenotaph — the stone of its epitaph raised on the walk's nearest free cell to it,
+    // guarded the same
+    let at = foot(a, sea, g.i, 6), far = false;
+    const free = j => j >= 0 && dist(a, j, seat.at) >= EPIC.clueApart && clues.every(x => dist(a, j, x.i) >= EPIC.clueApart);
+    if (at < 0 || at === seat.at || clues.some(x => x.i === at)) { at = nearestFree(a, cells, g.i, free); far = true; if (at < 0) continue; }
     const retinue = gl ? (LAIRS.get(gl.kind)?.species || c.boss.species) : c.boss.species, sp = SPECIES.get(retinue);
     const whose = `${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`;
     const guard = {...guardFor(a, K, gl?.kind || 'wights', at), label: `${sp?.plural || 'слуги'} былой свиты у могилы`, boss: {name: `Страж могилы — ${sp?.label || retinue}`, species: retinue, add: grown(rnd, EPIC.mini)}};
-    clues.push({k: clues.length, kind: 'grave', at: g.i, i: at, label: `могила ${whose}`, town: null, guard, area: null, seen: false, found: false,
+    clues.push({k: clues.length, kind: 'grave', at: far ? at : g.i, i: at, tomb: g.i, label: far ? `кенотаф: ${whose} лежит далеко отсюда` : `могила ${whose}`, far, town: null, guard, area: null, seen: false, found: false,
       epitaph: g.epitaph, grave: g.calamity, nextServ: 0});
   }
   // the order: the nearest to home first known
@@ -121,7 +134,7 @@ function handStory(a, c, graves) {
 }
 
 // ── a clue read: the epitaph; the darkening goes a step on
-export const graveLine = c => `На могиле прочли надпись: «${c.epitaph}»`;
+export const graveLine = c => `${c.far ? 'На кенотафе — памятном камне, поставленном свитой там, куда ей было дойти до могилы, —' : 'На могиле'} прочли надпись: «${c.epitaph}»`;
 
 // ── every day of an epic quest: the lair grows, the minibosses send their servants, the hunt
 export function epicDay(a, K, r, say) {

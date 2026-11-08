@@ -20,6 +20,7 @@ import {alive, say, pace} from './march.js';
 import {pointCommands, allowed, leansOn} from '../data/commands.js';
 import {pickLanes, tracing, noteDecision, r3} from '../core/decide.js';
 import {COUNCIL} from '../data/campaign.js';
+import {councilChoose} from './council.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -39,11 +40,13 @@ const VISIT_ASK = {
 const VISIT_CMD = 'caravan.visit.';
 // the way on: drawn, it means no town and no camp
 export const isGoOn = id => id.endsWith('.goOn');
-export function wantVisit(a, K, seasonId) {
+// `can(why)` — a town for that reason can be reached (campaign/march.js: the same search the evening goes by); with voices
+// (campaign/council.js) a reason with no town to it is no option — the council chooses among things it can do
+export function wantVisit(a, K, seasonId, can = null) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
-  const Sn = SEASONS.get(seasonId), cmds = pointCommands('caravan.visit');
+  const Sn = SEASONS.get(seasonId), cmds = pointCommands('caravan.visit'), voices = (a?.cfg?.council ?? COUNCIL.policy) === 'voices';
   const {r, done} = draw(K, 'council');
-  const got = pickLanes(cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a?.cfg, c.id)});
+  const got = councilChoose(a, K, 'caravan.visit', cmds, (c, opts) => (VISIT_ASK[c.id.slice(VISIT_CMD.length)](a, K, Sn, need, C) && (!isGoOn(c.id) || opts.length) && (!voices || !can || isGoOn(c.id) || can(c.id.slice(VISIT_CMD.length))) ? {id: c.id, score: councilWeight(a, K, c.id)} : null), r, {allowed: c => allowed(a?.cfg, c.id), x: null});
   done();
   if (got.option && isGoOn(got.option.id)) { readout(K, got); if (tracing()) noteCaravan(a, K, 'caravan.visit', cmds, got); return ''; }
   readout(K, got);
@@ -93,7 +96,7 @@ export function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach
   }
   return urgent ? fallback : null;
 }
-export const VISIT_WHY = {smith: 'отдать руду кузнецу', winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах'};
+export const VISIT_WHY = {smith: 'отдать руду кузнецу', winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах', ferry: 'найти лодку для переправы'};
 
 // the caravan comes into a town: trade, hire, meet who would go along
 export function enterTown(a, K, t) {

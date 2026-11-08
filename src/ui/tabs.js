@@ -18,5 +18,6 @@ export function openTab(box, id) {
   if (!box) return;
   box.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === id)));
   box.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== id; });
+  box.dispatchEvent(new CustomEvent('tab', {detail: {id}}));   // (a pane shown: what draws into it may need its size now — ui/campaignView.js the fire)
   try { localStorage.setItem(KEY(box.id), id); } catch (e) { /* storage unavailable */ }
 }

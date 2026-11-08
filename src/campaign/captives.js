@@ -12,7 +12,8 @@ import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
-import {makeMember} from './start.js';
+import {makeMember, memberLocal} from './start.js';
+import {noteFate} from './social.js';
 import {room, setPlace} from './company.js';
 import {DAY} from '../core/time.js';
 import {sleepDose} from '../agents/potions.js';
@@ -65,6 +66,7 @@ export function takeFromCamp(a, K, o, say) {
       // its wounds and traumas, as a member's (campaign/potions.js woundsIn: the last day a wound is borne, null — for life)
       wounds: t.wounds?.length ? t.wounds.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null,
       captive: {since: K.day, bonds: t.bonds, from: t.from || null, will: t.will ?? ESCAPE.will.start}};
+    memberLocal(K, m);   // its own character as the map knew it; rolled only if the map gave none
     K.members.push(m); got.push(m);
   }
   if (got.length) say(`В плен взяли: ${names(got.map(who))}. ${got.length > 1 ? 'Идут' : gen(got[0], 'Идёт', 'Идёт')} с караваном связанн${got.length > 1 ? 'ыми' : gen(got[0], 'ым', 'ой')}.`, 'people', got.map(m => m.id));
@@ -92,6 +94,7 @@ export const mouths = K => free(K).length + held(K).length * (K.captiveCut ? ESC
 export function escaped(a, K, m, text, say) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, escaped: true};
   memberFate(a, m, 'escaped');   // (a person of the world: it is free again — atlas/persons.js)
+  noteFate(K, m, 'escaped', {heard: true});   // found gone (campaign/social.js)
   K.stats.escaped = (K.stats.escaped || 0) + 1;
   say(text + '.', 'leave', [m.id]); assign(K);
 }

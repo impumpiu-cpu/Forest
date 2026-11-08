@@ -59,7 +59,7 @@ const LIST = SEASONS.all();
 export const YEAR_DAYS = LIST.length * SEASON_DAYS;
 
 // calendar day of a tick: the game's age plus the day the game began on (fractional: days + hours)
-export const calendarDay = (w, tick = w.tick) => tick / DAY + (w.calendar?.startDay || 0);
+export const calendarDay = (w, tick = w.tick) => tick / (DAY * (w.dayScale || 1)) + (w.calendar?.startDay || 0);   // (a world with a slower sun: core/time.js dayScale)
 export const seasonIndex = (w, tick) => Math.floor(calendarDay(w, tick) / SEASON_DAYS) % LIST.length;
 // the season's record as written (by the calendar alone)
 export const seasonRaw = (w, tick) => LIST[seasonIndex(w, tick)];

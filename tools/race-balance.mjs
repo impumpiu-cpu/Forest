@@ -13,7 +13,7 @@ const args = process.argv.slice(2), seeds = (args.find(s => /^[\d,]+$/.test(s)) 
 const years = +(args.find(s => s.startsWith('--years='))?.split('=')[1] || 20), json = args.includes('--json'), listTowns = args.includes('--towns');
 const PEOPLES = WORLD_PEOPLES.all().map(p => p.id);
 // the goods that tell a people's trade: craft (the dwarves), the wood's gifts (the elves), the goods of war (the greenskins)
-const TRADES = {craft: ['tools', 'arms', 'armor', 'bar_iron', 'gems', 'lux'], wood: ['herbs', 'potions', 'hide', 'leather'], war: ['arms', 'armor', 'beasts']};
+const TRADES = {craft: ['tools', 'arms', 'armor', 'iron', 'gems', 'lux'], wood: ['herbs', 'potions', 'hide', 'leather'], war: ['arms', 'armor', 'beasts']};
 const r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
 
 const blank = () => ({towns: 0, pop: 0, away: 0, tier: [0, 0, 0], fed: 0, feeds: 0, room: 0, landFeed: 0, needs: 0, comfort: 0, rows: 0, idle: 0, unpaid: 0,

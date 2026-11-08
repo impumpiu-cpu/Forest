@@ -218,6 +218,30 @@ export const COUNCIL = {
     people: {humans: {pace: 0.6, caution: 0.5, side: 0.4}, elves: {pace: 0.45, caution: 0.65, side: 0.4},
       dwarves: {pace: 0.4, caution: 0.55, side: 0.75}, orcs: {pace: 0.7, caution: 0.3, side: 0.45}},
   },
+  // how the council decides (campaign/council.js; plan claude/caravan-ver_d.md D5): 'voices' — each who has a say scores the
+  // options by its own leanings over its people's, its needs and what it remembers, and the options are drawn from by the sum
+  // of what each prefers (core/decide.js pickVoices); 'lanes' — the old way: the need's lane first, its options drawn from
+  // by COUNCIL.want × the people's profile, nobody's own voice
+  policy: 'voices',
+  voice: {
+    // a voice: who has it — the captives none (their wish is not a say); the rest, hired and joined too, one each
+    say: {captive: 0},
+    self: 0.6,          // one's own leaning (data/leans.js: persist → pace, 1 − risk → caution, curious → side) over its people's
+    eps: 0.05,          // the weight every option keeps whatever the voices
+    // the needs (added to an option's score, × the want of it): hunger to the food, one's wounds and a friend's to the healing,
+    // tiredness to any stop, a dangerous night against a camp by caution, a recent loss to caution
+    need: {food: 2, hurt: 2, friend: 0.6, friendAt: 1, tired: 1, danger: 1.5, grief: 0.15, griefDays: 20, griefCap: 0.3},
+    whyFrom: 0.05,      // a part of a score this big or more is a reason one gives
+    keep: 40,           // the meetings kept on the campaign (K.social.meetings: who said what, for the fire's scene)
+    // one round of talk (campaign/council.js debate): the option most want is proposed by the one who wants it most; one with a
+    // reason of its own (`reasons`) for another option — wanting it `objectAt` more than the proposal, or no more than `near`
+    // less (a reason is said even by one who would go along) — objects, the strongest such voice; each other
+    // voice moves `sway` toward the objection (× 1 + `bond` × what it feels for the objector, ÷ `bondTop`; × `known` when the reason
+    // is one it had already: no news), and as much away from the proposal by half; the proposer then yields (its proposal
+    // no more than `yieldAt` over the objection now), meets the objector halfway (an option both score `meetAt` of their best
+    // or more: `meet` added for both), or holds
+    debate: {objectAt: 0.25, near: 0.5, reasons: ['hunger', 'wounds', 'friend', 'tired', 'danger'], sway: 0.15, bond: 0.5, bondTop: 4, known: 0.5, yieldAt: 0.1, meetAt: 0.8, meet: 0.2},
+  },
 };
 
 export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength: 4, rich: 40,

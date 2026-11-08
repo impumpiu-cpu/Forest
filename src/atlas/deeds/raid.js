@@ -12,7 +12,7 @@ import {LEADER, TRIBE_RAID} from '../../data/lairs.js';
 import {PARTIES} from '../../data/parties.js';
 import {SPECIES} from '../../data/species.js';
 import {RELATIONS} from '../../data/relations.js';
-import {WORLD_PEOPLES} from '../../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE} from '../../data/peoples.js';
 import {strikeTown, raidWho, raidBand, campMight} from '../lairs.js';
 import {townLabel} from '../towns.js';
 import {sendParty} from '../parties.js';
@@ -28,10 +28,13 @@ export const raider = (L, t) => {
   return (RELATIONS[race.rel]?.[SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel] ?? 0) < 0;
 };
 
-// the nearest town within reach the lair would raid
+// the nearest town within reach the lair would raid — not a young hamlet in its years of grace (TOWN_LIFE.grace, after Emberfall:
+// a town its settlers founded, of step `tierMax` or less and younger than `years`, is beneath a lair's notice, and a raiding
+// people's: raidTown.js; a people's first town, landed on the world, is not)
+export const graced = (a, t) => t.from != null && (t.tier || 0) <= TOWN_LIFE.grace.tierMax && (a.hist?.year ?? 0) - (t.founded ?? -Infinity) < TOWN_LIFE.grace.years;
 function nearestTown(a, l, L, reach) {
   let town = null, td = reach;
-  for (const t of a.towns || []) if (t.alive && raider(L, t)) { const d = dist(l, t); if (d < td) { td = d; town = t; } }
+  for (const t of a.towns || []) if (t.alive && raider(L, t) && !graced(a, t)) { const d = dist(l, t); if (d < td) { td = d; town = t; } }
   return town;
 }
 

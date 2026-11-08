@@ -4,7 +4,7 @@
 import {GOLEM_LOCAL} from '../data/constructs.js';
 import {SPECIES} from '../data/species.js';
 import {seasonStarts} from '../data/seasons.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, atHour} from '../core/time.js';
 import {makeGolem} from '../agents/golem.js';
 import {colonists} from './query.js';
 import {log} from '../core/log.js';
@@ -24,6 +24,6 @@ export function forgeGolem(w) {
   return g;
 }
 export function stepColonyGolems(w) {
-  if (w.tick % DAY !== 7 * HOUR || !seasonStarts(w, w.tick)) return;
+  if (tickOfDay(w) !== atHour(w, 7) || !seasonStarts(w, w.tick)) return;
   forgeGolem(w);
 }

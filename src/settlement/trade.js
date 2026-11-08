@@ -17,7 +17,7 @@ import {ITEMS} from '../data/items.js';
 import {RECIPES} from '../data/recipes.js';
 import {QUALITY} from '../data/quality.js';
 import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
-import {DAY, HOUR, dayOf, hourOf} from '../core/time.js';
+import {DAY, HOUR, dayOf, hourOf, dayLen} from '../core/time.js';
 import {log} from '../core/log.js';
 import {esc, plural} from '../core/util.js';
 import {colonists, foodTotal} from './query.js';
@@ -217,7 +217,7 @@ const keepOf = (r, pop) => r.keep ?? (r.keepPerHead != null ? r.keepPerHead * po
 // ── the deal, right after the evening council
 export function holdTrade(w) {
   const c = w.caravan, pop = colonists(w).length;
-  const deal = {day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0};
+  const deal = {day: dayOf(w.tick, w) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0};
   // the terms the colony's negotiator got, for the whole visit
   const terms = termsOf(w, c), askPrice = g => askAt(g, terms.b), bidPrice = g => bidAt(g, terms.b);
   deal.by = terms.name; deal.b = terms.b;
@@ -370,7 +370,7 @@ export function holdTrade(w) {
 // ── the visit, step by step (called every tick from sim.js)
 export function stepTrade(w) {
   const c = w.caravan; if (!c) return;
-  const h = hourOf(w.tick), today = dayOf(w.tick);
+  const h = hourOf(w.tick, w), today = dayOf(w.tick, w);
   const on = members(w, c);
   if (!on.length && w.tick > c.set) {   // everyone has left the map: the visit is over
     w.caravan = null; return;
@@ -397,7 +397,7 @@ export function stepTrade(w) {
     holdTrade(w); c.phase = 'trading'; c.tradeEnd = w.tick + 1.2 * HOUR;
   }
   if (c.phase === 'trading' && w.tick >= c.tradeEnd) c.phase = 'night';
-  const stayed = c.arrived != null && w.tick - c.arrived > TRADE.maxStay * DAY;
+  const stayed = c.arrived != null && w.tick - c.arrived > TRADE.maxStay * dayLen(w);
   if ((c.phase === 'night' && h >= TRADE.leaveHour && h < 12 && w.tick - c.tradedAt > 6 * HOUR) || (stayed && c.phase !== 'leaving')) {
     c.phase = 'leaving';
     log(w, c.traded ? `Купец <b>${esc(c.name)}</b> собрал товар и ушёл своей дорогой.` : `Купец <b>${esc(c.name)}</b> не дождался торга и ушёл.`, 'trade');

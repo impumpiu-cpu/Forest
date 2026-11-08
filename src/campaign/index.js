@@ -2,9 +2,10 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/history.js';
-import {caravanDay, ended, finished, alive, die} from './march.js';
+import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/persons.js';
+import {upgradeMembers} from './start.js';
 
 export {newCampaign, capitals} from './start.js';
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
@@ -20,9 +21,11 @@ export function stepCampaign(a) {
     if (!K.epilogue.done) stepEpilogue(a, K);
     return !finished(K);
   }
+  upgradeMembers(K);   // a save from before the character came with the member (campaign/start.js memberLocal)
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
   K.track = []; K.seasonFrom = K.day;   // (the camps of this season are all kept for the screen: campaign/fight.js play)
+  K.daily = [dayShot(K, K.day - 1)];   // (the season's days as the screen shows them: what stood at the end of each — ui/campaignView.js)
   const spring = a.hist.season === 0;
   stepHistory(a, () => caravanDay(a, K, K.day));
   if (spring && !ended(K)) agePersons(a, K);
@@ -53,4 +56,26 @@ export function campaignHash(K) {
   for (const l of K.log) for (let k = 0; k < l.text.length; k++) mix(l.text.charCodeAt(k));
   for (const t of K.bubble?.things || []) { mix(t.id); mix(Math.round(t.x * 100)); mix(Math.round(t.y * 100)); }
   return `${(h >>> 0).toString(16)} · ${alive(K).length}/${K.members.length}`;
+}
+
+// the company's story as a model (plan claude/caravan-ver_d.md §4.3): every part of it that decides what comes next — the
+// bonds and their reasons, the facts with who saw and heard them, each one's memory (what, how, from whom), mood, tiredness,
+// whole character (leanings too), world view, the promises with all their terms, the watch's turn, the council's meetings
+// with every voice, the states of the company's streams of chance — the model, not the words said about it. Keys sorted,
+// numbers to a thousandth: the same story, the same projection (tools/social-check.mjs compares it whole after a load)
+const sortKeys = v => (Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sortKeys(v[k])])) : typeof v === 'number' ? Math.round(v * 1000) / 1000 : v);
+const SOCIAL_STREAMS = ['social', 'council', 'day', 'town', 'quest', 'slaves', 'ferry'];
+export function socialModel(K) {
+  const S = K.social || {};
+  return sortKeys({relations: S.relations || {}, why: S.why || {}, facts: S.facts || [], commitments: S.commitments || [], meetings: S.meetings || [], told: S.told ?? null,
+    duty: K.duty ? {queue: K.duty.queue, on: K.duty.on, night: K.duty.night} : null,
+    members: K.members.map(m => ({id: m.id, alive: m.alive, local: m.local || null, align: m.align || null, alignRoot: m.alignRoot || null, social: m.social || null})),
+    rng: Object.fromEntries(SOCIAL_STREAMS.filter(k => K.rng?.[k] != null).map(k => [k, K.rng[k]]))});
+}
+// its fingerprint
+export function socialHash(K) {
+  let h = 2166136261;
+  const str = JSON.stringify(socialModel(K));
+  for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(16);
 }

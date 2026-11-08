@@ -7,6 +7,7 @@
 // Field (a.f): road — the wear of each cell (0 none; data/roads.js levels: path, road, highway).
 import {linkKey} from './common.js';
 import {Heap, DIRS8} from './heap.js';
+import {hopsLive} from './treasury.js';
 import {ROADS} from '../data/roads.js';
 import {NET} from '../data/sites.js';
 import {ARMY} from '../data/parties.js';
@@ -46,6 +47,24 @@ function baseCosts(a, people) {
 const stepCost = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
 // the cost of a step into a cell for a traveller of this people (atlas/parties.js); Infinity: the sea
 export const moveCost = (a, i, people) => stepCost(a, baseCosts(a, people), i);
+
+// the lands of the world: each cell not of the ocean by the land it lies on (8 ways, as the paths go), the ocean −1. The land
+// does not change (only the ocean stops a step: baseCost), so it is worked out once and kept beside the world (a.roadLand)
+export function landsOf(a) {
+  if (a.roadLand) return a.roadLand;
+  const {w, h, n} = a, out = new Int32Array(n).fill(-1), stack = [];
+  let id = 0;
+  for (let s = 0; s < n; s++) {
+    if (out[s] !== -1 || a.f.ocean[s]) continue;
+    out[s] = id; stack.push(s);
+    while (stack.length) {
+      const c = stack.pop(), x = c % w, y = (c / w) | 0;
+      for (const [dx, dy] of DIRS8) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const j = ny * w + nx; if (out[j] === -1 && !a.f.ocean[j]) { out[j] = id; stack.push(j); } }
+    }
+    id++;
+  }
+  return (a.roadLand = out);
+}
 
 // A* from one cell to another; the path as a list of cells, or null
 export function findPath(a, s, t, people, scratch) {
@@ -98,15 +117,34 @@ export function wearRoads(a) {
   for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
   const fresh = [], pairs = a.net ? [...a.net.links.values()].filter(l => l.p.alive && l.q.alive).map(l => [l.p, l.q, l]) : tradeLinks(a).map(([t, o]) => [t, o, null]);
+  const land = landsOf(a), L = a.net?.links;
+  const trade = new Map(), tradeOf = t => { let v = trade.get(t); if (v === undefined) trade.set(t, v = townFx(t).trade); return v; };   // (a town's trade, once a round)
+  const amtOf = (t, o, l) => Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (tradeOf(t) + tradeOf(o)) / 2) + (l?.flow || 0) / NET.wear;
+  // a trade route over the net (atlas/treasury.js: a seller far off, through its province or other lands) has no road of its
+  // own: its traffic goes down the links of its way (l.hops), wearing their roads — the caravans walk from town to town. Only
+  // the other links (the neighbours', a route whose way is gone) find their way over the land
+  const extra = new Map(), routes = [];
+  const lay = (l, v, depth) => { for (const k of l.hops) { const h = L.get(k); if (h?.hops && depth < ROADS.hopDepth) lay(h, v, depth + 1); else if (h) extra.set(h, (extra.get(h) || 0) + v); } };
+  for (const [t, o, l] of pairs) if (l && L && hopsLive(a, l)) { routes.push(l); lay(l, amtOf(t, o, l), 1); }
+  const onHops = new Set(routes);
   for (const [t, o, l] of pairs) {
+    if (onHops.has(l)) continue;
     const key = linkKey(t, o);
+    if (land[t.i] !== land[o.i]) continue;   // (two lands apart: no way on foot — the search would only fail after the whole land)
     const path = findPath(a, t.i, o.i, t.people, scratch);
     if (!path) continue;
-    const flow = l?.flow || 0;
-    const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
+    // the way's cost and how well it is roaded, as the trade reads them (atlas/treasury.js: the carriage, the link's room)
+    if (l) { const base = baseCosts(a, t.people); let c = 0, r = 0; for (const cell of path) { c += stepCost(a, base, cell); r += Math.min(1, f.road[cell] / ROADS.levels[1].wear); } l.cost = Math.round(c * 10) / 10; l.road = Math.round(r / path.length * 1000) / 1000; }
+    const amt = amtOf(t, o, l) + (extra.get(l) || 0);
     for (const c of path) if (!f.scourge || f.scourge[c] <= ARMY.scourged) f.road[c] += amt;   // no caravan goes where an army's foragers are
     a.roadPairs ||= new Set();
     if (!a.roadPairs.has(key)) { a.roadPairs.add(key); fresh.push([t, o]); }
+  }
+  // a route's cost and road: its way's, summed and the least (the carriage and the room of the trade read them)
+  for (const l of routes) {
+    let c = 0, r = 1;
+    for (const k of l.hops) { const h = L.get(k); c += h.cost ?? Math.hypot(h.p.x - h.q.x, h.p.y - h.q.y); r = Math.min(r, h.road || 0); }
+    l.cost = Math.round(c * 10) / 10; l.road = Math.round(r * 1000) / 1000;
   }
   return fresh;
 }

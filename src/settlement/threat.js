@@ -7,7 +7,7 @@
 //                     band is. Members are added until their ratings reach it (outside/bands.js fill), so a
 //                     band of 600 is five bandits, a dozen goblins or two trolls, and the colony's own
 //                     rating (colonyStrength) says how it stands against it.
-import {DAY} from '../core/time.js';
+import {DAY, dayLen} from '../core/time.js';
 import {raiderStrength} from '../outside/bands.js';
 import {THREAT} from '../data/colony.js';
 
@@ -19,7 +19,7 @@ export const colonyStrength = w => rumouredKs(w.outside?.seen || {pop: 0, armed:
 
 export function raidThreat(w) {
   // + rumours of gold and mithril (settlement/precious.js)
-  return w.tick / DAY * THREAT.perDay + w.stats.raids * THREAT.perRaid + colonyStrength(w) * THREAT.perColonyKs + (w.fame || 0);
+  return w.tick / dayLen(w) * THREAT.perDay + w.stats.raids * THREAT.perRaid + colonyStrength(w) * THREAT.perColonyKs + (w.fame || 0);
 }
 
 // scouts that went home with word of the camp (agents/squad.js): their band comes next, sooner and bigger

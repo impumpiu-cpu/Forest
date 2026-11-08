@@ -9,7 +9,7 @@
 // outside the pass (the campfire, hearths, lightning, a torch, a click) calls touchHeat so that
 // the chunk wakes up. A chunk that has gone quiet is zeroed, so nothing stale lingers in it.
 import {clamp} from '../core/util.js';
-import {nightness} from '../core/time.js';
+import {nightness, scaleOf} from '../core/time.js';
 import {CHUNK, HEAT_EPS, SMOKE_EPS, chunks, airTemp, touchHeat, ensureHeat} from './heat.js';
 export {CHUNK, chunks, chunkOf, airTemp, tempAt, heatTo, coolTo, touchHeat, ensureHeat} from './heat.js';
 import {T, BY_CODE} from '../data/terrain.js';
@@ -134,7 +134,7 @@ function campfire(w) {
   const cold = colonists(w).some(a => a.needs.warmth < 0.6);
   w.campLit = !!campFuel(w) && (nightness(w) > 0.3 || cold);
   if (!w.campLit) return;
-  burnCampFuel(w, 0.004 * (watchOnPost(w) ? WATCH.fuel : 1));   // a watchman tends it: less wood (settlement/board.js)
+  burnCampFuel(w, 0.004 * (watchOnPost(w) ? WATCH.fuel : 1) / scaleOf(w));   // (the fire burns by the sun: core/time.js dayScale)   // a watchman tends it: less wood (settlement/board.js)
   const g = w.grid, amb = airTemp(w);
   for (const c of w.camp.cells) if (g.heat[c] < 30 - amb) { g.heat[c] += 3.2; touchHeat(w, c); }
   // lived-in buildings keep a hearth of their own on the same stock (data/buildings.js `heat`):
@@ -143,7 +143,7 @@ function campfire(w) {
   const hay = (w.stock.hay || 0) >= 1;
   for (const b of w.buildings) {
     const H = b.done && BUILDINGS.get(b.key).heat; if (!H) continue;
-    if (!burnCampFuel(w, H.fuel)) continue;
+    if (!burnCampFuel(w, H.fuel / scaleOf(w))) continue;
     let to = H.to;
     if (hay && b.key === 'hut') { to += 5; w.stock.hay -= 0.0003; }
     for (const c of b.cells) if (g.heat[c] < to - amb) { g.heat[c] += H.add; touchHeat(w, c); }

@@ -114,7 +114,10 @@ export const ROT = {seed: 0.08, diffuse: 0.08, decay: 0.02, frost: 0.04, heat: 0
   wardMage: 0.06, wardTemple: 0.03, wardMight: 1.8,
   // rats: the rot travels with the caravans — a town in rot at `ratsFrom` gives `rats` of it a season to every
   // town joined to it by road; `ratsHealth` — how much a town's health buildings keep them down
-  ratsFrom: 0.4, rats: 0.03, ratsHealth: 0.5};
+  ratsFrom: 0.4, rats: 0.03, ratsHealth: 0.5,
+  // the graves of history settle (the barrows older than the chronicle stay): this share of what is above them a season —
+  // half in about 50 years (200 seasons)
+  graveSettle: 0.0035};
 
 // a tribe's camp stands where its race's home suits the biome at least this much
 export const TRIBE_HOME = 0.45;

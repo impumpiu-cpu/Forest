@@ -12,7 +12,7 @@ import {degreeOf, checkChance, DIFFICULTY} from '../data/checks.js';
 import {resistTo} from '../data/balance/combat.js';
 import {SPECIES} from '../data/species.js';
 import {NORM} from '../data/special.js';
-import {DAY} from '../core/time.js';
+import {DAY, dayLen, sunTicks} from '../core/time.js';
 import {kill} from './agent.js';
 import {refreshBody} from './special.js';
 import {log} from '../core/log.js';
@@ -24,7 +24,7 @@ const rebuildIf = (a, ...rows) => { if (rows.some(conditionHasMods)) refreshBody
 export function catchIll(w, a, id) {
   if (a.ill || a.dead) return false;
   const A = AFFLICTIONS.get(id);
-  a.ill = {id, stage: 1, next: w.tick + illTicks(A)};
+  a.ill = {id, stage: 1, next: w.tick + sunTicks(w, illTicks(A))};
   rebuildIf(a, illStage(a));
   if (a.faction === 'colony' && a.name) log(w, `<b>${esc(a.name)}</b>: ${A.label} (${A.stages[0].label}).`, 'people');
   return true;
@@ -50,7 +50,7 @@ export function stepIll(w, a) {
     return;
   }
   if (next > A.stages.length && A.deadly) { kill(w, a, A.cause || 'недуга'); return; }
-  d.stage = Math.min(next, A.stages.length); d.next = w.tick + illTicks(A);
+  d.stage = Math.min(next, A.stages.length); d.next = w.tick + sunTicks(w, illTicks(A));
   const after = illStage(a);
   if (after !== before) rebuildIf(a, before, after);
 }
@@ -65,7 +65,7 @@ export function taintBy(w, t, by) {
 export function stepTaint(w, a) {
   if (!a.taint) return;
   const before = taintRow(a);
-  a.taint -= TAINT.fade / DAY;
+  a.taint -= TAINT.fade / dayLen(w);
   if (a.taint <= 0) delete a.taint;
   const after = taintRow(a);
   if (after !== before) rebuildIf(a, before, after);
@@ -74,7 +74,7 @@ export function stepTaint(w, a) {
 export function stepWithdrawal(w, a) {
   if (!a.addicted) return;
   if (!ADDICTION[a.addicted]) { delete a.addicted; delete a.withdrawal; return; }
-  const B = ADDICTION[a.addicted], now = a.drankAt == null || w.tick - a.drankAt > B.days * DAY;
+  const B = ADDICTION[a.addicted], now = a.drankAt == null || w.tick - a.drankAt > B.days * dayLen(w);
   if (now === !!a.withdrawal) return;
   if (now) a.withdrawal = true; else delete a.withdrawal;
   rebuildIf(a, CONDITIONS.get('withdrawal'));

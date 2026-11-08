@@ -402,3 +402,13 @@ dd.q4{color:#c58cff;font-weight:600}
 .inspect .deed.lane-yellow{border-color:#c69a3c}
 .inspect .muted{color:var(--muted)}
 .inspect .rel-war{color:var(--raider)} .inspect .rel-hostile{color:#e0a080} .inspect .rel-friends{color:var(--good)}
+
+/* the council at the fire (ui/campSocial.js) */
+.fire{margin:0 0 10px}
+.fire h4{margin:6px 0 4px}
+.fire-line{margin:2px 0;line-height:1.35}
+.fire-line.against{color:var(--muted)}
+.pc h5{margin:8px 0 2px}
+.pc ul{margin:0 0 4px 16px;padding:0}
+.fire-scene canvas{width:100%;height:280px;display:block;background:rgba(0,0,0,0.25);border-radius:6px}
+.fire-words{min-height:2.6em;margin:6px 0;font-style:italic}

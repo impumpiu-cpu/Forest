@@ -268,7 +268,13 @@
       </div>
       <div class="field"><span class="lbl">Размер</span><div class="seg" id="quickSize"></div></div>
       <div class="field">
-        <small>Земля, затем три эпохи по 75–150 лет: дикая, древних народов и молодых. На среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
+        <span class="lbl">Эпохи, лет</span>
+        <div class="row">
+          <label class="rng"><span>Дикая</span><input type="range" id="quickWild" min="10" max="150" step="5"><output id="quickWildV"></output></label>
+          <label class="rng"><span>Древние народы</span><input type="range" id="quickElder" min="10" max="150" step="5"><output id="quickElderV"></output></label>
+          <label class="rng"><span>Молодые народы</span><input type="range" id="quickYoung" min="10" max="150" step="5"><output id="quickYoungV"></output></label>
+        </div>
+        <small>Сколько длится каждая эпоха: дикая, эльфов и дварфов, людей и зеленокожих. Короткая эпоха древних — молодым народам достаётся больше земли. Земля, потом история; на среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
       </div>
       <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить и выступить</button></div>
     </div>
@@ -462,7 +468,7 @@
               <input id="campEpicSeed" type="text" maxlength="24" autocomplete="off" aria-label="Сид эпического мира">
               <button type="button" id="campEpicDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
               <div class="seg" id="campEpicSize"></div>
-              <div class="seg" id="campEpicProfile" title="Профиль команд: что могут выбирать умы мира"></div>
+              <div class="seg wrapseg" id="campEpicProfile" title="Профиль команд: что могут выбирать умы мира"></div>
               <button type="button" id="campEpicGo">Сотворить</button>
             </div>
             <small id="campEpicNote" class="status" role="status">Три эпохи по 75–150 лет: долгая история, в которой будет место бедствиям. На среднем мире — минута-другая.</small></div>
@@ -522,8 +528,9 @@
     </div>
 
     <div class="obs-dock" id="campDock">
-      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button><button type="button" data-tab="stock">Склад</button></div>
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button><button type="button" data-tab="stock">Склад</button><button type="button" data-tab="fire">Костёр</button></div>
       <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
+      <div class="obs-pane" data-pane="fire" hidden><div class="inspect" id="campFire"><p class="muted">Совет ещё не собирался.</p></div></div>
       <div class="obs-pane" data-pane="fights" hidden><div class="fights" id="campFights"><p class="muted">Боёв ещё не было.</p></div></div>
       <div class="obs-pane" data-pane="summary" hidden><div class="fights summary" id="campSummary"><p class="muted">Итоги начнут собираться, когда караван выступит.</p></div></div>
       <div class="obs-pane" data-pane="stock" hidden><div class="row"><small id="campStockWhat" class="muted">Груз каравана</small><div class="seg mini" id="campStockSeg"></div></div><div class="stockgrid" id="campStock"><p class="muted">Караван ещё не выступил.</p></div></div>

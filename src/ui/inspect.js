@@ -1,12 +1,13 @@
 // The inspector of the world map (docs/GAME.md «Наблюдатель»): what a click on the map selects — a party, a town (and
 // its realm), a lair, a ruin or the cell — and its card: what it is, what it has, what it thinks and plans. The card is
 // a view of the live objects (the selection keeps ids and is resolved anew each season), so it changes as the world does.
+import {moodOf} from '../atlas/mood.js';
 import {DEEDS, DEED_BAND_LABELS, deedLabel} from '../data/deeds.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice, indicatorLabel} from '../data/townBuildings.js';
+import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES, goodPrice} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
@@ -28,6 +29,8 @@ import {esc, plural} from '../core/util.js';
 import {VECTORS, VECTOR_IDS, leadOf as lead} from '../data/mind.js';
 import {roseOf, townLean} from '../atlas/mind.js';
 import {projectOf, crewDays} from '../atlas/build.js';
+import {needsOf} from '../atlas/townNeeds.js';
+import {ANSWERS} from '../data/townNeeds.js';
 import {LOSS_CAUSES, PARTY_KINDS, PARTY_STATES, MIND_FLAGS, RULES} from '../data/labels.js';
 
 // the words of the parties' kinds and states (data/labels.js)
@@ -69,6 +72,22 @@ export function whereIs(a, sel, slide = 1) {
 
 // ── the card
 const row = (k, v) => (v == null || v === '' ? '' : `<div class="ir"><span>${k}</span><b>${v}</b></div>`);
+// a town's needs for its card: each lit need — its strength and cause, the plans under way, the answers it could not give and
+// why; the goal another town's council set it; the budget for buying (atlas/townNeeds.js)
+const CAUSE = {money: 'нечем платить', route: 'не довезти', goods: 'ни у кого нет'};
+function needsLine(a, t) {
+  const out = [];
+  for (const n of needsOf(t)) {
+    if (!n.on && !n.plans.length) continue;
+    const plans = n.plans.map(p => p.label).join(', ');
+    const no = (n.last?.opts || []).filter(o => o.why && o.answer !== n.last.pick).map(o => `${ANSWERS.get(o.answer).label} — ${o.why}`).join('; ');
+    out.push(`${n.label}: ${Math.round(n.s * 100)}%${n.cause ? ` (${CAUSE[n.cause] || n.cause})` : ''}${n.lane === 'yellow' ? ', срочно' : ''}${plans ? `; делается: ${plans}` : ''}${no ? `; не выбрано: ${no}` : ''}`);
+  }
+  if (t.goal && TOWN_BUILDINGS.has(t.goal.b)) { const f = a.towns.find(o => o.id === t.goal.from); out.push(`цель стройки: ${TOWN_BUILDINGS.get(t.goal.b).name}${f && f !== t ? ` (просьба ${f.name})` : ''}`); }
+  const B = Object.entries(t.budget || {}).filter(([, v]) => v.gold > 0.5);
+  if (B.length) out.push(`казна державы на привоз: ${B.map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v.gold)} зол.`).join(', ')}`);
+  return out.length ? esc(out.join(' · ')) : null;
+}
 const sec = (title, body) => (body ? `<section class="isec"><h5>${esc(title)}</h5>${body}</section>` : '');
 const when = t => `${t.year}, ${seasonLabel(t.season ?? 0)}`;
 
@@ -183,8 +202,8 @@ function townHtml(a, t) {
     (t.gold != null ? row('казна', `${Math.round(t.gold)} зол.${t.peopleGold != null ? `; у жителей ${Math.round(t.peopleGold)}, у мастеров ${Math.round(t.makersGold)}` : ''}${t.needs ? `; нужды закрыты ${Math.round(t.needs.basic * 100)}%, достаток ${Math.round(t.needs.comfort * 100)}%` : ''}${t.unpaid ? `; содержание не оплачено на ${Math.round(t.unpaid * 100)}%` : ''}${t.trade ? `; за сезон: жители купили ${Math.round((t.trade.people || 0) + (t.trade.imported || 0))}, зарплаты ${Math.round(t.trade.wages || 0)}, налоги ${Math.round(t.trade.tax || 0)}, постройки дали ${Math.round(t.trade.works || 0)}, купцам ${Math.round(t.trade.merchants || 0)}, мастерские купили у городов ${Math.round(t.trade.bought || 0)}, город продал ${Math.round(t.trade.sold || 0)}, содержание ${Math.round(t.trade.upkeep || 0)}${t.trade.aid ? ` (держава доплатила ${Math.round(t.trade.aid)})` : ''}${t.trade.wasted ? `; пропало излишков на ${Math.round(t.trade.wasted)}` : ''}` : ''}${t.garrison ? `; гарнизон державы ${Math.round(t.garrison)}` : ''}${t.grant ? `; на стройку от державы ${Math.round(t.grant)}` : ''}`) : '') +
     (t.stock && Object.keys(t.stock).length ? row('склад', esc(Object.entries(t.stock).sort((p, q) => q[1] * goodPrice(q[0]) - p[1] * goodPrice(p[0])).slice(0, 6).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v)}`).join(', '))) : '') +
     (t.market && Object.keys(t.market).length ? row('цены', esc(Object.entries(t.market).sort((p, q) => q[1] - p[1]).filter((x, k, l) => k < 3 || k >= l.length - 3).map(([g, k]) => `${TOWN_GOODS.get(g).label} ×${k.toFixed(2)}`).join(', '))) : '') +
-    // its indicators and the recipes that run (atlas/economy.js; docs/WORLD.md «Цепочки 6.1»), its slots (TOWN_SLOTS)
-    (t.econ?.lit ? row('индикаторы', esc(t.econ.lit.map(indicatorLabel).join(', '))) : '') +
+    // its tools, the recipes that run (atlas/economy.js; docs/WORLD.md «Цепочки»), its slots (TOWN_SLOTS)
+    (t.econ?.tools != null && t.econ.tools < 0.995 ? row('инструмент', `работы на ${Math.round(t.econ.tools * 100)}% силы: инструмента не хватает`) : '') +
     (t.econ?.recipes?.some(x => x.eff > 0.005) ? row('рецепты', esc(t.econ.recipes.filter(x => x.eff > 0.005).map(x => `${TOWN_BUILDINGS.get(x.of).name}: ${x.name} ${Math.round(x.share * 100)}%`).join(', '))) : '') +
     row('слоты', (u => `${u.town} из ${slotsOf(t).town}, улучшения ${u.upgrades} из ${slotsOf(t).upgrades}`)(slotsUsed(t))) +
     row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}`) +
@@ -194,6 +213,10 @@ function townHtml(a, t) {
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
     row('роль', t.realm != null ? roleLine(t) : null) +
+    // the council's needs and its answers (atlas/townNeeds.js): what is lit, what is under way, what it could not do and why
+    row('довольство', `${Math.round(moodOf(t))} из 100`) +
+    (t.gated ? row('рост', `слабее: ${esc(TOWN_LIFE.gates.find(G => G.id === t.gated)?.label || t.gated)}`) : '') +
+    row('нужды', needsLine(a, t)) +
     row('строится', (P => (P ? `${esc(P.b.name)}: ${Math.min(99, Math.round(100 * P.done / P.days))}%, ещё ~${Math.max(1, Math.ceil((P.days - P.done) / Math.max(1e-9, crewDays(t))))} сез.` : null))(projectOf(t))) +
     (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);

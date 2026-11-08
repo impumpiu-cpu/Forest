@@ -10,7 +10,7 @@ import {strengthOf} from '../agents/strength.js';
 export function colonyReport(w) {
   const col = colonists(w).filter(a => !a.captive);   // captives are no strength of the colony's (settlement/captives.js)
   return {
-    tick: w.tick, day: dayOf(w.tick),
+    tick: w.tick, day: dayOf(w.tick, w),
     pop: col.length,
     armed: col.filter(a => handItems(a).some(it => isWeapon(def(it)))).length,
     armour: +col.reduce((s, a) => s + (a.gear?.armor || 0), 0).toFixed(3),

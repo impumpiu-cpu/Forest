@@ -131,7 +131,7 @@ const game = (seed = 'dwarves') => { const w = newGame({...DEFAULT_CFG, seed, si
 
 // the caravan: a golem bought in a dwarven town with a golem forge — the town gives one of its guard golems
 {
-  const t = {people: 'dwarves', built: ['golemforge', 'forge', 'smelter', 'mineshaft'], golems: {auto: {}, guard: ['iron', 'steel'], since: 0}, tier: 2};
+  const t = {people: 'dwarves', built: ['golemforge', 'forge', 'mineshaft'], golems: {auto: {}, guard: ['iron', 'steel'], since: 0}, tier: 2};
   const o = offers(t).find(x => x.kind === 'beast' && BEASTS[x.id]?.golem);
   const none = offers({...t, built: ['forge']}).find(x => x.kind === 'beast' && BEASTS[x.id]?.golem);
   check('в городе с кузней големов продают голема — лучшего из стражей города; без кузни големов — нет', o?.id === 'steelgolem' && townGolem(null, t) === 'steel' && !none, o?.id || '—');
@@ -178,9 +178,9 @@ const game = (seed = 'dwarves') => { const w = newGame({...DEFAULT_CFG, seed, si
   const {digOf} = await import('../src/atlas/economy.js');
   const n = 49, ore = v => Float32Array.from({length: n}, (_, j) => (typeof v === 'function' ? v(j) : v));
   const fa = {w: 7, h: 7, f: {ore_iron: ore(0.3), ore_bronze: ore(0.2), ore_silver: ore(0), ore_gold: ore(0), ore_mithril: ore(j => (j === 0 ? 0.1 : 0))}};
-  const dm = TB.get('deepmine'), dig = p => digOf(fa, {i: 24, people: p}, dm);
-  check('знание камня: мифрил в трёх клетках от шахты Дварфы находят и добывают кратно, Люди на той же клетке — нет',
-    (dig('dwarves').ore_mithril || 0) > 0 && !(dig('humans').ore_mithril > 0), `мифриловой руды в год: Дварфы ${(dig('dwarves').ore_mithril || 0).toFixed(0)}, Люди ${(dig('humans').ore_mithril || 0).toFixed(0)}`);
+  const dm = TB.get('magmaforge'), dig = p => digOf(fa, {i: 24, people: p}, dm);
+  check('знание камня: мифрил в трёх клетках от горна Дварфы находят и добывают кратно, Люди на той же клетке — нет',
+    (dig('dwarves').mithril || 0) > 0 && !(dig('humans').mithril > 0), `мифрила в год: Дварфы ${(dig('dwarves').mithril || 0).toFixed(0)}, Люди ${(dig('humans').mithril || 0).toFixed(0)}`);
   check('заставы Дварфов: подземные ходы, каменная стена и зал предков — с 0-й ступени, кузня големов — с 1-й; поселенцы обходят стойбища',
     TB.get('tunnels').tier === 0 && TB.get('stonewall').tierBy?.dwarves === 0 && TB.get('stonewall').tier === 1 && TB.get('ancestorhall').tier === 0 && !TB.get('ancestorhall').here && TB.get('golemforge').tier === 1 && WP.get('dwarves').settlers.avoid?.orcs > 0,
     `стойбищ не ближе ${WP.get('dwarves').settlers.avoid?.orcs} шагов`);

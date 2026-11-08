@@ -6,6 +6,7 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {tradesFramed, frameChanged} from './frame.js';
 import {TOWN_ROLES} from '../data/worldLand.js';
 import {relKey, townsByRealm} from './common.js';
 import {cap1, luck} from '../core/util.js';
@@ -89,7 +90,7 @@ export function stateOf(a, p, q) {
 }
 export const stateLabel = id => (id === 'war' ? 'война' : D.states.find(s => s.id === id).label);
 // whether their towns trade and share roads
-export const trades = (a, p, q) => p === q || (!atWar(a, p, q) && attitude(a, p, q) >= -1);
+export const trades = (a, p, q) => p === q || (tradesFramed(a, p, q) ?? (!atWar(a, p, q) && attitude(a, p, q) >= -1));   // (a pass open: from the season's frame — atlas/frame.js)
 
 export function meet(a, p, q, year) {
   a.rel ||= {};
@@ -119,7 +120,7 @@ export function raceState(a, P, Q) {
 
 // burn a town: it is gone, a ruin stays where it stood
 function raze(a, t, by, how, rnd, say) {
-  t.alive = false; t.died = a.hist.year;
+  t.alive = false; t.died = a.hist.year; frameChanged(a);
   razeSites(a, t, a.hist.year);   // its works burn with it
   barrows(a, t.i, Math.max(2, Math.round(2 * scaleOf(a))), ROT.ruinGraves);   // the dead of a burnt town
   a.ruins ||= [];

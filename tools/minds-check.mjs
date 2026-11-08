@@ -126,11 +126,20 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
   const traced = walk();
   traceMode('off');
   check('караван: след не меняет поход', campaignHash(plain) === campaignHash(traced));
+  // the council with voices (campaign/council.js, COUNCIL.policy 'voices'): every option of the evening at once, the pick one
+  // of them, each with a weight; an urgent need is a strong voice, not a lane that hides the rest
   const council = recs.filter(r => r.point === 'caravan.visit' || r.point === 'caravan.camp');
-  const drawn = council.every(r => !r.pick || (r.opts.some(o => o.key === r.pick) && r.opts.every(o => o.score > 0 && commandOf(o.cmd)?.band === r.band)));
-  check('караван: совет тянет жребий в первой полосе, где есть чего хотеть', council.length > 0 && drawn, `${council.filter(r => r.pick).length} решений, из них с выбором ${council.filter(r => r.opts.length > 1).length}`);
-  const need = council.filter(r => r.opts.some(o => commandOf(o.cmd).band === 'yellow'));
-  check('караван: стоянка и город нужды прежде выбора', need.every(r => r.band === 'yellow'));
+  const voiced = council.every(r => !r.pick || (r.opts.some(o => o.key === r.pick) && r.opts.every(o => o.score > 0)));
+  check('караван: совет голосами — выбор среди предложенного, у каждого варианта вес', council.length > 0 && voiced, `${council.filter(r => r.pick).length} решений, из них с выбором ${council.filter(r => r.opts.length > 1).length}`);
+  const mixed = council.filter(r => new Set(r.opts.map(o => commandOf(o.cmd)?.band || 'routine')).size > 1).length;
+  check('караван: голосами нужда не прячет остальное — варианты разных полос в одном жребии', mixed > 0, `таких решений ${mixed}`);
+  // the old order (COUNCIL.policy 'lanes'): the draw in the first lane with anything wanted, the need's lane first
+  const was = COUNCIL.policy, old = []; COUNCIL.policy = 'lanes';
+  traceMode('collect', {sink: r => { if (r.point === 'caravan.visit' || r.point === 'caravan.camp') old.push(r); }}); walk(); traceMode('off');
+  COUNCIL.policy = was;
+  const drawn = old.every(r => !r.pick || (r.opts.some(o => o.key === r.pick) && r.opts.every(o => o.score > 0 && commandOf(o.cmd)?.band === r.band)));
+  check('караван, прежний совет: жребий в первой полосе, где есть чего хотеть', old.length > 0 && drawn, `${old.filter(r => r.pick).length} решений`);
+  check('караван, прежний совет: стоянка и город нужды прежде выбора', old.filter(r => r.opts.some(o => commandOf(o.cmd).band === 'yellow')).every(r => r.band === 'yellow'));
   const quest = recs.filter(r => r.point === 'caravan.quest' && r.pick);
   check('караван: цель квеста — первое по порядку поиска', quest.length > 0 && quest.every(r => r.opts[r.opts.length - 1].key === r.pick), `${quest.length} решений`);
   // the mission profile: at the middle nothing changes; the profile «без влияния склонностей» — the middle

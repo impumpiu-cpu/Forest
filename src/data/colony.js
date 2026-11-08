@@ -13,6 +13,7 @@ export const REL = {
   grudge: 0.6,          // a quarrel adds this much to the grudge on both sides
   fade: 0.96,           // grudges shrink this much each day
   fadeGood: 0.985,      // good memories, this much
+  forget: 0.05,         // a grudge or a good memory faded below this is forgotten
   settlerFloor: -1,     // a race the colony dislikes worse than this does not come
 };
 
@@ -128,10 +129,13 @@ export const TOGETHER = {
   escortShare: 0.2,    // at most this share of the colony escorts at a time
   keep: 2.2,           // the escort stays this close
   guard: 8,            // and takes on anything hostile this close to its charge
+  promiseNear: 60,     // a promised escort (campaign/duty.js escortAsk) counts as kept after this many ticks at its charge's side
   aidBelow: 0.4,       // health share under which a colonist out in the woods needs help
   aidEvery: 12 * HOUR, // once dressed, not again for this long
   aidHeal: 0.2,        // of max health, more with the healer's skill
   aidFallen: 1.7,      // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+  aidSpite: 0.5,       // a fallen one it cannot stand (opinion at or below REL.dislike), for a helper not merciful enough (ALIGN.help): the urgency × this — it may go, it may not; at or below REL.dislike × spiteHate it does not go at all
+  spiteHate: 1.5,
   aidPractice: 60,     // medicine practice for a life saved (units of agents/skills.js practice)
   far: 40,             // nobody goes further than this to escort or help
   mate: 0.05,          // a friend (or a foe) on the same job, ± per person…

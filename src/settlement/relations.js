@@ -16,8 +16,9 @@ import {workTogether, afterRaid, threatTo} from './together.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, clamp, weighted} from '../core/util.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, tickOfDay, dayLen} from '../core/time.js';
 import {REL} from '../data/colony.js';
+import {noteFact} from './facts.js';
 
 export {REL};   // (data/colony.js)
 // ── settlers: who comes next
@@ -57,6 +58,7 @@ function quarrels(w) {
     // not now: raiders on the way, the camp on fire, a beast close by
     if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) { if (w.behave) w.behave.social.calm++; continue; }
     for (const [x, y] of [[a, b], [b, a]]) { (x.grudge ||= {})[y.id] = (x.grudge[y.id] || 0) - REL.grudge; think(w, x, 'quarrel', {name: y.name}); }
+    noteFact(w, 'quarrel', a, b, {over: reason(a, b), bond: {to: -REL.grudge, by: -REL.grudge}});   // (a caravan's camp: settlement/facts.js)
     w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
     log(w, `Склока: <b>${esc(a.name)}</b> и <b>${esc(b.name)}</b> сцепились — ${reason(a, b)}.`, 'people');
     return;   // one quarrel at a time is enough for the camp
@@ -65,8 +67,12 @@ function quarrels(w) {
 
 function daily(w) {
   const col = colonists(w);
+  // on a camp of the caravan (campaign/camp.js) the bonds between the members are the campaign's (campaign/social.js): they
+  // fade once a day of the walk there (fadeDay), not again on each map of the day; a fallen member is still one of the
+  // company — what one felt for it is kept. The bonds to the others of the map fade as anywhere
+  const member = w.campaign?.memberOf;
   for (const a of col) {
-    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < 0.05 || !col.some(o => o.id === +id)) delete a.grudge[id]; }
+    if (a.grudge) for (const id of Object.keys(a.grudge)) { if (member?.has(+id)) continue; a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < REL.forget || !col.some(o => o.id === +id)) delete a.grudge[id]; }
     let worst = null, wv = Infinity, best = null, bv = -Infinity;
     for (const b of col) {
       if (b === a) continue;
@@ -80,7 +86,7 @@ function daily(w) {
 }
 
 export function stepRelations(w) {
-  if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
+  if (tickOfDay(w) === Math.floor(dayLen(w) * 0.55)) daily(w);
   if (w.tick % REL.quarrelEvery === 37) quarrels(w);
   if (w.tick % HOUR === 11) workTogether(w);
   // a raid over: those who fought it side by side come out of it closer

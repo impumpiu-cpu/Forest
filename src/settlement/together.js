@@ -17,6 +17,7 @@
 // Counted in w.behave.social (settlement/behaviour.js).
 import {JOBS} from '../data/jobs.js';
 import {opinion, OPINION} from '../data/relations.js';
+import {DUTY} from '../data/social.js';
 import {colonists} from './query.js';
 import {agentInZone} from './zone.js';
 import {perTick, clamp, esc, g, dist} from '../core/util.js';
@@ -33,6 +34,7 @@ import {practice} from '../agents/skills.js';
 import {liveById} from '../agents/lookup.js';
 import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {TOGETHER} from '../data/colony.js';
+import {noteFact} from './facts.js';
 
 export {TOGETHER};   // (data/colony.js)
 const byId = liveById;
@@ -64,7 +66,20 @@ const escortOf = (w, a) => colonists(w).find(o => o.task?.id === 'company' && o.
 const walkers = w => perTick(w, 'walkers', () => (outsideRisk(w) < TOGETHER.riskFrom ? [] : colonists(w).filter(a => outWork(a) && !a.task.hauling && !escortOf(w, a))));
 
 // the best person for `a` to go along with, and how much it tempts: [task, score, why] or null
+// a promise to go along (a caravan's camp: campaign/duty.js escortAsk) — the one it was promised to, out at work, is gone
+// along with whatever the risk; seen out, the promise is due (w.campaign.promises: what came of it)
+const promiseOf = (w, a) => w.campaign?.promises?.find(p => p.by === a.id && p.state === 'open') || null;
 export function escortOption(w, a) {
+  const pr = promiseOf(w, a);
+  if (pr) {
+    const b = byId(w, pr.to);
+    if (b && !b.dead && outWork(b)) {
+      pr.seenOut = true;
+      const going = a.task?.id === 'company' && a.task.who === b.id;
+      if (going && !a.task.promised) { a.task.promised = pr.id; pr.took = true; }   // (already going along: the promise is being kept — by the time at its side, guardStep)
+      if (hpShare(a) >= TOGETHER.aidBelow) return [going ? a.task : {id: 'company', who: b.id, promised: pr.id}, DUTY.escort.score, () => `обещал${a.gender === 'f' ? 'а' : ''} пойти рядом с ${b.name}`];
+    }
+  }
   const risk = outsideRisk(w);
   // already going along with someone: that one, while still needed
   if (a.task?.id === 'company') { const b = escortGoing(w, a, a.task); if (b) return [a.task, 0.2 + 0.6 * risk + (a.task.home ? 0.6 : 0), () => (a.task.home ? `ведёт ${b.name} к своим` : `в лесу опасно, ${b.name} не ${g(b, 'один', 'одна')}`)]; }
@@ -108,9 +123,11 @@ export function guardStep(w, a, b, task) {
     a.lastFight = w.tick;
     return 'fight';
   }
-  if (task.fought != null) { bond(w, b, a, TOGETHER.bondDefend); think(w, b, 'stoodUp', {name: a.name, gender: a.gender}); task.fought = null; }
+  if (task.fought != null) { bond(w, b, a, TOGETHER.bondDefend); noteFact(w, 'stoodUp', a, b, {bond: {to: TOGETHER.bondDefend}}); think(w, b, 'stoodUp', {name: a.name, gender: a.gender}); task.fought = null; }
   if (dist(a, b) > TOGETHER.keep) { approach(w, a, b.x, b.y); return 'far'; }
   if (w.tick % HOUR === 0) { bond(w, a, b, TOGETHER.bondEscort); bond(w, b, a, TOGETHER.bondEscort); }
+  // a promised escort is kept by the deed — the time really spent at the other's side, not by taking the task
+  if (task.promised) { const pr = w.campaign?.promises?.find(p => p.id === task.promised); if (pr && pr.state !== 'kept' && (pr.near = (pr.near || 0) + 1) >= TOGETHER.promiseNear) { pr.state = 'kept'; pr.tick = w.tick; } }
   return 'near';
 }
 
@@ -119,13 +136,16 @@ export function escortGoing(w, a, task) {
   const b = byId(w, task.who);
   if (!b) return null;
   if (task.home) return agentInZone(w, b) ? null : b;   // seeing a wounded friend home
+  if (task.promised) return outWork(b) ? b : null;   // (a promise: while it works out there, whatever the risk)
   return outWork(b) && outsideRisk(w) >= TOGETHER.riskTill ? b : null;
 }
 
 export function enterEscort(w, a, task) {
   const b = byId(w, task.who); if (!b) return;
   const s = social(w); if (s && !task.home) s.escort++;
-  if (!task.home) think(w, b, 'escorted', {name: a.name, gender: a.gender});
+  if (!task.home) { think(w, b, 'escorted', {name: a.name, gender: a.gender}); noteFact(w, 'escorted', a, b, {bond: {to: TOGETHER.bondEscort, by: TOGETHER.bondEscort}}); }
+  const pr = task.promised && w.campaign?.promises?.find(p => p.id === task.promised);
+  if (pr) pr.took = true;   // (it set out: the promise is kept only by the time at the other's side — guardStep)
 }
 
 // ── aid
@@ -143,10 +163,12 @@ export function aidOption(w, a) {
   for (const b of colonists(w)) {
     if (b === a || !needsAid(w, b) || dist(a, b) > TOGETHER.far) continue;
     const h = helper(w, b.id); if (h && h !== a) continue;
-    const op = opinion(a, b);
-    // the merciful help even those they cannot stand; a life at stake, anyone helps
-    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < ALIGN.help) continue;
-    const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
+    const op = opinion(a, b), merciful = (a.align?.mercy ?? 0) >= ALIGN.help;
+    // the merciful help even those they cannot stand; the rest: not the walking wounded it dislikes, and a fallen one it
+    // dislikes with less of a will (TOGETHER.aidSpite) — one it hates (REL.dislike × spiteHate) it leaves to the others
+    if (!merciful && op <= REL.dislike && (!b.downed || op <= REL.dislike * TOGETHER.spiteHate)) continue;
+    const spite = !merciful && b.downed && op <= REL.dislike ? TOGETHER.aidSpite : 1;
+    const s = aidScore(b) * spite + 0.05 * clamp(op, -2, 4);
     if (s > bs) { bs = s; best = b; }
   }
   return best ? [{id: 'aid', who: best.id, fallen: !!best.downed}, bs, () => aidWhy(best)] : null;
@@ -156,7 +178,9 @@ export function aidOption(w, a) {
 export function giveAid(w, a, b) {
   if (b.downed) {
     stabilize(w, a, b);
-    bond(w, b, a, TOGETHER.bondAid * 2); bond(w, a, b, TOGETHER.bondAid * 0.5);
+    const to = TOGETHER.bondAid * 2, by = TOGETHER.bondAid * 0.5;
+    bond(w, b, a, to); bond(w, a, b, by);
+    noteFact(w, 'saved', a, b, {bond: {to, by}});   // (a caravan's camp: the fact behind the bond, settlement/facts.js)
     shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved * 2);   // pulled back from death: kinder for it
     const s = social(w); if (s) s.aid++;
     practice(a, 'medicine', TOGETHER.aidPractice);
@@ -164,7 +188,9 @@ export function giveAid(w, a, b) {
   }
   const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
   b.hp += amt; b.aidedAt = w.tick;
-  bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, TOGETHER.bondAid * 0.3);
+  const by = TOGETHER.bondAid * 0.3;
+  bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, by);
+  noteFact(w, 'aid', a, b, {healed: Math.round(amt / maxHp(b) * 100) / 100, bond: {to: TOGETHER.bondAid, by}});
   shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved);
   think(w, b, 'aided', {name: a.name, gender: a.gender}); think(w, a, 'gaveAid', {name: b.name});
   const s = social(w); if (s) s.aid++;
@@ -200,7 +226,8 @@ export function askForBed(w, a, end) {
   if (!best) return null;
   const bed = best.task.bed;
   end(w, best, 'done');
-  bond(w, a, best, TOGETHER.bondAid * 0.6);
+  const got = TOGETHER.bondAid * 0.6;
+  bond(w, a, best, got); noteFact(w, 'yieldedBed', best, a, {bond: {to: got}});
   think(w, a, 'gotBed', {name: best.name, gender: best.gender}); think(w, best, 'yieldedBed', {name: a.name});
   const s = social(w); if (s) s.yield++;
   log(w, `<b>${esc(best.name)}</b> ${g(best, 'уступил', 'уступила')} койку у лекаря <b>${esc(a.name)}</b>: тому хуже.`, 'people');
@@ -213,7 +240,7 @@ export function afterRaid(w, since) {
   for (let i = 0; i < fought.length; i++) for (let j = i + 1; j < fought.length; j++) {
     const a = fought[i], b = fought[j], foes = opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike;
     const v = foes ? TOGETHER.mendTrouble : TOGETHER.bondTrouble;
-    bond(w, a, b, v); bond(w, b, a, v);
+    bond(w, a, b, v); bond(w, b, a, v); noteFact(w, 'foughtBeside', a, b, {mended: foes, bond: {to: v, by: v}});
     if (foes) {
       const s = social(w); if (s) s.bond++;
       think(w, a, 'sharedTrouble', {name: b.name}); think(w, b, 'sharedTrouble', {name: a.name});
@@ -229,7 +256,7 @@ export function workTogether(w) {
     const a = col[i], b = col[j];
     if (a.task?.id !== 'job' || b.task?.id !== 'job' || a.task.job !== b.task.job || dist(a, b) > 8) continue;
     if (opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike) continue;
-    bond(w, a, b, TOGETHER.bondWork); bond(w, b, a, TOGETHER.bondWork);
+    bond(w, a, b, TOGETHER.bondWork); bond(w, b, a, TOGETHER.bondWork); noteFact(w, 'workedWith', a, b, {job: a.task.job, bond: {to: TOGETHER.bondWork, by: TOGETHER.bondWork}});
   }
 }
 

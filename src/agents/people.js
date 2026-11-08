@@ -5,7 +5,7 @@
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {tempAt} from '../world/heat.js';
-import {nightness} from '../core/time.js';
+import {nightness, scaleOf} from '../core/time.js';
 import {kill, maxHp} from './agent.js';
 import {heatHarm} from './body.js';
 import {RAID, CARAVAN} from '../data/behaviour.js';
@@ -27,6 +27,6 @@ export function raidBody(w, a) {
 export function roadBody(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a));
   if (heatHarm(a, sp, T, 'caravan', w) && a.hp <= 0) { kill(w, a, 'огня'); return T; }
-  if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + CARAVAN.mends);
+  if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + CARAVAN.mends / scaleOf(w));
   return T;
 }

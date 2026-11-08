@@ -9,6 +9,7 @@
 // no second chance — the next deadly blow kills. The checks use the combat stream, at the moment of the
 // blow, and their outcome is kept on the creature, so a save and a load never roll again.
 import {SPECIES} from '../data/species.js';
+import {sunTicks} from '../core/time.js';
 import {NORM} from '../data/special.js';
 import {DEATHBLOW, CAN_FALL, WOUNDS, luckChance, GRAVE_TICKS, bleedTicks} from '../data/wounds.js';
 import {kill, maxHp} from './agent.js';
@@ -94,7 +95,7 @@ export function dress(w, a, medicine = 0) {
   const d = a.downed; if (!d) return null;
   a.downed = null; if (a.bleeding) a.bleeding = null;   // the dressing stops the bleeding too
   if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
-  a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
+  a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + sunTicks(w, GRAVE_TICKS('grave'))}];   // (a wound's days are the sun's: core/time.js dayScale)
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + medicine));

@@ -1,7 +1,7 @@
 // Lakes: connected bodies of water found once at world generation. A lake big enough
 // (FISHING.minCells) holds fish: a finite stock that people fish down and that slowly comes back.
 import {T} from '../data/terrain.js';
-import {DAY} from '../core/time.js';
+import {DAY, dayLen} from '../core/time.js';
 import {log} from '../core/log.js';
 import {FISHING} from '../data/nature.js';
 
@@ -52,7 +52,7 @@ export function stepLakes(w) {
     if (!l.cap || l.fish >= l.cap) continue;
     if (l.fish < 1 && !l.resting) { l.resting = true; w.nav?.dirty('shore'); log(w, `Озеро в ${l.size} клеток выловлено до последней рыбы. Рыба вернётся не скоро.`, 'wildlife'); }
     const perDay = FISHING.growth * l.fish * (1 - l.fish / l.cap) + FISHING.trickle * l.cap;
-    l.fish = Math.min(l.cap, l.fish + perDay / DAY);
+    l.fish = Math.min(l.cap, l.fish + perDay / dayLen(w));
     if (l.resting && l.fish >= l.cap * FISHING.reopenAt) { l.resting = false; w.nav?.dirty('shore'); log(w, `В озеро в ${l.size} клеток вернулась рыба.`, 'wildlife'); }
   }
 }

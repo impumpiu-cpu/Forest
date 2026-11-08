@@ -117,7 +117,7 @@ export function outfit(w, a) {
   if (!a.equip) return false;
   let changed = false;
   // a captive: a tool and clothes only, and no tool from the council till dawn (settlement/escape.js)
-  const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
+  const night = a.captive && (hourOf(w.tick, w) >= COUNCIL_TO || hourOf(w.tick, w) < ESCAPE.tools.dawn);
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
   const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)) && mayWield(a.species, def(it).form));

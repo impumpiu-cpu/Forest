@@ -64,10 +64,11 @@ const wooden = w => w.buildings.filter(b => b.done && b.cells.length && BUILDING
 
 // the colonist a kill-band came for: the one who has killed most raiders (a blood feud), otherwise the
 // weakest (easy prey)
+const EASY = 'самая лёгкая добыча';
 function pickVictim(w) {
   const col = colonists(w).filter(a => !a.downed); if (!col.length) return null;
   const feud = col.filter(a => (a.stats?.raiders || 0) > 0).sort((x, y) => y.stats.raiders - x.stats.raiders)[0];
-  return feud ? {who: feud, why: 'кровник: убивал их'} : {who: col.sort((x, y) => strength(x) - strength(y))[0], why: 'самая лёгкая добыча'};
+  return feud ? {who: feud, why: 'кровник: убивал их'} : {who: col.sort((x, y) => strength(x) - strength(y))[0], why: EASY};
 }
 
 // a new band: the plan, the leader, everyone's role
@@ -211,8 +212,14 @@ export function stepSquads(w) {
       if (ms.some(m => m.looted) && looters.every(m => m.looted)) setState(w, sq, 'withdraw', GOALS.loot.done);
       else if (!looters.length && ms.some(m => m.looted)) setState(w, sq, 'withdraw', GOALS.loot.done);
     } else if (g === 'kill') {
-      if (sq.targetDown) setState(w, sq, 'withdraw', GOALS.kill.done);
-      else if (!agentById(w, sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = 'looter'; }
+      if (sq.targetDown) {
+        // at a caravan's camp (campaign/camp.js) a band that came for the easiest prey is not done with one: it turns on the
+        // next weakest standing, until SQUAD.campPrey of its number have fallen — or its losses break it; a feud wants one
+        sq.prey = (sq.prey || 0) + 1;
+        const next = w.campaign && sq.why === EASY && sq.prey < Math.ceil(sq.size * SQUAD.campPrey) ? pickVictim(w) : null;
+        if (next) { sq.target = next.who.id; sq.why = next.why; sq.targetDown = false; log(w, `${Label(sq)}: один пал — идут за следующим: ${esc(next.who.name)}.`, 'danger'); }
+        else setState(w, sq, 'withdraw', GOALS.kill.done);
+      } else if (!agentById(w, sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = 'looter'; }
     } else if (g === 'burn') {
       if (sq.lit != null && w.tick - sq.lit > SQUAD.burnFor) setState(w, sq, 'withdraw', GOALS.burn.done);
       else if (sq.lit == null && !w.buildings.some(b => b.id === sq.target && b.done)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'torch') m.sqRole = 'looter'; }

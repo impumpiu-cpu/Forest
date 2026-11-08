@@ -2,6 +2,7 @@
 // people bound where it fell (capture.js): it follows the thief and is gone with it. The thief fallen, it stays and is
 // what it was (a.ledFrom: a colonist again, a beast livestock again); the thief over the edge, a beast is stolen and a
 // colonist taken into captivity — the chronicle and the people hear of it. Reads: nothing of its own.
+import {noteSeen} from '../../settlement/facts.js';
 import {approach} from '../movement.js';
 import {agentById} from '../lookup.js';
 import {wake} from '../attention.js';
@@ -22,6 +23,7 @@ function freed(w, a) {
 
 // the thief over the edge: gone with it
 function taken(w, a) {
+  noteSeen(w, a);   // (who of a caravan saw it led off: campaign/social.js noteFate)
   a.gone = true; a.ledGone = null;
   if (a.tame || a.faction !== 'colony') { a.stolen = true; return; }
   const c = w.chronicle;

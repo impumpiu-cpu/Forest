@@ -99,7 +99,11 @@ export function archive(a, K) {
   (a.campaignsDone ||= []).push({
     from: K.capitalFrom || K.capitalName, capital: K.capital, people: K.people, realm: K.realm, phase: K.phase,
     crown: Q?.name || null, clues: Q?.found ?? 0, started: K.started, ended: {year: a.hist.year, season: a.hist.season}, days: K.day,
-    members: K.members.map(m => ({name: m.name, gender: m.gender, race: m.race, role: m.role, core: isCore(m), rank: rank(K, m), died: m.died || null, left: m.left || null, fate: m.fate || null})),
-    log: K.log.map(l => ({day: l.day, year: l.year, season: l.season, kind: l.kind, text: l.text})),
+    // the people by their ids (the lines and the company's story name them so: two of one name stay two)
+    members: K.members.map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, role: m.role, core: isCore(m), rank: rank(K, m), died: m.died || null, left: m.left || null, fate: m.fate || null, ...(m.local ? {local: {likes: m.local.likes, dislikes: m.local.dislikes, traits: m.local.traits}} : {})})),
+    log: K.log.map(l => ({day: l.day, year: l.year, season: l.season, kind: l.kind, text: l.text, ...(l.who ? {who: [...l.who]} : {})})),
+    // the company's story as it ended (campaign/social.js): the bonds and their reasons, the facts they point to, the promises
+    // closed, the meetings at the fire — the finished campaign's, kept; no new mechanics rides on it
+    ...(K.social ? {social: structuredClone({relations: K.social.relations, why: K.social.why, facts: K.social.facts, commitments: K.social.commitments, meetings: K.social.meetings || []})} : {}),
   });
 }
