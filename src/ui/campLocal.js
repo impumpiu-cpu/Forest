@@ -23,7 +23,7 @@ export const campLocal = Base => class extends Base {
     try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
     this.clock.hold(c.at);   // the season waits while the camp is watched, at the camp's own day
     this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.localPace(this.clock.pace, c);
-    this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
+    this.local = {w, c, view: {cam: {zoom: 2, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
     this.localText(); this.renderStock(); this.renderSide();   // the roster and the chronicle at the camp's day

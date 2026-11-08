@@ -1,0 +1,83 @@
+/* The game's shell (src/ui/shell/; docs/GAME.md «Экран похода»): the campaign screen laid out as a game, not a page —
+   a top bar with the day and what the caravan has, a rail of menus on the left that open a drawer over the map, the map
+   in the middle, a column on the right (the world in small, what is under the hand, the tallies, the latest), and the
+   company along the bottom as portraits. Sizes are in units of --u: a 1080-high window has --u: 1px; a lower or higher one
+   scales the fixed parts by its height and the map takes the rest of the width (src/ui/shell/campShell.js sets --u). */
+:root{--u:1px;--sh-top:calc(56 * var(--u));--sh-rail:calc(64 * var(--u));--sh-side:calc(320 * var(--u));--sh-party:calc(200 * var(--u));--sh-gap:calc(8 * var(--u));
+  --sh-panel:#1b1e15;--sh-edge:#3a3e2c;--sh-edge-hi:#6c6245;--sh-ink:#e7e3cf}
+body.shelled{padding:0;overflow:hidden;height:100vh;height:100dvh}
+body.shelled .wrap{gap:0;height:100%}
+body.shelled > .wrap > header{display:none}
+/* the campaign section becomes the whole window */
+.app-screen.obs#campaign.shell{display:grid;grid-template-columns:var(--sh-rail) minmax(0,1fr) var(--sh-side);grid-template-rows:var(--sh-top) minmax(0,1fr) var(--sh-party);gap:var(--sh-gap);height:100%;padding:var(--sh-gap);box-sizing:border-box;background:#0f110b;font-size:calc(14 * var(--u))}
+.app-screen.obs#campaign.shell[hidden]{display:none}
+#campaign.shell > .obs-head,#campaign.shell > .obs-left,#campaign.shell > .obs-dock,#campaign.shell > .obs-chron{display:none}
+.sh{background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));min-height:0;min-width:0;box-sizing:border-box}
+.sh h3,.sh-drawer h3{margin:0;padding:calc(4 * var(--u)) calc(10 * var(--u));font-family:var(--font-display);font-weight:500;font-size:calc(13 * var(--u));letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--sh-edge);display:flex;align-items:center;gap:8px}
+.sh h3 .x,.sh-drawer h3 .x{margin-left:auto;font-weight:400;letter-spacing:0;font-family:var(--font-body);font-size:calc(12 * var(--u))}
+/* top bar */
+.sh-top{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:calc(14 * var(--u));padding:0 calc(12 * var(--u))}
+.sh-top .title{font-family:var(--font-display);font-size:calc(20 * var(--u));letter-spacing:.04em;white-space:nowrap}
+.sh-top .title small{color:var(--muted);font-size:calc(12 * var(--u));letter-spacing:.02em;margin-left:8px}
+.sh-top #campDay{font-family:var(--font-mono);font-size:calc(13 * var(--u));min-width:0;color:var(--muted)}
+.sh-res{display:flex;gap:calc(18 * var(--u));margin-left:calc(10 * var(--u))}
+.sh-res span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sh-res i{display:inline-block;width:calc(18 * var(--u));height:calc(18 * var(--u));border-radius:50%;background:var(--sh-edge-hi);font-style:normal;text-align:center;line-height:calc(18 * var(--u));font-size:calc(11 * var(--u));color:#1b130a;font-weight:700}
+.sh-res small{color:var(--muted)}
+.sh-res b{font-family:var(--font-mono);font-weight:400;font-size:calc(13 * var(--u))}
+.sh-top .sp{flex:1}
+.sh-top .seg button{padding:calc(3 * var(--u)) calc(8 * var(--u))}
+/* the rail */
+.sh-rail{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;gap:calc(4 * var(--u));padding:calc(6 * var(--u)) calc(4 * var(--u))}
+.sh-rail button{display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:1px solid transparent;color:var(--muted);padding:calc(6 * var(--u)) 0;font-size:calc(10.5 * var(--u));letter-spacing:.02em;border-radius:calc(5 * var(--u))}
+.sh-rail button i{font-style:normal;font-size:calc(20 * var(--u));line-height:1;color:var(--sh-ink)}
+.sh-rail button:hover{border-color:var(--sh-edge)}
+.sh-rail button[aria-pressed="true"]{background:#2a2d20;border-color:var(--sh-edge-hi);color:var(--sh-ink);font-weight:400}
+.sh-rail .gap{flex:1}
+/* the map in the middle: the old box moves in whole */
+.sh-map{grid-column:2;grid-row:2;position:relative;display:flex;flex-direction:column}
+.sh-map .obs-map{flex:1;min-height:0;display:flex;flex-direction:column;gap:0}
+.sh-map .obs-canvas{border:0;border-radius:calc(6 * var(--u))}
+.sh-map .readout{position:absolute;left:calc(10 * var(--u));bottom:calc(8 * var(--u));max-width:70%;background:rgba(13,15,10,.78);padding:2px 8px;border-radius:4px;pointer-events:none}
+.sh-map .camp-local-bar{position:absolute;left:calc(10 * var(--u));top:calc(8 * var(--u));right:auto;max-width:60%}
+/* the drawer: a menu opened from the rail lies over the map's left edge */
+.sh-drawer{position:absolute;left:0;top:0;bottom:0;width:calc(440 * var(--u));max-width:70%;display:flex;flex-direction:column;background:rgba(27,30,21,.96);border-right:1px solid var(--sh-edge-hi);border-radius:calc(6 * var(--u)) 0 0 calc(6 * var(--u));z-index:30;box-shadow:6px 0 18px rgba(0,0,0,.45)}
+.sh-drawer[hidden]{display:none}
+.sh-drawer .body{flex:1;min-height:0;overflow:auto;padding:calc(8 * var(--u)) calc(10 * var(--u));display:flex;flex-direction:column;gap:6px}
+.sh-drawer .body > *{flex:none}
+.sh-drawer .body .obs-pane{overflow:visible;flex:none}
+.sh-drawer .body .obs-chron{display:flex;flex-direction:column;gap:6px;background:transparent;border:0;padding:0;flex:1;min-height:0}
+.sh-drawer .body .obs-chron .log{flex:1;min-height:0;overflow:auto}
+.sh-drawer .body .card{background:transparent;border:0;padding:0}
+.sh-drawer .x{cursor:pointer}
+/* the right column */
+.sh-side{grid-column:3;grid-row:2;display:grid;grid-template-rows:calc(190 * var(--u)) minmax(0,1.2fr) minmax(0,1fr) calc(118 * var(--u));gap:var(--sh-gap);min-height:0}
+.sh-side .sh{display:flex;flex-direction:column;overflow:hidden}
+.sh-side .body{flex:1;min-height:0;overflow:auto;padding:calc(6 * var(--u)) calc(10 * var(--u))}
+.sh-mini{position:relative;padding:0;background:#0d0f0a}
+.sh-mini canvas{display:block;width:100%;height:100%}
+.sh-side .inspect{max-height:none;margin-top:0;font-size:calc(12.5 * var(--u))}
+.sh-side .kv{font-size:calc(12.5 * var(--u))}
+.sh-side .summary .kv{grid-template-columns:auto 1fr}
+.sh-last .log{display:flex;flex-direction:column;gap:3px;font-size:calc(12 * var(--u));max-height:none}
+.sh-last .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the company along the bottom: portraits */
+.sh-party{grid-column:2/4;grid-row:3;display:flex;flex-direction:column;position:relative}
+.sh-party .body{flex:1;min-height:0;display:flex;align-items:stretch;gap:calc(6 * var(--u));padding:calc(6 * var(--u)) calc(8 * var(--u));overflow:hidden}
+.sh-party .scroll{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.sh-party .roster{display:flex;flex-direction:row;gap:calc(6 * var(--u));margin:0;height:100%}
+.sh-party .roster .rm{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;width:calc(118 * var(--u));flex:none;padding:calc(4 * var(--u));border:1px solid var(--sh-edge);border-radius:calc(5 * var(--u));background:#171a12;position:relative;font-size:calc(12 * var(--u));text-align:center;overflow:hidden}
+.sh-party .roster .rm.pick{border-color:var(--colony);box-shadow:0 0 0 1px var(--colony) inset}
+.sh-party .roster .rm canvas.pt{width:calc(64 * var(--u));height:calc(64 * var(--u));flex:none;margin-top:auto}
+.sh-party .roster .rm > span{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-party .roster .rm > span b{font-weight:700}
+.sh-party .roster .rm > span small{display:none}
+.sh-party .roster .rm small{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(10.5 * var(--u));color:var(--muted)}
+.sh-party .roster .hp{width:100%;height:calc(5 * var(--u))}
+.sh-party .roster .rm.dead{display:none}
+.sh-party .arrow{flex:none;width:calc(26 * var(--u));background:transparent;border:1px solid var(--sh-edge);color:var(--muted);font-size:calc(18 * var(--u));padding:0;border-radius:calc(5 * var(--u))}
+/* a word said by the fire, over the company */
+.sh-say{position:absolute;bottom:calc(100% + 6px);left:calc(100 * var(--u));max-width:calc(420 * var(--u));background:#f3e9c9;color:#2a2416;border-radius:calc(8 * var(--u));padding:calc(6 * var(--u)) calc(10 * var(--u));font-size:calc(13 * var(--u));box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;transition:left .25s}
+.sh-say:after{content:"";position:absolute;left:calc(20 * var(--u));top:100%;border:calc(7 * var(--u)) solid transparent;border-top-color:#f3e9c9}
+.sh-say b{color:#6b3f1d}
+.sh-say[hidden]{display:none}

@@ -26,6 +26,7 @@ import {eraPlan, historyLength, seasonLabel} from '../view/world.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
+import {CampShell} from './shell/campShell.js';
 import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
@@ -258,6 +259,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
 
   setupMode() {
     this.choosing = true;
+    this.shell?.leave();
     const epic = this.mode === 'epic';
     $('campSetup').hidden = false; $('campRun').hidden = true; $('campRunSide').hidden = true;
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
@@ -298,6 +300,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   runMode() {
     this.choosing = false;
     $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = false;
+    (this.shell ||= new CampShell(this)).enter();   // the screen laid out as a game (ui/shell/campShell.js)
     const K = this.atlas.campaign;
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`; $('campName2').textContent = this.worldName || '';
     this.syncRun(); this.renderSide();
