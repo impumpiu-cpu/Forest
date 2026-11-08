@@ -72,7 +72,7 @@ export class Shell {
     if (sp.mini) this.tick = setInterval(() => this.mini(), 400);
     sp.onEnter?.(this);
     this.nodes = Object.fromEntries(Object.entries(sp.menus).map(([id, [f, title, after]]) => [id, [f(), title, after]]));   // (found once, now: moved into the drawer, a block is not where its finder looks)
-    sp.opens && this.toggle(sp.opens);
+    const opens = typeof sp.opens === 'function' ? sp.opens() : sp.opens; if (opens) this.toggle(opens);   // (the menu open on entering)
     requestAnimationFrame(() => { window.dispatchEvent(new Event('resize')); this.view.draw?.(); if (sp.mini) this.mini(); });   // (the canvases take their new boxes)
   }
   leave() {

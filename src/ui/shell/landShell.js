@@ -48,7 +48,7 @@ export class CampSetupShell extends Shell {
       rail: [['world', '◍', 'Мир'], ['capital', '⚑', 'Столица'], ['layers', '❖', 'Слои']],
       menus: {world: [() => $('campLibField'), 'Мир из библиотеки'], capital: [() => $('campCapsField')?.closest('.card'), 'Столица и поход'], layers: [() => $('campLayer')?.closest('.card'), 'Слои карты']},
       mini: false, side: [{id: 'hand', title: 'Под рукой', node: () => $('campInspect')}], strip: null,
-      onEnter: sh => { $('campEpicField').hidden ? sh.toggle('world') : sh.toggle('capital'); },
+      opens: () => (!$('campEpicField').hidden || !$('campCapsField').hidden ? 'capital' : 'world'),
     });
   }
 }
