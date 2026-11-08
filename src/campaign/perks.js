@@ -9,6 +9,8 @@ import {COMBAT_ROLES} from '../data/roles.js';
 import {gearDef} from '../local/index.js';
 import {draw} from './start.js';
 import {campaignFact} from './social.js';
+import {sinceScar, hasWound} from './maims.js';
+import {SPECIES} from '../data/species.js';
 
 const groupOfM = m => (m.fight && COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m.fight).group : m.role === 'sellsword' ? 'линия' : m.role === 'guide' ? 'дальний бой' : null);
 
@@ -46,6 +48,12 @@ export function meets(m, P, rank = 1) {
   if (R.hand && !(m.gear?.hand || []).some(id => R.hand.includes(gearDef(id)?.form))) return null;
   for (const [s, v] of Object.entries(R.stat || {})) if ((m.special?.[s] ?? 0) < v) return null;
   if (R.crafts && Object.keys(m.workBy || {}).length < R.crafts) return null;
+  if (R.scar) {   // an answer to a wound: it bears one, and has done enough since it
+    const sc = R.scar.filter(id => hasWound(m, id)); if (!sc.length) return null;
+    if (R.since && !sc.some(id => R.since.some(([k, n]) => sinceScar(m, id, k) >= n))) return null;
+    if (!R.any && !R.work) return `scar:${sc[0]}`;
+  }
+  if (P.grant && Object.entries(P.grant).every(([st, v]) => (m.special?.[st] ?? 0) + v > (SPECIES.get(m.race).special?.[st]?.[1] ?? Infinity))) return null;   // (a letter at its race's limit: nothing to grant)
   let why = 'level';
   if (R.work) { const w = Object.entries(R.work).find(([sk, v]) => (m.workBy?.[sk] || 0) >= v); if (!w) return null; why = `work:${w[0]}`; }
   if (R.any) { const a = R.any.find(([k, n]) => count(m, k) >= n * rank); if (!a) return null; why = a[0]; }
@@ -74,14 +82,17 @@ export function pullOf(m, P) {
 // A level's perk: one of those offered, by its character's pull, from the campaign's own stream; taken, it is a fact. → the
 // row taken or null
 export function pickPerk(K, m) {
-  const opts = offered(m);
+  let opts = offered(m);
   if (!opts.length) return null;
+  const answers = opts.filter(o => o.P.answer); if (answers.length) opts = answers;   // an answer to a wound is taken first (the author's call)
   const ws = opts.map(o => pullOf(m, o.P)), sum = ws.reduce((s, w) => s + w, 0), D = draw(K, 'perks'), r = D.r() * sum; D.done();
   let k = 0, acc = ws[0];
   while (acc < r && k < opts.length - 1) acc += ws[++k];
   const {P, rank, why} = opts[k];
   const had = m.perks.find(p => p.id === P.id);
   if (had) Object.assign(had, {rank, day: K.day}); else m.perks.push({id: P.id, rank, day: K.day, why});
+  for (const [st, v] of Object.entries(P.grant || {})) m.special[st] = Math.min((m.special[st] ?? 0) + v, SPECIES.get(m.race).special?.[st]?.[1] ?? Infinity);   // «Везучий»: a letter at once, inside the race
+  if (P.cure) { m.wounds = (m.wounds || []).filter(x => x.id !== P.cure); if (!m.wounds.length) m.wounds = null; campaignFact(K, 'overcame', {by: m.id, saw: K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id), params: {wound: P.cure}}); }   // «Переболел»
   const saw = K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id);
   campaignFact(K, 'perkTaken', {by: m.id, saw, params: {perk: P.id, rank}});
   return {id: P.id, rank, why};
@@ -92,10 +103,11 @@ export const perkLabel = (id, rank = 1) => `«${PERKS.get(id).label}»${rank > 1
 export const perksBy = (K, m, day) => (m.perks || []).filter(p => day >= K.day || p.day < day);
 // for the card: what a perk does, and the deed that opened it, in words
 export const perkAbout = id => PERKS.get(id).about;
-const WHY = {watch: 'стоял в дозорах', swap: 'подменял уставших', trade: 'торговал', town: 'видел города', fight: 'прошёл бои', beside: 'бился рядом с иноплеменниками',
+const WHY = {clean: 'пережил смертельную рану без следа', watch: 'стоял в дозорах', swap: 'подменял уставших', trade: 'торговал', town: 'видел города', fight: 'прошёл бои', beside: 'бился рядом с иноплеменниками',
   shield: 'закрывал щитом', hit: 'стрелял метко', dress: 'вытаскивал упавших', tend: 'перевязывал', killBlow: 'повергал врагов', level: 'дорос'};
 export function perkWhy(why) {
   if (why.startsWith('work:')) return 'работа';
+  if (why.startsWith('scar:')) return 'жить с раной';
   if (why.startsWith('fight:')) return `бои в строю: ${why.slice(6)}`;
   return WHY[why] || why;
 }

@@ -51,6 +51,10 @@ export const FACT_KINDS = {
   // experience (campaign/experience.js): a member grew a level
   levelUp:   {label: 'набрался опыта', weight: {by: 0.3, saw: 0.05}},
   perkTaken: {label: 'выучил новое', weight: {by: 0.3, saw: 0.05}},
+  // maims and wounds for life (campaign/maims.js, campaign/perks.js)
+  maimed:    {label: 'остался увечным', weight: {to: 0.3, saw: 0.05}},
+  scarred:   {label: 'вынес из похода страх', weight: {to: 0.3}},
+  overcame:  {label: 'перерос страх', weight: {by: 0.3, saw: 0.05}},
 };
 // the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
 // one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);

@@ -36,6 +36,7 @@ ACTS.registerAll([
   {id: 'bind',    stat: 'A', label: 'связал врага', why: 'вязал врагов живыми', whyF: 'вязала врагов живыми', xp: 3},
   {id: 'dress',   stat: 'I', label: 'вытащил упавшего', why: 'вытаскивал упавших с того света', whyF: 'вытаскивала упавших с того света', xp: 6},
   {id: 'tend',    stat: 'I', label: 'перевязал раненого', why: 'перевязывал раненых', whyF: 'перевязывала раненых', xp: 1.5},
+  {id: 'clean',   stat: null, label: 'пережил смертельную рану без следа', xp: 0, note: 'только счёт: открывает «Везучего» (data/perks.js)'},
   {id: 'slew',    stat: null, label: 'добил врага насмерть', xp: 0, note: 'только счёт: враг умер от его руки (сбитый с ног и потом добитый — у добившего; взятый живым — нет)'},
   {id: 'role',    stat: 'role', label: 'бился в своей роли', why: 'держал своё место в строю', whyF: 'держала своё место в строю', xp: 0, note: 'без опыта: буква роли с весом XP.roleWeight — тому, кто бился, но своих дел в бою не набрал'},
   // ── the acts of the road
@@ -77,6 +78,10 @@ export const XP = {need: 5, lead: 4, danger: [0.5, 3], captive: 0.5, letters: ['
 export const ROLE_WHY = {'линия': ['держал своё место в строю', 'держала своё место в строю'], 'дальний бой': ['бил издали из-за строя', 'била издали из-за строя'],
   'подвижные': ['бился на краю строя', 'билась на краю строя'], 'поддержка': ['был при раненых', 'была при раненых']};
 export const WORK_WHY = {melee: ['бился врукопашную', 'билась врукопашную'], ranged: ['стрелял', 'стреляла'], medicine: ['лечил раненых', 'лечила раненых']};
+
+// the road's traumas (campaign/maims.js): night terrors — a friend (bond at least `bond`) seen dying: the chance, the timid's;
+// frostbite — a frosty day walked worn out (tiredness at least `tired`): the chance × (1 − Endurance / `endure`)
+export const ROAD_TRAUMA = {terrors: {bond: 1, chance: 0.08, timid: 0.25}, frostbite: {tired: 0.7, chance: 0.04, endure: 12}};
 
 // a foe's worth in a kill (agents/acts.js noteKill): its strength (КС) / `per` — a plain human with a spear is 1 — to a `round`th,
 // at least `least`; × `xp` experience

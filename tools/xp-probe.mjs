@@ -2,7 +2,7 @@
 // level each one reaches by the end, the letters the levels grew — by role, race and mode. And the three cases the expert
 // named: a shield-bearer with no kills, a master at the top of his skill, a companion who joined halfway. A diagnostic, not
 // a quota: the numbers are for the author and the expert to judge (Р1).
-//   node tools/xp-probe.mjs [worlds=2] [auto|local|both] [--json]
+//   node tools/xp-probe.mjs [worlds=2] [auto|local|both] [--json] [--no-maim]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
@@ -10,9 +10,11 @@ import {CAMPAIGN} from '../src/data/campaign.js';
 import {COMBAT_ROLES} from '../src/data/roles.js';
 import {ACTS} from '../src/data/experience.js';
 import {PERKS} from '../src/data/perks.js';
+import {DEATHBLOW} from '../src/data/wounds.js';
 import {need} from '../src/campaign/experience.js';
 
 const worlds = +(process.argv[2] || 2), arg = process.argv[3] || 'auto', asJson = process.argv.includes('--json');
+if (process.argv.includes('--no-maim')) DEATHBLOW.maim.on = false;   // the paired runs: without maims, as before Э4
 const modes = arg === 'both' ? ['auto', 'local'] : [arg === 'local' ? 'local' : 'auto'];
 const r1 = v => Math.round(v * 10) / 10;
 const avg = xs => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
@@ -21,7 +23,7 @@ const add = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 
 const out = {};
 for (const mode of modes) {
-  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0, perks: {}, firstPerk: [], perksAt130: []};
+  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0, perks: {}, firstPerk: [], perksAt130: [], maims: 0, maimedMembers: 0, dead: 0, deadMaimed: 0, scars: {}};
   for (let s = 0; s < worlds; s++) {
     const base = generateAtlas({seed: String(777 + s * 13), size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
     const fz = JSON.stringify(saveAtlas(base));
@@ -40,6 +42,8 @@ for (const mode of modes) {
         for (const [id, xp] of Object.entries(m.xpOf || {})) { add(R.srcBy, id, xp); R.src[ACTS.get(id).ground ? 'ground' : 'act'] += xp; }
         for (const g of m.grew || []) { add(R.letters, g.stat ?? '—'); (R.levelDays[g.level] ||= []).push(g.day - (m.joined ?? 0)); }
         for (const p of m.perks || []) add(R.perks, p.id);
+        R.maims += m.maims || 0; if (m.maims) R.maimedMembers++; if (m.died) { R.dead++; if (m.maims) R.deadMaimed++; }
+        for (const x of m.wounds || []) if (x.day == null) add(R.scars, x.id);
         if (m.perks?.length) R.firstPerk.push(Math.min(...m.perks.map(p => p.day)) - (m.joined ?? 0));
         if (days >= 130) R.perksAt130.push((m.perks || []).filter(p => p.day - (m.joined ?? 0) <= 130).length);
         (R.byRole[role] ||= []).push(row); (R.byRace[m.race] ||= []).push(row);
@@ -64,6 +68,7 @@ for (const mode of modes) {
     cases: Object.fromEntries(Object.entries(R.cases).map(([k, v]) => [k, sumUp(v)])),
     perks: Object.fromEntries(Object.entries(R.perks).sort((p, q) => q[1] - p[1])), neverTaken: PERKS.all().map(P => P.id).filter(id => !R.perks[id]),
     firstPerkDay: median(R.firstPerk), perksBy130: median(R.perksAt130),
+    maims: R.maims, maimedMembers: R.maimedMembers, dead: R.dead, deadAfterMaims: R.deadMaimed, scars: R.scars,
     mean: sumUp(all)};
 }
 console.log(asJson ? JSON.stringify(out) : JSON.stringify(out, null, 1));

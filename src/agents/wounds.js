@@ -11,7 +11,7 @@
 import {SPECIES} from '../data/species.js';
 import {sunTicks} from '../core/time.js';
 import {NORM} from '../data/special.js';
-import {DEATHBLOW, CAN_FALL, WOUNDS, luckChance, GRAVE_TICKS, bleedTicks} from '../data/wounds.js';
+import {DEATHBLOW, CAN_FALL, WOUNDS, luckChance, GRAVE_TICKS, bleedTicks, MAIM_OF} from '../data/wounds.js';
 import {kill, maxHp} from './agent.js';
 import {refreshBody} from './special.js';
 import {think} from './mind.js';
@@ -26,7 +26,7 @@ import {HIT_LOCATIONS} from '../data/anatomy.js';
 import {degreeOf, passed, degreeValue} from '../data/checks.js';
 import {caughtFrom} from '../data/afflictions.js';
 import {catchIll} from './afflictions.js';
-import {noteKill} from './acts.js';
+import {noteKill, noteAct} from './acts.js';
 import {perkOf, hasPerkA, PERKS} from '../data/perks.js';
 import {CONDITIONS} from '../data/conditions.js';
 
@@ -39,7 +39,7 @@ export const critChance = by => luckChance('crit', luckOf(by));
 // the traumas a deadly wound may leave where the last blow landed (data/anatomy.js `traumas` of the place); all of
 // them when the place is not known (a save from before places were drawn)
 export function traumasAt(t) {
-  const all = WOUNDS.filter(x => x.trauma), place = t.hitAt && HIT_LOCATIONS.has(t.hitAt) ? HIT_LOCATIONS.get(t.hitAt) : null;
+  const all = WOUNDS.filter(x => x.trauma && x.drawn !== false), place = t.hitAt && HIT_LOCATIONS.has(t.hitAt) ? HIT_LOCATIONS.get(t.hitAt) : null;
   const here = place ? all.filter(x => place.traumas.includes(x.id)) : [];
   return here.length ? here : all;
 }
@@ -52,17 +52,32 @@ export function lethal(w, t, cause, by) {
   if (t.dead) return false;
   const sp = SPECIES.get(t.species);
   if (t.downed) tally(w, t).killed++;
-  if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) { kill(w, t, cause, by); return false; }
+  // a caravan's member may be maimed instead of dying (data/wounds.js DEATHBLOW.maim, the author's call): not when finished off
+  // where it lies, not by a blow past all health, not by what is no wound; with its last maim borne the deadly wound kills
+  const M = DEATHBLOW.maim, maimable = M.on && t.member != null && !t.captive && !t.downed && CAN_FALL(sp, t) && DEATHBLOW.causes.includes(cause) && t.hp >= -DEATHBLOW.overkill * maxHp(t);
+  if (maimable && (t.maims || 0) >= M.max) { kill(w, t, cause, by); return false; }
+  if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) { if (maimable) { maimFall(w, t, cause, by); return true; } kill(w, t, cause, by); return false; }
   const L = luckOf(t);
   // a check with four degrees (data/checks.js): a critical success may leave the wound clean, with no second check
   const pSurvive = luckChance('survive', L), deg = degreeOf(w.rngs.combat(), pSurvive);
-  if (!passed(deg)) { kill(w, t, cause, by); return false; }
+  if (!passed(deg)) { if (maimable) { maimFall(w, t, cause, by); return true; } kill(w, t, cause, by); return false; }
   const sure = deg === 'critSuccess' && degreeValue('survive', 'critSuccess') >= 1;
   // the second check, made now and kept: what the wound will leave if the fallen is saved
   const clean = sure || w.rngs.combat() < luckChance('clean', L);
   const trauma = clean ? null : weighted(w.rngs.combat, traumasAt(t).map(x => [x.id, x.weight ?? 1]));
+  if (clean) noteAct(t, 'clean');   // survived a deadly wound with no mark: a member's count («Везучий», data/perks.js)
   fall(w, t, cause, by, trauma);
   return true;
+}
+// a maim instead of death: the deadly blow's place picks it (the trauma of the place made worse: MAIM_OF); it falls senseless but
+// does not bleed out — a dressing wakes it (dressWound), and the camp's end binds it if nobody did (campaign/camp.js)
+function maimFall(w, t, cause, by) {
+  const at = traumasAt(t).filter(x => MAIM_OF[x.id]), pick = at.length ? weighted(w.rngs.combat, at.map(x => [x.id, x.weight ?? 1])) : Object.keys(MAIM_OF)[Math.floor(w.rngs.combat() * 4) % 4];
+  const maim = MAIM_OF[pick];
+  fall(w, t, cause, by, null);
+  t.downed.maim = maim; t.downed.until = Number.MAX_SAFE_INTEGER;   // (stable: it does not bleed out)
+  t.maims = (t.maims || 0) + 1; (t.maimedNow ||= []).push(maim);
+  log(w, `<b>${esc(t.name)}</b> ${g(t, 'не умер', 'не умерла')}: ${WOUNDS.get(maim).label} — на всю жизнь.`, 'danger', 'notice');
 }
 
 // senseless on the ground, bleeding: the task ends, what it held is let go, foes lose interest
@@ -101,6 +116,7 @@ export function dressWound(w, a, medicine = 0) {
   if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
   a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + sunTicks(w, GRAVE_TICKS('grave'))}];   // (a wound's days are the sun's: core/time.js dayScale)
   if (d.trauma) a.wounds.push({id: d.trauma});
+  if (d.maim) a.wounds.push({id: d.maim});   // (a maim instead of death: for life)
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + medicine));
   return d;
@@ -108,6 +124,7 @@ export function dressWound(w, a, medicine = 0) {
 
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
+  if (a.downed?.trauma && w.rngs.colony() < perkOf(helper, 'cleanHelp')) a.downed.trauma = null;   // a bone-setter's hands: no trauma left («Костоправ», data/perks.js)
   const d = dressWound(w, a, helper?.skill?.medicine || 0); if (!d) return;
   const up = perkOf(helper, 'dressHp'); if (up > 0) a.hp = Math.min(maxHp(a), a.hp + up * maxHp(a));   // stands up stronger (a perk: «Полевая перевязь», data/perks.js)
   // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)

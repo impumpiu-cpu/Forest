@@ -19,6 +19,7 @@ import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, CAMP_KIT, FIELD_BUILD, kitOf} from
 import {clamp} from '../core/util.js';
 import {potionKeep} from '../data/potions.js';
 import {perkVal} from './perks.js';
+import {WOUNDS} from '../data/wounds.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const bulk = id => (RESOURCES.has(id) ? RESOURCES.get(id).bulk ?? 1 : 1);
@@ -109,7 +110,9 @@ export function overflow(K) {
 // the pace kept by health (data/campaign.js CAMPAIGN.hurtPace)
 const hurtPace = (P, hp) => P.base + P.hurt * clamp(hp / P.at, 0, 1);
 const beastPace = b => (SPECIES.get(b.kind).speed / humanSpeed()) * hurtPace(CAMPAIGN.hurtPace.beast, b.hp);
-const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp);
+// (a maim that slows it — a shattered leg — slows it on the road too: data/conditions.js `speed`; a trauma's limp, as before, not)
+const lame = m => (m.wounds || []).reduce((v, x) => v * (WOUNDS.has(x.id) && WOUNDS.get(x.id).maim ? WOUNDS.get(x.id).mods?.speed ?? 1 : 1), 1);
+const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp) * lame(m);
 export function slowest(K) {
   const ms = alive(K); if (!ms.length) return 0;
   const byId = new Map(K.beasts.map(b => [b.id, b]));

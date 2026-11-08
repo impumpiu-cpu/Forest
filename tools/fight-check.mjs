@@ -52,7 +52,7 @@ for (const plan of Object.keys(BODY_PLANS)) {
   expect(list.length > 0 && list.every(l => l.weight >= 0) && list.some(l => l.weight > 0), `план ${plan}: нет мест с весом`);
   for (const l of list) for (const id of l.traumas) expect(WOUNDS.has(id) && WOUNDS.get(id).trauma, `${l.id}: «${id}» — не травма`);
 }
-for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l => l.traumas.includes(t.id)), `травма ${t.id} не выпадает ни в одном месте`);
+for (const t of WOUNDS.filter(x => x.trauma && x.drawn !== false)) expect(HIT_LOCATIONS.all().some(l => l.traumas.includes(t.id)), `травма ${t.id} не выпадает ни в одном месте`);
 
 // ── places land by their weights, from their own stream
 {
@@ -245,7 +245,7 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
 {
   const ids = place => traumasAt({hitAt: place}).map(x => x.id).sort().join(',');
   expect(ids('humanoid.legs') === 'limp' && ids('humanoid.head') === 'dread,eye' && ids('humanoid.arms') === 'maimedHand', `травмы по месту: ноги ${ids('humanoid.legs')}, голова ${ids('humanoid.head')}, руки ${ids('humanoid.arms')}`);
-  expect(traumasAt({}).length === WOUNDS.filter(x => x.trauma).length, 'без места травма берётся не из всех');
+  expect(traumasAt({}).length === WOUNDS.filter(x => x.trauma && x.drawn !== false).length, 'без места травма берётся не из всех');
 }
 
 // a torch (data/balance/forms.js torch): its light halves what the night takes, its blow sets alight what the struck

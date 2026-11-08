@@ -22,6 +22,7 @@ import {DEFAULT_CFG} from '../src/data/presets.js';
 import {createAgent} from '../src/agents/agent.js';
 import {refreshBody} from '../src/agents/special.js';
 import {gearSpec} from '../src/agents/itemDefs.js';
+import {noteScars} from '../src/campaign/maims.js';
 
 let fails = 0;
 const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
@@ -51,9 +52,12 @@ function bothModes(P) {
   if (R.hand) o.hand = [R.hand.find(f => FORMS[f]) || R.hand[0]];
   if (R.work) { const [sk, v] = Object.entries(R.work)[0]; o.work[sk] = v; }
   if (R.crafts) for (const sk of ['cooking', 'gathering', 'woodcutting', 'medicine', 'construction'].slice(0, R.crafts)) o.work[sk] = 5;
-  const BOTH = k => ['fight', 'beside', 'watch', 'swap', 'trade', 'town'].includes(k) || k.startsWith('fight:') || k.startsWith('work:');
+  const BOTH = k => ['fight', 'beside', 'watch', 'swap', 'trade', 'town', 'clean'].includes(k) || k.startsWith('fight:') || k.startsWith('work:');   // (clean: the quick mode's fall and rise counts it too)
   if (R.any) { const [k, n] = R.any.find(([k2]) => BOTH(k2)) || []; if (!k) return null; if (k.startsWith('work:')) o.work[k.slice(5)] = n; else o.acts[k] = n; if (k.startsWith('fight:')) o.fight = {'линия': 'shieldman', 'дальний бой': 'archer'}[k.slice(6)] || o.fight; }
-  return who(o);
+  const m = who(o);
+  // an answer to a wound: wherever the wound is borne (a maim — both modes; the fear of death — the map's fall), with deeds both modes see after it
+  if (R.scar) { m.wounds = [{id: R.scar.at(-1), day: null}]; noteScars(m); for (const [k, n] of R.since || []) if (k === 'fight') m.acts.fight = (m.acts.fight || 0) + n; else if (k === 'work') m.workBy.cooking = (m.workBy.cooking || 0) + n; }
+  return m;
 }
 
 // ── every perk is reachable by deeds both modes see

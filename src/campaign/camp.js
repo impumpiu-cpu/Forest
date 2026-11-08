@@ -160,9 +160,12 @@ export function openCamp(S) {
     if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + sunTicks(w, e.ticks)}));
     if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + sunTicks(w, x.ticks)}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
+    if (m.maims) ag.maims = m.maims;   // the maims it bears: with the last, the next deadly wound kills (data/wounds.js DEATHBLOW.maim)
     if (m.perks?.length) { ag.perks = m.perks.map(p => ({id: p.id, rank: p.rank})); ag.kinHere = S.members.filter(x => x.alive && !x.captive && x.race === m.race).length; }   // its perks (data/perks.js), and how many of its kind are in the company (a goblin's herd)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
-    dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
+    // one hand lost: one thing in it — the weapon, not the shield (data/conditions.js lostArm `hand`)
+    const hands = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => gearDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+    dress(ag, [...hands, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
     if (!m.captive && !m.former && m.potions) ag.potions = Math.min(POTION.slot, m.potions);   // the healing potions in the slot (agents/potions.js)
     if (!m.captive && !m.former && m.belt?.length) ag.belt = m.belt.slice(0, POTION.belt);   // and the others in the belt
@@ -419,12 +422,12 @@ function outcomeOf(w) {
     const wasDown = !!ag.downed;
     if (wasDown) {
       const able = [...C.people.values()].filter(o => o !== ag && !o.dead && !o.downed && !o.captive && !o.gone && !o.fugitive);
-      if (!able.length) return {id: m.id, alive: false, cause: m.gender === 'f' ? 'истекла кровью: перевязать было некому' : 'истёк кровью: перевязать было некому'};
+      if (!able.length && !ag.downed.maim) return {id: m.id, alive: false, cause: m.gender === 'f' ? 'истекла кровью: перевязать было некому' : 'истёк кровью: перевязать было некому'};
       bindFallen(w, ag); noteFact(w, 'boundAfter', null, ag, {});
     }
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: ofSun(w, e.until - w.tick)})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary, w), ...(cap ? {captive: cap} : {}), acts: {...(ag.acts || {})}, actXp: {...(ag.actXp || {})}, practiced: {...(ag.practiced || {})}};   // (acts: what it did here by its own hand — agents/acts.js, campaign/experience.js)
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: ofSun(w, e.until - w.tick)})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary, w), ...(cap ? {captive: cap} : {}), maimed: [...(ag.maimedNow || [])], acts: {...(ag.acts || {})}, actXp: {...(ag.actXp || {})}, practiced: {...(ag.practiced || {})}};   // (acts: what it did here by its own hand — agents/acts.js, campaign/experience.js)
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);

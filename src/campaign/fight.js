@@ -30,7 +30,8 @@ import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
-import {campActs, fightActs} from './experience.js';
+import {campActs, fightActs, award} from './experience.js';
+import {maimsIn, maimInstead} from './maims.js';
 
 // the acts of a fight (data/experience.js): one who did one of them in a fight fought by its own deeds, not only by its place
 const FIGHT_ACTS = new Set(['killBlow', 'killShot', 'hit', 'shield', 'cover', 'bind', 'dress', 'tend']);
@@ -144,6 +145,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local; if (mo.align) m.align = mo.align; (m.social ||= {}).mood = mo.mood || []; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null; if (mo.effects) m.effects = effectsIn(K, mo.effects); if (mo.wounds) m.wounds = woundsIn(K, mo.wounds); if (mo.marks) m.marks = [...new Set([...(m.marks || []), ...mo.marks])];
+    maimsIn(K, m, mo.maimed, (text, who) => say(a, K, text, 'people', false, who));   // a maim instead of death, and the wounds for life it now bears (campaign/maims.js)
   }
   campActs(K, o);   // what each did here by its own hand: experience (campaign/experience.js)
   // the bonds the camp came to, between those who were there (the fallen too: what was felt for them is kept)
@@ -298,8 +300,8 @@ function autoFight(a, K, d, r, how) {
     if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;   // at the edge, a healing potion (campaign/potions.js)
     if (!hit.includes(m)) hit.push(m);
     const mortal = r() < F.mortal;
-    if (mortal || (m.hp <= 0 && !win)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);
-    else if (m.hp <= 0) m.hp = F.saved;
+    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) m.hp = F.saved; else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
+    else if (m.hp <= 0) { m.hp = F.saved; award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
   }
   if (!alive(K).length) return win;
   if (win) {

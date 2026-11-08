@@ -62,6 +62,7 @@ import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
 import {share, levelEvening, levelsNow, autoWork} from './experience.js';
 import {companyVal} from './perks.js';
+import {terrorsFrom, frostbite} from './maims.js';
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -131,7 +132,8 @@ export function die(a, K, m, why, {heard = false, seen = null} = {}) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
   memberFate(a, m, 'dead');   // (a person of the world dies with it — atlas/persons.js)
-  noteFate(K, m, 'died', {heard, seen, params: {why}});   // the company's loss, as they came to know it (campaign/social.js)
+  const fact = noteFate(K, m, 'died', {heard, seen, params: {why}});   // the company's loss, as they came to know it (campaign/social.js)
+  if (fact?.saw?.length) { const D = draw(K, 'scars'); terrorsFrom(K, m, fact.saw, D.r); D.done(); }   // a friend seen dying may leave the night terrors (campaign/maims.js)
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
@@ -595,7 +597,10 @@ export function caravanDay(a, K, day) {
     // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
     if (frosty(a, K, seasonId)) { K.stats.frostDays = (K.stats.frostDays || 0) + 1; if (brewTheDay(K, 'cold', ms)) K.warm = K.day; }
     if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
-    if (march(a, K, pace(a, K, seasonId)) > 0) share(K, alive(K), 'road');   // a day on the road: the ground (campaign/experience.js)
+    if (march(a, K, pace(a, K, seasonId)) > 0) {
+      share(K, alive(K), 'road');   // a day on the road: the ground (campaign/experience.js)
+      if (frosty(a, K, seasonId) && K.warm !== K.day) { const D = draw(K, 'scars'); frostbite(K, alive(K).filter(m => !m.ride), true, tiredOf, D.r, (text, who) => say(a, K, text, 'people', false, who)); D.done(); }   // worn out in the frost on foot (campaign/maims.js)
+    }
   }
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):

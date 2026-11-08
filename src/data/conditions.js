@@ -25,7 +25,7 @@ import {TAINT} from './afflictions.js';
 import {SPECIES} from './species.js';
 import {DAY} from '../core/time.js';
 
-export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка', potion: 'зелье'};
+export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', maim: 'увечье', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка', potion: 'зелье'};
 
 export const CONDITIONS = new Registry('condition');
 
@@ -37,6 +37,16 @@ CONDITIONS.registerAll([
   {id: 'chest', kind: 'trauma', where: 'wounds', label: 'пробитая грудь', note: 'на всю жизнь', trauma: true, weight: 2, hp: 0.85, mods: {cold: 1.15}},
   {id: 'eye', kind: 'trauma', where: 'wounds', label: 'выбитый глаз', note: 'на всю жизнь', trauma: true, weight: 2, mods: {sight: 0.8, aim: -0.08}},
   {id: 'dread', kind: 'trauma', where: 'wounds', label: 'страх смерти', note: 'на всю жизнь', trauma: true, weight: 2, mods: {bravery: -0.3}},
+  // traumas the road leaves, not a blow (campaign/maims.js): never drawn by a deadly wound (drawn: false)
+  {id: 'terrors', kind: 'trauma', where: 'wounds', label: 'ночные страхи', note: 'на всю жизнь: видел, как погиб друг', trauma: true, drawn: false, mods: {sleep: 1.2, bravery: -0.15}},
+  {id: 'frostbite', kind: 'trauma', where: 'wounds', label: 'отмороженные пальцы', note: 'на всю жизнь: шёл измотанным в мороз', trauma: true, drawn: false, mods: {fin: 0.9, cold: 1.1}},
+  // maims (Ver_E Э4, the author's call: a maim instead of death — data/wounds.js DEATHBLOW.maim; campaign/maims.js): heavy and for
+  // life, nothing takes them off; a perk lets one live with it (data/perks.js «ответ на травму»). The deadly blow's place
+  // picks it (MAIM_OF: the trauma of that place, made worse); `hand` — the hands it may still hold
+  {id: 'lostArm', kind: 'maim', where: 'wounds', label: 'потерянная рука', note: 'увечье: одна рука — одно оружие, щит или оружие', maim: true, hand: 1, mods: {str: 0.75, fin: 0.8, work: 0.75}},
+  {id: 'shatteredLeg', kind: 'maim', where: 'wounds', label: 'раздробленная нога', note: 'увечье: шаг вполовину — пеший тянет весь караван', maim: true, mods: {speed: 0.6, dodge: -0.05}},
+  {id: 'blindEye', kind: 'maim', where: 'wounds', label: 'вытекший глаз', note: 'увечье: видит хуже, стреляет хуже', maim: true, mods: {sight: 0.7, aim: -0.12}},
+  {id: 'crushedChest', kind: 'maim', where: 'wounds', label: 'раздавленная грудь', note: 'увечье: здоровья меньше, холод страшнее', maim: true, hp: 0.7, mods: {cold: 1.25}},
   // ── passing states (a field of the creature)
   {id: 'downed', kind: 'state', where: 'downed', label: 'без сознания', note: 'смертельная рана, пережитая удачей: истекает кровью, пока не перевяжут (числа — «Навыки, мастера, раны» deathblow, кривые «Пережить…», «Истекает кровью»)'},
   {id: 'poisoned', kind: 'state', where: 'poison', label: 'отравлен', note: 'укус ядовитого: урон каждый тик до срока (числа — у вида, venom; × «Урон по видам» яд)'},

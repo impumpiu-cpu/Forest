@@ -331,8 +331,8 @@ for (const r of RECIPES.all()) if (r.tier != null && !(Number.isInteger(r.tier) 
 // wounds and traumas (data/wounds.js): every multiplier is one the body knows; the thoughts a fall leaves exist
 for (const W of WOUNDS.all()) {
   for (const k of Object.keys(W.mods || {})) if (!(k in BASE_MODS)) err(`рана ${W.id}: неизвестный множитель «${k}»`);
-  if (!W.trauma && !(W.days > 0)) err(`рана ${W.id}: излечимой ране нужен срок days`);
-  if (W.trauma && !(W.weight > 0)) err(`травма ${W.id}: нужен вес weight`);
+  if (!W.trauma && !W.maim && !(W.days > 0)) err(`рана ${W.id}: излечимой ране нужен срок days`);
+  if (W.trauma && W.drawn !== false && !(W.weight > 0)) err(`травма ${W.id}: нужен вес weight`);   // (a trauma of the road is never drawn: no weight — campaign/maims.js)
 }
 if (!WOUNDS.has('grave')) err('раны: нет тяжёлой раны grave, которую оставляет спасённая жизнь');
 if (!WOUNDS.filter(x => x.trauma).length) err('раны: нет ни одной травмы для провала второй проверки');
