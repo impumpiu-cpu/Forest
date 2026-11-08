@@ -185,14 +185,22 @@ const caps = capitals(base), cap = caps.find(c => c.people === 'humans') || caps
   const m = K.members.find(x => x.race === 'human') || K.members[0], lim = SPECIES.get(m.race).special;
   m.special.S = lim.S[1] - 1; m.special.P = 3; m.xpBy = {S: 30, P: 5}; m.xp = need(3);
   levelEvening(a, K, text => lines.push(text));
-  ok(m.level === 3 && m.special.S === lim.S[1] && m.grew[0].stat === 'S' && m.grew[1].stat && m.grew[1].stat !== 'S', 'два уровня за вечер: первый — Сила (больше всего дел) до предела расы, второй — буквы дел уже очищены, растёт буква роли', `S ${m.special.S}/${lim.S[1]}, второй — ${m.grew[1].stat}`);
-  ok(!Object.keys(m.xpBy).length && m.grew.length === 2 && lines.length === 2, 'буквы дел очищены; рост записан; две строки', lines.join(' | '));
+  ok(m.level === 3 && m.special.S === lim.S[1] && m.grew[0].stat === 'S' && m.grew[1].stat === 'P', 'два уровня за вечер: первый — Сила (больше всего дел) до предела расы, второй — следующая буква дел (Восприятие), а не буква роли', `S ${m.special.S}/${lim.S[1]}, второй — ${m.grew[1].stat}`);
+  ok(!Object.keys(m.xpBy).length && m.grew.length === 2 && lines.length === 1, 'буквы дел очищены после обоих; рост записан; одна строка за вечер', lines.join(' | '));
   ok((K.social.facts || []).filter(f => f.kind === 'levelUp' && f.by === m.id).length === 2, 'уровень — факт отряда с очевидцами');
   // at every limit: no letter, but the level is taken
   for (const s of XP.letters) m.special[s] = lim[s][1];
   m.xp = need(m.level + 1);
   levelEvening(a, K, text => lines.push(text));
   ok(m.level === 4 && m.grew.at(-1).stat === null && XP.letters.every(s => m.special[s] === lim[s][1]), 'все буквы на пределе — уровень есть, буквы нет', lines.at(-1));
+  // a dangerous fight: three levels from nothing, the letters its acts wrote, in their order
+  const z = K.members.find(x => x !== m && x.race === 'human') || K.members[2], zl = SPECIES.get(z.race).special;
+  for (const s2 of XP.letters) z.special[s2] = Math.min(z.special[s2], zl[s2][1] - 2);
+  z.level = 1; z.xp = 0; z.xpBy = {}; z.lvOf = {}; z.lvWork = {}; z.grew = [];
+  award(K, z, 'dress', 2); award(K, z, 'killBlow', 1, {xp: 5}); award(K, z, 'fight', 1, {xp: 120 - 17});
+  const zn = lines.length; levelEvening(a, K, text => lines.push(text));
+  ok(z.level === 4 && z.grew.map(g => g.stat).join('') === 'IS' + z.grew[2].stat && z.grew[2].stat && lines.length === zn + 1 && /сразу 3 уровня/.test(lines.at(-1)),
+    'опасный бой: три уровня за вечер — буквы дел по порядку, третий — буква роли, одна строка', lines.at(-1));
   // nothing written: the role's letter
   const f = K.members.find(x => x !== m && x.fight), fl = SPECIES.get(f.race).special;
   for (const s of XP.letters) f.special[s] = Math.min(f.special[s], fl[s][1] - 1);

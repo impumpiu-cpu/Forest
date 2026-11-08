@@ -122,21 +122,28 @@ export function factActs(K, f) {
 // The letter grown: the one its acts wrote most since the last level, inside its race's limits; none written — its role's;
 // at the limit — the next; all at the limit — no letter (never a letter drawn at random). A fact of the company, a line of
 // the log with the act that grew it.
+// Several levels in one evening (a dangerous fight: up to three) are one moment and one line: each grows the next letter its
+// acts wrote (a letter grown is not grown twice that evening while another was written), then the role's; the letters written
+// are cleared once, after them all.
 export function levelEvening(a, K, say = () => {}) {
   for (const m of alive(K)) {
     ensureXp(m);
-    while (m.xp >= need(m.level + 1)) levelUp(K, m, say);
+    const picks = [], grown = new Set();
+    while (m.xp >= need(m.level + 1)) picks.push(levelUp(K, m, grown));
+    if (!picks.length) continue;
+    m.xpBy = {}; m.lvOf = {}; m.lvWork = {};
+    say(levelLine(m, picks), [m.id]);
   }
 }
 const capOf = (m, s) => SPECIES.get(m.race).special?.[s]?.[1] ?? Infinity;
 // the letter a level grows → {stat, why} or null
-export function letterFor(m) {
+export function letterFor(m, grown = new Set()) {
   const lean = leanOf(m), may = XP.letters.filter(s => (m.special?.[s] ?? 0) < capOf(m, s));
   if (!may.length) return null;
   const by = m.xpBy || {}, rank = s => (lean.includes(s) ? 1 : 0);
-  const done = may.filter(s => (by[s] || 0) > 0).sort((p, q) => (by[q] - by[p]) || (rank(q) - rank(p)) || (XP.letters.indexOf(p) - XP.letters.indexOf(q)));
+  const done = may.filter(s => (by[s] || 0) > 0 && !grown.has(s)).sort((p, q) => (by[q] - by[p]) || (rank(q) - rank(p)) || (XP.letters.indexOf(p) - XP.letters.indexOf(q)));
   if (done.length) return {stat: done[0], why: whyOf(m, done[0])};
-  const l = lean.find(s => may.includes(s));
+  const l = lean.find(s => may.includes(s) && !grown.has(s)) ?? lean.find(s => may.includes(s));   // (the role's other letter first, if one grew tonight)
   if (l) return {stat: l, why: m.acts?.role ? `role:${groupOf(m)}` : null};
   // nothing done and nothing to lean to: the letter of its best skill, if it can still grow
   const best = Object.entries(m.local?.skill || {}).filter(([id]) => SKILLS.has(id) && may.includes(SKILLS.get(id).stat)).sort((p, q) => q[1] - p[1])[0];
@@ -157,22 +164,26 @@ function whyOf(m, stat) {
   if (work && work[1] > top) return `work:${work[0]}`;
   return best;
 }
-function levelUp(K, m, say) {
+function levelUp(K, m, grown) {
   m.level++;
-  const pick = letterFor(m), from = pick ? m.special[pick.stat] : null;
-  if (pick) m.special[pick.stat] = from + 1;
+  const pick = letterFor(m, grown), from = pick ? m.special[pick.stat] : null;
+  if (pick) { m.special[pick.stat] = from + 1; grown.add(pick.stat); }
   m.grew.push({level: m.level, day: K.day, stat: pick?.stat ?? null, from, to: pick ? from + 1 : null, why: pick?.why ?? null});
-  m.xpBy = {}; m.lvOf = {}; m.lvWork = {};
   const saw = alive(K).filter(x => x !== m && !x.captive).map(x => x.id);
   campaignFact(K, 'levelUp', {by: m.id, saw, params: {level: m.level, stat: pick?.stat ?? null}});
-  say(levelLine(m, pick), [m.id]);
+  return pick;
 }
-// «Хрольф окреп — не зря бил врага в рукопашной (Сила 8, 4-й уровень)»
-export function levelLine(m, pick) {
-  const f = m.gender === 'f', lv = `${m.level}-й уровень`;
-  if (!pick) return `${m.name} ${f ? 'набралась' : 'набрался'} опыта (${lv}), но дальше расти ${f ? 'ей' : 'ему'} уже некуда.`;
-  const grew = (f ? GREW_F : GREW)[pick.stat], val = `${STAT_LABEL[pick.stat]} ${m.special[pick.stat]}`;
-  return `${m.name} ${grew}${pick.why ? ` — не зря ${whyText(pick.why, f)}` : ''} (${val}, ${lv}).`;
+// one line for an evening's levels: «Хрольф окреп — не зря бил врага в рукопашной (Сила 8, 4-й уровень)»;
+// «Хрольф окреп и стал выносливее — не зря бил врага в рукопашной и держал своё место в строю (Сила 8, Выносливость 7; 5-й уровень)»
+export function levelLine(m, picks) {
+  picks = (Array.isArray(picks) ? picks : [picks]);
+  const f = m.gender === 'f', lv = `${m.level}-й уровень`, got = picks.filter(Boolean);
+  if (!got.length) return `${m.name} ${f ? 'набралась' : 'набрался'} опыта (${lv}), но дальше расти ${f ? 'ей' : 'ему'} уже некуда.`;
+  const grew = got.map(p => (f ? GREW_F : GREW)[p.stat]), whys = [...new Set(got.map(p => p.why).filter(Boolean).map(w => whyText(w, f)))];
+  const join = xs => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} и ${xs.at(-1)}` : xs[0]);
+  const vals = got.map(p => `${STAT_LABEL[p.stat]} ${m.special[p.stat]}`).join(', ');
+  const more = picks.length > 1 ? (got.length < picks.length ? `, сразу ${picks.length} уровня — дальше расти ${f ? 'ей' : 'ему'} уже некуда` : `, сразу ${picks.length} уровня`) : '';
+  return `${m.name} ${join(grew)}${whys.length ? ` — не зря ${join(whys)}` : ''} (${vals}; ${lv}${more}).`;
 }
 const STAT_LABEL = {S: 'Сила', P: 'Восприятие', E: 'Выносливость', C: 'Харизма', I: 'Интеллект', A: 'Ловкость'};
 function whyText(why, f) {
