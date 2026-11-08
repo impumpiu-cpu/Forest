@@ -25,7 +25,7 @@ const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 let screen = 'home', land = null, settle = null, campaign = null, beasts = null;
 function show(id) {
   // the screen left halts its clock between frames (it goes on when the screen is back)
-  if (screen !== id) { if (screen === 'land') land?.stop(); if (screen === 'settle') settle?.stop(); if (screen === 'campaign') campaign?.halt(); }
+  if (screen !== id) { if (screen === 'land') land?.stop(); if (screen === 'settle') { settle?.stop(); settle?.hide(); } if (screen === 'campaign') campaign?.halt(); }
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
@@ -46,7 +46,7 @@ function theCampaign() {
 // the campaign screen shown for a world or a new epic one (the quick start): shown without `show`, which would halt it
 function openCampaign(fn) {
   const v = theCampaign();
-  if (screen === 'settle') settle?.stop();
+  if (screen === 'settle') { settle?.stop(); settle?.hide(); }
   screen = 'campaign'; for (const s of SCREENS) $(s).hidden = s !== 'campaign'; document.body.classList.add('observer');
   fn(v);
   requestAnimationFrame(() => v.draw());

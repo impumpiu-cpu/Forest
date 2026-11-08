@@ -226,7 +226,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
+  halt() { this.shell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {

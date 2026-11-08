@@ -9,9 +9,9 @@ body.shelled{padding:0;overflow:hidden;height:100vh;height:100dvh}
 body.shelled .wrap{gap:0;height:100%}
 body.shelled > .wrap > header{display:none}
 /* the campaign section becomes the whole window */
-.app-screen.obs#campaign.shell{display:grid;grid-template-columns:var(--sh-rail) minmax(0,1fr) var(--sh-side);grid-template-rows:var(--sh-top) minmax(0,1fr) var(--sh-party);gap:var(--sh-gap);height:100%;padding:var(--sh-gap);box-sizing:border-box;background:#0f110b;font-size:calc(14 * var(--u))}
-.app-screen.obs#campaign.shell[hidden]{display:none}
-#campaign.shell > .obs-head,#campaign.shell > .obs-left,#campaign.shell > .obs-dock,#campaign.shell > .obs-chron{display:none}
+.app-screen.obs.shell{display:grid;grid-template-columns:var(--sh-rail) minmax(0,1fr) var(--sh-side);grid-template-rows:var(--sh-top) minmax(0,1fr) var(--sh-party);gap:var(--sh-gap);height:100%;padding:var(--sh-gap);box-sizing:border-box;background:#0f110b;font-size:calc(14 * var(--u))}
+.app-screen.obs.shell[hidden]{display:none}
+.app-screen.obs.shell > .obs-head,.app-screen.obs.shell > .obs-left,.app-screen.obs.shell > .obs-dock,.app-screen.obs.shell > .obs-chron{display:none}
 .sh{background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));min-height:0;min-width:0;box-sizing:border-box}
 .sh h3,.sh-drawer h3{margin:0;padding:calc(4 * var(--u)) calc(10 * var(--u));font-family:var(--font-display);font-weight:500;font-size:calc(13 * var(--u));letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--sh-edge);display:flex;align-items:center;gap:8px}
 .sh h3 .x,.sh-drawer h3 .x{margin-left:auto;font-weight:400;letter-spacing:0;font-family:var(--font-body);font-size:calc(12 * var(--u))}
@@ -57,13 +57,20 @@ body.shelled > .wrap > header{display:none}
 .sh-mini{position:relative;padding:0;background:#0d0f0a}
 .sh-mini canvas{display:block;width:100%;height:100%}
 .sh-side .inspect{max-height:none;margin-top:0;font-size:calc(12.5 * var(--u))}
+.sh-side .card{background:transparent;border:0;padding:0}
+.sh-side .card > .lbl:first-child{display:none}
 .sh-side .kv{font-size:calc(12.5 * var(--u))}
 .sh-side .summary .kv{grid-template-columns:auto 1fr}
-.sh-last .log{display:flex;flex-direction:column;gap:3px;font-size:calc(12 * var(--u));max-height:none}
-.sh-last .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-last .body{display:flex;flex-direction:column;gap:3px;font-size:calc(12 * var(--u))}
+.sh-last .body div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);border-left:3px solid var(--line);padding-left:7px}
+.sh-last .body div b{color:var(--fg);font-weight:400}
+/* the strip along the bottom */
+.sh-strip{grid-column:2/4;grid-row:3;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.sh-strip > .body{flex:1;min-height:0;overflow:auto;padding:calc(6 * var(--u)) calc(10 * var(--u))}
+.sh-strip .obs-chron{display:flex;flex-direction:column;gap:6px;background:transparent;border:0;padding:0;height:100%}
+.sh-strip .obs-chron .log{flex:1;min-height:0;overflow:auto;max-height:none}
 /* the company along the bottom: portraits */
-.sh-party{grid-column:2/4;grid-row:3;display:flex;flex-direction:column;position:relative}
-.sh-party .body{flex:1;min-height:0;display:flex;align-items:stretch;gap:calc(6 * var(--u));padding:calc(6 * var(--u)) calc(8 * var(--u));overflow:hidden}
+.sh-party > .body{flex:1;min-height:0;display:flex;align-items:stretch;gap:calc(6 * var(--u));padding:calc(6 * var(--u)) calc(8 * var(--u));overflow:hidden}
 .sh-party .scroll{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .sh-party .roster{display:flex;flex-direction:row;gap:calc(6 * var(--u));margin:0;height:100%}
 .sh-party .roster .rm{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;width:calc(118 * var(--u));flex:none;padding:calc(4 * var(--u));border:1px solid var(--sh-edge);border-radius:calc(5 * var(--u));background:#171a12;position:relative;font-size:calc(12 * var(--u));text-align:center;overflow:hidden}

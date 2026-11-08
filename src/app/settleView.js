@@ -5,6 +5,7 @@
 //
 // The core is atlas/settle.js; the map, its layers, the camera and the readout are the «Мир» polygon's (ui/atlasView.js).
 import {MapView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasView.js';
+import {WorldShell} from '../ui/shell/worldShell.js';
 import {DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {FREE} from '../data/history.js';
 import {atlasDone} from '../view/world.js';
@@ -73,7 +74,8 @@ export class SettleView extends MapView {
     this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', skin: 'setSkin', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
-  show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }
+  show() { (this.shell ||= new WorldShell(this)).enter(); this.sync(); this.refresh(); if (this.atlas) this.draw(); }   // (the screen laid out as a game: ui/shell/worldShell.js)
+  hide() { this.shell?.leave(); }
 
   note(text, kind = '') { const n = $('setNote'); n.textContent = text; n.className = `hand-note${kind ? ' ' + kind : ''}`; }
 
