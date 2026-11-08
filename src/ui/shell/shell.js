@@ -19,7 +19,7 @@ export class Shell {
     this.build();
   }
   build() {
-    const S = $(this.spec.section), sp = this.spec, k = sp.section;
+    const S = $(this.spec.section), sp = this.spec, k = sp.key || sp.section;   // (`key`: a second shell on the same section names its ids apart)
     this.top = el('div', 'sh sh-top', `<span class="title" id="${k}ShTitle"></span><span class="sh-res" id="${k}ShRes"></span><span class="sp"></span>`);
     this.rail = el('div', 'sh sh-rail', sp.rail.map(([id, ic, t]) => `<button type="button" data-menu="${id}" aria-pressed="false"><i>${ic}</i>${t}</button>`).join('') + '<span class="gap"></span>');
     this.map = el('div', 'sh-map');
@@ -47,7 +47,7 @@ export class Shell {
   }
   back(node) { const h = this.home.get(node); if (!h) return; h.parent.insertBefore(node, h.next && h.next.parentNode === h.parent ? h.next : null); this.home.delete(node); }
   unit() { document.documentElement.style.setProperty('--u', `${Math.max(0.7, Math.min(1.3, window.innerHeight / BASE_H)).toFixed(3)}px`); }
-  slot(id) { return $(`${this.spec.section}Sh_${id}`); }
+  slot(id) { return $(`${this.spec.key || this.spec.section}Sh_${id}`); }
 
   enter() {
     if (this.on) return;
@@ -114,7 +114,7 @@ export class Shell {
   }
   // the world in small: the realms' land, the marks the screen asks for, the main map's window
   mini() {
-    const cv = $(`${this.spec.section}ShMini`), a = this.view.atlas, V = this.view; if (!cv || !a) return;
+    const cv = $(`${this.spec.key || this.spec.section}ShMini`), a = this.view.atlas, V = this.view; if (!cv || !a) return;
     const w = cv.clientWidth || 300, h = cv.clientHeight || 180, dpr = window.devicePixelRatio || 1;
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0d0f0a'; ctx.fillRect(0, 0, w, h);

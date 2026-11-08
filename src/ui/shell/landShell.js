@@ -39,7 +39,7 @@ export class QuickShell extends Shell {
 export class CampSetupShell extends Shell {
   constructor(view) {
     super(view, {
-      section: 'campaign', title: ['campTitle', 'campName2'], top: [], topEnd: ['campBack'],
+      section: 'campaign', key: 'campaignSetup', title: ['campTitle', 'campName2'], top: [], topEnd: ['campBack'],
       rail: [['world', '◍', 'Мир'], ['capital', '⚑', 'Столица'], ['layers', '❖', 'Слои']],
       menus: {world: [() => $('campLibField'), 'Мир из библиотеки'], capital: [() => $('campCapsField')?.closest('.card'), 'Столица и поход'], layers: [() => $('campLayer')?.closest('.card'), 'Слои карты']},
       mini: false, side: [{id: 'hand', title: 'Под рукой', node: () => $('campInspect')}], strip: null,
