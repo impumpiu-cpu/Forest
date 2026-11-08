@@ -29,7 +29,7 @@
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
 import {realmTowns, frameOf} from './frame.js';
 import {ORE_KINDS} from '../data/worldLand.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, goodPrice, recipesOf, makesOf} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, TOWN_MONEY, GOLEMS, POOLS, POOL_SHARE, POOL_PAIR, POOL_SOFT, ORE_GOODS, METALS, MINT, goodPrice, recipesOf, makesOf} from '../data/townBuildings.js';
 // (reqLit: who a recipe is for — its people or kind — against the town's lights)
 import {reqLit} from '../data/townBuildings.js';
 import {workNeeds} from '../data/requirements.js';
@@ -80,6 +80,12 @@ function drawPool(id, want, left) {
 // (the ore fields, the cell and the people's stone lore do not change in history: what a mine gives is worked out once a cell,
 // a building and a people, kept beside the world (a.digCache, frozen: read, never changed) and again after an edit of the tables)
 let DIG_EDIT = 0; onEdit(() => { DIG_EDIT++; });
+// the mint's strength: its realm's people by MINT.per (at least one share; a town with no world — a test — one)
+export function mintScale(a, t) {
+  if (!a?.towns || t.realm == null) return 1;
+  const pop = a.towns.reduce((s, o) => s + (o.alive && o.realm === t.realm ? o.pop || 0 : 0), 0);
+  return Math.max(1, pop / MINT.per);
+}
 export function digOf(a, t, b) {
   const site = (t.sites || []).map(id => a?.sites?.[id - 1]).find(s => s?.alive && s.kind === b.id), i = site ? site.i : t.i;
   if (!a?.f) return digAt(a, t, b, i);
@@ -240,7 +246,7 @@ export function prepEconomy(a, t, heatK = heatFactor(a, t)) {
     r.in = {};
     for (const [g, v] of Object.entries(r.b.in || {})) { const s = P.workSwaps?.[r.b.id]?.[g] || swaps[g], to = s ? s.to : g; r.in[to] = (r.in[to] || 0) + v * (s ? s.k : 1) * r.n; }   // (workSwaps: this building's own — data/peoples.js)
     r.soft = new Set((r.b.soft || []).map(g => swapOf(P, g)[0]));   // what this building does without (as its people takes it)
-    r.pool = Object.fromEntries(Object.entries(r.b.any || {}).map(([k, v]) => [k, v * r.n]));
+    r.pool = Object.fromEntries(Object.entries(r.b.any || {}).map(([k, v]) => [k, v * r.n * (k === 'coin' ? mintScale(a, t) : 1)]));
     const fuel = ((r.b.heat || 0) * heatK + (r.b.fire || 0)) * r.n;
     if (fuel > 0) r.pool.fuel = (r.pool.fuel || 0) + fuel;
     const outs = r.b.dig ? {...digOf(a, t, r.b), ...(r.b.out || {})} : (r.b.out || {});   // a mine: the metals of its cell
@@ -379,7 +385,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null, prep
     for (const [g, n] of Object.entries(PU.out[id][1])) used[g] = (used[g] || 0) + n;
     const [took, by] = PA.out[id], miss = (PA.pdem[id] || 0) - took;
     for (const [g, n] of Object.entries(by)) dem[g] = (dem[g] || 0) + n;
-    if (miss > 1e-9 && !POOL_SOFT.has(id)) { const g = Object.keys(POOLS[id])[0], w = POOLS[id][g]; dem[g] = (dem[g] || 0) + miss / w; }   // (fuel: logs — a woodcutter or buying; a soft pool asks for nothing it misses)
+    if (miss > 1e-9 && POOL_SHARE.has(id)) { const G = Object.entries(POOLS[id]); for (const [g, w] of G) dem[g] = (dem[g] || 0) + miss / G.length / w; }   // (the mint: buys of all its goods alike)
+    else if (miss > 1e-9 && !POOL_SOFT.has(id)) { const g = Object.keys(POOLS[id])[0], w = POOLS[id][g]; dem[g] = (dem[g] || 0) + miss / w; }   // (fuel: logs — a woodcutter or buying; a soft pool asks for nothing it misses)
   }
   // short: the share of what the buildings asked for and did not get, by good
   const short = {};
