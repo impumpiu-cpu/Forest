@@ -1,6 +1,6 @@
 // Penned: a tamed goat or mule (settlement/herd.js) keeps to its pen — walks there when it is outside (`to` mode),
-// grazes from spot to spot inside the fence; without a pen it stays by the camp (`camp` mode). Its wounds close in
-// the pen. Reads: nothing of its own (a.pen, the pens of settlement/herd.js).
+// grazes from spot to spot inside the fence; without a pen it stays by the camp (`camp` mode) — at the caravan's camp, at
+// the tether once it is set (campaign/works.js). Its wounds close in the pen. Reads: nothing of its own (a.pen, the pens of settlement/herd.js).
 import {SPECIES} from '../../data/species.js';
 import {cellOf} from '../../world/grid.js';
 import {approach, follow, moveToward, recover} from '../movement.js';
@@ -9,6 +9,8 @@ import {pens} from '../../settlement/herd.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {buildingById} from '../../settlement/query.js';
 import {PEN} from '../../data/behaviour.js';
+import {CAMP_WORKS} from '../../data/camp.js';
+import {tetherAt} from '../../campaign/works.js';
 
 // the pen this animal belongs to: the one it had, or the first with room
 function penOf(w, a) {
@@ -39,6 +41,14 @@ export const penned = {
     if (more > 0 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + more * maxHp(a));
     const i = cellOf(w, a);
     if (t.mode === 'camp') {
+      // at the caravan's camp with a tether set (campaign/works.js): it stands at the rope, a step this way or that
+      const T = w.campaign ? tetherAt(w) : null;
+      if (T) {
+        const d = Math.hypot(T[0] - a.x, T[1] - a.y), K = CAMP_WORKS.tether.keep;
+        if (d > K) approach(w, a, T[0], T[1], PEN.campPace);
+        else if (w.rngs.wild() < PEN.stroll) { const ang = w.rngs.wild() * Math.PI * 2; moveToward(w, a, T[0] + Math.cos(ang) * K * CAMP_WORKS.tether.stroll, T[1] + Math.sin(ang) * K * CAMP_WORKS.tether.stroll, PEN.strollPace); }
+        return;
+      }
       if (w.nav.get('camp')[i] > PEN.campNear) follow(w, a, 'camp', PEN.campPace);
       else if (w.rngs.wild() < PEN.stroll) { const ang = w.rngs.wild() * Math.PI * 2; moveToward(w, a, w.camp.x + Math.cos(ang) * PEN.strollR, w.camp.y + Math.sin(ang) * PEN.strollR, PEN.strollPace); }
       return;

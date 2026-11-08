@@ -33,9 +33,10 @@ export const CARAVAN_GOLEMS = {max: 1};
 //   pull: 'people' — two members haul it (the caravan slows to `haul`), 'draft' — draft beasts (see BEASTS).
 // Wheels keep to the roads: off a road a step costs `offRoad` times more, and the biomes in `WHEEL_BLOCK`
 // cannot be crossed at all without a road.
+//   stakes: the sharpened poles it carries under the boxes, set round the camp at night (campaign/works.js; data/camp.js CAMP_WORKS)
 export const VEHICLES = {
-  cart:  {label: 'тележка', boxes: 4, tool: 1, logs: 6, days: 3, pull: 'people', haul: 0.75},
-  wagon: {label: 'повозка', boxes: 4, tool: 2, logs: 10, days: 5, pull: 'draft'},
+  cart:  {label: 'тележка', boxes: 4, tool: 1, logs: 6, days: 3, pull: 'people', haul: 0.75, stakes: 10},
+  wagon: {label: 'повозка', boxes: 4, tool: 2, logs: 10, days: 5, pull: 'draft', stakes: 18},
 };
 export const WHEELS = {offRoad: 2, roadAt: 0.1, block: ['highlands', 'foothills', 'swamp', 'jungle', 'volcano', 'ice'], denseForest: 0.7};
 

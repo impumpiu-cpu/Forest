@@ -124,6 +124,8 @@ BEHAVIOURS.registerAll([
   {id: 'reserve', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'красная тревога в виду: кто не идёт в бой, держится у огня или бежит к своим; тяжело раненый при враге — к своим'},
   {id: 'bind', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'после боя: связать упавшего врага и привести (settlement/captives.js)'},
   {id: 'assist', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'ученик при мастере (settlement/masters.js)'},
+  {id: 'campwork', label: () => 'обустраивает стоянку', band: 'routine', requires: [], keep: ROSTER.keep,
+    note: 'стоянка каравана: повозку к огню, коновязь, колья со шкурами, вертел, коптильню, судесы — ближайшее дело, за которое никто не взялся; в первые часы стоянки — прежде сна (campaign/works.js, data/camp.js CAMP_WORKS)'},
   {id: 'keepIn', task: false, band: 'routine', requires: [], keep: 0, note: 'пленному нельзя за периметр: всегда возвращает к огню; ничего не предлагает'},
   // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
   {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,

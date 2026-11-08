@@ -156,6 +156,9 @@ export function applyCamp(a, K, S, o, d, how) {
   if (lostB.length || stolenB.length) { K.beasts = K.beasts.filter(b => !lostB.includes(b) && !stolenB.includes(b)); assign(K); K.path = null; }
   const food0 = K.food;
   K.food = o.food; K.cargo = o.cargo;
+  // the camp set up here (campaign/works.js): a stop's next day at the same place finds it standing, the stakes cut with it
+  if (how === 'stop' || how === 'night') { const same = K.campHere?.i === K.i && K.campHere.day === K.day - 1; K.campHere = {i: K.i, day: K.day, days: (same ? K.campHere.days : 0) + 1, cut: (same ? K.campHere.cut || 0 : 0) + (o.works?.cut || 0)}; }
+  if (o.works?.cured) say(a, K, `Шкуры на кольях за ночь выделали в кожу.`, 'build');
   // the camp: a building burnt is gone; the vehicles: a broken cart
   const broken = [];
   for (const id of o.burnt || []) if (hasBuilding(K, id)) { broken.push(`«${BUILDINGS.get(id).name}» сгорело`); K.buildings = K.buildings.filter(x => x !== id); }

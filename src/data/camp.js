@@ -83,6 +83,34 @@ export const CAMP = {
   keep: 8,
 };
 
+// The camp set up for the night (campaign/works.js; docs/CAMPAIGN.md «Обустройство стоянки»): not buildings of the colony's
+// kind but the evening's chores of a company in the field — what it does with what it brought. Each is a thing on the map,
+// placed as the camp opens and made by whoever takes it up (agents/behaviours/campwork.js): `ticks` of one pair of hands,
+// `at` cells from the fire. In the first `setup.hours` after the camp opens the chores are wanted above sleep (`setup.want`,
+// against the needs' urges of data/needs.js); later they wait for whoever is awake and idle. On a stop's second day at
+// the same place everything stands from the first (campaign/camp.js S.stayed).
+export const CAMP_WORKS = {
+  setup: {hours: 2.5, want: 1.6, idle: 0.5, hurt: 0.5, reach: 1.4, pace: 1.2},   // (`reach` — a chore is worked from this close, walked to at `pace`)
+  // where things stand about the fire: the cart at a random bearing, the rest turned from it by these angles (radians); a
+  // taken cell is passed by `step` of a turn at a time
+  place: {step: 0.26, tether: 0.9, racks: 2.5, spit: 4.4, smoke: 1.25},   // (`idle` — the chores' weight after the first hours; one below `hurt` of its health sits by the fire)
+  // the cart or wagon, drawn up by the fire: the stores are at it, the beasts tethered beside it (placed, no work)
+  wagon:  {label: 'повозка с припасами', at: 3.5},
+  // a rope between posts (`posts` cells): the beasts keep within `keep` of it (agents/behaviours/penned.js) and a raider who
+  // would lead one off first cuts the rope — `cut` ticks beside it (campaign/camp.js stepCamp)
+  tether: {label: 'коновязь', ticks: 40, at: 4.5, posts: 3, keep: 1.8, stroll: 0.7, cut: 60},   // (a tethered beast strolls `stroll` × keep about the rope)
+  // poles with the hunt's hides stretched on them: a night on the racks cures `hides` hides into `leather` leather
+  racks:  {label: 'колья со шкурами', ticks: 30, at: 4, cure: {hides: 3, leather: 2}},
+  // the spit over the fire: the evening meal is cooked by one (the dish itself: data/transport.js CAMP_KIT.dish)
+  spit:   {label: 'вертел над огнём', ticks: 50, at: 1.6},
+  // a smoking rack, at a stop with fresh meat (`min` of it): `perTick` of the meat becomes jerky, that keeps (data/foods.js)
+  smoke:  {label: 'коптильня', ticks: 40, at: 5, min: 3, perTick: 0.02, jerky: 1.1},
+  // the stakes (data/terrain.js `stakes`): a ring `radius` cells from the fire, the road's side left open; those a cart or
+  // wagon brought (data/transport.js VEHICLES.stakes) are set `ticks` a cell; with no wheels, on a stop with an axe among the
+  // tools, up to `cutPerDay` are cut and set, `cutTicks` a cell, and stand there the next day (campaign/fight.js K.campHere)
+  stakes: {label: 'судесы', ticks: 25, radius: 6.5, cutTicks: 70, cutPerDay: 8, gap: 3},
+};
+
 // the game of the land (data/campaign.js GAME) and the flow that brings it to the map (data/migrations.js)
 export const GAME_FLOW = {deer: 'deer', boar: 'boars', goat: 'goats', hare: 'hares'};
 

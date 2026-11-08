@@ -6,6 +6,7 @@ import {$} from './dom.js';
 import {openTab} from './tabs.js';
 import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
+import {workText} from '../campaign/works.js';
 import {CAMP_KINDS} from '../data/labels.js';
 import {mindAt, mindCard} from '../render/minds.js';
 
@@ -102,7 +103,10 @@ export const campLocal = Base => class extends Base {
     if (!force && !a) return;   // a building or a cell does not change by the tick
     if (a) box.innerHTML = `<div class="pc">${a.diary && a.likes ? personHtml(w, a) : creatureHtml(w, a)}</div>`;
     else if (L.view.selBld != null) { const b = w.buildings.find(b => b.id === L.view.selBld); box.innerHTML = b ? `<div class="pc">${buildingHtml(w, b)}</div>` : ''; }
-    else if (L.view.selCell != null) box.innerHTML = `<div class="pc">${cellHtml(w, L.view.selCell)}</div>`;
+    else if (L.view.selCell != null) {
+      const x = (w.works || []).find(x => x.cells.includes(L.view.selCell));   // a thing of the camp set up on this cell (campaign/works.js)
+      box.innerHTML = `<div class="pc">${x ? `<p><b>Стоянка.</b> ${esc(workText(w, x))}</p>` : ''}${cellHtml(w, L.view.selCell)}</div>`;
+    }
   }
   endLocal() {
     const L = this.local; if (!L) return;

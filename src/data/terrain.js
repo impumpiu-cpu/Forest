@@ -54,10 +54,15 @@ TERRAIN.registerAll([
   {id: 'ford',   code: 9, label: 'брод',  kind: 'water',  walkable: true,  pathCost: 2.2, speed: 0.5, fuel: 0,
     open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 1, tint: false,
     color: (h) => [96 + h * 30, 128 + h * 40, 140 + h * 30]},
+  // the caravan's stakes (campaign/works.js, data/camp.js CAMP_WORKS.stakes): sharpened poles set in the ground round the
+  // camp — one can push through, slowly; dry wood, they burn; nothing grows there while they stand
+  {id: 'stakes', code: 10, label: 'судесы', kind: 'ground', walkable: true, pathCost: 3, speed: 0.35, fuel: 0.9,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [122 + h * 10, 96 + h * 8, 58]},
 ]);
 
 // numeric codes for hot loops
-export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9};
+export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9, STAKES: 10};
 
 // lookup tables indexed by code, built once from the registry
 export const BY_CODE = [];

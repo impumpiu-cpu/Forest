@@ -48,13 +48,13 @@ export const WAYS = {
   // the colonist (agents/brains/colonist.js): fallen it lies, fire it flees, attacked it fights or runs home; then the
   // utility AI — every behaviour offers with its weight: the body, the work, the council, the trade, the healer, a prayer,
   // low spirits, a nechist's spell, a fire at the camp, the board's cries and alarms, the night watch, going along,
-  // helping, binding a fallen foe, learning beside a master, idling
-  colonist: ['downed', 'fleeFire', 'warband', 'defend', 'needs', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
+  // helping, binding a fallen foe, learning beside a master, idling; at the caravan's camp — its evening chores (campwork)
+  colonist: ['downed', 'fleeFire', 'warband', 'defend', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
   // a captive: the body, the camp's work, out of harm's way at the fire — no council, no flag, no watch, no trade, no
   // healer, no going along; kept inside the zone (keepIn)
-  captive: ['downed', 'fleeFire', 'defend', 'keepIn', 'needs', 'work', 'idle', 'sulk', 'spellbound', 'pray', 'douse', 'muster', 'reserve', 'assist'],
+  captive: ['downed', 'fleeFire', 'defend', 'keepIn', 'needs', 'campwork', 'work', 'idle', 'sulk', 'spellbound', 'pray', 'douse', 'muster', 'reserve', 'assist'],
   // a former slave: everything a free colonist may, but no flag, watch, council or trade
-  former: ['downed', 'fleeFire', 'defend', 'needs', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
+  former: ['downed', 'fleeFire', 'defend', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
 };
 
 export const SQUAD = {
