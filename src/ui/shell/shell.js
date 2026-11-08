@@ -65,13 +65,14 @@ export class Shell {
     this.map.appendChild(this.drawer);
     for (const s of sp.side) { const n = s.node?.(); if (n) { this.take(n, this.slot(s.id)); if (n.dataset?.pane) n.hidden = false; } }
     if (sp.strip?.node) this.take(sp.strip.node(), this.slot('strip'));
-    this.nodes = Object.fromEntries(Object.entries(sp.menus).map(([id, [f, title, after]]) => [id, [f(), title, after]]));   // (found now: moved into the drawer, a block is not where its finder looks)
     this.watch = (sp.watch || []).map(([f, fn]) => [f(), fn]);
     this.obs = new MutationObserver(ms => { const seen = new Set(); for (const m of ms) for (const [n, fn] of this.watch) if (n && (n === m.target || n.contains(m.target)) && !seen.has(fn)) { seen.add(fn); fn(); } });
     this.obs.observe(S, {childList: true, subtree: true, characterData: true});
     for (const [, fn] of this.watch) fn();
     if (sp.mini) this.tick = setInterval(() => this.mini(), 400);
     sp.onEnter?.(this);
+    this.nodes = Object.fromEntries(Object.entries(sp.menus).map(([id, [f, title, after]]) => [id, [f(), title, after]]));   // (found once, now: moved into the drawer, a block is not where its finder looks)
+    sp.opens && this.toggle(sp.opens);
     requestAnimationFrame(() => { window.dispatchEvent(new Event('resize')); this.view.draw?.(); if (sp.mini) this.mini(); });   // (the canvases take their new boxes)
   }
   leave() {

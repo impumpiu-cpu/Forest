@@ -367,8 +367,10 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // as the screen saw it on that day: one who fell or left later is still with them; one who joined later is not yet
   seenAs(m, day) {
     if ((m.joined ?? 0) > day) return null;
+    // (one who fell on this day is still on his feet while the day is shown: the camp of that day plays after the day is
+    // reached, and the roster must not bury him before it)
     const gone = m.died?.day ?? m.left?.day;
-    return gone != null && gone > day ? {...m, alive: true, died: null, left: null, fate: null, hp: m.died ? 1 : m.hp} : m;
+    return gone != null && gone >= day ? {...m, alive: true, died: null, left: null, fate: null, hp: m.died ? 1 : m.hp} : m;
   }
   // where the caravan is at this moment of the playback
   caravanAt() {

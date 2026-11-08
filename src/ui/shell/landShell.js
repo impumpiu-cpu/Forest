@@ -3,16 +3,17 @@
 // along the bottom; «Быстрый старт» — its form in the middle; and the campaign's setup (ui/campaignView.js, before the
 // caravan is on its way) — the world and the capital in the rail, the world's map in the middle.
 import {$} from '../dom.js';
-import {Shell} from './shell.js';
+import {Shell, el} from './shell.js';
 
 export class LandShell extends Shell {
   constructor(view) {
     const S = () => $('land');
     super(view, {
       section: 'land', title: ['landTitle', 'landName2'], top: [], topEnd: [],
-      rail: [['land', '◍', 'Земля'], ['hand', '✋', 'Рука'], ['layers', '❖', 'Слои'], ['saves', '⌂', 'Земли']],
+      rail: [['land', '◍', 'Земля'], ['climate', '☁', 'Климат'], ['hand', '✋', 'Рука'], ['layers', '❖', 'Слои'], ['saves', '⌂', 'Земли']],
       menus: {
         land: [() => S().querySelector('.atlas-form'), 'Земля'],
+        climate: [() => this.climateBox, 'Климат и правки'],
         hand: [() => S().querySelector('.land-tools'), 'Рука'],
         layers: [() => S().querySelector('.atlas-tools [data-lkey="layer"]'), 'Слои карты'],
         saves: [() => S().querySelector('.field.saves'), 'Сохранённые земли'],
@@ -21,7 +22,10 @@ export class LandShell extends Shell {
       mini: false,
       side: [{id: 'plate', title: 'Плита', node: () => $('landPlate'), rows: 'auto'}, {id: 'stages', title: 'Этапы', node: () => $('landStages')}, {id: 'sum', title: 'Земля', node: () => $('landStats'), rows: 'auto'}],
       strip: {title: 'Летопись земли', node: () => $('landChron')},
-      onEnter: sh => { const z = S().querySelector('.zoomseg'); if (z) sh.take(z, sh.map.querySelector('.atlas-map') || sh.map); const lg = $('landLegend'); if (lg) sh.take(lg, sh.slot('sum')); sh.toggle('land'); },
+      onEnter: sh => { const z = S().querySelector('.zoomseg'); if (z) sh.take(z, sh.map.querySelector('.atlas-map') || sh.map); const lg = $('landLegend'); if (lg) sh.take(lg, sh.slot('sum'));
+        // the climate's sliders and the edits' row leave the land's form for a menu of their own
+        const box = sh.climateBox ||= el('div'), F = S().querySelector('.atlas-form'); sh.take($('landEq').closest('.field'), box); sh.take($('landReset').closest('.row'), box); F.after(box); },
+      opens: 'land',
     });
     const back = S().querySelector('.app-head [data-go="home"]'); if (back) this.spec.topEnd.push(back.id ||= 'landBack');
   }

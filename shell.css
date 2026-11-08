@@ -16,7 +16,7 @@ body.shelled > .wrap > header{display:none}
 .sh-center > *{width:min(100%,calc(720 * var(--u)));background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));padding:calc(16 * var(--u)) calc(20 * var(--u))}
 .sh-map .zoomseg{position:absolute;right:calc(8 * var(--u));top:calc(8 * var(--u));background:rgba(13,15,10,.82);z-index:3}
 .sh-map .preview-box{flex:1;min-height:0;border:0}
-.sh-map .preview-box canvas{width:100%;height:100%;display:block}
+.sh-map .preview-box canvas,.shell #landMap{width:100%;height:100%;aspect-ratio:auto;display:block}
 .sh-map .atlas-map{flex:1;min-height:0;display:flex;flex-direction:column}
 .sh-map .atlas-map .atlas-tools,.sh-map .atlas-map .atlas-legend,.sh-map .atlas-map .land-tools,.sh-map .atlas-map #landOre{display:none}
 .sh-drawer .land-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
