@@ -1,14 +1,14 @@
 // Towns on the way: why the council would turn to one, which one, the caravan in town (campaign/town.js trades).
 // Out of campaign/march.js.
-import {scaleOf} from '../atlas/tectonics.js';
-import {townLabel} from '../atlas/towns.js';
+import {scaleOf} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
 import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {ORES} from '../data/ores.js';
 import {VISIT, SMITH, WANTS} from '../data/market.js';
 import {LEADER, TRIBE_RAID} from '../data/lairs.js';
-import {livingLeaders} from '../atlas/leaders.js';
-import {wherePhrase} from '../atlas/lairs.js';
+import {livingLeaders} from '../atlas/index.js';
+import {wherePhrase} from '../atlas/index.js';
 import {route} from './path.js';
 import {capacity, cargoLoad, wheeled, metalTier} from './baggage.js';
 import {draw} from './start.js';

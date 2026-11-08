@@ -3,11 +3,11 @@
 // battlefield. What the land makes possible is read from the world: its roads, its lairs and wolves, its ruins
 // and fallen lairs, the graves of its battles and raids, the track of an army.
 import {toolOf} from '../data/campaign.js';
-import {roadAccess} from '../atlas/roads.js';
-import {gearDef, mayTake} from '../agents/equipment.js';
-import {lairAt} from '../atlas/lairs.js';
-import {ruinAt} from '../atlas/diplomacy.js';
-import {faunaLevel} from '../world/region.js';
+import {roadAccess} from '../atlas/index.js';
+import {gearDef, mayTake} from '../local/index.js';
+import {lairAt} from '../atlas/index.js';
+import {ruinAt} from '../atlas/index.js';
+import {faunaLevel} from '../local/index.js';
 import {LAIRS} from '../data/lairs.js';
 import {RESOURCES} from '../data/resources.js';
 import {FINDS} from '../data/campaign.js';

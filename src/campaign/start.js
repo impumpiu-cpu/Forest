@@ -7,22 +7,22 @@
 //   food, gold, i, x, y, path, k, camp, why, hungry, seen (Uint8Array, 1 — known), log: [{day, year,
 //   season, i, text, kind}], track, stats, rng: {name → position}, party (id)}
 import {mulberry, seedNumber} from '../core/rng.js';
-import {rulerOf, rulerTitle} from '../atlas/polities.js';
-import {gearDef, gearType} from '../agents/equipment.js';
-import {rollCreature} from '../agents/special.js';
-import {personality} from '../agents/agent.js';
+import {rulerOf, rulerTitle} from '../atlas/index.js';
+import {gearDef, gearType} from '../local/index.js';
+import {rollCreature} from '../local/index.js';
+import {personality} from '../local/index.js';
 import {SPECIES, isSentient} from '../data/species.js';
 import {CAMP} from '../data/camp.js';
 import {ensureSocial} from './social.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
-import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
-import {trades, realmAlign} from '../atlas/diplomacy.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {townLabel, townKin} from '../atlas/towns.js';
+import {realmOf, realmLabel, realmTowns} from '../atlas/index.js';
+import {trades, realmAlign} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
+import {townLabel, townKin} from '../atlas/index.js';
 import {COMBAT_ROLES, rolesOf, roleKit} from '../data/roles.js';
 import {weighted} from '../core/util.js';
-import {landDone} from '../atlas/generate.js';
+import {landDone} from '../atlas/index.js';
 import {say, reveal} from './march.js';
 import {EPIC} from '../data/calamities.js';
 import {capacity} from './baggage.js';

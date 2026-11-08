@@ -6,7 +6,7 @@ import {join, relative, dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..'), src = join(root, 'src');
-const SHELL = ['ui', 'render', 'main.js', 'app'];
+const SHELL = ['ui', 'render', 'main.js', 'app', 'art'];
 const BROWSER = /\b(document|window|localStorage|sessionStorage|indexedDB|requestAnimationFrame|navigator)\s*[.(]/;
 
 const files = [];
@@ -28,6 +28,37 @@ for (const f of files) {
 }
 if (bad.length) { console.log('Ядро зависит от оболочки:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   ядро (${files.filter(f => !SHELL.includes(relative(src, f).split(/[\\/]/)[0])).length} файлов) не зависит от экрана`);
+
+// The systems and their doors (docs/ARCHITECTURE.md «Системы и их двери»): the world map (atlas/), the local map
+// (world/, nav/, agents/, settlement/, outside/, sim.js, headless.js), the campaign (campaign/), the seam (seam/). From
+// outside a system, its modules are reached only through its door — the system's index.js (local/index.js for the local
+// map). core/, data/ and social/ are bricks anyone takes directly; data/ holds content with hooks into the systems and
+// keeps its direct imports. The shell (ui/, render/, app/, art/) sees the systems only through view/ («Оболочка и
+// прослойка view»); view/ takes the doors. One documented borrowing: atlas/ takes agents/special.js (the bosses' roll).
+const SYSTEMS = {atlas: ['atlas'], local: ['world', 'nav', 'agents', 'settlement', 'outside', 'sim.js', 'headless.js'], campaign: ['campaign'], seam: ['seam']};
+const DOORS = {atlas: 'atlas/index.js', local: 'local/index.js', campaign: 'campaign/index.js', seam: 'seam/index.js'};
+const BRICKS = ['core', 'data', 'social', 'version.js'];
+const systemOf = rel => { const top = rel.split(/[\\/]/)[0]; for (const [s, dirs] of Object.entries(SYSTEMS)) if (dirs.includes(top) || dirs.includes(rel)) return s; if (SHELL.includes(top)) return 'shell'; if (top === 'view') return 'view'; if (top === 'local') return 'local'; if (BRICKS.includes(top) || BRICKS.includes(rel)) return 'brick'; return null; };
+const doors = [];
+for (const f of files) {
+  const rel = relative(src, f).replace(/\\/g, '/'), from = systemOf(rel);
+  if (from === 'brick' && !rel.startsWith('data/')) continue;
+  if (from === null) { doors.push(`${rel}: не принадлежит ни одной системе`); continue; }
+  readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+    const m = line.replace(/\/\/.*$/, '').match(/from\s+['"](\.[^'"]+)['"]/);
+    if (!m) return;
+    const target = relative(src, resolve(dirname(f), m[1])).replace(/\\/g, '/'), to = systemOf(target);
+    if (to === 'brick' || to === from) return;
+    if (rel.startsWith('data/')) return;
+    if (from === 'shell') { if (to !== 'view') doors.push(`${rel}:${i + 1} оболочка берёт систему напрямую: ${m[1]} (нужно через view/)`); return; }
+    if (to === 'shell' || to === 'view') { doors.push(`${rel}:${i + 1} берёт оболочку: ${m[1]}`); return; }
+    if (to === null) { doors.push(`${rel}:${i + 1} берёт неизвестное: ${m[1]}`); return; }
+    if (from === 'atlas' && target === 'agents/special.js') return;
+    if (target !== DOORS[to]) doors.push(`${rel}:${i + 1} берёт ${to} мимо двери: ${m[1]} (нужно ${DOORS[to]})`);
+  });
+}
+if (doors.length) { console.log('Системы берут друг друга мимо дверей:\n  ' + doors.join('\n  ')); process.exit(1); }
+console.log(`ok   системы (${Object.keys(SYSTEMS).join(', ')}) берут друг друга только через двери, оболочка — через view/`);
 
 // Code that runs for every creature every tick must not walk every creature: that grows as the square of
 // their number (tools/stress.mjs). Ask an index instead — agents/lookup.js (by id, pack, species, who

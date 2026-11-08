@@ -3,25 +3,25 @@
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
 import {isFighter, inLine, toolOf} from '../data/campaign.js';
-import {townFx, townLabel, realmWorks} from '../atlas/towns.js';
-import {gearDef, gearType, gearValue, gearToken, mayTake} from '../agents/equipment.js';
+import {townFx, townLabel, realmWorks} from '../atlas/index.js';
+import {gearDef, gearType, gearValue, gearToken, mayTake} from '../local/index.js';
 import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
-import {trades, atWar, realmAlign} from '../atlas/diplomacy.js';
-import {realmLabel} from '../atlas/realms.js';
+import {trades, atWar, realmAlign} from '../atlas/index.js';
+import {realmLabel} from '../atlas/index.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, CARAVAN_GOLEMS, CAMP_KIT, kitOf} from '../data/transport.js';
-import {golemMetal} from '../atlas/golems.js';
+import {golemMetal} from '../atlas/index.js';
 import {golemOf, GOLEM_METALS} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WARES, WARE_IDS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY, BUY_ORDER} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
 import {TOWN_MONEY, TOWN_BUILDINGS, lineHas, recipesOf, reqLit} from '../data/townBuildings.js';
-import {townUnfold, townLights} from '../atlas/economy.js';
-import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/treasury.js';
+import {townUnfold, townLights} from '../atlas/index.js';
+import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/index.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';

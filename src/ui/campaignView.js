@@ -9,10 +9,10 @@ import {wireMindsButton} from '../render/minds.js';
 import {skin} from '../render/skin.js';
 import {ART} from '../render/art/index.js';
 import {segOf, loadDetail, saveDetail, exportChronicle, MapView, ATLAS_OPTS} from './atlasView.js';
-import {DETAILS} from '../atlas/chronicle.js';
+import {DETAILS} from '../view/world.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
-import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
-import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
+import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../view/campaign.js';
+import {readLines, lineLevel, dateOf} from '../view/campaign.js';
 import {CHRONICLE} from '../data/campaign.js';
 import {offerText, latinTitle} from './store.js';
 import {CAMPAIGN, RETINUE, EPIC_SIZES} from '../data/campaign.js';
@@ -20,30 +20,33 @@ import {EPIC} from '../data/calamities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
-import {raceLabel} from '../agents/special.js';
-import {atlasDone, newAtlas, runNextStage, landDone} from '../atlas/generate.js';
-import {eraPlan, historyLength, seasonLabel} from '../atlas/history.js';
+import {raceLabel} from '../view/local.js';
+import {atlasDone, newAtlas, runNextStage, landDone} from '../view/world.js';
+import {eraPlan, historyLength, seasonLabel} from '../view/world.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
+import {CampShell} from './shell/campShell.js';
+import {SAY_EVENT} from './shell/shell.js';
+import {CampSetupShell} from './shell/landShell.js';
 import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
-import {gearDef} from '../agents/equipment.js';
+import {gearDef} from '../view/local.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {BEASTS} from '../data/transport.js';
 import {BUBBLE, THINGS} from '../data/bubble.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {townLabel} from '../atlas/towns.js';
-import {capacity, load, wheeled} from '../campaign/baggage.js';
-import {baggageText, rank, isCore} from '../campaign/march.js';
-import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps} from './campSocial.js';
+import {scaleOf} from '../view/world.js';
+import {townLabel} from '../view/world.js';
+import {capacity, load, wheeled} from '../view/campaign.js';
+import {baggageText, rank, isCore} from '../view/campaign.js';
+import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps, fireLines} from './campSocial.js';
 const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
-import {questHint} from '../atlas/calamity.js';
+import {questHint} from '../view/world.js';
 import {RESOURCES} from '../data/resources.js';
 import {stockHtml} from './cards.js';
 import {WALK_PHASES} from '../data/labels.js';
@@ -225,7 +228,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
+  halt() { this.shell?.leave(); this.setupShell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -258,6 +261,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
 
   setupMode() {
     this.choosing = true;
+    this.shell?.leave(); (this.setupShell ||= new CampSetupShell(this)).enter();   // (ui/shell/landShell.js)
     const epic = this.mode === 'epic';
     $('campSetup').hidden = false; $('campRun').hidden = true; $('campRunSide').hidden = true;
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
@@ -298,6 +302,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   runMode() {
     this.choosing = false;
     $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = false;
+    this.setupShell?.leave(); (this.shell ||= new CampShell(this)).enter();   // the screen laid out as a game (ui/shell/campShell.js)
     const K = this.atlas.campaign;
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`; $('campName2').textContent = this.worldName || '';
     this.syncRun(); this.renderSide();
@@ -363,8 +368,10 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // as the screen saw it on that day: one who fell or left later is still with them; one who joined later is not yet
   seenAs(m, day) {
     if ((m.joined ?? 0) > day) return null;
+    // (one who fell on this day is still on his feet while the day is shown: the camp of that day plays after the day is
+    // reached, and the roster must not bury him before it)
     const gone = m.died?.day ?? m.left?.day;
-    return gone != null && gone > day ? {...m, alive: true, died: null, left: null, fate: null, hp: m.died ? 1 : m.hp} : m;
+    return gone != null && gone >= day ? {...m, alive: true, died: null, left: null, fate: null, hp: m.died ? 1 : m.hp} : m;
   }
   // where the caravan is at this moment of the playback
   caravanAt() {
@@ -518,7 +525,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     if (!meet) return;
     // the scene shows the meeting as it was: a speaker at a time, never deciding again (ui/campSocial.js drawFire)
     const last = fireSteps(K, meet), F = this.fire = {meet, step: this.clock.pace === 'max' ? last : 0, playing: this.clock.pace !== 'max', timer: 0};
-    const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; };
+    const show = () => { const cv = $('campFireCv'); if (!cv || this.fire !== F) return; drawFire(cv, K, meet, F.step); $('campFireWords').textContent = fireWords(K, meet, F.step); $('campFirePlay').textContent = F.playing ? '⏸' : '▶'; this.announce(K, meet, F.step); };
     F.show = show;
     const tick = () => { clearTimeout(F.timer); if (this.fire !== F || !F.playing) return; if (F.step >= last) { F.playing = false; show(); return; } F.timer = setTimeout(() => { F.step++; show(); tick(); }, FIRE_STEP_MS); };
     $('campFirePlay').addEventListener('click', () => { F.playing = !F.playing; if (F.playing && F.step >= last) F.step = 0; show(); tick(); });
@@ -527,6 +534,13 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     show(); tick();
   }
 
+  // a line of the scene, told to the screen (ui/shell/campShell.js: a word over the speaker's portrait): the speakers' ids
+  // and what they say; the last line (what was decided) has no speaker
+  announce(K, meet, step) {
+    const line = fireLines(K, meet)[step]; if (!line || !line.who?.length) return;
+    const key = `${meet.day}:${meet.point}:${step}`; if (this.saidKey === key) return; this.saidKey = key;
+    document.dispatchEvent(new CustomEvent(SAY_EVENT, {detail: {who: line.who, said: line.said, kind: line.kind}}));
+  }
   // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one
   renderLog() {
     const box = $('campLog'), K = this.atlas?.campaign;

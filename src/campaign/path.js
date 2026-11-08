@@ -2,9 +2,9 @@
 // step. On foot it is the world's (atlas/roads.js moveCost: roads ease the way, mountains and swamps
 // slow it, each people walks its own lands better). On wheels the road is everything: off a road a step
 // costs more, and mountains, swamps, jungle, dense forest cannot be crossed at all (data/transport.js WHEELS).
-import {moveCost, roadLevel} from '../atlas/roads.js';
-import {biomeAt} from '../atlas/biomes.js';
-import {Heap} from '../atlas/heap.js';
+import {moveCost, roadLevel} from '../atlas/index.js';
+import {biomeAt} from '../atlas/index.js';
+import {Heap} from '../atlas/index.js';
 import {WHEELS} from '../data/transport.js';
 
 const DIRS8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];

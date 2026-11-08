@@ -8,13 +8,13 @@
 // Aboard (caravanDay): the days pass — food, wounds, memory, bonds go on; no march, no forage, no camp, no meetings, no
 // night attacks, no watch of the company (the boat's crew keeps it), no grazing; the boat's catch feeds them (FERRY.fed);
 // the mark of the caravan sails on the map.
-import {moveCost} from '../atlas/roads.js';
-import {seaWay} from '../atlas/sea.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {townLabel} from '../atlas/towns.js';
+import {moveCost} from '../atlas/index.js';
+import {seaWay} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
 import {FERRY} from '../data/transport.js';
 import {CAMPAIGN} from '../data/campaign.js';
-import {DIRS8} from '../atlas/heap.js';
+import {DIRS8} from '../atlas/index.js';
 import {cellDist, between, plural, centreOf, tenth} from '../core/util.js';
 import {standing} from './town.js';
 import {draw} from './start.js';

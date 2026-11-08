@@ -12,14 +12,14 @@
 //   carrier}, clues: [{k, kind, at, i, label, guard, area, seen, found}], search, stormAt, next (pursuit)}
 //   area = {x, y, r} — a circle the place is known to lie in; guard = {kind, strength, label, band?, beast?}
 import {inLine} from '../data/campaign.js';
-import {realmBand} from '../atlas/towns.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {moveCost} from '../atlas/roads.js';
-import {townLabel} from '../atlas/towns.js';
-import {realmLabelGen} from '../atlas/realms.js';
-import {trades, atWar} from '../atlas/diplomacy.js';
-import {biomeAt} from '../atlas/biomes.js';
-import {settleable} from '../seam/cell.js';
+import {realmBand} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
+import {moveCost} from '../atlas/index.js';
+import {townLabel} from '../atlas/index.js';
+import {realmLabelGen} from '../atlas/index.js';
+import {trades, atWar} from '../atlas/index.js';
+import {biomeAt} from '../atlas/index.js';
+import {settleable} from '../seam/index.js';
 import {LAIRS} from '../data/lairs.js';
 import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';

@@ -2,7 +2,7 @@
 // A world is the core's saveAtlas() output (atlas/save.js) as gzip JSON; the list reads only the
 // index (name, seed, years, towns), never the worlds themselves. Every mode that needs a world —
 // the map on a world cell, the campaign — takes it from here (docs/CAMPAIGN.md).
-import {saveAtlas, loadAtlas, isWorldSave, LAND_KIND, WORLD_KIND} from '../atlas/save.js';
+import {saveAtlas, loadAtlas, isWorldSave, LAND_KIND, WORLD_KIND} from '../view/world.js';
 import {tx, pack, unpack, offerFile, readFile, fileTitle} from './store.js';
 
 const DATA = 'worlds', INDEX = 'worldIndex';

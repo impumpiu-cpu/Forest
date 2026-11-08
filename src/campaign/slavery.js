@@ -5,14 +5,14 @@
 // enough service to be close to freedom; it buys one while it has bonds, room and gold beyond its food money. A sale is taken ill by
 // the company: former slaves, companions and the freed lose loyalty, hirelings think less of the service, the
 // captives left grow readier to run.
-import {toTown, fromTown, townPurse} from '../atlas/treasury.js';
-import {memberFate} from '../atlas/persons.js';
+import {toTown, fromTown, townPurse} from '../atlas/index.js';
+import {memberFate} from '../atlas/index.js';
 import {SLAVE, captivePrice, lawOf} from '../data/slavery.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {STANDING} from '../data/market.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
-import {relation} from '../atlas/diplomacy.js';
+import {relation} from '../atlas/index.js';
 import {held, bondsSets, mouths} from './captives.js';
 import {makeMember, draw} from './start.js';
 import {noteFate, judge} from './social.js';

@@ -5,13 +5,14 @@
 //
 // The core is atlas/settle.js; the map, its layers, the camera and the readout are the «Мир» polygon's (ui/atlasView.js).
 import {MapView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasView.js';
+import {WorldShell} from '../ui/shell/worldShell.js';
 import {DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {FREE} from '../data/history.js';
-import {atlasDone} from '../atlas/generate.js';
-import {seasonLabel, endYear} from '../atlas/history.js';
-import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../atlas/settle.js';
-import {lineLevel, keeps, DETAILS} from '../atlas/chronicle.js';
-import {realmLabel} from '../atlas/realms.js';
+import {atlasDone} from '../view/world.js';
+import {seasonLabel, endYear} from '../view/world.js';
+import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../view/world.js';
+import {lineLevel, keeps, DETAILS} from '../view/world.js';
+import {realmLabel} from '../view/world.js';
 import {relationsHtml} from '../ui/inspect.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
@@ -21,7 +22,7 @@ import {$, seg as segRow, press} from '../ui/dom.js';
 import {dateText} from '../core/clock.js';
 import {mountPace} from '../ui/pace.js';
 import {march, questText} from './campView.js';
-import {questHint} from '../atlas/calamity.js';
+import {questHint} from '../view/world.js';
 import {CAL_PHASES, FELL_BY, ARTIFACT_AT} from '../data/labels.js';
 
 const TOOLS = [['look', 'Смотреть'], ['people', 'Народ'], ['lair', 'Логово'], ['calamity', 'Бедствие']];
@@ -73,7 +74,8 @@ export class SettleView extends MapView {
     this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', skin: 'setSkin', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
-  show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }
+  show() { (this.shell ||= new WorldShell(this)).enter(); this.sync(); this.refresh(); if (this.atlas) this.draw(); }   // (the screen laid out as a game: ui/shell/worldShell.js)
+  hide() { this.shell?.leave(); }
 
   note(text, kind = '') { const n = $('setNote'); n.textContent = text; n.className = `hand-note${kind ? ' ' + kind : ''}`; }
 

@@ -6,22 +6,22 @@
 // on the road, a hunt.
 //
 // K.bubble = {next, things: [{id, kind, x, y, i, strength, label, born, sated, goods, seen}]}
-import {realmBand} from '../atlas/towns.js';
+import {realmBand} from '../atlas/index.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {scaleOf} from '../atlas/tectonics.js';
-import {townAt} from '../atlas/peoples.js';
-import {roadAccess} from '../atlas/roads.js';
-import {trades, atWar} from '../atlas/diplomacy.js';
+import {scaleOf} from '../atlas/index.js';
+import {townAt} from '../atlas/index.js';
+import {roadAccess} from '../atlas/index.js';
+import {trades, atWar} from '../atlas/index.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
-import {faunaLevel} from '../world/region.js';
+import {faunaLevel} from '../local/index.js';
 import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
 import {HIRES} from '../data/market.js';
 import {EPIC} from '../data/calamities.js';
 import {GAME, FOES} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe, lairFoeKind, withCompany} from './land.js';
-import {cultPool} from '../atlas/necro.js';
-import {personsAt, personLabel} from '../atlas/persons.js';
+import {cultPool} from '../atlas/index.js';
+import {personsAt, personLabel} from '../atlas/index.js';
 import {dist} from '../core/util.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
