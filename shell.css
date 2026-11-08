@@ -3,15 +3,23 @@
    in the middle, a column on the right (the world in small, what is under the hand, the tallies, the latest), and the
    company along the bottom as portraits. Sizes are in units of --u: a 1080-high window has --u: 1px; a lower or higher one
    scales the fixed parts by its height and the map takes the rest of the width (src/ui/shell/campShell.js sets --u). */
-:root{--u:1px;--sh-top:calc(56 * var(--u));--sh-rail:calc(64 * var(--u));--sh-side:calc(320 * var(--u));--sh-party:calc(200 * var(--u));--sh-gap:calc(8 * var(--u));
+:root{--u:1px;--sh-top:calc(56 * var(--u));--sh-rail:calc(64 * var(--u));--sh-side:calc(320 * var(--u));--sh-party:calc(236 * var(--u));--sh-gap:calc(8 * var(--u));
   --sh-panel:#1b1e15;--sh-edge:#3a3e2c;--sh-edge-hi:#6c6245;--sh-ink:#e7e3cf}
 body.shelled{padding:0;overflow:hidden;height:100vh;height:100dvh}
-body.shelled .wrap{gap:0;height:100%}
+body.shelled .wrap{gap:0;height:100%;max-width:none}
 body.shelled > .wrap > header{display:none}
 /* the campaign section becomes the whole window */
-.app-screen.obs.shell{display:grid;grid-template-columns:var(--sh-rail) minmax(0,1fr) var(--sh-side);grid-template-rows:var(--sh-top) minmax(0,1fr) var(--sh-party);gap:var(--sh-gap);height:100%;padding:var(--sh-gap);box-sizing:border-box;background:#0f110b;font-size:calc(14 * var(--u))}
-.app-screen.obs.shell[hidden]{display:none}
-.app-screen.obs.shell > .obs-head,.app-screen.obs.shell > .obs-left,.app-screen.obs.shell > .obs-dock,.app-screen.obs.shell > .obs-chron{display:none}
+.wrap > .app-screen.shell{display:grid;grid-template-columns:var(--sh-rail) minmax(0,1fr) var(--sh-side);grid-template-rows:var(--sh-top) minmax(0,1fr) var(--sh-party);gap:var(--sh-gap);height:100%;padding:var(--sh-gap);box-sizing:border-box;background:#0f110b;font-size:calc(14 * var(--u))}
+.wrap > .app-screen.shell[hidden]{display:none}
+.app-screen.shell > :not(.sh):not(.sh-map):not(.sh-side){display:none}
+.sh-center{position:absolute;inset:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:calc(24 * var(--u))}
+.sh-center > *{width:min(100%,calc(720 * var(--u)));background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));padding:calc(16 * var(--u)) calc(20 * var(--u))}
+.sh-map .zoomseg{position:absolute;right:calc(8 * var(--u));top:calc(8 * var(--u));background:rgba(13,15,10,.82);z-index:3}
+.sh-map .preview-box{flex:1;min-height:0;border:0}
+.sh-map .preview-box canvas{width:100%;height:100%;display:block}
+.sh-map .atlas-map{flex:1;min-height:0;display:flex;flex-direction:column}
+.sh-map .atlas-map .atlas-tools,.sh-map .atlas-map .atlas-legend,.sh-map .atlas-map .land-tools,.sh-map .atlas-map #landOre{display:none}
+.sh-drawer .land-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sh{background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));min-height:0;min-width:0;box-sizing:border-box}
 .sh h3,.sh-drawer h3{margin:0;padding:calc(4 * var(--u)) calc(10 * var(--u));font-family:var(--font-display);font-weight:500;font-size:calc(13 * var(--u));letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--sh-edge);display:flex;align-items:center;gap:8px}
 .sh h3 .x,.sh-drawer h3 .x{margin-left:auto;font-weight:400;letter-spacing:0;font-family:var(--font-body);font-size:calc(12 * var(--u))}
@@ -39,7 +47,7 @@ body.shelled > .wrap > header{display:none}
 .sh-map .obs-map{flex:1;min-height:0;display:flex;flex-direction:column;gap:0}
 .sh-map .obs-canvas{border:0;border-radius:calc(6 * var(--u))}
 .sh-map .readout{position:absolute;left:calc(10 * var(--u));bottom:calc(8 * var(--u));max-width:70%;background:rgba(13,15,10,.78);padding:2px 8px;border-radius:4px;pointer-events:none}
-.sh-map .camp-local-bar{position:absolute;left:calc(10 * var(--u));top:calc(8 * var(--u));right:auto;max-width:60%}
+.sh-map .camp-local-bar{position:absolute;left:calc(10 * var(--u));top:calc(8 * var(--u));right:auto;bottom:auto;max-width:60%;background:rgba(13,15,10,.82);border-radius:6px}
 /* the drawer: a menu opened from the rail lies over the map's left edge */
 .sh-drawer{position:absolute;left:0;top:0;bottom:0;width:calc(440 * var(--u));max-width:70%;display:flex;flex-direction:column;background:rgba(27,30,21,.96);border-right:1px solid var(--sh-edge-hi);border-radius:calc(6 * var(--u)) 0 0 calc(6 * var(--u));z-index:30;box-shadow:6px 0 18px rgba(0,0,0,.45)}
 .sh-drawer[hidden]{display:none}
@@ -51,8 +59,9 @@ body.shelled > .wrap > header{display:none}
 .sh-drawer .body .card{background:transparent;border:0;padding:0}
 .sh-drawer .x{cursor:pointer}
 /* the right column */
-.sh-side{grid-column:3;grid-row:2;display:grid;grid-template-rows:calc(190 * var(--u)) minmax(0,1.2fr) minmax(0,1fr) calc(118 * var(--u));gap:var(--sh-gap);min-height:0}
+.sh-side{grid-column:3;grid-row:2/4;display:grid;grid-template-rows:calc(190 * var(--u)) minmax(0,1.2fr) minmax(0,1fr) calc(118 * var(--u));gap:var(--sh-gap);min-height:0}
 .sh-side .sh{display:flex;flex-direction:column;overflow:hidden}
+.sh-side .sh:has(> .body > [hidden]:only-child){display:none}
 .sh-side .body{flex:1;min-height:0;overflow:auto;padding:calc(6 * var(--u)) calc(10 * var(--u))}
 .sh-mini{position:relative;padding:0;background:#0d0f0a}
 .sh-mini canvas{display:block;width:100%;height:100%}
@@ -65,7 +74,7 @@ body.shelled > .wrap > header{display:none}
 .sh-last .body div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);border-left:3px solid var(--line);padding-left:7px}
 .sh-last .body div b{color:var(--fg);font-weight:400}
 /* the strip along the bottom */
-.sh-strip{grid-column:2/4;grid-row:3;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.sh-strip{grid-column:2;grid-row:3;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .sh-strip > .body{flex:1;min-height:0;overflow:auto;padding:calc(6 * var(--u)) calc(10 * var(--u))}
 .sh-strip .obs-chron{display:flex;flex-direction:column;gap:6px;background:transparent;border:0;padding:0;height:100%}
 .sh-strip .obs-chron .log{flex:1;min-height:0;overflow:auto;max-height:none}
@@ -73,14 +82,13 @@ body.shelled > .wrap > header{display:none}
 .sh-party > .body{flex:1;min-height:0;display:flex;align-items:stretch;gap:calc(6 * var(--u));padding:calc(6 * var(--u)) calc(8 * var(--u));overflow:hidden}
 .sh-party .scroll{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .sh-party .roster{display:flex;flex-direction:row;gap:calc(6 * var(--u));margin:0;height:100%}
-.sh-party .roster .rm{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;width:calc(118 * var(--u));flex:none;padding:calc(4 * var(--u));border:1px solid var(--sh-edge);border-radius:calc(5 * var(--u));background:#171a12;position:relative;font-size:calc(12 * var(--u));text-align:center;overflow:hidden}
+.sh-party .roster .rm{display:flex;flex-direction:column;align-items:center;gap:0;width:calc(132 * var(--u));flex:none;padding:calc(4 * var(--u)) calc(4 * var(--u)) calc(5 * var(--u));border:1px solid var(--sh-edge);border-radius:calc(5 * var(--u));background:#171a12;position:relative;font-size:calc(12.5 * var(--u));text-align:center;overflow:hidden}
 .sh-party .roster .rm.pick{border-color:var(--colony);box-shadow:0 0 0 1px var(--colony) inset}
-.sh-party .roster .rm canvas.pt{width:calc(64 * var(--u));height:calc(64 * var(--u));flex:none;margin-top:auto}
-.sh-party .roster .rm > span{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sh-party .roster .rm > span b{font-weight:700}
-.sh-party .roster .rm > span small{display:none}
-.sh-party .roster .rm small{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(10.5 * var(--u));color:var(--muted)}
-.sh-party .roster .hp{width:100%;height:calc(5 * var(--u))}
+.sh-party .roster .rm .role{display:block;align-self:flex-end;font-style:normal;font-size:calc(11 * var(--u));color:var(--muted);border:1px solid var(--sh-edge);border-radius:3px;padding:0 5px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.sh-party .roster .rm canvas.pt{width:calc(128 * var(--u));height:calc(128 * var(--u));flex:none;margin:calc(2 * var(--u)) 0 0}
+.sh-party .roster .rm .nm{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;margin-top:calc(-6 * var(--u))}
+.sh-party .roster .rm > span:not(.hp),.sh-party .roster .rm > small{display:none}
+.sh-party .roster .hp{display:block;width:100%;height:calc(5 * var(--u));margin-top:calc(3 * var(--u))}
 .sh-party .roster .rm.dead{display:none}
 .sh-party .arrow{flex:none;width:calc(26 * var(--u));background:transparent;border:1px solid var(--sh-edge);color:var(--muted);font-size:calc(18 * var(--u));padding:0;border-radius:calc(5 * var(--u))}
 /* a word said by the fire, over the company */

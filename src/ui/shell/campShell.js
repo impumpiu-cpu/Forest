@@ -43,8 +43,13 @@ export class CampShell extends Shell {
     for (const row of $('campRoster').querySelectorAll('.rm')) {
       if (row.querySelector('canvas.pt')) continue;
       const m = K.members.find(x => x.id === +row.dataset.id); if (!m) continue;
-      const cv = document.createElement('canvas'); cv.className = 'pt'; cv.width = 128; cv.height = 128;
+      // the card: the role above, the picture, the name below (the roster's own line stays as the tooltip)
+      const head = row.querySelector(':scope > span'), role = (head?.textContent || '').split('·')[1]?.replace(/\(.*$/, '').trim() || '';
+      row.title = `${head?.textContent.trim() || m.name}\n${row.querySelector(':scope > small')?.textContent.trim() || ''}`;
+      const cv = document.createElement('canvas'); cv.className = 'pt'; cv.width = 256; cv.height = 256;
       row.insertBefore(cv, row.firstChild);
+      const r = document.createElement('em'); r.className = 'role'; r.textContent = role; row.insertBefore(r, cv);
+      const nm = document.createElement('b'); nm.className = 'nm'; nm.textContent = m.name; cv.after(nm);
       const sp = SPECIES.get(m.race), ctx = cv.getContext('2d'), key = `${m.gear?.hand?.join(',')}|${m.gear?.body}`;
       let pawn = this.pawns.get(m.id);
       if (!pawn || pawn.key !== key) {
@@ -52,8 +57,8 @@ export class CampShell extends Shell {
         try { dress(pawn, [...(m.gear?.hand || []), m.gear?.body].filter(id => id && gearDef(id)), 0); } catch (e) { pawn.equip = {}; }
         this.pawns.set(m.id, pawn);
       }
-      ctx.clearRect(0, 0, 128, 128);
-      if (!sp || !drawPawn(ctx, pawn, sp, 64, 80, 56, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(64, 64, 18, 0, 6.283); ctx.fill(); }
+      ctx.clearRect(0, 0, 256, 256);
+      if (!sp || !drawPawn(ctx, pawn, sp, 128, 168, 118, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(128, 128, 36, 0, 6.283); ctx.fill(); }
     }
   }
   // a word said by the fire, over the one who says it (the view plays the scene: ui/campSocial.js fireWords)

@@ -27,6 +27,7 @@ import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
+import {CampSetupShell} from './shell/landShell.js';
 import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
@@ -226,7 +227,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { this.shell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
+  halt() { this.shell?.leave(); this.setupShell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -259,7 +260,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
 
   setupMode() {
     this.choosing = true;
-    this.shell?.leave();
+    this.shell?.leave(); (this.setupShell ||= new CampSetupShell(this)).enter();   // (ui/shell/landShell.js)
     const epic = this.mode === 'epic';
     $('campSetup').hidden = false; $('campRun').hidden = true; $('campRunSide').hidden = true;
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
@@ -300,7 +301,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   runMode() {
     this.choosing = false;
     $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = false;
-    (this.shell ||= new CampShell(this)).enter();   // the screen laid out as a game (ui/shell/campShell.js)
+    this.setupShell?.leave(); (this.shell ||= new CampShell(this)).enter();   // the screen laid out as a game (ui/shell/campShell.js)
     const K = this.atlas.campaign;
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`; $('campName2').textContent = this.worldName || '';
     this.syncRun(); this.renderSide();

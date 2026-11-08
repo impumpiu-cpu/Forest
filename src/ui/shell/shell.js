@@ -30,7 +30,10 @@ export class Shell {
     this.side.style.gridTemplateRows = (sp.mini ? 'calc(190 * var(--u)) ' : '') + sp.side.map(s => s.rows || 'minmax(0,1fr)').join(' ');
     this.strip = sp.strip ? el('div', 'sh sh-strip' + (sp.strip.cls ? ' ' + sp.strip.cls : ''), `<h3><span>${sp.strip.title}</span><span class="x" id="${k}ShStripNote"></span></h3><div class="body" id="${k}Sh_strip">${sp.strip.body || ''}</div>`) : null;
     for (const n of [this.top, this.rail, this.map, this.side, this.strip]) if (n) { n.hidden = true; S.appendChild(n); }
-    if (!sp.strip) { this.side.style.gridRow = '2 / 4'; this.map.style.gridRow = '2 / 4'; }
+    if (!sp.strip) this.map.style.gridRow = '2 / 4';
+    const noSide = !sp.side.length && !sp.mini, noRail = !sp.rail.length;
+    if (noSide) this.side.style.display = 'none'; if (noRail) this.rail.style.display = 'none';
+    this.map.style.gridColumn = `${noRail ? 1 : 2} / ${noSide ? 4 : 3}`;
     this.rail.addEventListener('click', e => { const b = e.target.closest('[data-menu]'); if (b) this.toggle(b.dataset.menu); });
     this.drawer.querySelector('.x').addEventListener('click', () => this.toggle(null));
     document.addEventListener('keydown', e => { if (this.on && e.key === 'Escape' && this.open) { this.toggle(null); e.stopPropagation(); } }, true);
@@ -56,9 +59,13 @@ export class Shell {
     for (const id of sp.top) { const n = $(id); if (n) { this.take(n, this.top); this.top.insertBefore(n, spacer); } }
     this.top.insertBefore(this.top.querySelector('.sh-res'), spacer);
     for (const id of sp.topEnd || []) this.take($(id), this.top);
-    this.take(S.querySelector(':scope > .obs-map'), this.map); this.map.appendChild(this.drawer);
+    const mapNode = sp.map ? sp.map() : S.querySelector(':scope > .obs-map');
+    if (mapNode) this.take(mapNode, this.map);
+    if (sp.center) { const c = el('div', 'sh sh-center'); this.map.appendChild(c); this.take(sp.center(), c); this.center = c; }
+    this.map.appendChild(this.drawer);
     for (const s of sp.side) { const n = s.node?.(); if (n) { this.take(n, this.slot(s.id)); if (n.dataset?.pane) n.hidden = false; } }
     if (sp.strip?.node) this.take(sp.strip.node(), this.slot('strip'));
+    this.nodes = Object.fromEntries(Object.entries(sp.menus).map(([id, [f, title, after]]) => [id, [f(), title, after]]));   // (found now: moved into the drawer, a block is not where its finder looks)
     this.watch = (sp.watch || []).map(([f, fn]) => [f(), fn]);
     this.obs = new MutationObserver(ms => { const seen = new Set(); for (const m of ms) for (const [n, fn] of this.watch) if (n && (n === m.target || n.contains(m.target)) && !seen.has(fn)) { seen.add(fn); fn(); } });
     this.obs.observe(S, {childList: true, subtree: true, characterData: true});
@@ -74,6 +81,7 @@ export class Shell {
     for (const node of [...this.home.keys()].reverse()) { if (node.dataset?.pane) node.hidden = !node.matches('[data-pane="object"]'); this.back(node); }
     const S = $(this.spec.section); S.classList.remove('shell'); document.body.classList.remove('shelled');
     for (const n of [this.top, this.rail, this.map, this.side, this.strip]) if (n) n.hidden = true;
+    if (this.center) { this.center.remove(); this.center = null; }
     document.documentElement.style.removeProperty('--u');
     this.spec.onLeave?.(this);
     requestAnimationFrame(() => { window.dispatchEvent(new Event('resize')); this.view.draw?.(); });
@@ -81,12 +89,12 @@ export class Shell {
 
   // the drawer: one menu at a time; the same button or Esc closes it
   toggle(id) {
-    if (this.open) { const [f] = this.spec.menus[this.open], node = f(); if (node) { this.back(node); if (node.dataset?.pane) node.hidden = true; } }
+    if (this.open) { const [node] = this.nodes[this.open]; if (node) { this.back(node); if (node.dataset?.pane) node.hidden = true; } }
     this.open = id && id !== this.open ? id : null;
     this.rail.querySelectorAll('[data-menu]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.menu === this.open)));
     this.drawer.hidden = !this.open;
     if (!this.open) return;
-    const [f, title, after] = this.spec.menus[this.open], node = f();
+    const [node, title, after] = this.nodes[this.open];
     this.drawer.querySelector('.t').textContent = title;
     if (node) { this.take(node, this.drawer.querySelector('.body')); node.hidden = false; if (node.tagName === 'DETAILS') node.open = true; }
     after?.(node);

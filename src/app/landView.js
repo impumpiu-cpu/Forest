@@ -9,6 +9,7 @@
 // The model — the land being made, its edits, the copies — is the core's (atlas/landMaker.js): this screen only shows it
 // and passes the hand on. The map, its layers, the camera and the readout are ui/atlasView.js MapView.
 import {MapView, ATLAS_OPTS} from '../ui/atlasView.js';
+import {LandShell} from '../ui/shell/landShell.js';
 import {ATLAS_SIZES, DEFAULT_ATLAS_CFG, SHAPE} from '../data/atlas.js';
 import {HEMISPHERES} from '../data/geology.js';
 import {ATLAS_STAGES} from '../view/world.js';
@@ -115,12 +116,14 @@ export class LandView extends MapView {
 
   // the screen is opened (app/main.js)
   show() {
+    (this.shell ||= new LandShell(this)).enter();   // (the screen laid out as a game: ui/shell/landShell.js)
     this.sync(); this.refreshLands();
     if (!this.atlas) this.generate();
     else { this.draw(); if (!landDone(this.atlas)) this.run(); }
   }
   // leaving the screen (app/main.js): the making halts between frames and goes on when the screen is back
   stop() { clearTimeout(this.timer); this.timer = 0; }
+  hide() { this.shell?.leave(); }
 
   sync() {
     $('landSeed').value = this.cfg.seed;

@@ -1,0 +1,49 @@
+// The screens before the world lives, in the shell (ui/shell/shell.js): «Создать землю» (app/landView.js) — the land's
+// settings, the hand and the layers in the rail, the stages and the land's tally in the column, the land's chronicle
+// along the bottom; «Быстрый старт» — its form in the middle; and the campaign's setup (ui/campaignView.js, before the
+// caravan is on its way) — the world and the capital in the rail, the world's map in the middle.
+import {$} from '../dom.js';
+import {Shell} from './shell.js';
+
+export class LandShell extends Shell {
+  constructor(view) {
+    const S = () => $('land');
+    super(view, {
+      section: 'land', title: ['landTitle', 'landName2'], top: [], topEnd: [],
+      rail: [['land', '◍', 'Земля'], ['hand', '✋', 'Рука'], ['layers', '❖', 'Слои'], ['saves', '⌂', 'Земли']],
+      menus: {
+        land: [() => S().querySelector('.atlas-form'), 'Земля'],
+        hand: [() => S().querySelector('.land-tools'), 'Рука'],
+        layers: [() => S().querySelector('.atlas-tools [data-lkey="layer"]'), 'Слои карты'],
+        saves: [() => S().querySelector('.field.saves'), 'Сохранённые земли'],
+      },
+      map: () => S().querySelector('.atlas-map'),
+      mini: false,
+      side: [{id: 'plate', title: 'Плита', node: () => $('landPlate'), rows: 'auto'}, {id: 'stages', title: 'Этапы', node: () => $('landStages')}, {id: 'sum', title: 'Земля', node: () => $('landStats'), rows: 'auto'}],
+      strip: {title: 'Летопись земли', node: () => $('landChron')},
+      onEnter: sh => { const z = S().querySelector('.zoomseg'); if (z) sh.take(z, sh.map.querySelector('.atlas-map') || sh.map); const lg = $('landLegend'); if (lg) sh.take(lg, sh.slot('sum')); sh.toggle('land'); },
+    });
+    const back = S().querySelector('.app-head [data-go="home"]'); if (back) this.spec.topEnd.push(back.id ||= 'landBack');
+  }
+}
+
+export class QuickShell extends Shell {
+  constructor(view) {
+    const S = () => $('quick');
+    super(view, {section: 'quick', title: ['quickTitle'], top: [], topEnd: [], rail: [], menus: {}, map: () => null, center: () => S().querySelector('.menu-form'), mini: false, side: [], strip: null});
+    const back = S().querySelector('.app-head [data-go="home"]'); if (back) this.spec.topEnd.push(back.id ||= 'quickBack');
+  }
+}
+
+// the campaign before the caravan is on its way: the world (the library, a new epic world) and the capital to pick
+export class CampSetupShell extends Shell {
+  constructor(view) {
+    super(view, {
+      section: 'campaign', title: ['campTitle', 'campName2'], top: [], topEnd: ['campBack'],
+      rail: [['world', '◍', 'Мир'], ['capital', '⚑', 'Столица'], ['layers', '❖', 'Слои']],
+      menus: {world: [() => $('campLibField'), 'Мир из библиотеки'], capital: [() => $('campCapsField')?.closest('.card'), 'Столица и поход'], layers: [() => $('campLayer')?.closest('.card'), 'Слои карты']},
+      mini: false, side: [{id: 'hand', title: 'Под рукой', node: () => $('campInspect')}], strip: null,
+      onEnter: sh => { $('campEpicField').hidden ? sh.toggle('world') : sh.toggle('capital'); },
+    });
+  }
+}
