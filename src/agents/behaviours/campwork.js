@@ -7,7 +7,7 @@ import {approach} from '../movement.js';
 import {hpShare} from '../agent.js';
 import {endTask} from '../lifecycle.js';
 import {raidAlarm} from '../../settlement/query.js';
-import {workFor, workById, workOn, inSetup} from '../../campaign/works.js';
+import {workFor, workById, workOn, inSetup} from '../../settlement/works.js';
 import {CAMP_WORKS} from '../../data/camp.js';
 
 export const campwork = {

@@ -11,7 +11,7 @@ import {hpShare} from '../agent.js';
 import {approach} from '../movement.js';
 import {endTask} from '../lifecycle.js';
 import {liveById} from '../lookup.js';
-import {dress} from '../wounds.js';
+import {dressWound} from '../wounds.js';
 import {releaseAll} from '../../settlement/reserve.js';
 import {log} from '../../core/log.js';
 import {esc, g, dist} from '../../core/util.js';
@@ -33,7 +33,7 @@ function fallenNear(w, a) {
 
 // the knots tied: the wound dressed (no healer's hand), its work let go, and off behind the raider
 function take(w, a, f) {
-  dress(w, f, 0);
+  dressWound(w, f, 0);
   releaseAll(w, f);
   f.task = null; f.sleeping = false; f.path = null;
   f.ledFrom = f.brain; f.brain = 'led'; f.ledBy = a.id;

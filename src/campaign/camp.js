@@ -53,14 +53,15 @@ import {FOES, GAME} from '../data/campaign.js';
 import {HERD} from '../data/bubble.js';
 import {faunaLevel} from '../world/region.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
-import {planWorks, stepWorks, worksOutcome, tetherAt} from './works.js';
+import {planWorks, worksOutcome} from './works.js';
+import {stepWorks, tetherAt} from '../settlement/works.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {bindWaiting} from '../settlement/captives.js';
 import {allItems, def as itemOf} from '../agents/equipment.js';
 import {setStanding} from '../agents/standing.js';
 import {effectsOut, woundsOut, foesOf} from './potions.js';
-import {dress as bindFallen} from '../agents/wounds.js';
+import {dressWound as bindFallen} from '../agents/wounds.js';
 import {allowed} from '../data/commands.js';
 import {tracing, noteDecision} from '../core/decide.js';
 

@@ -10,7 +10,7 @@ import {BUILDINGS} from '../../data/buildings.js';
 import {buildingById} from '../../settlement/query.js';
 import {PEN} from '../../data/behaviour.js';
 import {CAMP_WORKS} from '../../data/camp.js';
-import {tetherAt} from '../../campaign/works.js';
+import {tetherAt} from '../../settlement/works.js';
 import {scaleOf} from '../../core/time.js';
 
 // the pen this animal belongs to: the one it had, or the first with room
