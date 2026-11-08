@@ -229,7 +229,9 @@ function spawnFoe(w) {
     if (who.beast && MIGRATIONS.has(who.beast)) {
       const n = Math.min(CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
       const g = spawnGroup(w, who.beast, n, opts);
-      for (const x of g) { x.needs.food = Math.min(x.needs.food ?? 1, 0.2); x.hunger = true; }   // they came for a meal
+      // they came for a meal, at the camp: a crowd has to outnumber the pack to scare it, the camp's zone does not keep it off,
+      // and it does not wander away for want of game (agents/behaviours/scare.js, wanderOff.js)
+      for (const x of g) { x.needs.food = Math.min(x.needs.food ?? 1, CAMP.foe.hungry); x.hunger = true; }
       return g;
     }
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)

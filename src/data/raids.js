@@ -28,7 +28,9 @@ import {fill, withLed, heads, golemFor} from '../outside/bands.js';
 
 // a band that has lost many to the colony comes for the one who killed them; scouts come first, few
 const feud = w => Math.min(2, (w.chronicle.raidersKilled || 0) / 6);
-const scouting = (w, group) => (group.length <= 3 && w.stats.raids <= 3 ? 1.2 : 0);
+// a small band early on may only come to look (the next of theirs comes sooner and bigger: agents/squad.js finish); not at a
+// caravan's camp (w.campaign) — nobody comes back to a fire that moves on: there a band that comes, comes for something
+const scouting = (w, group) => (!w.campaign && group.length <= 3 && w.stats.raids <= 3 ? 1.2 : 0);
 const torches = w => (w.buildings.some(b => b.done && b.cells.length && b.key !== 'campfire') ? 1 : 0);
 
 export const RAID_BANDS = new Registry('raid band');

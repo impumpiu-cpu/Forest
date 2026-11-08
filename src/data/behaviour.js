@@ -72,6 +72,7 @@ export const SQUAD = {
   burnFor: 60,       // after the fire is lit, the band lingers this long and goes
   rearHold: 150,     // the rear guard holds pursuers off this long
   looters: 0.4,      // share of a looting band sent to the stores
+  campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
 };
 

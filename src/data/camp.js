@@ -47,6 +47,7 @@ export const CAMP = {
     // [lo, hi] — a thick land sends more, a thin one fewer; a kind as a whole is as strong as before
     density: {ref: {beasts: 0.8, wolves: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, cultists: 1.4, else: 1.2}, lo: 0.6, hi: 1.5},
     most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
+    hungry: 0.2,          // a pack of beasts comes this hungry (its food need; boldness grows below hunts.hungry, data/bestiary.js)
   },
   // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick
   // mode the heads of the record are counted at `quickHeads` a point of might
