@@ -215,10 +215,27 @@ export function levelOn(K, m, day) {
   if (day >= K.day) return m.level ?? 1;
   const D = K.daily || [];
   for (let k = D.length - 1; k >= 0; k--) if (D[k].d < day && D[k].lv?.[m.id] != null) return D[k].lv[m.id];
-  return 1;
+  // older than the days kept (K.daily holds the last few): the levels it grew before that day (each level is one row of m.grew)
+  return 1 + (m.grew || []).filter(g => g.day < day).length;
 }
 // the levels of all, the gone as they left, at the end of a day: for the day's summary
 export const levelsNow = K => Object.fromEntries(K.members.map(m => [m.id, m.level || 1]));
+// …and their experience, whole (the bar on the roster and the card, as of a day shown: Ver_E Э5)
+export const xpNow = K => Object.fromEntries(K.members.filter(m => !m.captive).map(m => [m.id, Math.floor(m.xp || 0)]));
+export function xpOn(K, m, day) {
+  if (day >= K.day) return m.xp || 0;
+  const D = K.daily || [];
+  for (let k = D.length - 1; k >= 0; k--) if (D[k].d < day && D[k].xp?.[m.id] != null) return D[k].xp[m.id];
+  return null;   // (older than the days kept, K.daily — or an old save: no bar rather than a false one)
+}
+// how far to the next level, 0…1, as of a day shown (null: not known)
+export function toNext(K, m, day) {
+  const xp = xpOn(K, m, day), L = levelOn(K, m, day); if (xp == null) return null;
+  const lo = need(L), hi = need(L + 1);
+  return Math.max(0, Math.min(1, (xp - lo) / Math.max(1, hi - lo)));
+}
+// the deeds that brought it most of its experience (m.xpOf by act id, ACTS rows: data/experience.js) — for the card
+export const deedsOf = (m, n = 5) => Object.entries(m.xpOf || {}).filter(([id]) => !ACTS.get(id)?.ground).sort((p, q) => q[1] - p[1]).slice(0, n).map(([id, xp]) => ({id, xp: Math.round(xp), count: id === 'work' ? 0 : m.acts?.[id] || 0, label: ACTS.get(id)?.label || id}));
 
 // ── for the card (ui/campSocial.js), as of a day shown
 // the letters as they stood on a day shown (the levels taken on it or after taken back; the day not yet stepped: as now)

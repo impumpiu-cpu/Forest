@@ -22,6 +22,7 @@ import {PERKS} from '../src/data/perks.js';
 import {SPECIES} from '../src/data/species.js';
 import {campSetup, openCamp, campOutcome} from '../src/campaign/camp.js';
 import {fight, applyCamp} from '../src/campaign/fight.js';
+import {noteAct} from '../src/agents/acts.js';
 import {campActs} from '../src/campaign/experience.js';
 import {FOES} from '../src/data/campaign.js';
 import {bondBy} from '../src/campaign/social.js';
@@ -159,16 +160,18 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
 }
 // Р2-03: the quick fight, won and lost: one with three maims whose health runs out dies, never rises «clean»
 {
-  let won = 0, lost = 0, bad = 0, n = 0;
+  let won = 0, lost = 0, bad = 0, n = 0, deadWon = 0, deadLost = 0;
   for (let s = 0; s < 40 && (won < 2 || lost < 2); s++) {
     const {a, K} = fresh();
     for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.02; }
     let k = s * 7919 + 1; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
     const win = fight(a, K, {kind: 'raiders', strength: 1.5, label: 'налётчики'}, r, 'night'); n++;
-    if (win) won++; else lost++;
+    const dead = K.members.filter(m => !m.alive).length;
+    if (win) { won++; deadWon += dead; } else { lost++; deadLost += dead; }
     bad += K.members.filter(m => m.alive && (m.acts?.clean || 0) > 0).length;
   }
-  ok(won > 0 && lost > 0 && bad === 0, 'Р2-03: быстрый бой при победе и поражении: с тремя увечьями упавший погибает, «чисто» не встаёт', `боёв ${n}: побед ${won}, поражений ${lost}, вставших ${bad}`);
+  // (not empty: in both the won and the lost fights some did fall and die — the rule was met, not dodged)
+  ok(won > 0 && lost > 0 && deadWon > 0 && deadLost > 0 && bad === 0, 'Р2-03: быстрый бой при победе и поражении: с тремя увечьями упавший погибает, «чисто» не встаёт', `боёв ${n}: побед ${won} (погибших ${deadWon}), поражений ${lost} (погибших ${deadLost}), вставших ${bad}`);
 }
 // Р2-04: an answer counts the deeds after the wound: «hit, then lost the eye» and «lost the eye, then hit» are not the same
 {
@@ -180,6 +183,19 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   };
   const [h1, o1] = seq(true), [h2, o2] = seq(false);
   ok(h1 === 0 && !o1 && h2 === 20 && o2, 'Р2-04: «попал, потом ослеп» — 0 попаданий после раны, ответа нет; «ослеп, потом попал» — 20, ответ открыт', `${h1}/${o1} и ${h2}/${o2}`);
+  // the same through a real camp and applyCamp: the hits on the map before and after the blow (agents/acts.js noteScarNow)
+  const real = before => {
+    const {a, K} = fresh(), S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S);
+    const v = [...w.campaign.people.values()].find(q => q.member === K.members[0].id), hits = () => { for (let i = 0; i < 20; i++) noteAct(v, 'hit'); };
+    if (before) hits();
+    fix(w, 0.99); v.hp = -0.1; lethal(w, v, 'ран', null); const id = v.maimedNow?.[0];
+    if (!before) hits();
+    applyCamp(a, K, S, campOutcome(w), null, 'stop');
+    const m = K.members[0];
+    return {id, since: sinceScar(m, id, 'hit'), hit: m.acts?.hit || 0};
+  };
+  const ra = real(true), rb = real(false);
+  ok(ra.id && ra.since === 0 && rb.since === 20 && ra.hit === 20 && rb.hit === 20, 'Р2-04 через настоящую стоянку и applyCamp: 20 попаданий до удара — 0 после раны, 20 после удара — 20', `${JSON.stringify(ra)} / ${JSON.stringify(rb)}`);
   const {K} = fresh(), m = ensureXp(K.members[4]); m.wounds = [{id: 'blindEye', day: null}]; m.acts.fight = 4;
   maimsIn(K, m, ['blindEye'], () => {}, {acts: {}, practiced: {}}, true);
   ok(sinceScar(m, 'blindEye', 'fight') === 0 && m.scarAt.blindEye.fight === 5, 'Р2-04: бой, в котором получена рана, — до неё');
@@ -213,6 +229,18 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(p6.length === 1 && p6[0].id === 'strongBack' && p6[0].rank === 1 && specialOn(K, m, 6).L === L - 1 && !scarsOn(K, m, 6).length && maimsOn(K, m, 6) === 0,
     'карточка на день 6: «Крепкая спина» I ранга, Удача без «Везучего», руки ещё нет', JSON.stringify(p6.map(p => [p.id, p.rank])));
   ok(perksBy(K, m, 20).length === 2 && scarsOn(K, m, 20).length === 1 && maimsOn(K, m, 16) === 1, 'на сегодня и после раны — всё как есть');
+}
+
+// Э6: one maimed in a quick fight is out of it — senseless, as on the map: never two maims in one fight
+{
+  let most = 0, n = 0;
+  for (let s = 1; s <= 12; s++) {
+    const {a, K} = fresh(); for (const m of K.members) { ensureXp(m); m.hp = 0.05; }
+    let k = s * 7919 + 3; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+    fight(a, K, {kind: 'raiders', strength: 3, label: 'налётчики'}, r, 'night');
+    for (const m of K.members) { most = Math.max(most, m.maims || 0); n += m.maims || 0; }
+  }
+  ok(n > 0 && most === 1, 'быстрый бой: увечный выбывает из боя — за один бой не больше одного увечья', `увечий ${n}, больше всего у одного ${most}`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

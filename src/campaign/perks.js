@@ -101,7 +101,7 @@ export function pickPerk(K, m) {
 // a perk in words: «Плечом к плечу» / «Торгаш II»
 export const perkLabel = (id, rank = 1) => `«${PERKS.get(id).label}»${rank > 1 ? ` ${['', 'I', 'II', 'III'][rank] || rank}` : ''}`;
 // the perks as they stood on a day shown (the screen plays the days back)
-export const perksBy = (K, m, day) => (m.perks || []).map(p => (day >= K.day ? p : {...p, rank: (p.at || [p.day]).filter(d => d < day).length})).filter(p => p.rank > 0);   // (a rank as it stood: Р2)
+export const perksBy = (K, m, day) => (m.perks || []).map(p => (day >= K.day ? p : {...p, rank: (p.at || Array(p.rank).fill(p.day)).filter(d => d < day).length})).filter(p => p.rank > 0);   // (a rank as it stood: Р2)
 // for the card: what a perk does, and the deed that opened it, in words
 export const perkAbout = id => PERKS.get(id).about;
 const WHY = {clean: 'пережил смертельную рану без следа', watch: 'стоял в дозорах', swap: 'подменял уставших', trade: 'торговал', town: 'видел города', fight: 'прошёл бои', beside: 'бился рядом с иноплеменниками',

@@ -32,6 +32,7 @@ import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} f
 import {famed, paceOf} from './road.js';
 import {campActs, fightActs, award} from './experience.js';
 import {maimsIn, maimInstead, spent} from './maims.js';
+import {perkOf, perkMulA} from '../data/perks.js';
 
 // the acts of a fight (data/experience.js): one who did one of them in a fight fought by its own deeds, not only by its place
 const FIGHT_ACTS = new Set(['killBlow', 'killShot', 'hit', 'shield', 'cover', 'bind', 'dress', 'tend']);
@@ -291,18 +292,24 @@ function autoFight(a, K, d, r, how) {
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
   // the blows: more when they lose, mostly on the first rank, who shield the rest
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
-  const hit = [];
-  while (hurt > 0 && alive(K).length) {
-    const ms = alive(K), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
+  const hit = [], out = new Set();
+  // the perks of the fight that tell in the quick fight too (Ver_E Э6; the local map plays them blow by blow — data/perks.js `fight`):
+  // a shield-bearer «Плечом к плечу» standing draws the blows off the others (the rest's share ÷ its cover), a healer with
+  // «Полевая перевязь» stands the one it saved up stronger (+ its dressHp)
+  const free = () => alive(K).filter(m => !m.captive && !out.has(m.id));
+  const cover = () => Math.max(1, ...free().filter(inLine).map(m => perkMulA(m, 'cover'))), saved = () => F.saved + Math.max(0, ...free().map(m => perkOf(m, 'dressHp')));
+  while (hurt > 0 && alive(K).some(m => !out.has(m.id))) {
+    // one maimed in this fight lies senseless and out of it, as on the map (agents/wounds.js maimFall): no more blows for it
+    const ms = alive(K).filter(m => !out.has(m.id)), c = cover(), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1 / c));   // a captive keeps out of it
     let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
     if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;   // at the edge, a healing potion (campaign/potions.js)
     if (!hit.includes(m)) hit.push(m);
     const mortal = r() < F.mortal;
-    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) m.hp = F.saved; else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
+    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = saved(); out.add(m.id); } else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
     else if (m.hp <= 0 && spent(m)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);   // three maims borne: the fall that a won fight forgives others kills it, with no check (Р2-03)
-    else if (m.hp <= 0) { m.hp = F.saved; award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
+    else if (m.hp <= 0) { m.hp = saved(); award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
   }
   if (!alive(K).length) return win;
   if (win) {

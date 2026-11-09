@@ -6,6 +6,8 @@
 // A maim instead of death, by the author's call: on the local map agents/wounds.js lethal makes it (senseless but not bleeding,
 // a dressing wakes it; the camp's outcome brings `maimed`); in the quick mode the fight's blow that would kill makes it here.
 import {DEATHBLOW, MAIM_OF, WOUNDS} from '../data/wounds.js';
+import {PERKS} from '../data/perks.js';
+import {ADD_MODS, CREATURE_MODS} from '../data/mods.js';
 import {ROAD_TRAUMA, ACTS, XP} from '../data/experience.js';
 import {campaignFact, bondOf} from './social.js';
 
@@ -82,6 +84,7 @@ export function frostbite(K, ms, frosty, tiredOf, r, say = () => {}) {
   for (const m of ms) {
     if (!m.alive || hasWound(m, 'frostbite')) continue;
     K.stats.frostDays = (K.stats.frostDays || 0) + 1;   // (a frosty day walked: for the calibration)
+    { const t = Math.round(tiredOf(m) * 10); (K.stats.frostTired ||= {})[t] = (K.stats.frostTired[t] || 0) + 1; }   // (how worn out they walked it, by tenths)
     if (tiredOf(m) < T.tired) continue;
     K.stats.frostChecks = (K.stats.frostChecks || 0) + 1;
     if (r() < T.chance * Math.max(0, 1 - (m.special?.E ?? 5) / T.endure)) {
@@ -92,12 +95,29 @@ export function frostbite(K, ms, frosty, tiredOf, r, say = () => {}) {
 }
 export const hasWound = (m, id) => !!m.wounds?.some(x => x.id === id);
 
+// a wound for life and what the answers taken to it by a day eased (the card, Ver_E Э5): for each number the wound touches
+// that an answer touches too — the wound's, the answer's, the two together (data/mods.js: an `add` adds, a `mul` multiplies)
+//   → [{key, label, scar, perk, now, add}] — empty when no answer to it was taken by then
+export function scarEased(m, id, perks) {
+  const W = WOUNDS.get(id); if (!W) return [];
+  const out = [];
+  for (const p of perks || []) {
+    const P = PERKS.get(p.id); if (!P?.answer || !(P.req?.scar || []).includes(id)) continue;
+    for (const [k, v] of Object.entries(P.mods || {})) {
+      const w = W.mods?.[k] ?? (k === 'hp' ? W.hp : undefined); if (w == null) continue;
+      const add = ADD_MODS.has(k), now = add ? w + v : w * v;
+      out.push({key: k, label: CREATURE_MODS.has(k) ? CREATURE_MODS.get(k).label : k, scar: w, perk: v, now: Math.round(now * 100) / 100, add, by: P.label});
+    }
+  }
+  return out;
+}
 // for the card, as of a day shown (the day not yet stepped: as now): the wounds for life borne then — those got before it, and
 // those since overcome (m.healed) — and how many maims
 export function scarsOn(K, m, day) {
   const now = day >= K.day, by = x => now || x.got == null || x.got < day;
   return [...(m.wounds || []).filter(x => x.day == null && by(x)), ...(now ? [] : (m.healed || []).filter(x => by(x) && x.off >= day))];
 }
-export const maimsOn = (K, m, day) => (day >= K.day ? m.maims || 0 : (m.maimDays || []).filter(d => d < day).length);
+// (a save from before the days were kept — no m.maimDays: the count as it is now, not a false 0)
+export const maimsOn = (K, m, day) => (day >= K.day || !m.maimDays ? m.maims || 0 : m.maimDays.filter(d => d < day).length);
 export const woundLabel = id => (WOUNDS.has(id) ? WOUNDS.get(id).label : id);
 export const maimMax = () => DEATHBLOW.maim.max;

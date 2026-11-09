@@ -42,7 +42,7 @@ import {BUBBLE, THINGS} from '../data/bubble.js';
 import {scaleOf} from '../view/world.js';
 import {townLabel} from '../view/world.js';
 import {capacity, load, wheeled} from '../view/campaign.js';
-import {baggageText, rank, isCore, levelOn} from '../view/campaign.js';
+import {baggageText, rank, isCore, levelOn, toNext} from '../view/campaign.js';
 import {meetingsOf, meetingHtml, memberCardHtml, drawFire, fireWords, fireSteps, fireLines} from './campSocial.js';
 const FIRE_STEP_MS = 1400;   // a speaker's turn at the fire on the screen (the meeting is decided; this is only its telling)
 import {Renderer} from '../render/renderer.js';
@@ -53,6 +53,8 @@ import {WALK_PHASES} from '../data/labels.js';
 import {campLocal, WATCH} from './campLocal.js';
 import {campStats} from './campStats.js';
 import {PROFILES, commandOf} from '../data/commands.js';
+import {loadHeroes, saveHeroes} from './heroes.js';
+import {ASCEND, mayAscend, ascend, summonable, takeHeroes} from '../view/campaign.js';
 const phaseWord = p => WALK_PHASES[p]?.label || p;
 const itemShort = id => gearDef(id)?.short ?? id;
 
@@ -102,6 +104,20 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       this.renderCaps(); this.draw();
     });
     $('campGo').addEventListener('click', () => this.begin());
+    // the ascended this capital may summon (ui/heroes.js, campaign/ascend.js): ticked up to ASCEND.max
+    this.heroPick = new Set();
+    $('campHeroes').addEventListener('change', e => {
+      const box = e.target.closest('input[data-uid]'); if (!box) return;
+      if (box.checked && this.heroPick.size >= ASCEND.max) { box.checked = false; return; }
+      box.checked ? this.heroPick.add(box.dataset.uid) : this.heroPick.delete(box.dataset.uid);
+    });
+    // raise the living of a company home with the crown (once)
+    $('campAscend').addEventListener('click', async () => {
+      const a = this.atlas, K = a?.campaign; if (!K || !mayAscend(K).length) return;
+      try { await saveHeroes(ascend(a, K, await loadHeroes())); $('campSaveStatus').textContent = 'Выжившие вознесены: их можно призвать в новом походе.'; }
+      catch (e) { $('campSaveStatus').textContent = 'Не удалось вознести: ' + e.message; }
+      this.syncRun(); this.renderSide();
+    });
     // the world's chronicle into a file: by its eras at the detail chosen, or the calamities only (atlas/chronicle.js)
     this.detail = loadDetail();
     segOf($('campDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); });
@@ -288,11 +304,24 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       `<br><small>${esc(c.realmLabel)}${c.ruler ? ` · ${esc(c.ruler)}` : ' · трон пуст'}${c.align ? ` · <span title="${esc(`${axisWord('order', c.align.order)} · ${axisWord('mercy', c.align.mercy)}`)}">${esc(alignLabel(c.align, 'pl'))}</span>` : ''} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · в свите ${RETINUE[c.people]?.title?.[1] || 'бойцы'}</small></span><button type="button" class="primary" title="Караван выходит из этой столицы">Выступить</button></div>`).join('')
       : '<small>В этом мире нет столиц людей, эльфов, дварфов или зеленокожих.</small>';
     $('campGo').disabled = this.capPick == null;
+    this.renderHeroes();
+  }
+  async renderHeroes() {
+    const a = this.atlas, field = $('campHeroesField');
+    if (!a || this.capPick == null) { field.hidden = true; return; }
+    const reg = await loadHeroes(), list = summonable(a, this.capPick, reg);
+    for (const uid of [...this.heroPick]) if (!list.some(h => h.uid === uid)) this.heroPick.delete(uid);
+    field.hidden = !list.length;
+    $('campHeroes').innerHTML = list.map(h => `<label class="sv"><span class="t"><input type="checkbox" data-uid="${esc(h.uid)}"${this.heroPick.has(h.uid) ? ' checked' : ''}> <b>${esc(h.name)}</b> · ${esc(SPECIES.get(h.race)?.label || h.race)}, ${h.level}-й уровень${h.maims ? ` · увечий ${h.maims}` : ''}` +
+      `<br><small>${esc(h.story.from)}, ${h.story.year ?? '?'}-й год: ${esc(h.story.endedWord)}${h.perks.length ? ` · перков ${h.perks.length}` : ''} · ${esc([...h.gear.hand, h.gear.body].filter(Boolean).map(itemShort).join(', '))}</small></span></label>`).join('');
   }
 
-  begin() {
+  async begin() {
     const a = this.atlas; if (!a || this.capPick == null) return;
-    newCampaign(a, this.capPick);
+    // the ascended ticked: taken out of the registry at once (no undo), their snapshots into the campaign (K.summoned)
+    let summon = null;
+    if (this.heroPick?.size) { const {reg, snaps} = takeHeroes(await loadHeroes(), [...this.heroPick]); await saveHeroes(reg); summon = snaps; this.heroPick.clear(); }
+    newCampaign(a, this.capPick, {summon});
     if (this.follow) this.closeUp();
     this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null;
     this.runMode(); this.run();
@@ -314,6 +343,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   syncRun() {
     const K = this.atlas?.campaign, done = !this.making && (!K || finished(K));   // (a world being made runs on the same pace buttons)
     $('campAgain').hidden = !done || !K;
+    $('campAscend').hidden = !done || !K || !mayAscend(K).length;
     $('campPause').hidden = done; $('campSpeed').hidden = done;
     this.syncPaceBox?.();
     if (this.local) $('campPause').textContent = this.ticks.paused ? 'Дальше' : 'Пауза';
@@ -507,6 +537,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       const sp = SPECIES.get(m.race), rk = m.captive ? rank(K, m) : `${rank(K, m)}, ур. ${levelOn(K, m, day)}`;   // (the level beside the role: campaign/experience.js)
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : '', m.belt?.length ? `в поясе: ${m.belt.map(r => RESOURCES.get(r).short).join(', ')}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
+        (() => { const t = m.captive || !m.alive ? null : toNext(K, m, day); return t == null ? '' : `<span class="xp" title="опыт до ${levelOn(K, m, day) + 1}-го уровня: ${Math.round(t * 100)}%"><i style="width:${Math.round(t * 100)}%"></i></span>`; })() +
         `<small>${esc(raceLabel(sp))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog(); this.renderFire(day);

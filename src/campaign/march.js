@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {WOUNDS} from '../data/wounds.js';
 import {toTown} from '../atlas/index.js';
 import {scaleOf} from '../atlas/index.js';
 import {gearDef} from '../local/index.js';
@@ -60,7 +61,7 @@ import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
-import {share, levelEvening, levelsNow, autoWork} from './experience.js';
+import {share, levelEvening, levelsNow, xpNow, autoWork} from './experience.js';
 import {companyVal} from './perks.js';
 import {terrorsFrom, frostbite} from './maims.js';
 
@@ -110,9 +111,13 @@ const itemDef = id => gearDef(id);
 export function memberMight(m) {
   if (m.captive) return 0;   // a captive fights for nobody but itself (campaign/captives.js)
   const M = CAMPAIGN.might, s = m.special || {};
-  const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
+  // a lost arm holds one thing — the weapon, not the shield (campaign/camp.js campSetup, the same rule)
+  const hand = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => itemDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+  const dmg = Math.max(0, ...hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
-  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
+  // the maims and traumas for life weigh as on the map: their strength (mods.str) and health (hp) — Ver_E Э6
+  const scar = (m.wounds || []).filter(x => x.day == null).reduce((v, x) => { const W = WOUNDS.get(x.id); return v * (W?.mods?.str ?? 1) * (W?.hp ?? 1); }, 1);
+  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp) * scar;
 }
 // the share of its might a fighter keeps with this much health
 const hurtMight = hp => CAMPAIGN.might.hurt[0] + CAMPAIGN.might.hurt[1] * hp;
@@ -572,7 +577,7 @@ export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: 
   council: K.council?.day === d ? {pick: K.council.pick, n: K.council.opts.length} : null,
   crown: K.quest ? {state: K.quest.crown.state, carrier: K.quest.crown.carrier, exact: K.quest.crown.exact, seen: K.quest.crown.seen, r: K.quest.crown.area?.r ?? null} : null,
   rel: Object.fromEntries(Object.entries(K.social?.relations || {}).map(([a, row]) => [a, {...row}])),
-  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0])), lv: levelsNow(K)});
+  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0])), lv: levelsNow(K), xp: xpNow(K)});
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};

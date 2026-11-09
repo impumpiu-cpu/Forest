@@ -23,7 +23,7 @@ const add = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 
 const out = {};
 for (const mode of modes) {
-  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0, perks: {}, firstPerk: [], perksAt130: [], maims: 0, maimedMembers: 0, overMax: 0, dead: 0, deadMaimed: 0, scars: {}, core: 0, coreDead130: 0, coreLv130: [], terrorChecks: 0, frostDays: 0, frostChecks: 0, walksOver: 0};
+  const R = {walks: 0, days: [], members: [], src: {ground: 0, act: 0}, srcBy: {}, letters: {}, byRole: {}, byRace: {}, cases: {shieldNoKill: [], master: [], late: []}, levelDays: {}, ms: 0, perks: {}, firstPerk: [], perksAt130: [], maims: 0, maimedMembers: 0, overMax: 0, dead: 0, deadMaimed: 0, scars: {}, core: 0, coreDead130: 0, coreLv130: [], terrorChecks: 0, frostDays: 0, frostChecks: 0, frostTired: {}, walksOver: 0, casePerks: {}};
   for (let s = 0; s < worlds; s++) {
     const base = generateAtlas({seed: String(777 + s * 13), size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
     const fz = JSON.stringify(saveAtlas(base));
@@ -33,7 +33,7 @@ for (const mode of modes) {
       newCampaign(a, c.town, {mode});
       const K = runCampaign(a);
       R.ms += Date.now() - t0; R.walks++; R.days.push(K.day); if (K.phase !== 'timeout') R.walksOver++;
-      R.terrorChecks += K.stats.terrorChecks || 0; R.frostDays += K.stats.frostDays || 0; R.frostChecks += K.stats.frostChecks || 0;
+      R.terrorChecks += K.stats.terrorChecks || 0; R.frostDays += K.stats.frostDays || 0; R.frostChecks += K.stats.frostChecks || 0; for (const [t, n] of Object.entries(K.stats.frostTired || {})) add(R.frostTired, t, n);
       for (const m of K.members) {
         if (m.captive) continue;
         const end = m.died?.day ?? m.left?.day ?? K.day, days = Math.max(1, end - (m.joined ?? 0));
@@ -48,11 +48,13 @@ for (const mode of modes) {
         if ((m.joined ?? 0) === 0 && (K.day >= 130 || (m.died && m.died.day < 130))) { R.core++; if (m.died && m.died.day < 130) R.coreDead130++; else R.coreLv130.push(1 + (m.grew || []).filter(g => g.day < 130).length); } if (m.died) { R.dead++; if (m.maims) R.deadMaimed++; }
         for (const x of m.wounds || []) if (x.day == null) add(R.scars, x.id);
         if (m.perks?.length) R.firstPerk.push(Math.min(...m.perks.map(p => p.day)) - (m.joined ?? 0));
-        if (days >= 130) R.perksAt130.push((m.perks || []).reduce((n, p) => n + (p.at || [p.day]).filter(d => d - (m.joined ?? 0) <= 130).length, 0));   // (ranks counted by their own days)
+        if (days >= 130) R.perksAt130.push((m.perks || []).reduce((n, p) => n + (p.at || Array(p.rank).fill(p.day)).filter(d => d - (m.joined ?? 0) <= 130).length, 0));   // (ranks counted by their own days)
         (R.byRole[role] ||= []).push(row); (R.byRace[m.race] ||= []).push(row);
-        if (m.fight && COMBAT_ROLES.get(m.fight).holdsLine && !(m.acts?.killBlow || m.acts?.killShot)) R.cases.shieldNoKill.push(row);
-        if (m.master || Object.values(m.local?.skill || {}).some(v => v >= 0.45)) R.cases.master.push(row);
-        if ((m.joined ?? 0) >= K.day / 3 && (m.joined ?? 0) > 5) R.cases.late.push(row);
+        // the named cases and the perks they came to (Э6: each has a path to a perk of its own — data/perks.js)
+        const caseOf = k => { R.cases[k].push(row); for (const p of m.perks || []) add(R.casePerks[k] ||= {}, p.id); if (!m.perks?.length) add(R.casePerks[k] ||= {}, '— без перков'); };
+        if (m.fight && COMBAT_ROLES.get(m.fight).holdsLine && !(m.acts?.killBlow || m.acts?.killShot)) caseOf('shieldNoKill');
+        if (m.master || Object.values(m.local?.skill || {}).some(v => v >= 0.45)) caseOf('master');
+        if ((m.joined ?? 0) >= K.day / 3 && (m.joined ?? 0) > 5) caseOf('late');
       }
       process.stderr.write(`${mode} ${s}/${p}: ${K.phase} ${K.day} дн.; уровни ${K.members.filter(m => !m.captive).map(m => m.level || 1).join(' ')}\n`);
     }
@@ -73,7 +75,8 @@ for (const mode of modes) {
     firstPerkDay: median(R.firstPerk), perksBy130: median(R.perksAt130),
     maims: R.maims, maimedMembers: R.maimedMembers, maimsOverMax: R.overMax, dead: R.dead,
     at130: {core: R.core, deadShare: R.core ? Math.round(R.coreDead130 / R.core * 100) : 0, levelMedian: median(R.coreLv130)}, walksFinished: R.walksOver,
-    roadTraumaChecks: {terrors: R.terrorChecks, frostyDaysWalked: R.frostDays, frostChecks: R.frostChecks}, deadAfterMaims: R.deadMaimed, scars: R.scars,
+    roadTraumaChecks: {terrors: R.terrorChecks, frostyDaysWalked: R.frostDays, frostChecks: R.frostChecks, frostTiredTenths: R.frostTired},
+    casePerks: R.casePerks, deadAfterMaims: R.deadMaimed, scars: R.scars,
     mean: sumUp(all)};
 }
 console.log(asJson ? JSON.stringify(out) : JSON.stringify(out, null, 1));

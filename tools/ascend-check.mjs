@@ -1,0 +1,70 @@
+// Ascension (Ver_E Э7; campaign/ascend.js; docs/CAMPAIGN.md «Вознесение»).
+//   a company home with the crown raises its living, free members — with all they became and the gear on them; the dead,
+//   captives, those who left — not; the registry is outside the world, a plain record;
+//   a capital summons only the races it takes, at most four, each taking a place of the eight; chosen — erased at once;
+//   the campaign keeps the snapshots (K.summoned): it replays the same with no registry, the rest of the core as drawn without;
+//   a piece the game does not know stays in the registry; a summoned who falls does not come back.
+//   node tools/ascend-check.mjs
+import {generateAtlas} from '../src/atlas/generate.js';
+import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
+import {capitals, newCampaign} from '../src/campaign/index.js';
+import {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, snapshotOf, racesOf} from '../src/campaign/ascend.js';
+import {ensureXp} from '../src/campaign/experience.js';
+
+let fails = 0;
+const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
+
+const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+const fz = JSON.stringify(saveAtlas(base));
+const fresh = () => loadAtlas(JSON.parse(fz));
+const caps = capitals(base), hum = caps.find(c => c.people === 'humans'), orc = caps.find(c => c.people === 'orcs');
+
+// a company home with the crown: two raised with their deeds, a dead one and a captive not
+const a = fresh(), K = newCampaign(a, hum.town, {mode: 'auto'});
+for (const m of K.members) ensureXp(m);
+const [h1, h2, dead, cap] = K.members;
+Object.assign(h1, {level: 9, xp: 600, perks: [{id: 'oldWolf', rank: 1, day: 40, at: [40], why: 'fight'}], maims: 1, wounds: [{id: 'lostArm', day: null, got: 50}, {id: 'cut', day: 60}]});
+h1.acts.fight = 22; h2.level = 4;
+dead.alive = false; dead.died = {day: 70, why: 'пал'}; cap.captive = {since: 1};
+ok(mayAscend(K).length === 0, 'пока поход не кончился с короной — возносить некого');
+K.phase = 'won';
+const may = mayAscend(K);
+ok(may.includes(h1) && may.includes(h2) && !may.includes(dead) && !may.includes(cap), 'с короной — живые и свободные; погибший и пленный — нет', may.map(m => m.name).join(', '));
+let reg = ascend(a, K, emptyRegistry());
+const s1 = reg.heroes.find(h => h.name === h1.name);
+ok(reg.heroes.length === may.length && s1.level === 9 && s1.perks[0].id === 'oldWolf' && s1.maims === 1 && s1.wounds.length === 1 && s1.wounds[0].id === 'lostArm' && s1.acts.fight === 22,
+  'снимок: уровень, перки, увечья и раны навсегда (не временные), дела', JSON.stringify({lv: s1.level, perks: s1.perks.length, maims: s1.maims, wounds: s1.wounds.map(w => w.id)}));
+ok(JSON.stringify(s1.gear) === JSON.stringify(h1.gear) && !('relations' in s1) && !('id' in s1) && !('ride' in s1) && !('gold' in s1), 'переносится снаряжение на нём; связей, id, верхового, золота — нет');
+ok(K.ascended && mayAscend(K).length === 0 && ascend(a, K, reg).heroes.length === reg.heroes.length, 'вознести можно один раз');
+
+// summoning: only the races the capital takes
+const ra = fresh();
+ok(summonable(ra, hum.town, reg).length === reg.heroes.filter(h => racesOf(ra, hum.town).has(h.race)).length && (!orc || summonable(ra, orc.town, reg).every(h => racesOf(ra, orc.town).has(h.race))), 'столица зовёт только те расы, что берёт в свиту');
+// chosen → erased; at most four
+const many = {v: ASCEND.version, heroes: Array.from({length: 6}, (_, k) => ({...s1, uid: `x${k}`, name: `${s1.name}${k}`}))};
+const {reg: after, snaps} = takeHeroes(many, many.heroes.map(h => h.uid));
+ok(snaps.length === ASCEND.max && after.heroes.length === 2 && snaps.every(s => !after.heroes.some(h => h.uid === s.uid)), 'выбранные сразу стёрты из реестра; не больше четырёх', `взято ${snaps.length}, осталось ${after.heroes.length}`);
+
+// into the core: the summoned in its place, the rest as drawn without them; the campaign replays with no registry
+const plain = newCampaign(fresh(), hum.town, {mode: 'auto'});
+const b1 = fresh(), K1 = newCampaign(b1, hum.town, {mode: 'auto', summon: [s1]});
+const sm = K1.members.find(m => m.summoned);
+ok(sm && sm.name === s1.name && sm.level === 9 && sm.maims === 1 && sm.perks[0].id === 'oldWolf' && sm.wounds.some(w => w.id === 'lostArm') && JSON.stringify(sm.gear.hand) === JSON.stringify(s1.gear.hand),
+  'призванный в ядре: уровень, перки, увечья, снаряжение', sm ? `${sm.name}, ${sm.level}-й, ${sm.fight}` : 'нет');
+ok(K1.members.length === 8 && K1.members.filter(m => !m.summoned).every(m => plain.members.some(p => p.id === m.id && p.name === m.name && JSON.stringify(p.special) === JSON.stringify(m.special))), 'остальные семь — те же, что выпали бы без призыва (поток рождения не сдвинут)');
+ok(K1.summoned?.length === 1 && K1.summoned[0].uid === s1.uid && K1.log.some(l => /призван.* из вознесённых: в прошлый раз/.test(l.text)), 'снимок записан в K.summoned; в летописи — «в прошлый раз…»');
+const K2 = newCampaign(fresh(), hum.town, {mode: 'auto', summon: JSON.parse(JSON.stringify(K1.summoned))});
+ok(JSON.stringify(K2.members) === JSON.stringify(K1.members), 'повтор по сиду и K.summoned — тот же отряд, реестр не нужен');
+// a piece the game does not know stays in the registry
+const odd = {...s1, uid: 'odd', gear: {hand: [...s1.gear.hand, 'nosuchthing'], body: s1.gear.body}};
+const t2 = takeHeroes({v: ASCEND.version, heroes: [odd]}, ['odd']), K3 = newCampaign(fresh(), hum.town, {mode: 'auto', summon: t2.snaps});
+ok(t2.reg.left?.[0]?.items.includes('nosuchthing') && !K3.members.find(m => m.summoned).gear.hand.includes('nosuchthing'), 'вещь, которой игра не знает, остаётся в реестре');
+// a summoned who falls does not come back: it is not raised, and the registry no longer has it
+const sf = K3.members.find(m => m.summoned); sf.alive = false; sf.died = {day: 3, why: 'пал'}; K3.phase = 'won';
+ok(!mayAscend(K3).includes(sf) && !t2.reg.heroes.some(h => h.uid === 'odd'), 'павший призванный не возвращается');
+// a raised summoned counts its walks
+const K4 = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [s1]}); K4.phase = 'won';
+const again = snapshotOf(fresh(), K4, K4.members.find(m => m.summoned));
+ok(again.story.walks === 2 && again.story.before?.from === s1.story.from, 'вознесённый второй раз помнит, что это второй поход');
+
+if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

@@ -8,7 +8,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
-import {reasonsOf, levelOn, need, specialOn, grewBy, growText, perksBy, perkLabel, perkAbout, perkWhy, woundLabel, maimMax, scarsOn, maimsOn} from '../view/campaign.js';
+import {reasonsOf, levelOn, need, specialOn, grewBy, growText, perksBy, perkLabel, perkAbout, perkWhy, woundLabel, maimMax, scarsOn, maimsOn, xpOn, toNext, deedsOf, scarEased, summonLine} from '../view/campaign.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
 import {dress, gearDef} from '../view/local.js';
@@ -91,10 +91,21 @@ export function memberCardHtml(K, m, day = Infinity) {
   const letters = ['S', 'P', 'E', 'C', 'I', 'A', 'L'].filter(k => sp[k] != null).map(k => `${{S: 'СИЛ', P: 'ВОС', E: 'ВЫН', C: 'ХАР', I: 'ИНТ', A: 'ЛОВ', L: 'УДЧ'}[k]} ${sp[k]}`).join(' · ');
   const grew = grewBy(K, m, day).slice(-4).reverse().map(g => `<li>${g.level}-й, день ${g.day + 1}: ${esc(growText(m, g))}</li>`).join('');
   const perks = perksBy(K, m, day).map(p => `<li><b>${esc(perkLabel(p.id, p.rank))}</b> — ${esc(perkAbout(p.id))}${p.why && p.why !== 'level' ? ` <small class="muted">(${esc(perkWhy(p.why))})</small>` : ''}</li>`).join('');   // (campaign/perks.js)
-  const scars = scarsOn(K, m, day).map(x => `<li>${esc(woundLabel(x.id))}</li>`).join(''), maims = maimsOn(K, m, day);   // (as of the day shown)   // (traumas and maims: campaign/maims.js)
-  const xpLine = m.captive ? '' : `<p>Уровень ${lv}${now && m.xp != null ? ` · опыт ${Math.floor(m.xp)} из ${need((m.level || 1) + 1)}` : ''}</p>`;
-  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${xpLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
+  // the wounds for life, as of the day shown, each with what the answers taken by then eased of it (numbers: campaign/maims.js)
+  const num = (v, add) => (add ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2).replace('.', ',')}` : `×${v.toFixed(2).replace('.', ',')}`);
+  const taken = perksBy(K, m, day);
+  const scars = scarsOn(K, m, day).map(x => {
+    const e = scarEased(m, x.id, taken);
+    return `<li>${esc(woundLabel(x.id))}${e.length ? ` <small class="muted">— ${e.map(q => `${esc(q.label.toLowerCase())} ${num(q.scar, q.add)} → ${num(q.now, q.add)} («${esc(q.by)}»${(q.add ? q.now < 0 : q.now > 1 && q.key === 'cold' || q.now < 1 && q.key !== 'cold') ? ', не до конца' : ''})`).join('; ')}</small>` : ''}</li>`;
+  }).join(''), maims = maimsOn(K, m, day);   // (traumas and maims: campaign/maims.js)
+  // the experience as of the day shown: the level, the whole and the bar to the next (K.daily keeps it: campaign/march.js)
+  const xp = xpOn(K, m, day), bar = toNext(K, m, day);
+  const xpLine = m.captive ? '' : `<p>Уровень ${lv}${xp != null ? ` · опыт ${Math.floor(xp)} из ${need(lv + 1)}` : ''}</p>${bar != null ? `<div class="xpbar" title="до ${lv + 1}-го уровня"><i style="width:${Math.round(bar * 100)}%"></i></div>` : ''}`;
+  // the deeds that brought it most (the counts are its whole road to now: the deeds are not kept by day)
+  const deeds = m.captive ? '' : deedsOf(m).map(d => `<li>${esc(d.label)}${d.count ? ` × ${d.count}` : ''} — ${d.xp} оп.</li>`).join('');
+  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${m.summoned ? `<p class="muted">${esc(summonLine({name: m.name, gender: m.gender, story: m.summoned}))}</p>` : ''}${xpLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${grew ? `<h5>Рост</h5><ul>${grew}</ul>` : ''}` +
+    `${deeds ? `<h5>Опыт и дела${now ? '' : ' <small class="muted">(на сегодня)</small>'}</h5><ul>${deeds}</ul>` : ''}` +
     `${perks ? `<h5>Перки</h5><ul>${perks}</ul>` : ''}` +
     `${scars ? `<h5>Раны на всю жизнь${maims ? ` · увечий ${maims} из ${maimMax()}` : ''}</h5><ul>${scars}</ul>` : ''}` +
     `${rel ? `<h5>Отношения</h5><ul>${rel}</ul>` : ''}${mem ? `<h5>Помнит</h5><ul>${mem}</ul>` : ''}${vows ? `<h5>Обещания</h5><ul>${vows}</ul>` : ''}</div>`;

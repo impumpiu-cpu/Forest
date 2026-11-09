@@ -31,6 +31,7 @@ import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
 import {CAMP_KIT} from '../data/transport.js';
 import {ensureXp} from './experience.js';
+import {summonInto, sayStart} from './ascend.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -130,7 +131,8 @@ function member(K, a, rnd, {species, role}, k) {
 }
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
-export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
+// summon — the snapshots of the ascended chosen for its core (campaign/ascend.js): taken whole into K.summoned
+export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
   const t = a.towns.find(x => x.id === townId && x.alive);
   if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error('Это не столица мажорного народа.');
@@ -144,6 +146,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   };
   const {r, done} = draw(K, 'birth');
   drawCore(a, K, r).forEach((m, k) => K.members.push(member(K, a, r, m, k)));
+  if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
   K.quest = makeQuest(a, K, r);
@@ -165,6 +168,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   const R = RETINUE[t.people];
   say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.fighters} ${R.title[2]} — ${K.members.map(m => `${m.name} (${m.fight ? COMBAT_ROLES.get(m.fight).label : SPECIES.get(m.race).label})`).join(', ')}. ` +
     (K.quest ? `${questIntro(a, K)} Еды — на ${Math.floor(K.food / K.members.length)} дней.` : 'Куда идти, никто не знает.'), 'start', true);
+  sayStart(a, K);   // «в прошлый раз…» of the summoned (campaign/ascend.js)
   if (!K.quest) K.phase = 'lost';
   return K;
 }

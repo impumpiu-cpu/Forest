@@ -23,6 +23,9 @@ import {createAgent} from '../src/agents/agent.js';
 import {refreshBody} from '../src/agents/special.js';
 import {gearSpec} from '../src/agents/itemDefs.js';
 import {noteScars} from '../src/campaign/maims.js';
+import {fight} from '../src/campaign/fight.js';
+import {inLine} from '../src/data/campaign.js';
+import {memberMight} from '../src/campaign/march.js';
 
 let fails = 0;
 const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
@@ -143,6 +146,29 @@ function bothModes(P) {
   x.perks = [{id: 'kinAmong', rank: 1}]; const b1 = bondOf(K, x.id, y.id); bondBy(K, x.id, y.id, 0.1);
   ok(Math.abs((bondOf(K, x.id, y.id) - b1) / plain - 1.5) < 1e-6, 'свой среди чужих: связь с иноплеменником крепнет в полтора раза быстрее');
   m.perks = [];
+}
+
+// ── the quick fight (Ver_E Э6): the perks of the fight tell there too — same company, foe and draws, the perk only differs
+{
+  const rng = s => { let k = s * 48271 + 7; return () => ((k = (k * 16807) % 2147483647) / 2147483647); };
+  const run = (s, setup) => {
+    const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}); for (const m of K2.members) ensureXp(m);
+    setup(K2); const hp0 = new Map(K2.members.map(m => [m.id, m.hp ?? 1]));
+    fight(a2, K2, {kind: 'raiders', strength: 1, label: 'налётчики'}, rng(s), 'night');
+    return K2.members.filter(m => hp0.has(m.id) && !inLine(m) && !m.captive).reduce((v, m) => v + (hp0.get(m.id) - (m.alive ? m.hp ?? 1 : 0)), 0);
+  };
+  let plain = 0, covered = 0;
+  for (let s = 1; s <= 30; s++) { plain += run(s, () => {}); covered += run(s, K2 => { for (const m of K2.members.filter(inLine)) m.perks = [{id: 'shoulder', rank: 1}]; }); }
+  ok(covered < plain * 0.9, 'быстрый бой: щитоносец «Плечом к плечу» отводит удары от остальных', `урон не стоящим в строю за 30 боёв: ${plain.toFixed(2)} → ${covered.toFixed(2)}`);
+  // the one saved stands up stronger with «Полевая перевязь» in the company; one maimed is out of the fight
+  const saved = perk => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}), [m, h] = K2.members; for (const x of K2.members) ensureXp(x);
+    for (const x of K2.members) x.hp = x === m ? 0.01 : 5; if (perk) h.perks = [{id: 'fieldDressing', rank: 2}];
+    fight(a2, K2, {kind: 'raiders', strength: 0.3, label: 'налётчики'}, () => 0.001, 'night'); return m.hp; };
+  const h0 = saved(false), h1 = saved(true);
+  ok(h1 > h0 + 0.15, 'быстрый бой: вытащенный встаёт крепче, если в отряде «Полевая перевязь»', `${h0.toFixed(2)} → ${h1.toFixed(2)}`);
+  const a3 = fresh(), K3 = newCampaign(a3, cap.town, {mode: 'auto'}), arm = K3.members.find(m => m.gear.hand.length > 1) || K3.members[0];
+  const before = memberMight(arm); arm.wounds = [{id: 'lostArm', day: null}];
+  ok(memberMight(arm) < before, 'быстрый бой: потерянная рука — меньше силы в общем счёте (одна вещь в руке, Сила ×0,75)', `${before.toFixed(2)} → ${memberMight(arm).toFixed(2)}`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }
