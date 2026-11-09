@@ -44,6 +44,7 @@ export function addWork(w, key, cells, ticks, extra = {}) {
 function finish(w, work, silent = false) {
   work.done = true; work.by = null;
   if (work.key === 'stakes') for (const i of work.cells) { const g = w.grid; g.terr[i] = T.STAKES; g.bush[i] = 0; g.food[i] = 0; g.wood[i] = 0; g.fuel[i] = BY_CODE[T.STAKES].fuel; for (const id of ['camp', 'zone', 'sites', 'berries', 'trees']) w.nav.dirty(id); }
+  if (work.key === 'cache') { work.found = w.tick; if (!silent) log(w, `${work.text || 'Нашли тайник.'}`, 'build'); return; }
   if (silent) return;
   const label = W()[work.key].label;
   if (work.key === 'stakes') { const left = worksOf(w).filter(x => x.key === 'stakes' && !x.done).length; if (!left) log(w, `Судесы вбиты: лагерь обнесён кольями${work.cut ? ', нарубленными на месте' : ''}.`, 'build'); return; }
@@ -56,11 +57,14 @@ export function workFor(w, a) {
   let best = null, bd = Infinity;
   for (const x of worksOf(w)) {
     if (x.done || (x.by != null && x.by !== a.id)) continue;
+    if (x.key === 'cache' && !searchable(w)) continue;
     const d = Math.hypot(x.x - a.x, x.y - a.y) + (x.key === 'stakes' ? 0 : -2);   // (the things by the fire first, the ring after)
     if (d < bd) { bd = d; best = x; }
   }
   return best;
 }
+// a cache is searched only when no foe is about: none coming, or all of it beaten or gone (campaign/camp.js `quiet`)
+export const searchable = w => { const C = w.campaign; return !!C && (C.S.foe ? !!C.spawned && C.quiet != null : true); };
 export const workById = (w, id) => worksOf(w).find(x => x.id === id) || null;
 // a tick of work on `x` by `a`: done at `ticks`
 export function workOn(w, a, x) {

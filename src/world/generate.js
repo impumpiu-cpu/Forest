@@ -7,6 +7,7 @@ import {HOUR} from '../core/time.js';
 import {T, BY_CODE, OPEN, TERRAIN} from '../data/terrain.js';
 import {BIOMES} from '../data/biomes.js';
 import {makeSite, paintOrder} from './site.js';
+import {newLayout, layPieces, layRoadPieces} from './pieces.js';
 import {findPath} from '../nav/astar.js';
 import {DX, DY} from './grid.js';
 const BIOME_LIST = BIOMES.all();
@@ -128,8 +129,13 @@ export function makeTerrain(input) {
   if (best < 0) best = (h >> 1) * w + (w >> 1);
   const cx = best % w, cy = (best / w) | 0;
   for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) { const j = (cy + yy) * w + cx + xx; terr[j] = OPEN[under[j]] ? under[j] : T.GRASS; under[j] = terr[j]; }
+  // the pieces of terrain (world/pieces.js): before the roads a scene or the land's pieces, after them the road's own —
+  // only on a map whose site asks for them (a camp of the campaign), from a stream of their own
+  const P = newLayout({w, h, site});
+  if (P) layPieces({w, h, terr, under, biome, cx, cy, site, treeNoise: tq}, P);
   const gates = layGates(site, {w, h, terr, under, biome, cx, cy, river});
-  return {w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates, river};
+  if (P) layRoadPieces({w, h, terr, under, biome, cx, cy, site}, P);
+  return {w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates, river, pieces: P ? P.list : null, scene: P?.scene || null};
 }
 
 // cheapest path for water: a Dijkstra over the cells with a cost that loves low ground and open water
@@ -323,7 +329,7 @@ export function createWorld(cfg) {
   const world = {
     cfg: {...cfg}, light: !!cfg.light, climate: t.site.climate, calendar: {startDay: t.site.startDay},
     w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
-    site: t.site, region: t.site.region, gates: t.gates, river: t.river,
+    site: t.site, region: t.site.region, gates: t.gates, river: t.river, pieces: t.pieces || [], scene: t.scene || null,
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, under: t.under, biome: t.biome, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       heat: f32(), heat2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},

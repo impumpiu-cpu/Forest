@@ -10,7 +10,11 @@
 import {CAMP_WORKS} from '../data/camp.js';
 import {VEHICLES} from '../data/transport.js';
 import {T} from '../data/terrain.js';
-import {worksOf, workDone, spotNear, addWork, freeCell} from '../local/index.js';
+import {worksOf, workDone, spotNear, addWork, freeCell, gearDef, FAR} from '../local/index.js';
+import {PIECES, PIECE_FINDS} from '../data/pieces.js';
+import {RESOURCES} from '../data/resources.js';
+import {mulberry, seedNumber} from '../core/rng.js';
+import {plural} from '../core/util.js';
 
 const W = () => CAMP_WORKS;
 
@@ -65,9 +69,50 @@ export function worksOutcome(w) {
   out.cut = worksOf(w).filter(x => x.key === 'stakes' && x.done && x.cut).length;
   return out;
 }
+// ── the caches of the pieces of terrain (world/pieces.js): each a chore on the map, what it holds rolled as the camp opens
+// from a stream of its own (data/pieces.js PIECE_FINDS) — the same camp played again holds the same
+export function planCaches(w, S) {
+  const D = W().cache;
+  for (const p of w.pieces || []) for (const i of p.caches || []) {
+    const F = PIECE_FINDS[pieceFinds(p)]; if (!F) continue;
+    const loot = rollLoot(mulberry(seedNumber(`${S.seed}:cache:${i}`)), F);
+    w.works ||= [];
+    addWork(w, 'cache', [i], D.ticks, {piece: p.label, loot, text: loot.text});
+  }
+}
+const pieceFinds = p => PIECE_TABLE[p.id] ?? null;
+const PIECE_TABLE = Object.fromEntries(PIECES.map(p => [p.id, p.finds || null]));
+const between = (r, [lo, hi]) => lo + r() * (hi - lo);
+// what a cache holds: {gold, goods: {resource: n}, items: [item ids], text}
+export function rollLoot(r, F) {
+  const gold = Math.round(between(r, F.gold || [0, 0])), goods = {}, items = [], things = [];
+  if (gold > 0) things.push(`${gold} ${plural(gold, 'золотой', 'золотых', 'золотых')}`);
+  for (const [id, [p, lo, hi]] of Object.entries(F.goods || {})) {
+    if (r() >= p || !RESOURCES.has(id)) continue;
+    const n = Math.round(between(r, [lo, hi])); if (n > 0) { goods[id] = n; things.push(`${RESOURCES.get(id).label.toLowerCase()} (${n})`); }
+  }
+  for (const [id, p] of Object.entries(F.items || {})) if (r() < p && gearDef(id)) { items.push(id); things.push(gearDef(id).label.toLowerCase()); }
+  if (!things.length) things.push('пусто — кто-то побывал здесь раньше');
+  const text = F.text[(r() * F.text.length) | 0].replace('{things}', things.join(', '));
+  return {gold, goods, items, text};
+}
+// the morning (campaign/camp.js campOutcome): the caches searched on the map, and — when the field is the caravan's — the rest
+// it can walk to, searched before it goes on → [{piece, gold, goods, items, text, late}]
+export function cachesOutcome(w, won) {
+  const out = [], camp = w.nav?.get('camp');
+  for (const x of worksOf(w)) {
+    if (x.key !== 'cache') continue;
+    const late = !x.done;
+    if (late && (!won || !camp || !(camp[x.cells[0]] < FAR))) continue;
+    out.push({piece: x.piece, gold: x.loot.gold, goods: {...x.loot.goods}, items: [...x.loot.items], text: x.loot.text, late});
+  }
+  return out;
+}
+
 // the label of a thing, for the map's card (ui/campLocal.js)
 export function workText(w, x) {
   const D = W()[x.key], label = D.label[0].toUpperCase() + D.label.slice(1);
+  if (x.key === 'cache') return x.done ? `Тайник (${x.piece}) обыскан` : `Тайник: ${x.piece}${x.by != null ? ' — обыскивают' : ''}`;
   if (x.key === 'wagon') return `${VEHICLES[x.kind]?.label === 'тележка' ? 'Тележка' : 'Повозка'} с припасами — у неё склад каравана`;
   if (!x.done) return `${label}: ${x.by != null ? 'делают' : 'ещё не взялись'}, ${Math.round(x.progress / x.ticks * 100)}%`;
   if (x.key === 'tether') return `${label}: звери привязаны — увести можно, лишь перерезав верёвку`;

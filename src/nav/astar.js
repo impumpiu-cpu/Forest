@@ -1,12 +1,11 @@
 // Point-to-point paths around water and rocks (A* on the grid, 8 directions, no corner cutting).
 // Flow fields cover shared targets (camp, berries, prey…); this covers one agent chasing one
 // moving target or walking to a spot of its own. Buffers are allocated once per world and reused.
-import {BY_CODE, WALKABLE, T, cheapestStep} from '../data/terrain.js';   // (cheapestStep: the table «Рельеф» may change it; kept till an edit)
+import {BY_CODE, WALKABLE, T, BLOCKS, COVER, COVER_AT, cheapestStep} from '../data/terrain.js';   // (cheapestStep: the table «Рельеф» may change it; kept till an edit)
 
-const ROCK = T.ROCK;
 import {DX, DY} from '../world/grid.js';
 
-const SQRT2 = Math.SQRT2;
+const SQRT2 = Math.SQRT2, MID = 1 / 2;
 
 function buffers(w) {
   if (w.astar) return w.astar;
@@ -42,8 +41,23 @@ function walkLine(w, x0, y0, x1, y1, visit) {
 // line of sight between two points over walkable cells only (the straight walk is safe)
 export const clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => WALKABLE[w.grid.terr[i]] === 1);
 
-// a shot's line: only rock stops an arrow or a stone (water, grass and wood do not)
-export const lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => w.grid.terr[i] !== ROCK);
+// a shot's line: only rock and what is built of stone stop an arrow or a stone (water, grass and wood do not;
+// data/terrain.js `blocksFire`: a wall, a column, a palisade)
+export const lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => !BLOCKS[w.grid.terr[i]]);
+
+// the cover a target has against a shot (data/terrain.js `cover`: rubble, a windfall, a barricade, gravestones): the
+// best of the cells on the line within `near` of the target, its own cell too — but not those by the shooter (one does
+// not hide from one's own barricade). 0 when there is none
+export function coverOnLine(w, x0, y0, x1, y1, near = COVER_AT.near) {
+  let best = 0;
+  walkLine(w, x0, y0, x1, y1, i => {
+    const c = COVER[w.grid.terr[i]]; if (!c) return true;
+    const cx = (i % w.w) + MID, cy = ((i / w.w) | 0) + MID;
+    if (Math.hypot(cx - x1, cy - y1) <= near && Math.hypot(cx - x0, cy - y0) > near && c > best) best = c;
+    return true;
+  });
+  return best;
+}
 
 
 // cells from start to goal (excluding start), or null when the goal cannot be reached within `budget` expansions

@@ -30,7 +30,7 @@ import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
-import {campActs, fightActs, award} from './experience.js';
+import {campActs, fightActs, award, share} from './experience.js';
 import {ACTS} from '../data/experience.js';
 import {maimsIn, maimInstead, spent} from './maims.js';
 import {perkOf, perkMulA} from '../data/perks.js';
@@ -191,6 +191,7 @@ export function applyCamp(a, K, S, o, d, how) {
   }
   if (K.vehicles.some(v => v.gone)) { K.vehicles = K.vehicles.filter(v => !v.gone); assign(K); K.path = null; }
   const took = takeGear(K, o.items);
+  takeFound(a, K, o.found);   // the caches of the pieces of terrain searched here (campaign/works.js cachesOutcome)
   const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
   o.led = taken.length;   // (those really led away — the caravan's room may be short of the bound; the rest get away: recordFight `led`)
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
@@ -211,6 +212,21 @@ export function applyCamp(a, K, S, o, d, how) {
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
   for (const m of fallen) { const seen = m.fellSeen; delete m.fell; delete m.fellSeen; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`, seen ? {seen} : {}); }
+}
+
+// what the caches of a camp's map held (campaign/works.js cachesOutcome): the gold into the purse, the goods into the cargo,
+// the gear to whoever it suits (as from a beaten foe), the rest for sale; each find told as it was found
+function takeFound(a, K, found) {
+  for (const f of found || []) {
+    if (f.gold > 0) K.gold = Math.round((K.gold + f.gold) * 10) / 10;
+    for (const [id, n] of Object.entries(f.goods || {})) if (RESOURCES.has(id) && n > 0) K.cargo[id] = (K.cargo[id] || 0) + n;
+    const took = f.items?.length ? takeGear(K, f.items) : [];
+    K.stats.finds = (K.stats.finds || 0) + 1; K.stats.caches = (K.stats.caches || 0) + 1;
+    if (f.gold > 0 || Object.keys(f.goods || {}).length || f.items?.length) K.stats.treasures = (K.stats.treasures || 0) + 1;
+    share(K, K.members.filter(m => m.alive), 'find');
+    say(a, K, `${f.late ? 'Перед уходом' : 'На стоянке'} (${f.piece}): ${f.text[0].toLowerCase()}${f.text.slice(1)}${took.length ? ` Взяли себе: ${names(took)}.` : ''}`, 'treasure');
+  }
+  if (found?.length) topUp(K);   // a healing potion found goes into a slot (campaign/potions.js)
 }
 
 // a death on the local map as the campaign tells it (settlement/chronicle.js noteDeath: «умер от холода», «погиб: волк»,

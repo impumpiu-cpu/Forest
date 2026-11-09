@@ -8,7 +8,7 @@ import {maxHp, hpShare} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
-import {lineOfFire} from '../nav/astar.js';
+import {lineOfFire, coverOnLine} from '../nav/astar.js';
 import {practice} from './skills.js';
 import {LEARN} from '../data/skills.js';
 import {critChance, lethal} from './wounds.js';
@@ -346,6 +346,10 @@ export function shoot(w, a, t) {
   const guard = coverFor(w, a, t);
   if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share * perkMulA(guard, 'cover')) {   // (a perk of the line: «Плечом к плечу», data/perks.js)
     wear(w, guard, guard.gear.coverItem); guard.flash = 3; noteAct(guard, 'shield'); return 'miss'; }   // (the shield held over another: an act, agents/acts.js)
+  // the cover of the ground by the target (a barricade, rubble, a windfall, gravestones: data/terrain.js `cover`) takes the
+  // shot instead — drawn only where there is cover, so a map with none plays as before
+  const ground = coverOnLine(w, a.x, a.y, t.x, t.y);
+  if (ground > 0 && deg !== 'critSuccess' && w.rngs.combat() < ground) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
   const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
