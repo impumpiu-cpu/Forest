@@ -114,6 +114,10 @@ export const CAMP_WORKS = {
   // wagon brought (data/transport.js VEHICLES.stakes) are set `ticks` a cell; with no wheels, on a stop with an axe among the
   // tools, up to `cutPerDay` are cut and set, `cutTicks` a cell, and stand there the next day (campaign/fight.js K.campHere)
   stakes: {label: 'судесы', ticks: 25, radius: 6.5, cutTicks: 70, cutPerDay: 8, gap: 3},
+  // a cache in a piece of terrain (world/pieces.js; what it holds: data/pieces.js PIECE_FINDS): searched `ticks` by one pair
+  // of hands, and only when no foe is about — the foe beaten, or none coming. What is not searched on the map is searched
+  // in the morning, when the field is the caravan's (campaign/works.js cachesOutcome)
+  cache: {label: 'тайник', ticks: 40},
 };
 
 // the game of the land (data/campaign.js GAME) and the flow that brings it to the map (data/migrations.js)

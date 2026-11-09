@@ -25,10 +25,12 @@ const fresh = (k, rich) => {
 };
 const run = (a, K, ev, ticks = 4 * 2400) => {
   const S = campSetup(a, K, ev), w = openCamp(S), t0 = w.tick, doneAt = {};
-  for (let g = 0; g < ticks && !campDone(w); g++) { stepCamp(w); for (const x of w.works) if (x.done && doneAt[x.key] == null) doneAt[x.key] = (w.tick - t0) / HOUR; }
+  for (let g = 0; g < ticks && !campDone(w); g++) { stepCamp(w); for (const x of w.works) if (x.done && x.key !== 'cache' && doneAt[x.key] == null) doneAt[x.key] = (w.tick - t0) / HOUR; }
   return {S, w, o: campOutcome(w), doneAt};
 };
-const keys = w => [...new Set(w.works.map(x => x.key))].sort().join();
+// (the chores of the camp: a cache of a piece of terrain is not one of them — tools/pieces-check.mjs)
+const chores = w => w.works.filter(x => x.key !== 'cache');
+const keys = w => [...new Set(chores(w).map(x => x.key))].sort().join();
 
 // a night's camp with everything brought
 {
@@ -36,7 +38,7 @@ const keys = w => [...new Set(w.works.map(x => x.key))].sort().join();
   check('с тележкой, зверями и шкурами ставят повозку, коновязь, колья, вертел и судесы', keys(w) === 'racks,spit,stakes,tether,wagon', keys(w));
   const st = w.works.filter(x => x.key === 'stakes');
   check('судес столько, сколько везёт тележка', st.length === VEHICLES.cart.stakes, `${st.length}`);
-  check('всё сделано в первые часы стоянки', w.works.every(x => x.done) && Object.values(doneAt).every(h => h <= CAMP_WORKS.setup.hours + 1), JSON.stringify(doneAt));
+  check('всё сделано в первые часы стоянки', chores(w).every(x => x.done) && Object.values(doneAt).every(h => h <= CAMP_WORKS.setup.hours + 1), JSON.stringify(doneAt));
   check('судесы — местность, проходимая, но медленная', st.every(x => w.grid.terr[x.cells[0]] === T.STAKES) && BY_CODE[T.STAKES].walkable && BY_CODE[T.STAKES].speed < 0.5);
   check('шкуры за ночь выделаны в кожу', o.works.cured === CAMP_WORKS.racks.cure.hides && o.cargo.leather === CAMP_WORKS.racks.cure.leather && o.cargo.hide === 5 - CAMP_WORKS.racks.cure.hides, `шкур ${o.cargo.hide}, кожи ${o.cargo.leather}`);
   check('кольцо судес не перекрывает дорогу', st.every(x => { const i = x.cells[0], xx = i % w.w, yy = (i / w.w) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (w.grid.terr[(yy + dy) * w.w + xx + dx] === T.ROAD) return false; return true; }));
@@ -56,7 +58,7 @@ const keys = w => [...new Set(w.works.map(x => x.key))].sort().join();
   applyCamp(a, K, A.S, A.o, null, 'stop'); K.day++;
   check('день стоянки записан', K.campHere?.i === K.i && K.campHere.days === 1 && K.campHere.cut === A.o.works.cut, JSON.stringify(K.campHere));
   const B = run(a, K, {kind: 'stop', dayIn: 1}, 10);
-  check('назавтра всё стоит с вечера, судесы — с первого дня', B.S.stayed === 1 && B.w.works.every(x => x.done) && B.w.works.filter(x => x.key === 'stakes').length === A.o.works.cut, `${B.w.works.filter(x => x.key === 'stakes').length}`);
+  check('назавтра всё стоит с вечера, судесы — с первого дня', B.S.stayed === 1 && chores(B.w).every(x => x.done) && B.w.works.filter(x => x.key === 'stakes').length === A.o.works.cut, `${B.w.works.filter(x => x.key === 'stakes').length}`);
 }
 // a stop whose hunt brings fresh meat: a smoking rack, the meat into jerky
 {

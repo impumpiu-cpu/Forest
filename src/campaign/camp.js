@@ -53,8 +53,8 @@ import {FOES, GAME} from '../data/campaign.js';
 import {HERD} from '../data/bubble.js';
 import {faunaLevel} from '../local/index.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
-import {planWorks, worksOutcome} from './works.js';
-import {stepWorks, tetherAt} from '../local/index.js';
+import {planWorks, worksOutcome, planCaches, cachesOutcome} from './works.js';
+import {stepWorks, tetherAt, worksOf} from '../local/index.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {bindWaiting} from '../local/index.js';
@@ -101,6 +101,9 @@ export function campSetup(a, K, ev) {
     met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
     // a stop to dig: the ore the council stopped for (campaign/mine.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
+    // the pieces of terrain of this map (world/pieces.js): a scene on a storm or a boss, else the land's and the scatter
+    // (a camp kept from before the pieces has none, and is watched again as it was played)
+    layout: {v: 1, kind: ev.kind, scene: ev.kind === 'guard' || !!ev.foe?.boss, foe: ev.foe ? {kind: ev.foe.kind, band: ev.foe.band || CAMP_FOES[ev.foe.kind]?.band || null, beast: ev.foe.beast || CAMP_FOES[ev.foe.kind]?.beast || null, boss: ev.foe.boss?.species || null} : null},
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
   };
 }
@@ -119,7 +122,7 @@ function hours(S, r) {
 export function openCamp(S) {
   const plan = S.plan;
   const cfg = {...DEFAULT_CFG, name: 'Стоянка', seed: S.seed, size: 'small', dims: CAMP.size, colonists: 0, stock: 'poor', start: 'spring',
-    raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay}}, ...(S.profile ? {profile: S.profile} : {})};   // (the world's profile of commands: data/commands.js)
+    raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay, ...(S.layout ? {layout: S.layout} : {})}}, ...(S.profile ? {profile: S.profile} : {})};   // (the world's profile of commands: data/commands.js)
   const w = createWorld(cfg);
   w.dayScale = CAMP.clock.scale;   // the camp's sun is slower: more is done by it in a night (core/time.js; docs/CAMPAIGN.md «Часы стоянки»)
   // an open-cut face is dug only on a stop to dig, and only for the ore it was for (settlement/query.js wantedOre)
@@ -206,7 +209,10 @@ export function openCamp(S) {
   if (S.kind === 'night' || S.kind === 'stop') for (const id of camp) { const b = putUp(w, id, 0); if (b) w.campaign.built.push({key: id, id: b.id}); }
   // the evening's chores: the cart by the fire, the tether, the hides, the spit, the smoking rack, the stakes (campaign/works.js)
   if (S.kind === 'night' || S.kind === 'stop') planWorks(w, {...S, beasts: S.beasts.filter(b => !BEASTS[b.kind].golem)});
+  planCaches(w, S);   // the caches of the pieces of terrain, to be searched once the foe is beaten (campaign/works.js)
   w.logLines = [];
+  const seen = (w.pieces || []).filter(p => p.layer !== 'scene' && p.layer !== 'scatter').map(p => p.label);
+  if (w.scene || seen.length) log(w, `Место: ${[...new Set([w.scene?.label, ...seen].filter(Boolean))].join(', ')}.`, 'build');
   return w;
 }
 
@@ -234,7 +240,9 @@ export function foeWeight(r, F, kind) {
 
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
-  const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
+  // a stormed place laid out as a scene: its guards stand at the heart (world/pieces.js anchor), if one can walk there
+  const heart = S.kind === 'guard' && w.scene?.anchor != null && w.nav.get('camp')[w.scene.anchor] < FAR ? w.scene.anchor : null;
+  const close = S.kind === 'ambush' || S.kind === 'guard', at = heart ?? (close ? nearCell(w, CAMP[S.kind].near, r) : null);
   const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
   // (a beast with no arrival on the local map — a rift's demon — still comes as a band, as before: docs/TODO.md)
   const beast = F.beast || map.beast, band = F.band || map.band;
@@ -377,7 +385,8 @@ export function campDone(w) {
   if (w.tick >= C.until) return true;
   // the foe is beaten or gone, and an hour passed quietly (the wounded tended, the fire made up)
   // (the camp waits for its own fallen to be helped, and for the fallen foes to be bound while there are bonds)
-  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= atHour(w, CAMP.quiet) && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w);
+  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= atHour(w, CAMP.quiet) && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w)
+    && !worksOf(w).some(x => x.key === 'cache' && !x.done && x.by != null);   // (a cache being searched is searched to the end)
 }
 
 // play a camp through; → the world at its end
@@ -477,7 +486,8 @@ function outcomeOf(w) {
   // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
   // taken, whatever it cost)
   const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
-  return {kind: S.kind, day: S.day, session: S.seed, won, bossDead, members, bonds, promises, works, facts: (C.facts || []).map(f => ({...f, saw: [...f.saw], params: {...f.params}})), beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
+  const found = cachesOutcome(w, won);   // the caches searched on the map, and the rest in the morning if the field is ours
+  return {kind: S.kind, day: S.day, session: S.seed, won, bossDead, found, members, bonds, promises, works, facts: (C.facts || []).map(f => ({...f, saw: [...f.saw], params: {...f.params}})), beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
     foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length, species, boss, might: C.foeMight || 0, weight: C.weight ?? null}, ours: {might: C.ourMight || 0, kills}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 

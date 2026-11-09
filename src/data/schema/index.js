@@ -641,7 +641,7 @@ TABLES.push(
   // Поселение
   fix(autoTable({id: 'terrain', label: 'Рельеф', group: 'Поселение', after: rebuildTerrain, rows: () => TERRAIN.all(),
     note: 'Почва клетки локальной карты (data/terrain.js): проходимость, цена шага и скорость, топливо для огня, кусты, лес и выпас, укрытие, сырость. Цвет — формула графики. Правка — для новых карт: на идущей проходимость пересчитана сразу, а дороги и поля течения — по ходу их обновления.'}),
-  {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water']}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
+  {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water', 'built']}, cover: {type: 'num', min: 0, max: 1}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
     bush: {type: 'num', min: 0, max: 1}, wood: {type: 'num', min: 0, max: 1}, graze: {type: 'num', min: 0, max: 1}, wet: {type: 'num', min: 0, max: 1}}),
   fix(autoTable({id: 'seasons', label: 'Времена года', group: 'Поселение', rows: () => SEASONS.all(),
     note: 'Что меняет время года (data/seasons.js): одежда (dress), рост ягод и огорода, увядание, скорость работ (jobs.*), зайцы, голод хищников, порча еды, дожди, порог возгорания, мороз. Оттепель и календарь — в «Календаре».'}),
