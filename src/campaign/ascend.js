@@ -14,6 +14,7 @@ import {COMBAT_ROLES} from '../data/roles.js';
 import {gearDef} from '../local/index.js';
 import {townKin} from '../atlas/index.js';
 import {ensureXp} from './experience.js';
+import {XP} from '../data/experience.js';
 import {GROUP} from './start.js';
 import {say} from './march.js';
 
@@ -28,6 +29,9 @@ export function mayAscend(K) {
   return K.members.filter(m => m.alive && !m.captive && !m.left);
 }
 
+// the values of a snapshot as a list: those written by the first build of Ver_E came as an object {0: …, 1: …} — read either way
+const valuesOf = v => (!v ? null : Array.isArray(v) ? [...v] : Object.values(v));
+
 const WORDS = {won: ['вернулся с короной', 'вернулась с короной'], lost: ['сгинул с караваном', 'сгинула с караваном'], timeout: ['не дождался конца пути', 'не дождалась конца пути']};
 // one member as it goes up: what it is and what is on it (the gear: a word with marks, kept as it is — data/items.js)
 export function snapshotOf(a, K, m) {
@@ -36,7 +40,7 @@ export function snapshotOf(a, K, m) {
   return {
     v: ASCEND.version, uid: `${K.seed}:${K.capital}:${a.hist?.year ?? 0}:${K.day}:${m.id}`,   // (the walk's seed, capital, year and last day: two walks from one world in one year do not meet — Р3)
     name: m.name, gender: m.gender, race: m.race, people: K.people, fight: m.fight || null, role: m.role,
-    special: {...m.special}, align: m.align ? {...m.align} : null, values: m.values ? {...m.values} : null,
+    special: {...m.special}, align: m.align ? {...m.align} : null, values: m.values ? [...m.values] : null,   // (values: a list, as everywhere — campaign/perks.js, camp.js)
     local: m.local ? JSON.parse(JSON.stringify(m.local)) : null,
     xp: m.xp || 0, level: m.level || 1, xpBy: {...(m.xpBy || {})}, acts: {...(m.acts || {})}, workBy: {...(m.workBy || {})}, xpOf: {...(m.xpOf || {})},
     grew: (m.grew || []).map(g => ({...g, day: null})), perks: (m.perks || []).map(p => ({id: p.id, rank: p.rank, why: p.why})),
@@ -93,17 +97,21 @@ export function summonInto(a, K, snaps) {
     const core = K.members.filter(m => m.core && !used.has(m.id)), free = core.filter(m => !m.required);
     const at = core.find(m => m.required && closes(m.required)) || free.find(m => group && m.fight && COMBAT_ROLES.get(m.fight)?.group === group) || free.at(-1) || core.at(-1); if (!at) break;
     used.add(at.id);
-    const hand = s.gear.hand.filter(id => gearDef(id)), body = s.gear.body && gearDef(s.gear.body) ? s.gear.body : at.gear.body;
+    const own = s.gear.hand.filter(id => gearDef(id)), body = s.gear.body && gearDef(s.gear.body) ? s.gear.body : at.gear.body;
+    // the camp's tools (RETINUE.tools) the one it replaces carried stay with the caravan: in its hands, unless it brings one of
+    // the same form (an axe for an axe) — the core keeps what it builds and hunts with
+    const formOf = id => gearDef(id)?.form, tools = at.gear.hand.filter(id => gearDef(id)?.tool && !own.some(h => formOf(h) === formOf(id)));
+    const hand = own.length ? [...own, ...tools] : at.gear.hand;
     Object.assign(at, {
       name: s.name, gender: s.gender, race: s.race, fight: s.fight && COMBAT_ROLES.has(s.fight) ? s.fight : at.fight, role: s.role || at.role,
-      special: {...s.special}, align: s.align ? {...s.align} : at.align, values: s.values ? {...s.values} : at.values,
+      special: {...s.special}, align: s.align ? {...s.align} : at.align, values: valuesOf(s.values) || at.values,
       local: s.local ? JSON.parse(JSON.stringify(s.local)) : at.local,
-      xp: s.xp, level: s.level, xpBy: {...s.xpBy}, acts: {...s.acts}, workBy: {...s.workBy}, xpOf: {...s.xpOf},
+      xp: s.xp, level: Math.min(s.level, XP.cap), xpBy: {...s.xpBy}, acts: {...s.acts}, workBy: {...s.workBy}, xpOf: {...s.xpOf},
       grew: [], perks: s.perks.map(p => ({id: p.id, rank: p.rank, day: 0, at: Array(p.rank).fill(0), why: p.why})),
       maims: s.maims, maimDays: Array(s.maims).fill(-1), wounds: s.wounds.length ? s.wounds.map(x => ({id: x.id, day: null, got: -1})) : null,
       scarAt: s.scarAt ? JSON.parse(JSON.stringify(s.scarAt)) : null,
-      gear: {hand: hand.length ? hand : at.gear.hand, body}, belt: [...(s.belt || [])], potions: s.potions || at.potions || 0,
-      summoned: {...s.story, uid: s.uid, level: s.level},
+      gear: {hand, body}, belt: [...(s.belt || [])], potions: s.potions || at.potions || 0,
+      summoned: {...s.story, uid: s.uid, level: Math.min(s.level, XP.cap)},
     });
     ensureXp(at);
   }

@@ -1,7 +1,7 @@
 // Experience, acts and levels of the caravan's members (docs/CAMPAIGN.md «Опыт, дела и уровни»; data/experience.js; plan
 // claude/xp-plan.md). The one owner of `m.xp`: nothing else adds to it.
 //
-//   m.xp     — experience in all · m.level — 1 and up, no ceiling
+//   m.xp     — experience in all · m.level — 1 up to XP.cap (20): past it no level, no letter, no perk
 //   m.xpBy   — {S, P, E, C, I, A}: the experience of the acts since the last level, by the letter they wrote; the letter a
 //              level grows is read from it, then it is cleared
 //   m.acts   — {act id: units}: what one has done in all (the perks' requirements read it: Ver_E Э3)
@@ -25,8 +25,10 @@ const alive = K => K.members.filter(m => m.alive);
 
 // the experience level L takes in all: XP.need × (L − 1) × (L + XP.lead) — 0, 30, 70, 120, 180 … 630 at the 10th, 2280 at the 20th
 export const need = L => (L <= 1 ? 0 : XP.need * (L - 1) * (L + XP.lead));
-// the level a sum of experience reaches
-export function levelAt(xp) { let L = 1; while (xp >= need(L + 1)) L++; return L; }
+// the level a sum of experience reaches (no further than the cap)
+export function levelAt(xp) { let L = 1; while (L < XP.cap && xp >= need(L + 1)) L++; return L; }
+// it stands at the last level: no more growth
+export const atCap = L => L >= XP.cap;
 
 // a member's fields, as they come: a newcomer, a captive bound on the map, a save from before (the user's call: no back-filling,
 // everyone of an old save starts at 1 with nothing)
@@ -84,20 +86,31 @@ export function campActs(K, o) {
 
 // ── a fight, either mode (campaign/fight.js fight): the ground for all who stood in it, by its danger; the storm and the named
 // fight on top; whoever fought and did nothing of its own there gets its role's letter
+//   rec.merit — Map(member id → the experience of its own acts in this fight), from the camp on the local map; null — the quick
+//   fight, which knows no acts: there all get the ground whole
 export function fightActs(K, d, how, win, rec, present) {
   const theirs = rec.theirs, ours = rec.ours;
   if (!(theirs > 0) || !(ours > 0) || !rec.foes) return;
   const danger = clamp(theirs / ours, XP.danger[0], XP.danger[1]);
   const ms = present.filter(m => m.alive && !m.captive);
-  share(K, ms, 'fight', 1, {xp: ACTS.get('fight').xp * danger});
+  byMerit(K, ms, 'fight', ACTS.get('fight').xp * danger, rec.merit);
   // the counts the perks ask, both modes see them: fights in a role of its group, fights beside one of another race
   for (const m of ms) {
     const g = groupOf(m); if (g) m.acts[`fight:${g}`] = (m.acts[`fight:${g}`] || 0) + 1;
     if (ms.some(o => o !== m && o.race !== m.race)) m.acts.beside = (m.acts.beside || 0) + 1;
   }
-  if (how === 'guard' && win) share(K, ms, 'storm');
-  if (d.boss && win) share(K, ms, 'boss');
+  if (how === 'guard' && win) byMerit(K, ms, 'storm', ACTS.get('storm').xp, rec.merit);
+  if (d.boss && win) byMerit(K, ms, 'boss', ACTS.get('boss').xp, rec.merit);
   for (const m of ms) if (!rec.acted?.has(m.id)) award(K, m, 'role');
+}
+
+// the ground of a fight by merit (XP.merit): `present` of it to each one there, the rest by its own acts against the best's
+function byMerit(K, ms, id, whole, merit) {
+  const best = merit ? Math.max(0, ...ms.map(m => merit.get(m.id) || 0)) : 0;
+  for (const m of ms) {
+    const k = !merit ? 1 : XP.merit.present + (1 - XP.merit.present) * (best > 0 ? (merit.get(m.id) || 0) / best : 0);
+    award(K, m, id, 1, {xp: whole * k});
+  }
 }
 
 // ── a day of a stop in the quick mode (campaign/march.js caravanDay): not played on the map, so each one's work is what a played
@@ -135,7 +148,7 @@ export function levelEvening(a, K, say = () => {}) {
   for (const m of alive(K)) {
     ensureXp(m);
     const picks = [], grown = new Set(), perks = [];
-    while (m.xp >= need(m.level + 1)) { picks.push(levelUp(K, m, grown)); const p = pickPerk(K, m); if (p) perks.push(p); }   // a perk a level, while there is one it may take (campaign/perks.js)
+    while (!atCap(m.level) && m.xp >= need(m.level + 1)) { picks.push(levelUp(K, m, grown)); const p = pickPerk(K, m); if (p) perks.push(p); }   // a perk a level, while there is one it may take (campaign/perks.js)
     if (!picks.length) continue;
     m.xpBy = {}; m.lvOf = {}; m.lvWork = {};
     say(levelLine(m, picks) + perkLine(m, perks), [m.id]);
@@ -231,7 +244,7 @@ export function xpOn(K, m, day) {
 }
 // how far to the next level, 0…1, as of a day shown (null: not known)
 export function toNext(K, m, day) {
-  const xp = xpOn(K, m, day), L = levelOn(K, m, day); if (xp == null) return null;
+  const xp = xpOn(K, m, day), L = levelOn(K, m, day); if (xp == null || atCap(L)) return null;   // (at the cap: no bar — nothing to grow to)
   const lo = need(L), hi = need(L + 1);
   return Math.max(0, Math.min(1, (xp - lo) / Math.max(1, hi - lo)));
 }

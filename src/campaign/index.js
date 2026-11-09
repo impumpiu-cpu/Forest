@@ -86,7 +86,7 @@ export {campDone, openCamp, stepCamp} from './camp.js';
 export {dateOf, lineLevel, readLines} from './chronicle.js';
 export {baggageText, isCore, rank} from './march.js';
 export {reasonsOf} from './social.js';
-export {levelOn, need, specialOn, grewBy, growText, xpOn, toNext, deedsOf} from './experience.js';
+export {levelOn, need, atCap, specialOn, grewBy, growText, xpOn, toNext, deedsOf} from './experience.js';
 export {perksBy, perkLabel, perkAbout, perkWhy} from './perks.js';
 export {woundLabel, maimMax, scarsOn, maimsOn, scarEased} from './maims.js';
 export {FATES, HOWS, fightReportText, fightStats, groupText, walkReportText, walkStats} from './stats.js';

@@ -18,10 +18,10 @@ import {Registry} from '../core/registry.js';
 export const ACTS = new Registry('act');
 ACTS.registerAll([
   // ── the ground
-  {id: 'fight',   ground: true, label: 'бой', xp: 40, note: '× опасность боя (сила врага / сила отряда, в пределах XP.danger); всем свободным, кто был в бою'},
-  {id: 'storm',   ground: true, label: 'штурм взят', xp: 30, note: 'сверх боя, всем бившимся'},
-  {id: 'boss',    ground: true, label: 'именной бой', xp: 40, note: 'главарь, стража кургана: сверх боя'},
-  {id: 'road',    ground: true, label: 'день пути', xp: 2},
+  {id: 'fight',   ground: true, label: 'бой', xp: 40, note: '× опасность боя (сила врага / сила отряда, в пределах XP.danger); по заслугам (XP.merit): бывшему в бою — доля present, остальное — по его делам в этом бою относительно лучшего'},
+  {id: 'storm',   ground: true, label: 'штурм взят', xp: 30, note: 'сверх боя, по заслугам, как бой'},
+  {id: 'boss',    ground: true, label: 'именной бой', xp: 40, note: 'главарь, стража кургана: сверх боя, по заслугам, как бой'},
+  {id: 'road',    ground: true, label: 'день пути', xp: 0.5, note: 'мало: путь — не заслуга (было 2: одна дорога доводила до потолка)'},
   {id: 'ferry',   ground: true, label: 'переправа', xp: 5},
   {id: 'find',    ground: true, label: 'находка', xp: 10},
   {id: 'clue',    ground: true, label: 'подсказка', xp: 20},
@@ -55,7 +55,11 @@ ACTS.registerAll([
 ]);
 
 // the numbers of experience:
-//   need, lead — the experience of level L in all: need × (L − 1) × (L + lead); no ceiling. 5 and 4: the 2nd at 30 (~the 6th day),
+//   cap      — the last level: past it no level, no letter, no perk (the author's call: 20; experience is still counted)
+//   merit    — a fight's ground (fight, storm, boss) by merit: each one there gets `present` of it; the rest goes by its own acts
+//            in that fight (their experience, with the deeds the camp's facts tell: saved, aid, stoodUp) against the best's —
+//            the best gets it whole, one who did nothing only `present`. The quick fight knows no acts: there all get it whole
+//   need, lead — the experience of level L in all: need × (L − 1) × (L + lead), up to `cap`. 5 and 4: the 2nd at 30 (~the 6th day),
 //            the 5th at 180, the 10th at 630 (~the 125th day of a walk), the 20th at 2280 — measured by tools/xp-probe.mjs. (The
 //            plan's 12 × L × (L − 1) gave the 10th by the 210th–290th day; its 7 × … gave it in time, but the first levels came
 //            every other day: four letters in three weeks. The lead spreads the first ones out and keeps the 10th where it was.)
@@ -69,7 +73,7 @@ ACTS.registerAll([
 //            experience — as one dressing of a wound; it points the way when nothing else does
 //   autoBy   — the skills a quick-mode stop's work is on, by the stop's purpose (campaign/march.js K.why): the member's best of
 //            them; none — its best skill outside the fight's (the fight's skills are trained only in a fight)
-export const XP = {need: 5, lead: 4, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270, roleWeight: 1.5,
+export const XP = {need: 5, lead: 4, cap: 20, merit: {present: 0.25}, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270, roleWeight: 1.5,
   autoBy: {food: ['hunting', 'gathering', 'fishing', 'cooking'], heal: ['medicine', 'gathering', 'cooking'], build: ['construction', 'woodcutting', 'carpentry'], mine: ['mining', 'smithing'], tame: ['husbandry']},
   fightSkills: ['melee', 'ranged']};
 
@@ -82,7 +86,8 @@ export const WORK_WHY = {melee: ['бился врукопашную', 'била�
 // the road's traumas (campaign/maims.js): night terrors — a friend (bond at least `bond`) seen dying: the chance, the timid's;
 // frostbite — a frosty day walked worn out (tiredness at least `tired`): the chance × (1 − Endurance / `endure`)
 // (Р3: the road now tires those on foot — DUTY.walk, more in frost and hungry — so «worn out» is the road's, not the watch's:
-// tired 0.6, reached on long hungry or frosty marches; Э6 had 0.3 as a stopgap, when only the watch tired)
+// tired 0.6; Э6 had 0.3 as a stopgap, when only the watch tired. A frosty day on foot tires more than a night's rest after a
+// march takes off — DUTY.walk.frost — so a winter march wears them down day by day: the author's call)
 export const ROAD_TRAUMA = {terrors: {bond: 1, chance: 0.08, timid: 0.25}, frostbite: {tired: 0.6, chance: 0.04, endure: 12}};
 
 // a foe's worth in a kill (agents/acts.js noteKill): its strength (КС) / `per` — a plain human with a spear is 1 — to a `round`th,

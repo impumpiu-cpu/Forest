@@ -34,8 +34,8 @@ let fails = 0;
 const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
 
 // ── Э0: the curve and the fields
-ok(need(1) === 0 && need(2) === XP.need * (2 + XP.lead) && need(10) === XP.need * 9 * (10 + XP.lead) && levelAt(0) === 1 && levelAt(need(10) - 1) === 9 && levelAt(need(10)) === 10 && levelAt(1e6) > 20,
-  `кривая: need(L) = ${XP.need}·(L−1)·(L+${XP.lead}), потолка нет`, `2-й ${need(2)}, 10-й ${need(10)}, 20-й ${need(20)}, миллион — ${levelAt(1e6)}-й`);
+ok(need(1) === 0 && need(2) === XP.need * (2 + XP.lead) && need(10) === XP.need * 9 * (10 + XP.lead) && levelAt(0) === 1 && levelAt(need(10) - 1) === 9 && levelAt(need(10)) === 10 && levelAt(1e6) === XP.cap,
+  `кривая: need(L) = ${XP.need}·(L−1)·(L+${XP.lead}), потолок — ${XP.cap}-й`, `2-й ${need(2)}, 10-й ${need(10)}, 20-й ${need(20)}, миллион — ${levelAt(1e6)}-й`);
 
 const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
 const fz = JSON.stringify(saveAtlas(base));
@@ -105,12 +105,19 @@ const caps = capitals(base), cap = caps.find(c => c.people === 'humans') || caps
   const a = fresh(), K = newCampaign(a, cap.town, {mode: 'auto'}), ms = K.members.filter(m => !m.captive);
   for (const m of ms) { m.xpBy = {}; m.xp = 0; m.xpOf = {}; }
   const acted = new Set([ms[0].id]);
-  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 10, ours: 5, foes: 6, acted}, ms);
+  // the quick fight (no merit known): the ground whole to all
+  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 10, ours: 5, foes: 6, acted, merit: null}, ms);
   const want = ACTS.get('fight').xp * 2;
-  ok(ms.every(m => m.xp === want), 'бой вдвое сильнее отряда: основа ×2 всем бившимся', `${ms[0].xp} у каждого`);
+  ok(ms.every(m => m.xp === want), 'быстрый бой вдвое сильнее отряда: основа ×2 всем бившимся (дел быстрый бой не знает)', `${ms[0].xp} у каждого`);
   ok(!Object.keys(ms[0].xpBy).length && ms.slice(1).every(m => Object.values(m.xpBy).some(v => v > 0)), 'кто бился своими делами — без буквы роли; кто нет — с буквой роли (с весом)');
+  // on the map: by merit — the best whole, one with half its deeds 0.25 + 0.75 × 0.5, one who did nothing only `present`
+  for (const m of ms) { m.xpBy = {}; m.xp = 0; m.xpOf = {}; }
+  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 10, ours: 5, foes: 6, acted: new Set([ms[0].id, ms[1].id]), merit: new Map([[ms[0].id, 6], [ms[1].id, 3]])}, ms);
+  const P = XP.merit.present;
+  ok(ms[0].xp === want && ms[1].xp === Math.round(want * (P + (1 - P) * 0.5) * 100) / 100 && ms.slice(2).every(m => m.xp === Math.round(want * P * 100) / 100),
+    'бой на карте — по заслугам: лучшему вся основа, половине его дел — часть, без дел — только доля present', ms.slice(0, 3).map(m => m.xp).join(' / '));
   const m = ms[1]; m.xp = 0;
-  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 1000, ours: 1, foes: 9, acted}, [m]);
+  fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 1000, ours: 1, foes: 9, acted, merit: null}, [m]);
   ok(m.xp === ACTS.get('fight').xp * XP.danger[1], 'опасность боя в пределах', `${m.xp}`);
   m.xp = 0; fightActs(K, {kind: 'bandits'}, 'night', true, {theirs: 0, ours: 5, foes: 0, acted}, [m]);
   ok(m.xp === 0, 'никто не пришёл — нет и боя');
@@ -209,6 +216,13 @@ const caps = capitals(base), cap = caps.find(c => c.people === 'humans') || caps
   ok(pick && ['S', 'E', 'P', 'A', 'I', 'C'].includes(pick.stat), 'нет дел с буквой — растёт буква роли', `${f.fight}: ${pick?.stat}`);
   // Luck is never grown by a level
   ok(!XP.letters.includes('L'), 'Удача уровнем не растёт');
+  // the cap: past XP.cap no level, no letter, no perk — however much experience
+  {
+    const t = K.members.find(x => x !== m && x !== z && x !== f) || f, sp0 = JSON.stringify(t.special), pk0 = t.perks.length;
+    t.level = XP.cap; t.xp = need(XP.cap) + 1e5; t.xpBy = {S: 50}; const n0 = lines.length;
+    levelEvening(a, K, text => lines.push(text));
+    ok(t.level === XP.cap && JSON.stringify(t.special) === sp0 && t.perks.length === pk0 && lines.length === n0, `потолок: на ${XP.cap}-м уровне роста нет — ни уровня, ни буквы, ни перка`, `${t.level}-й, опыт ${t.xp}`);
+  }
   // the screen: the level and the letters as of the day shown
   K.daily = [{d: 0, lv: {[m.id]: 1}}];
   K.day = 5; m.grew = [{level: 2, day: 2, stat: 'S', from: 5, to: 6}]; m.special.S = 6;
