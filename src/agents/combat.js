@@ -1,13 +1,14 @@
 // Fighting: melee blows, shots from bows and slings, armour and shields.
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
+import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
 import {maxHp, hpShare} from './agent.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
-import {lineOfFire} from '../nav/astar.js';
+import {lineOfFire, coverOnLine} from '../nav/astar.js';
 import {practice} from './skills.js';
 import {LEARN} from '../data/skills.js';
 import {critChance, lethal} from './wounds.js';
@@ -35,6 +36,7 @@ import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
+import {perkMulA, perkOf} from '../data/perks.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -119,7 +121,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const tsp = SPECIES.get(t.species);
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
-  raw *= (roleRow(by)?.blows?.[type] ?? 1) * (roleRow(by)?.versus?.[tsp.kind] ?? 1);   // a role strikes some blows, or some creatures, harder (the dwarven hammer-smith, the greenskins' beast-driver: data/roles.js)
+  raw *= (roleRow(by)?.blows?.[type] ?? 1) * (roleRow(by)?.versus?.[tsp.kind] ?? 1) * perkMulA(by, 'blows', type);   // (and a perk's: «Проламыватель», data/perks.js)   // a role strikes some blows, or some creatures, harder (the dwarven hammer-smith, the greenskins' beast-driver: data/roles.js)
   // a rider: the blow may fall on its mount (agents/mount.js)
   { const m = blowOnMount(w, t, raw, type, melee, resistOf); if (m != null) return m; }
   if (mix) type = mix[0][0];
@@ -333,17 +335,26 @@ export function shoot(w, a, t) {
   wear(w, a, r.item);
   const skill = a.skill?.ranged ?? HIT.noSkill, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? HIT.moving : 0;
   // to hit is a check with four degrees (data/checks.js): success as always while the roll is under the chance
-  const deg = degreeOf(w.rngs.combat(), HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving), hit = passed(deg);
+  const first = !a.shotThisFight && perkOf(a, 'firstAim');   // the first shot of a fight, aimed (a perk of the shooters: «Выждать выстрел», data/perks.js)
+  a.shotThisFight = true;
+  const deg = degreeOf(w.rngs.combat(), HIT.base + HIT.skill * skill + (a.mods?.aim || 0) + (first || 0) - (d / range) * HIT.far - moving), hit = passed(deg);
   if (deg === 'critFail') { const v = degreeValue('shot', 'critFail'); if (v) wear(w, a, r.item, v); }
   practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo || thrown ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   // a shield-bearer between the shooter and the target catches the shot for it (COMBAT.cover)
   const guard = coverFor(w, a, t);
-  if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share) { wear(w, guard, guard.gear.coverItem); guard.flash = 3; return 'miss'; }
+  if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share * perkMulA(guard, 'cover')) {   // (a perk of the line: «Плечом к плечу», data/perks.js)
+    wear(w, guard, guard.gear.coverItem); guard.flash = 3; noteAct(guard, 'shield'); return 'miss'; }   // (the shield held over another: an act, agents/acts.js)
+  // the cover of the ground by the target (a barricade, rubble, a windfall, gravestones: data/terrain.js `cover`) takes the
+  // shot instead — drawn only where there is cover, so a map with none plays as before
+  const ground = coverOnLine(w, a.x, a.y, t.x, t.y);
+  if (ground > 0 && deg !== 'critSuccess' && w.rngs.combat() < ground) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
   const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
-  return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
+  const out = t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
+  if (out !== 'miss' && (isHostile(a, t) || aggressor(a, t))) noteAct(a, 'hit');   // a shot that landed on a foe: an act (agents/acts.js)
+  return out;
 }
 

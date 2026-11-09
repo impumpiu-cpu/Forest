@@ -33,6 +33,7 @@ import {liveById} from '../agents/lookup.js';
 import {setStanding} from '../agents/standing.js';
 import {raceFrees} from '../data/slavery.js';
 import {colonyRace} from '../data/buildings.js';
+import {noteAct} from '../agents/acts.js';
 
 export const captives = w => colonists(w).filter(a => a.captive && !a.dead);
 
@@ -87,6 +88,7 @@ export function bindCaptive(w, by, f) {
   const B = bestBonds(w.stock);
   if (!B || !f.downed || f.dead) return null;
   w.stock[B.resource] -= B.n;
+  noteAct(by, 'bind');   // a caravan member's act (agents/acts.js)
   // the wound dressed in time (as agents/wounds.js stabilize, without the colonist's words)
   const d = f.downed; f.downed = null;
   f.wounds = [...(f.wounds || []), {id: 'grave', until: w.tick + sunTicks(w, GRAVE_TICKS('grave'))}];

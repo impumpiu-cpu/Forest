@@ -5,6 +5,7 @@
 import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills, recipeSkill} from '../data/skills.js';
 import {NORM, STATS} from '../data/special.js';
 import {curve} from '../data/curves.js';
+import {notePractice} from './acts.js';
 
 
 // the creature's letter for a skill (no SPECIAL: the human norm)
@@ -65,6 +66,7 @@ export function practiceGain(a, skillId, units = 1) {
 // reserved skills never grow.
 export function practice(a, skillId, units = 1) {
   if (!a.prefs || !a.skill || !isActive(skillId)) return 0;
+  notePractice(a, skillId, units);   // a caravan member's work done, before it becomes skill: its experience (agents/acts.js)
   const g = practiceGain(a, skillId, units);
   if (g > 0) a.skill[skillId] = skillOf(a, skillId) + g;
   return g;

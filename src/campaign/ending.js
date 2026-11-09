@@ -16,6 +16,8 @@ import {RETINUE, inLine} from '../data/campaign.js';
 import {EPILOGUE, FATES, fate} from '../data/epilogue.js';
 import {draw} from './start.js';
 import {say, isCore, rank} from './march.js';
+import {perkLabel} from './perks.js';
+import {woundLabel} from './maims.js';
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
 const SIDES = ['на восток', 'на юго-восток', 'на юг', 'на юго-запад', 'на запад', 'на северо-запад', 'на север', 'на северо-восток'];
@@ -76,6 +78,13 @@ export function finish(a, K) {
     const cf = crownFate(a, K); if (cf) lines.push({text: cf, world: true});
     lines.push({text: `${capital ? `В ${townLabel(capital, 3)} ${capital.name}` : 'На родине'} долго ждали караван. ${K.realm ? `${cap(realmLabel(a, K.realm))} помнят` : 'Помнят'} ушедших: ${K.members.filter(isCore).map(m => m.name).join(', ')}.`, world: true});
   }
+  // who they became (Ver_E Э5): the level, the perks, the maims of each of the company who went the road, alive or fallen —
+  // one line, after the fates (the line, not a draw: the stream above is untouched)
+  const became = K.members.filter(m => !m.captive && (m.level || 1) > 1).map(m => {
+    const perks = (m.perks || []).map(p => perkLabel(p.id, p.rank)), scars = (m.wounds || []).filter(x => x.day == null).map(x => woundLabel(x.id));
+    return `${m.name}${m.died ? ' (пал)' : ''} — ${m.level}-й уровень${perks.length ? `, ${perks.join(', ')}` : ''}${scars.length ? `; ${scars.join(', ')}` : ''}`;
+  });
+  if (became.length) lines.push({text: `Кем они стали за дорогу: ${became.join('; ')}.`, who: K.members.filter(m => !m.captive && (m.level || 1) > 1).map(m => m.id)});
   done();
   // the lines go out over the seasons of the epilogue, the most important first
   K.epilogue = {left: EPILOGUE.seasons, queue: lines, done: false};
@@ -100,7 +109,7 @@ export function archive(a, K) {
     from: K.capitalFrom || K.capitalName, capital: K.capital, people: K.people, realm: K.realm, phase: K.phase,
     crown: Q?.name || null, clues: Q?.found ?? 0, started: K.started, ended: {year: a.hist.year, season: a.hist.season}, days: K.day,
     // the people by their ids (the lines and the company's story name them so: two of one name stay two)
-    members: K.members.map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, role: m.role, core: isCore(m), rank: rank(K, m), died: m.died || null, left: m.left || null, fate: m.fate || null, ...(m.local ? {local: {likes: m.local.likes, dislikes: m.local.dislikes, traits: m.local.traits}} : {})})),
+    members: K.members.map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, role: m.role, core: isCore(m), rank: rank(K, m), level: m.level || 1, perks: (m.perks || []).map(p => ({id: p.id, rank: p.rank})), maims: m.maims || 0, died: m.died || null, left: m.left || null, fate: m.fate || null, ...(m.local ? {local: {likes: m.local.likes, dislikes: m.local.dislikes, traits: m.local.traits}} : {})})),
     log: K.log.map(l => ({day: l.day, year: l.year, season: l.season, kind: l.kind, text: l.text, ...(l.who ? {who: [...l.who]} : {})})),
     // the company's story as it ended (campaign/social.js): the bonds and their reasons, the facts they point to, the promises
     // closed, the meetings at the fire — the finished campaign's, kept; no new mechanics rides on it

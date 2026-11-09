@@ -2,13 +2,13 @@
 // and handing a file to the viewer. The store `saves` is of the saved games of old (kept, not read). A saved world is
 // large (megabytes), so it is split: `worlds` holds the packed world, `worldIndex` what the list
 // shows, and listing never reads the worlds themselves (ui/worlds.js).
-const DB = 'forest', VERSION = 2;
-const STORES = ['saves', 'worlds', 'worldIndex'];
+const DB = 'forest', VERSION = 3;
+const STORES = ['saves', 'worlds', 'worldIndex', 'heroes'];   // (heroes — the ascended, outside every world: ui/heroes.js; version 3)
 
 function db() {
   return new Promise((ok, fail) => {
     const r = indexedDB.open(DB, VERSION);
-    // version 1 had only `saves`; any missing store is made, nothing old is touched
+    // version 1 had only `saves`, version 2 no `heroes`; any missing store is made, nothing old is touched
     r.onupgradeneeded = () => { for (const s of STORES) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, {keyPath: 'id'}); };
     r.onsuccess = () => ok(r.result); r.onerror = () => fail(r.error);
     r.onblocked = () => fail(new Error('база занята другой вкладкой с игрой — закройте её и повторите'));

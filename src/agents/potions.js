@@ -22,6 +22,7 @@ import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 import {FRENZY} from '../data/roles.js';
 import {onEdit} from '../data/schema/layer.js';
+import {perkMulA} from '../data/perks.js';
 
 const able = a => !a.dead && !a.downed && !a.captive && a.hp > 0;
 // a blade in hand to rub a poison on: a weapon of blows, not a bow struck with
@@ -207,7 +208,8 @@ export function stepPotionEffects(w, a) {
   if (left.length === a.effects.length) return;
   const ended = a.effects.filter(e => w.tick >= e.until);
   // a state that leaves another behind it (data/conditions.js `then`: the berserker's frenzy, then weariness)
-  for (const e of ended) { const nx = CONDITIONS.has(e.id) ? CONDITIONS.get(e.id).then : null; if (nx && CONDITIONS.has(nx)) left.push({id: nx, until: w.tick + sunTicks(w, CONDITIONS.get(nx).ticks || 0), from: e.id}); }
+  // (the weariness after a frenzy is shorter for one who took «Неутомимый в ярости»: data/perks.js `spent`)
+  for (const e of ended) { const nx = CONDITIONS.has(e.id) ? CONDITIONS.get(e.id).then : null; if (nx && CONDITIONS.has(nx)) left.push({id: nx, until: w.tick + sunTicks(w, (CONDITIONS.get(nx).ticks || 0) * (nx === FRENZY.spent ? perkMulA(a, 'spent') : 1)), from: e.id}); }
   a.effects = left.length ? left : null;
   if (ended.some(e => CONDITIONS.has(e.id) && (Object.keys(CONDITIONS.get(e.id).mods || {}).length || CONDITIONS.get(e.id).hp != null || CONDITIONS.get(e.id).then))) refreshBody(a);
 }

@@ -18,6 +18,7 @@ import {room, setPlace} from './company.js';
 import {DAY} from '../core/time.js';
 import {sleepDose} from '../local/index.js';
 import {POTION} from '../data/potions.js';
+import {ensureXp} from './experience.js';
 
 const C = CAPTIVE.campaign;
 const alive = K => K.members.filter(m => m.alive);
@@ -67,6 +68,7 @@ export function takeFromCamp(a, K, o, say) {
       wounds: t.wounds?.length ? t.wounds.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null,
       captive: {since: K.day, bonds: t.bonds, from: t.from || null, will: t.will ?? ESCAPE.will.start}};
     memberLocal(K, m);   // its own character as the map knew it; rolled only if the map gave none
+    ensureXp(m);   // level 1, nothing earned (campaign/experience.js)
     K.members.push(m); got.push(m);
   }
   if (got.length) say(`В плен взяли: ${names(got.map(who))}. ${got.length > 1 ? 'Идут' : gen(got[0], 'Идёт', 'Идёт')} с караваном связанн${got.length > 1 ? 'ыми' : gen(got[0], 'ым', 'ой')}.`, 'people', got.map(m => m.id));

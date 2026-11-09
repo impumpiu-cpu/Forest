@@ -215,7 +215,7 @@ const LOCAL_ONLY = new Set(['sawmill', 'potter', 'smelter']);
     for (const t of a.towns.filter(t => t.alive && t.people === 'elves' && t.econ)) {
       n++; pop += t.pop; fed += t.econ.feeds;
       for (const [g, v] of Object.entries(t.econ.made)) if (v > 0) made.add(g);
-      for (const g of Object.keys(t.econ.used)) if (!TOWN_GOODS.get(g).soft && !POOLS.fuel[g]) taken.add(g);   // (fuel: logs burn too)
+      for (const g of Object.keys(t.econ.used)) if (!TOWN_GOODS.get(g).soft && !POOLS.fuel[g] && !POOLS.coin[g]) taken.add(g);   // (fuel: logs burn too; the mint's metal is bought)
     }
   }
   const missing = [...taken].filter(g => !made.has(g));

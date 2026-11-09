@@ -350,6 +350,11 @@ dd.q4{color:#c58cff;font-weight:600}
 .roster .hp{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
 .roster .hp i{display:block;height:100%;background:#8fbf6a}
 .roster .hp i.low{background:var(--ember)}
+/* experience to the next level (Ver_E Э5): a thinner bar under the health */
+.roster .xp{display:block;height:3px;margin-top:2px;border-radius:2px;background:var(--line);overflow:hidden}
+.roster .xp i{display:block;height:100%;background:#c9a24a}
+.pc .xpbar{height:4px;margin:2px 0 6px;border-radius:2px;background:var(--line);overflow:hidden;max-width:220px}
+.pc .xpbar i{display:block;height:100%;background:#c9a24a}
 .savelist .sv.cap i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 .camp-topics{margin:0 0 6px}
 .camp-topics button{font-size:11.5px;padding:2px 8px}

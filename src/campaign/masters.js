@@ -4,6 +4,7 @@
 // learners — the caravan's captives among them — work beside it there.
 import {MASTERS, MASTER} from '../data/masters.js';
 import {SKILLS} from '../data/skills.js';
+import {award} from './experience.js';
 
 const skillOf = (m, id) => m.local?.skill?.[id] ?? 0;
 
@@ -15,6 +16,7 @@ export function nameCaravanMasters(K, say) {
     for (const m of free) if (!m.master && skillOf(m, M.id) >= MASTER.min && (!best || skillOf(m, M.id) > skillOf(best, M.id))) best = m;
     if (!best) continue;
     best.master = {skill: M.id, since: K.day};
+    award(K, best, 'master', 1, {skill: M.id});   // (campaign/experience.js)
     say(`Совет каравана нарёк мастером-${M.ins}: ${best.name} (${SKILLS.get(M.id).label} — ${Math.round(skillOf(best, M.id) * 100)}).`, 'people', [best.id]);
   }
 }

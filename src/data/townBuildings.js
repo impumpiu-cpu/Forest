@@ -159,9 +159,11 @@ for (const g of Object.keys(LUX.take)) {
   Object.defineProperty(LUX_YIELDS, g, {enumerable: true, get: () => ({lux: goodPrice(g) * LUX.markup / goodPrice('lux')})});
 }
 
-// The mint: coin of gold or silver or of gems, `take` of each a year, worth × `markup` more than
-// went in, into the purse; it strikes of each as the store holds them (a pool shared by what there is: POOL_SHARE)
-export const MINT = {markup: 1.6, take: {goldbar: 10, silver: 30, gems: 25}};
+// The mint: coin of gold or silver or of gems, `take` of each a year for every `per` people of its realm, worth × `markup`
+// more than went in, into the purse; it strikes of each as the store holds them (a pool shared by what there is: POOL_SHARE),
+// and what it lacks it buys of the towns of its realm and of those it trades with, of all three alike (atlas/economy.js);
+// it strikes no more than `cap` of what its realm took in taxes last year (realm.fisc.last.tax)
+export const MINT = {markup: 1.6, per: 1000, cap: 0.5, take: {goldbar: 3, silver: 5, gems: 2}};
 export const COIN = {}, MINT_YIELDS = {};
 for (const g of Object.keys(MINT.take)) {
   Object.defineProperty(COIN, g, {enumerable: true, get: () => 1 / MINT.take[g]});
@@ -372,7 +374,7 @@ TOWN_BUILDINGS.registerAll([
   B('recycler', 'переработка', 'f', 'craft', 0, D, {prod: 0.05}, {line: 'recycler', jobs: 4, recycle: {k: 4, worth: 400}}),
   B('golemforge', 'кузня големов', 'f', 'craft', 1, D, {prod: 0.2, defence: 0.1}, {line: 'golemforge', requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, fire: 60, any: {bars: 40}}),
   // coin of gold or silver or of gems (MINT), into the purse
-  B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {line: 'mint', needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, any: {coin: 1}, yields: MINT_YIELDS}),
+  B('mint', 'монетный двор', 'm', 'trade', 2, ALL, {trade: 0.2, prestige: 0.15}, {line: 'mint', capital: true, jobs: 4, any: {coin: 1}, yields: MINT_YIELDS}),
   // the wards of a mage tower hold the dead off (atlas/lairs.js: the undead's raids on it fail oftener, the rot around fades)
   B('magetower', 'башня мага', 'f', 'lore', 2, [...H, ...E], {lore: 0.3, defence: 0.15, prestige: 0.15}, {line: 'magetower', pop: 800, notable: true, jobs: 3, in: {potions: 5, lux: 2}}),
 

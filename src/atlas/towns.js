@@ -382,6 +382,6 @@ function flowScore(t, b, P, need, E, inRealm, facts, v, sit = null) {
   // (and a hard good the realm has too little of to spare for it — less than TF.flow.supply of what it would take a year, beyond
   // what the town makes itself: a sixth smelter on one mine's ore would stand)
   const scarce = g => sit && !(E.made[g] > 0) && (sit.spare.get(g) || 0) < (bin[g] || 0) * TF.flow.supply;
-  if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && (none(g) || scarce(g))) || pools.some(id => Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;
+  if (b.cat !== 'housing' && (dark || ins.some(g => !softIn(g) && (none(g) || scarce(g))) || pools.some(id => id !== 'coin' && Object.keys(POOLS[id]).every(none)))) v *= TF.flow.idle;   // (the mint buys what it strikes: not idle for want of it)
   return v;
 }

@@ -53,8 +53,8 @@ import {FOES, GAME} from '../data/campaign.js';
 import {HERD} from '../data/bubble.js';
 import {faunaLevel} from '../local/index.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
-import {planWorks, worksOutcome} from './works.js';
-import {stepWorks, tetherAt} from '../local/index.js';
+import {planWorks, worksOutcome, planCaches, cachesOutcome} from './works.js';
+import {stepWorks, tetherAt, worksOf} from '../local/index.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {bindWaiting} from '../local/index.js';
@@ -85,7 +85,8 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], effects: effectsOut(K, m), wounds: woundsOut(K, m), marks: m.marks ? [...m.marks] : null, gender: m.gender, race: m.race, people: m.people, role: m.role, special: copy(m.special),
-      align: copy(m.align), alignRoot: copy(m.alignRoot || null), values: copy(m.values), mood: m.social?.mood?.length ? m.social.mood.map(e => ({...e})) : null, tired: m.social?.load?.tired || 0, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: copy(m.local || null), captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
+      align: copy(m.align), alignRoot: copy(m.alignRoot || null), values: copy(m.values), mood: m.social?.mood?.length ? m.social.mood.map(e => ({...e})) : null, tired: m.social?.load?.tired || 0, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: copy(m.local || null), captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null,
+      maims: m.maims || 0, perks: m.perks?.length ? m.perks.map(p => ({id: p.id, rank: p.rank})) : null})),   // (Ver_E: the maims borne and the perks learned — read by openCamp)
     bonds: bondsAmong(K, alive(K).map(m => m.id)),   // what the members present feel for each other (campaign/social.js), by member id
     promises: escortsDue(K, new Set(alive(K).filter(m => !m.captive).map(m => m.id))),   // the escorts promised for today, kept on the map (campaign/duty.js)
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
@@ -100,6 +101,9 @@ export function campSetup(a, K, ev) {
     met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
     // a stop to dig: the ore the council stopped for (campaign/mine.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
+    // the pieces of terrain of this map (world/pieces.js): a scene on a storm or a boss, else the land's and the scatter
+    // (a camp kept from before the pieces has none, and is watched again as it was played)
+    layout: {v: 1, kind: ev.kind, scene: ev.kind === 'guard' || !!ev.foe?.boss, foe: ev.foe ? {kind: ev.foe.kind, band: ev.foe.band || CAMP_FOES[ev.foe.kind]?.band || null, beast: ev.foe.beast || CAMP_FOES[ev.foe.kind]?.beast || null, boss: ev.foe.boss?.species || null} : null},
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
   };
 }
@@ -118,7 +122,7 @@ function hours(S, r) {
 export function openCamp(S) {
   const plan = S.plan;
   const cfg = {...DEFAULT_CFG, name: 'Стоянка', seed: S.seed, size: 'small', dims: CAMP.size, colonists: 0, stock: 'poor', start: 'spring',
-    raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay}}, ...(S.profile ? {profile: S.profile} : {})};   // (the world's profile of commands: data/commands.js)
+    raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay, ...(S.layout ? {layout: S.layout} : {})}}, ...(S.profile ? {profile: S.profile} : {})};   // (the world's profile of commands: data/commands.js)
   const w = createWorld(cfg);
   w.dayScale = CAMP.clock.scale;   // the camp's sun is slower: more is done by it in a night (core/time.js; docs/CAMPAIGN.md «Часы стоянки»)
   // an open-cut face is dug only on a stop to dig, and only for the ore it was for (settlement/query.js wantedOre)
@@ -160,8 +164,12 @@ export function openCamp(S) {
     if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + sunTicks(w, e.ticks)}));
     if (m.wounds?.length) ag.wounds = m.wounds.map(x => ({id: x.id, until: x.ticks == null ? null : w.tick + sunTicks(w, x.ticks)}));   // the wounds and traumas it bears (campaign/potions.js woundsOut)
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
+    if (m.maims) ag.maims = m.maims;   // the maims it bears: with the last, the next deadly wound kills (data/wounds.js DEATHBLOW.maim)
+    if (m.perks?.length) { ag.perks = m.perks.map(p => ({id: p.id, rank: p.rank})); ag.kinHere = S.members.filter(x => !x.captive && x.race === m.race).length; }   // its perks (data/perks.js), and how many of its kind are in the company (a goblin's herd)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
-    dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
+    // one hand lost: one thing in it — the weapon, not the shield (data/conditions.js lostArm `hand`)
+    const hands = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => gearDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+    dress(ag, [...hands, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
     if (!m.captive && !m.former && m.potions) ag.potions = Math.min(POTION.slot, m.potions);   // the healing potions in the slot (agents/potions.js)
     if (!m.captive && !m.former && m.belt?.length) ag.belt = m.belt.slice(0, POTION.belt);   // and the others in the belt
@@ -201,7 +209,10 @@ export function openCamp(S) {
   if (S.kind === 'night' || S.kind === 'stop') for (const id of camp) { const b = putUp(w, id, 0); if (b) w.campaign.built.push({key: id, id: b.id}); }
   // the evening's chores: the cart by the fire, the tether, the hides, the spit, the smoking rack, the stakes (campaign/works.js)
   if (S.kind === 'night' || S.kind === 'stop') planWorks(w, {...S, beasts: S.beasts.filter(b => !BEASTS[b.kind].golem)});
+  planCaches(w, S);   // the caches of the pieces of terrain, to be searched once the foe is beaten (campaign/works.js)
   w.logLines = [];
+  const seen = (w.pieces || []).filter(p => p.layer !== 'scene' && p.layer !== 'scatter').map(p => p.label);
+  if (w.scene || seen.length) log(w, `Место: ${[...new Set([w.scene?.label, ...seen].filter(Boolean))].join(', ')}.`, 'build');
   return w;
 }
 
@@ -229,7 +240,9 @@ export function foeWeight(r, F, kind) {
 
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
-  const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
+  // a stormed place laid out as a scene: its guards stand at the heart (world/pieces.js anchor), if one can walk there
+  const heart = S.kind === 'guard' && w.scene?.anchor != null && w.nav.get('camp')[w.scene.anchor] < FAR ? w.scene.anchor : null;
+  const close = S.kind === 'ambush' || S.kind === 'guard', at = heart ?? (close ? nearCell(w, CAMP[S.kind].near, r) : null);
   const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
   // (a beast with no arrival on the local map — a rift's demon — still comes as a band, as before: docs/TODO.md)
   const beast = F.beast || map.beast, band = F.band || map.band;
@@ -372,7 +385,8 @@ export function campDone(w) {
   if (w.tick >= C.until) return true;
   // the foe is beaten or gone, and an hour passed quietly (the wounded tended, the fire made up)
   // (the camp waits for its own fallen to be helped, and for the fallen foes to be bound while there are bonds)
-  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= atHour(w, CAMP.quiet) && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w);
+  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= atHour(w, CAMP.quiet) && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w)
+    && !worksOf(w).some(x => x.key === 'cache' && !x.done && x.by != null);   // (a cache being searched is searched to the end)
 }
 
 // play a camp through; → the world at its end
@@ -406,6 +420,9 @@ function outcomeOf(w) {
   });
   const bonds = {};   // what each member present came to feel for the others there, by member id (campaign/social.js takeBonds)
   for (const m of S.members) { const ag = C.people.get(m.id), row = {}; for (const [id, v] of Object.entries(ag?.grudge || {})) { const b = C.memberOf?.get(+id); if (b != null) row[b] = v; } bonds[m.id] = row; }
+  // who can bind the fallen is settled before any fate is resolved: one bound here does not become the helper of the next
+  // (Р2-02 — the fates do not hang on the order of the members)
+  const standing = [...C.people.values()].filter(o => !o.dead && !o.downed && !o.captive && !o.gone && !o.fugitive);
   const members = S.members.map(m => {
     const ag = C.people.get(m.id);
     if (ag?.fugitive && !ag.dead) return {id: m.id, alive: false, escaped: true};   // a captive got away (settlement/escape.js)
@@ -417,13 +434,15 @@ function outcomeOf(w) {
     // with no single saviour; with nobody to bind it, the wound takes its course
     const wasDown = !!ag.downed;
     if (wasDown) {
-      const able = [...C.people.values()].filter(o => o !== ag && !o.dead && !o.downed && !o.captive && !o.gone && !o.fugitive);
-      if (!able.length) return {id: m.id, alive: false, cause: m.gender === 'f' ? 'истекла кровью: перевязать было некому' : 'истёк кровью: перевязать было некому'};
-      bindFallen(w, ag); noteFact(w, 'boundAfter', null, ag, {});
+      const able = standing.some(o => o !== ag);
+      if (!able && !ag.downed.maim) return {id: m.id, alive: false, cause: m.gender === 'f' ? 'истекла кровью: перевязать было некому' : 'истёк кровью: перевязать было некому'};
+      // a maimed one is stable (data/wounds.js DEATHBLOW.maim): alone, it comes to by itself — the maim is its for life, but
+      // nobody bound it, so no fact of the company's binding
+      bindFallen(w, ag); if (able) noteFact(w, 'boundAfter', null, ag, {});
     }
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill, leans: ag.leans};
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: ofSun(w, e.until - w.tick)})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary, w), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : ofSun(w, x.until - w.tick)})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: ofSun(w, e.until - w.tick)})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), align: ag.align ? {...ag.align} : null, mood: moodOut(S.day, w.tick, ag.diary, w), ...(cap ? {captive: cap} : {}), maimed: [...(ag.maimedNow || [])], scarsAt: {...(ag.scarsAt || {})}, acts: {...(ag.acts || {})}, actXp: {...(ag.actXp || {})}, practiced: {...(ag.practiced || {})}};   // (acts: what it did here by its own hand — agents/acts.js, campaign/experience.js)
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -467,7 +486,8 @@ function outcomeOf(w) {
   // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
   // taken, whatever it cost)
   const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
-  return {kind: S.kind, day: S.day, session: S.seed, won, bossDead, members, bonds, promises, works, facts: (C.facts || []).map(f => ({...f, saw: [...f.saw], params: {...f.params}})), beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
+  const found = cachesOutcome(w, won);   // the caches searched on the map, and the rest in the morning if the field is ours
+  return {kind: S.kind, day: S.day, session: S.seed, won, bossDead, found, members, bonds, promises, works, facts: (C.facts || []).map(f => ({...f, saw: [...f.saw], params: {...f.params}})), beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
     foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length, species, boss, might: C.foeMight || 0, weight: C.weight ?? null}, ours: {might: C.ourMight || 0, kills}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 

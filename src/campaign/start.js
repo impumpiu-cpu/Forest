@@ -30,6 +30,8 @@ import {makeQuest, questTarget, questIntro} from './quest.js';
 import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
 import {CAMP_KIT} from '../data/transport.js';
+import {ensureXp} from './experience.js';
+import {summonInto, sayStart} from './ascend.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -59,6 +61,7 @@ export function makeMember(K, rnd, {race, role, gear, core = false, lean = null,
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
   m.gear = {hand: [...gear.hand], body: gear.body};
+  ensureXp(m);   // experience and level (campaign/experience.js)
   memberLocal(K, m);   // the working character, from the day one joins — not from the first camp (docs/CAMPAIGN.md «Живая команда: договор»)
   return m;
 }
@@ -91,12 +94,12 @@ function rollLocal(K, m) {
   return {likes: c.likes, dislikes: c.dislikes, prefs: c.prefs, traits: c.traits, food: c.food, own: c.own, skill: c.skill, leans: c.leans};
 }
 // a campaign of a save from before: every member gets the character it lacks (idempotent — memberLocal keeps what is there)
-export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) memberLocal(K, m); }
+export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members || []) { memberLocal(K, m); ensureXp(m); } }
 
 // The core (data/campaign.js RETINUE): CAMPAIGN.fighters fighters of the realm's kinds — at most RETINUE.big.max of the great
 // ones — each of a fighting role drawn by its kind's weights; first the roles a core has at least (RETINUE.least: the line, a
 // shooter, a healer), then the rest. → [{species, role}]
-const GROUP = {line: 'линия', shooter: 'дальний бой'};
+export const GROUP = {line: 'линия', shooter: 'дальний бой'};
 const mayRole = (sp, id) => { const R = COMBAT_ROLES.get(id); return !R.mount && !R.linkOnly; };   // (no horse at the start, no role of a link only)
 const rolesFor = (sp, test = () => true) => rolesOf(sp).filter(([id]) => mayRole(sp, id) && test(COMBAT_ROLES.get(id)));
 export function drawCore(a, K, rnd) {
@@ -111,7 +114,7 @@ export function drawCore(a, K, rnd) {
   for (const [need, n] of Object.entries(RETINUE.least)) for (let q = 0; q < n; q++) {
     const test = need === 'healer' ? R2 => R2.id === 'healer' : R2 => R2.group === GROUP[need];
     const m = out.find(x => !x.role && rolesFor(x.species, test).length); if (!m) continue;
-    m.role = weighted(rnd, rolesFor(m.species, test));
+    m.role = weighted(rnd, rolesFor(m.species, test)); m.required = need;   // (it closes a need of the core: a summoned does not take its place unless it closes the same — campaign/ascend.js)
   }
   for (const m of out) if (!m.role) m.role = weighted(rnd, rolesFor(m.species)) || null;
   return out;
@@ -128,7 +131,8 @@ function member(K, a, rnd, {species, role}, k) {
 }
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
-export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
+// summon — the snapshots of the ascended chosen for its core (campaign/ascend.js): taken whole into K.summoned
+export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
   const t = a.towns.find(x => x.id === townId && x.alive);
   if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error('Это не столица мажорного народа.');
@@ -141,7 +145,8 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
     beasts: [], nextBeast: 1, vehicles: [], buildings: [...CAMP_KIT.start], cargo: {rope: CAPTIVE.campaign.startRope, pots: ALCHEMY.pots}, build: null, route: null,   // (pots for the healer's hut: data/market.js ALCHEMY)
   };
   const {r, done} = draw(K, 'birth');
-  drawCore(a, K, r).forEach((m, k) => K.members.push(member(K, a, r, m, k)));
+  drawCore(a, K, r).forEach((m, k) => { const x = member(K, a, r, m, k); if (m.required) x.required = m.required; K.members.push(x); });
+  if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
   K.quest = makeQuest(a, K, r);
@@ -163,6 +168,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   const R = RETINUE[t.people];
   say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.fighters} ${R.title[2]} — ${K.members.map(m => `${m.name} (${m.fight ? COMBAT_ROLES.get(m.fight).label : SPECIES.get(m.race).label})`).join(', ')}. ` +
     (K.quest ? `${questIntro(a, K)} Еды — на ${Math.floor(K.food / K.members.length)} дней.` : 'Куда идти, никто не знает.'), 'start', true);
+  sayStart(a, K);   // «в прошлый раз…» of the summoned (campaign/ascend.js)
   if (!K.quest) K.phase = 'lost';
   return K;
 }

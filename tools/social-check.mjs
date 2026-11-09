@@ -157,9 +157,11 @@ check('когда ядра не осталось, остальные отпущ�
       applyCamp(a, K, Sx, campOutcome(wx), null, 'stop');
       (K.camps ||= []).push({day: K.day, kind: 'stop'});
     }
-    const afterMaps = R[A.id][B.id];
+    // (the maps may add to a bond by what was said there — Ver_E Э4: one maimed in the raid above lives on and talks — but they
+    // fade nothing: no ×fadeGood before the evening, exactly one at it)
+    const afterMaps = R[A.id][B.id], awayMaps = R[A.id][away.id];
     fadeDay(K);
-    check('связи затухают ровно раз в день похода: две карты дня их не затухают, отсутствующему — так же', afterMaps === 2 && Math.abs(R[A.id][B.id] - 2 * REL.fadeGood) < 1e-9 && Math.abs(R[A.id][away.id] - 2 * REL.fadeGood) < 1e-9, `после карт ${afterMaps}, к вечеру ${R[A.id][B.id]?.toFixed(4)} / ${R[A.id][away.id]?.toFixed(4)}`);
+    check('связи затухают ровно раз в день похода: две карты дня их не затухают, отсутствующему — так же', afterMaps >= 2 && Math.abs(afterMaps - 2 * REL.fadeGood) > 1e-6 && Math.abs(R[A.id][B.id] - afterMaps * REL.fadeGood) < 1e-9 && Math.abs(R[A.id][away.id] - awayMaps * REL.fadeGood) < 1e-9, `после карт ${afterMaps}, к вечеру ${R[A.id][B.id]?.toFixed(4)} / ${R[A.id][away.id]?.toFixed(4)}`);
   }
   // an old outcome is refused, however long the ledger was cleaned since
   {

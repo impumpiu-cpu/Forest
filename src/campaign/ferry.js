@@ -19,6 +19,7 @@ import {cellDist, between, plural, centreOf, tenth} from '../core/util.js';
 import {standing} from './town.js';
 import {draw} from './start.js';
 import {mouths} from './captives.js';
+import {share} from './experience.js';
 
 const xy = (a, i) => [i % a.w, (i / a.w) | 0];
 // the cells the caravan's people can walk to from i (the land it stands on)
@@ -156,6 +157,7 @@ export function sailDay(a, K, say) {
   if (F.left > 0) return c;
   const at = F.dir > 0 ? F.landing : F.portI;
   K.i = at; [K.x, K.y] = centreOf(a, at); K.path = null;
+  share(K, K.members.filter(m => m.alive), 'ferry');   // across the water: the ground (campaign/experience.js)
   if (F.dir > 0) { F.state = 'landed'; say('Отряд высадился на берег. Лодка вернётся за ним, когда он придёт сюда снова.', 'route'); }
   else { K.ferry = null; say('Отряд вернулся на свой берег.', 'route'); }
   return at;

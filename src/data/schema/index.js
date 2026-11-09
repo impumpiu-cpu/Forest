@@ -131,6 +131,8 @@ import {KOPPEN, FAUNA_FLOOR} from '../biomes.js';
 import {EPILOGUE} from '../epilogue.js';
 import {FOLK_RAIDS} from '../seam.js';
 import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
+import {ACTS, XP} from '../experience.js';
+import {PERKS} from '../perks.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -572,6 +574,9 @@ TABLES.push(
   autoTable({id: 'thoughts', label: 'Мысли', group: 'Поселение', note: 'Мысли поселенцев и их вес в настроении (data/thoughts.js).', rows: () => THOUGHTS.all()}),
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
+  autoTable({id: 'acts', label: 'Дела и опыт', group: 'Караван', note: 'За что участник похода получает опыт (data/experience.js ACTS): основа (ground) — всем, кто был, без буквы; дела — тому, кто сделал, с буквой SPECIAL (stat; skill — буква навыка, role — буквы роли), которую растит вечер нового уровня (campaign/experience.js).', rows: () => ACTS.all()}),
+  autoTable({id: 'perks', label: 'Перки', group: 'Караван', note: 'Приёмы, что участник похода берёт с уровнем (data/perks.js): req — что нужно (уровень, раса, роль, вещь в руках, буквы, дела any — хоть одно из, работа work), how — как работает (mods — тело, fight — бой, camp — день похода, aura — от своих рядом), pull — что в характере тянет к нему (campaign/perks.js).', rows: () => PERKS.all()}),
+  {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × (L − 1) × (L + lead) до потолка cap, доля бывшего в бою без своих дел (merit.present), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
   fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},
     note: 'Всё, что с существом не так на время или навсегда (data/conditions.js), как состояния и истощение в D&D: тяжёлая рана и травмы (agent.wounds), без сознания, отравлен, в паутине, кровотечение, оглушён, во хмелю (поле существа), три ступени истощения (сколько нужд на исходе). mods — что делает с телом (ключи «Модификаторов существа»); у истощения пока пусто — готово под числа.'}),
@@ -636,7 +641,7 @@ TABLES.push(
   // Поселение
   fix(autoTable({id: 'terrain', label: 'Рельеф', group: 'Поселение', after: rebuildTerrain, rows: () => TERRAIN.all(),
     note: 'Почва клетки локальной карты (data/terrain.js): проходимость, цена шага и скорость, топливо для огня, кусты, лес и выпас, укрытие, сырость. Цвет — формула графики. Правка — для новых карт: на идущей проходимость пересчитана сразу, а дороги и поля течения — по ходу их обновления.'}),
-  {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water']}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
+  {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water', 'built']}, cover: {type: 'num', min: 0, max: 1}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
     bush: {type: 'num', min: 0, max: 1}, wood: {type: 'num', min: 0, max: 1}, graze: {type: 'num', min: 0, max: 1}, wet: {type: 'num', min: 0, max: 1}}),
   fix(autoTable({id: 'seasons', label: 'Времена года', group: 'Поселение', rows: () => SEASONS.all(),
     note: 'Что меняет время года (data/seasons.js): одежда (dress), рост ягод и огорода, увядание, скорость работ (jobs.*), зайцы, голод хищников, порча еды, дожди, порог возгорания, мороз. Оттепель и календарь — в «Календаре».'}),

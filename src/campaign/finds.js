@@ -18,6 +18,7 @@ import {takeGear} from './fight.js';
 import {toolTier} from './baggage.js';
 import {free} from './captives.js';
 import {plural} from '../core/util.js';
+import {share} from './experience.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const near = (a, i, p, r) => Math.abs(p.x - i % a.w) <= r && Math.abs(p.y - ((i / a.w) | 0)) <= r;
@@ -65,6 +66,7 @@ export function morningFind(a, K, r) {
     things.push(took.length ? `${names} — взяли себе: ${took.join(', ')}` : `${names} — в обоз на продажу`);
   }
   K.stats.finds++; K.stats.treasures = (K.stats.treasures || 0) + 1;
+  share(K, K.members.filter(m => m.alive), 'find');   // (campaign/experience.js)
   const text = F.text[(r() * F.text.length) | 0];
   return text.replace('{things}', things.join(', ')).replace('{gold}', String(g));
 }

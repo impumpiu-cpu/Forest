@@ -27,7 +27,7 @@ TERRAIN.registerAll([
   {id: 'forest', code: 2, label: 'лес',   kind: 'wood',   walkable: true,  pathCost: 1.6, speed: 0.7, fuel: 1.2,
     open: false, bush: 0, wood: 0, graze: 0, shelter: true, wet: 0, tint: true,
     color: (h, f, wood) => [40 + (1 - wood) * 30, 70 + (1 - wood) * 30, 40 + (1 - wood) * 8]},
-  {id: 'rock',   code: 3, label: 'скала', kind: 'rock',   walkable: false, pathCost: 0,   speed: 1,   fuel: 0,
+  {id: 'rock',   code: 3, label: 'скала', kind: 'rock',   walkable: false, pathCost: 0,   speed: 1,   fuel: 0, blocksFire: true,
     open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
     color: (h) => [100 + h * 30, 97 + h * 28, 88 + h * 24]},
   {id: 'burnt',  code: 4, label: 'гарь',  kind: 'ground', walkable: true,  pathCost: 1,   speed: 1,   fuel: 0,
@@ -59,19 +59,69 @@ TERRAIN.registerAll([
   {id: 'stakes', code: 10, label: 'судесы', kind: 'ground', walkable: true, pathCost: 3, speed: 0.35, fuel: 0.9,
     open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
     color: (h) => [122 + h * 10, 96 + h * 8, 58]},
+  // ── the pieces of terrain laid on a camp's map (world/pieces.js, data/pieces.js): ruins, graves, a windfall, barricades.
+  // kind `built` — made by hands and standing: nobody walks through it, nothing grows on it, a miner does not dig it.
+  // `blocksFire` — an arrow and a blow do not go across it (as rock: nav/astar.js lineOfFire); `cover` — the share of
+  // the shots that found their mark which the cover by the target takes instead (agents/combat.js shoot)
+  {id: 'wall',   code: 11, label: 'кладка', kind: 'built', walkable: false, pathCost: 0, speed: 1, fuel: 0, blocksFire: true,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [128 + h * 22, 124 + h * 20, 116 + h * 18]},
+  {id: 'column', code: 12, label: 'колонна', kind: 'built', walkable: false, pathCost: 0, speed: 1, fuel: 0, blocksFire: true,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [150 + h * 18, 146 + h * 16, 136 + h * 14]},
+  {id: 'palisade', code: 13, label: 'частокол', kind: 'built', walkable: false, pathCost: 0, speed: 1, fuel: 0, blocksFire: true,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [104 + h * 12, 76 + h * 10, 44 + h * 6]},
+  // what is left of a wall: one climbs over it, slowly, and a shooter's mark ducks behind it
+  {id: 'rubble', code: 14, label: 'щебень', kind: 'ground', walkable: true, pathCost: 2, speed: 0.6, fuel: 0, cover: 0.3,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: true, wet: 0, tint: false,
+    color: (h) => [112 + h * 18, 106 + h * 16, 96 + h * 14]},
+  // the floor of a ruin, a crypt, a mill: flagstones or boards, good going
+  {id: 'flags',  code: 15, label: 'плиты', kind: 'ground', walkable: true, pathCost: 0.9, speed: 1, fuel: 0,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [146 + h * 14, 138 + h * 12, 120 + h * 10]},
+  // a fallen trunk, a windfall: climbed over, burns long
+  {id: 'log',    code: 16, label: 'бурелом', kind: 'ground', walkable: true, pathCost: 2.6, speed: 0.4, fuel: 1.4, cover: 0.35,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: true, wet: 0, tint: true,
+    color: (h) => [92 + h * 12, 70 + h * 10, 44 + h * 6]},
+  // a barricade of carts, beams and stakes: pushed through slowly, good cover, dry wood
+  {id: 'barricade', code: 17, label: 'завал', kind: 'ground', walkable: true, pathCost: 3, speed: 0.35, fuel: 0.9, cover: 0.45,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [118 + h * 10, 88 + h * 8, 54 + h * 6]},
+  {id: 'graves', code: 18, label: 'надгробья', kind: 'ground', walkable: true, pathCost: 1.5, speed: 0.75, fuel: 0.2, cover: 0.2,
+    open: false, bush: 0, wood: 0, graze: 0.2, shelter: false, wet: 0, tint: true,
+    color: (h, f) => [86 + h * 12, 98 + f * 10 + h * 10, 70 + h * 6]},
+  {id: 'bones',  code: 19, label: 'кости', kind: 'ground', walkable: true, pathCost: 1.1, speed: 0.95, fuel: 0.1,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: true,
+    color: (h) => [150 + h * 14, 140 + h * 12, 112 + h * 10]},
+  // a spider's web strung between the trunks: one tears through it, very slowly; it burns
+  {id: 'web',    code: 20, label: 'паутина', kind: 'ground', walkable: true, pathCost: 3.5, speed: 0.25, fuel: 0.6,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: true, wet: 0, tint: false,
+    color: (h) => [168 + h * 14, 168 + h * 14, 176 + h * 12]},
+  // the baked ground of a rift: nothing grows, nothing burns
+  {id: 'scorch', code: 21, label: 'спёкшаяся земля', kind: 'ground', walkable: true, pathCost: 1.1, speed: 0.95, fuel: 0,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [74 + h * 14, 42 + h * 8, 34 + h * 6]},
 ]);
+for (const d of TERRAIN.all()) { d.cover ??= 0; d.blocksFire ??= false; }
 
 // numeric codes for hot loops
-export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9, STAKES: 10};
+export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9, STAKES: 10,
+  WALL: 11, COLUMN: 12, PALISADE: 13, RUBBLE: 14, FLAGS: 15, LOG: 16, BARRICADE: 17, GRAVES: 18, BONES: 19, WEB: 20, SCORCH: 21};
 
 // lookup tables indexed by code, built once from the registry
 export const BY_CODE = [];
 for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
 export const WALKABLE = Uint8Array.from(BY_CODE.map(d => (d.walkable ? 1 : 0)));
 export const OPEN = Uint8Array.from(BY_CODE.map(d => (d.open ? 1 : 0)));
+// what stops a shot or a blow (rock, a wall, a column) and the cover a cell gives (world/pieces.js; agents/combat.js)
+export const BLOCKS = Uint8Array.from(BY_CODE.map(d => (d.blocksFire ? 1 : 0)));
+export const COVER = Float32Array.from(BY_CODE.map(d => d.cover || 0));
+// a cover counts for a target within `near` cells of it, and not for a shooter within `near` of its own (nav/astar.js coverOnLine)
+export const COVER_AT = {near: 1.6};
 // after an edit of the table «Рельеф» (data/schema): the hot-loop copies are made again, in place
 export function rebuildTerrain() {
-  for (const d of TERRAIN.all()) { WALKABLE[d.code] = d.walkable ? 1 : 0; OPEN[d.code] = d.open ? 1 : 0; }
+  for (const d of TERRAIN.all()) { WALKABLE[d.code] = d.walkable ? 1 : 0; OPEN[d.code] = d.open ? 1 : 0; BLOCKS[d.code] = d.blocksFire ? 1 : 0; COVER[d.code] = d.cover || 0; }
   GRAZE_SETS.clear(); cheap = null;
 }
 // the cheapest step of any walkable ground: the scale of the path search's estimate (nav/astar.js), kept until an edit

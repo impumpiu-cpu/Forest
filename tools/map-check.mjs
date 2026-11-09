@@ -26,7 +26,7 @@ const hashOf = arr => { let h = 0x811c9dc5; for (let i = 0; i < arr.length; i++)
 {
   const bad = [];
   for (const d of TERRAIN.all()) {
-    if (!['ground', 'wood', 'rock', 'water'].includes(d.kind)) bad.push(`${d.id}: неизвестный kind ${d.kind}`);
+    if (!['ground', 'wood', 'rock', 'water', 'built'].includes(d.kind)) bad.push(`${d.id}: неизвестный kind ${d.kind}`);
     if (d.open && d.kind !== 'ground') bad.push(`${d.id}: строить можно только на земле`);
     if (d.open && !d.walkable) bad.push(`${d.id}: открытая земля должна быть проходимой`);
     if (BY_CODE[d.code] !== d) bad.push(`${d.id}: код ${d.code} занят`);

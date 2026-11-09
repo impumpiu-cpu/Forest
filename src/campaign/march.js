@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {WOUNDS} from '../data/wounds.js';
 import {toTown} from '../atlas/index.js';
 import {scaleOf} from '../atlas/index.js';
 import {gearDef} from '../local/index.js';
@@ -55,11 +56,14 @@ import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate, tell, reconcile} from './social.js';
-import {nightWatch, tiredOf, offDuty, escortAsk} from './duty.js';
+import {nightWatch, tiredOf, offDuty, escortAsk, walkTired} from './duty.js';
 import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
 import {wantMine, mineRes, mineLabel, autoMine} from './mine.js';
+import {share, levelEvening, levelsNow, xpNow, autoWork} from './experience.js';
+import {companyVal} from './perks.js';
+import {terrorsFrom, frostbite} from './maims.js';
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -104,16 +108,22 @@ export const stopFood = (a, K) => campFx(K, 'food') * ((biomeAt(a, K.i)?.trees ?
 
 // ── the members
 const itemDef = id => gearDef(id);
-export function memberMight(m) {
+// scarred — its own strength in a fight, with what its wounds for life took (a lost arm's one thing, the wounds' strength and
+// health); without — the might the foe is bought by (Р3: the wounds must not buy a weaker foe and fewer blows)
+export function memberMight(m, scarred = false) {
   if (m.captive) return 0;   // a captive fights for nobody but itself (campaign/captives.js)
   const M = CAMPAIGN.might, s = m.special || {};
-  const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
+  // a lost arm holds one thing — the weapon, not the shield (campaign/camp.js campSetup, the same rule)
+  const hand = scarred && (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => itemDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+  const dmg = Math.max(0, ...hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
-  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
+  // the maims and traumas for life weigh as on the map: their strength (mods.str) and health (hp) — Ver_E Э6
+  const scar = !scarred ? 1 : (m.wounds || []).filter(x => x.day == null).reduce((v, x) => { const W = WOUNDS.get(x.id); return v * (W?.mods?.str ?? 1) * (W?.hp ?? 1); }, 1);
+  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp) * scar;
 }
 // the share of its might a fighter keeps with this much health
 const hurtMight = hp => CAMPAIGN.might.hurt[0] + CAMPAIGN.might.hurt[1] * hp;
-export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0)
+export const caravanMight = (K, scarred = false) => alive(K).reduce((s, m) => s + memberMight(m, scarred), 0)
   + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
 export const frosty = (a, K, seasonId) => !!SEASONS.get(seasonId).lean && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
@@ -129,7 +139,8 @@ export function die(a, K, m, why, {heard = false, seen = null} = {}) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
   memberFate(a, m, 'dead');   // (a person of the world dies with it — atlas/persons.js)
-  noteFate(K, m, 'died', {heard, seen, params: {why}});   // the company's loss, as they came to know it (campaign/social.js)
+  const fact = noteFate(K, m, 'died', {heard, seen, params: {why}});   // the company's loss, as they came to know it (campaign/social.js)
+  if (fact?.saw?.length) { const D = draw(K, 'scars'); terrorsFrom(K, m, fact.saw, D.r); D.done(); }   // a friend seen dying may leave the night terrors (campaign/maims.js)
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
@@ -525,10 +536,10 @@ function dayMeetings(a, K, r, marched) {
   }
   // what the scouts see: the first sight of a strong thing near
   // a pursuer stronger than they are: they muddle the trail and try to slip away
-  const sight = (CAMPAIGN.fog.sight + (guided(K) ? HIRES.guide.sight : 0)) * scaleOf(a), P = caravanMight(K);
+  const sight = (CAMPAIGN.fog.sight + (guided(K) ? HIRES.guide.sight : 0) + companyVal(K, 'sight')) * scaleOf(a), P = caravanMight(K);   // (and a pathfinder's eye: campaign/perks.js)
   for (const t of pursuers(a, K, sight)) {
     if (FOES[THINGS[t.kind].foe].might * t.strength <= P * BUBBLE.evadeAt) continue;
-    if (r() < BUBBLE.evade + (guided(K) ? BUBBLE.guideEvade : 0)) {
+    if (r() < BUBBLE.evade + (guided(K) ? BUBBLE.guideEvade : 0) + companyVal(K, 'evade')) {   // (a gnoll smells the pursuit: campaign/perks.js)
       lose(K, t, BUBBLE.lost); K.stats.evaded = (K.stats.evaded || 0) + 1;
       if (r() < BUBBLE.evadeTold) say(a, K, `За караваном шли ${t.label}: путали следы${guided(K) ? ' по тропам проводника' : ''} и ушли от погони.`, 'sight');
     }
@@ -568,7 +579,7 @@ export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: 
   council: K.council?.day === d ? {pick: K.council.pick, n: K.council.opts.length} : null,
   crown: K.quest ? {state: K.quest.crown.state, carrier: K.quest.crown.carrier, exact: K.quest.crown.exact, seen: K.quest.crown.seen, r: K.quest.crown.area?.r ?? null} : null,
   rel: Object.fromEntries(Object.entries(K.social?.relations || {}).map(([a, row]) => [a, {...row}])),
-  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0]))});
+  tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0])), lv: levelsNow(K), xp: xpNow(K)});
 export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
@@ -593,7 +604,11 @@ export function caravanDay(a, K, day) {
     // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
     if (frosty(a, K, seasonId)) { K.stats.frostDays = (K.stats.frostDays || 0) + 1; if (brewTheDay(K, 'cold', ms)) K.warm = K.day; }
     if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
-    march(a, K, pace(a, K, seasonId));
+    if (march(a, K, pace(a, K, seasonId)) > 0) {
+      share(K, alive(K), 'road');   // a day on the road: the ground (campaign/experience.js)
+      walkTired(K, alive(K).filter(m => !m.ride && !m.captive), frosty(a, K, seasonId) && K.warm !== K.day, K.hungry > 0);   // the road tires those on foot (campaign/duty.js)
+      if (frosty(a, K, seasonId) && K.warm !== K.day) { const D = draw(K, 'scars'); frostbite(K, alive(K).filter(m => !m.ride), true, tiredOf, D.r, (text, who) => say(a, K, text, 'people', false, who)); D.done(); }   // worn out in the frost on foot (campaign/maims.js)
+    }
   }
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
@@ -603,6 +618,7 @@ export function caravanDay(a, K, day) {
   const onMap = camping && K.why && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
+  if (camping && K.why && !onMap && K.mode === 'auto' && core(K).length) autoWork(K, K.why);   // the stop's work, as a played one gives it (campaign/experience.js)
   if (!town && !sailing && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   const forage = ms.length * (camping ? Fo.camp * stopFood(a, K) : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap && !sailing) K.food += forage;
@@ -648,6 +664,8 @@ export function caravanDay(a, K, day) {
     if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
     if (core(K).length && !ended(K)) night(a, K);
   }
+  // a level for whoever has the experience for it — after the night's fight and the quest's last word, before the day's summary (campaign/experience.js)
+  if (core(K).length) levelEvening(a, K, (text, who) => say(a, K, text, 'people', false, who));
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
     K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)
@@ -658,7 +676,7 @@ export function caravanDay(a, K, day) {
   if (!ended(K) && K.day >= yearsOf(K) * YEAR_DAYS) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
-  reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
+  reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0) + companyVal(K, 'sight') * scaleOf(a));
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit (none over the water)
   if (K.quest && !ended(K) && !sailing) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');

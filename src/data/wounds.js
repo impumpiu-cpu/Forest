@@ -29,6 +29,10 @@ export const DEATHBLOW = {
   hpLeft: 0.02,             // the fallen keep this share of health while they bleed
   stableHp: 0.2,            // a dressed wound leaves at least this share of health
   causes: ['ран'],          // which deaths luck may turn aside
+  // a maim instead of death (Ver_E Э4, the author's call; campaign/maims.js): a member of a caravan whose deadly wound would
+  // kill it falls maimed instead — senseless but not bleeding, a dressing wakes it — `max` times; with `max` maims borne the
+  // next deadly wound kills without a check. `on` — the switch (for the paired runs)
+  maim: {on: true, max: 3},
 };
 
 // who may fall instead of dying: a thinking creature of the colony, or a thinking raider — one that may be
@@ -44,7 +48,9 @@ export const luckChance = (id, L) => curve(id, L);
 //   trauma: true — incurable, drawn when the second luck check fails (weight: how often)
 // The rows are the wounds and traumas of data/conditions.js (the table «Состояния»), the same objects.
 export const WOUNDS = new Registry('wound');
-WOUNDS.registerAll(CONDITIONS.filter(c => c.kind === 'wound' || c.kind === 'trauma'));
+WOUNDS.registerAll(CONDITIONS.filter(c => c.kind === 'wound' || c.kind === 'trauma' || c.kind === 'maim'));
+// the maim a deadly blow leaves by the trauma of its place, made worse (a fear of death has no place: the body's, by the blow)
+export const MAIM_OF = {limp: 'shatteredLeg', maimedHand: 'lostArm', chest: 'crushedChest', eye: 'blindEye'};
 
 export const GRAVE_TICKS = id => WOUNDS.get(id).days * DAY;
 export const bleedTicks = E => Math.round(curve('bleed', E) * HOUR);

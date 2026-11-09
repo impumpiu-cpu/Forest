@@ -12,6 +12,7 @@ import {free} from './captives.js';
 import {dangers} from './land.js';
 import {scaleOf} from '../atlas/index.js';
 import {allowed} from '../data/commands.js';
+import {companyVal} from './perks.js';
 
 const fameOf = (K, realm) => K.fame?.[realm] || {fame: 0, infamy: 0};
 
@@ -22,7 +23,8 @@ export function termsOf(a, K, t) {
   // clamped, so no number makes a town pay the caravan to buy, or refuse every sale (1 — as before)
   const m = Math.min(TERMS.max, Math.max(0, mute)), r = Math.min(TERMS.max, Math.max(-TERMS.max, rep));
   const T = kitOf(K).trade || {};   // (the humans trade a little better: data/transport.js PEOPLE_KIT)
-  return {buy: (1 + m) * (1 - r) * (T.buy ?? 1), sell: (1 - m) * (1 + r) * (T.sell ?? 1)};
+  const h = Math.min(TERMS.max, companyVal(K, 'trade'));   // the company's best haggler bargains for all («Торгаш», campaign/perks.js)
+  return {buy: (1 + m) * (1 - r) * (T.buy ?? 1) * (1 - h), sell: (1 - m) * (1 + r) * (T.sell ?? 1) * (1 + h)};
 }
 
 // the realm of the nearest living town within REPUTATION.near cells, or null

@@ -474,6 +474,8 @@
           <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
             <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small>
             <small id="campQuestNote" class="camp-quest"></small></div>
+          <div class="field" id="campHeroesField" hidden><span class="lbl">Вознесённые</span><div id="campHeroes" class="savelist"></div>
+            <small>Герои прошлых походов, которых эта столица может позвать: каждый займёт место в восьмёрке (не больше четырёх) и сразу уйдёт из списка — снова смертным.</small></div>
           <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
         </div>
         <details class="card obs-lib" id="campLibField" open>
@@ -498,6 +500,7 @@
         <div class="card">
           <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
           <button type="button" id="campWorldFile2" title="Летопись мира текстом по эпохам (подробность — как выбрано при выборе столицы)">Летопись мира в файл</button>
+          <button type="button" id="campAscend" hidden title="Живые из вернувшегося с короной отряда уходят в вознесённые: их можно будет призвать в новом походе">Вознести выживших</button>
           <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
           <button type="button" id="campNew" class="quiet">Другой мир</button>
           <small class="status" id="campSaveStatus" role="status"></small>

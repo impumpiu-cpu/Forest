@@ -22,6 +22,10 @@ export const SEAM = {
   // the cell's rot (atlas/lairs.js) above this sends the dead — as from a barrow `rotCells` cells away:
   // the rot is spread thin over the land, not a camp next door
   rotUndead: 0.25, rotCells: 7,
+  // what the world says lies on a cell, for the pieces of a camp's map (seam/cell.js cellLore): barrows this thick are an
+  // old battlefield, thinner — graves; a scourged land is a battlefield too; rot this deep — rotten graves
+  // (`field` — the battle a scourged land counts as at least; `dead` — the rot a lair of the dead counts as at least)
+  lore: {battle: 0.25, graves: 0.06, scourge: 0.3, rot: 0.15, field: 0.5, dead: 0.5},
   // fertility of the world's soil (0 … 1) → the site's × on fertility
   fert: {base: 0.5, per: 0.7, min: 0.4, max: 1.3},
   // the world's climate → the local climate's numbers (data/presets.js CLIMATES):

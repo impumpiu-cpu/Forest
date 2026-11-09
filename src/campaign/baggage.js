@@ -18,6 +18,8 @@ import {EFFECTS, NORM} from '../data/special.js';
 import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, CAMP_KIT, FIELD_BUILD, kitOf} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {potionKeep} from '../data/potions.js';
+import {perkVal} from './perks.js';
+import {WOUNDS} from '../data/wounds.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const bulk = id => (RESOURCES.has(id) ? RESOURCES.get(id).bulk ?? 1 : 1);
@@ -71,7 +73,8 @@ export function assign(K) {
 // ── room
 export function capacity(K) {
   let u = 0;
-  for (const m of alive(K)) u += (m.back ?? 1) * CELL + (m.captive ? (kitOf(K).bearers || 0) * BOX : 0);   // (the greenskins' captives carry a box besides)
+  for (const m of alive(K)) u += (m.back ?? 1) * CELL * (1 + perkVal(m, 'carry')) +   // (a strong back carries more: «Крепкая спина», campaign/perks.js)
+     (m.captive ? (kitOf(K).bearers || 0) * BOX : 0);   // (the greenskins' captives carry a box besides)
   for (const b of K.beasts) if (b.hp > 0) { const B = BEASTS[b.kind]; u += (B.cells || 0) * CELL + (B.boxes || 0) * BOX; }
   for (const v of K.vehicles) if (v.pulled) u += VEHICLES[v.kind].boxes * BOX;
   return u;
@@ -107,7 +110,9 @@ export function overflow(K) {
 // the pace kept by health (data/campaign.js CAMPAIGN.hurtPace)
 const hurtPace = (P, hp) => P.base + P.hurt * clamp(hp / P.at, 0, 1);
 const beastPace = b => (SPECIES.get(b.kind).speed / humanSpeed()) * hurtPace(CAMPAIGN.hurtPace.beast, b.hp);
-const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp);
+// (a maim that slows it — a shattered leg — slows it on the road too: data/conditions.js `speed`; a trauma's limp, as before, not)
+const lame = m => (m.wounds || []).reduce((v, x) => v * (WOUNDS.has(x.id) && WOUNDS.get(x.id).maim ? WOUNDS.get(x.id).mods?.speed ?? 1 : 1), 1);
+const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp) * lame(m);
 export function slowest(K) {
   const ms = alive(K); if (!ms.length) return 0;
   const byId = new Map(K.beasts.map(b => [b.id, b]));

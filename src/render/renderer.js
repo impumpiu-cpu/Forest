@@ -192,6 +192,7 @@ export class Renderer {
 
     if (view.layer === 'nav') this.drawArrows(w);
     this.drawZone(w);
+    if (w.pieces?.length) this.drawProps(w);
     this.drawBuildings(w);
     if (w.works?.length) this.drawWorks(w);
     this.drawPick(w, view);
@@ -314,6 +315,14 @@ export class Renderer {
         pole(px - S * 0.45, py + S * 0.2, 0.7); pole(px + S * 0.45, py + S * 0.2, 0.7);
         ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = Math.max(1, S * 0.08); ctx.beginPath(); ctx.moveTo(px - S * 0.55, py - S * 0.45); ctx.lineTo(px + S * 0.55, py - S * 0.45); ctx.stroke();
         if (x.done) { ctx.fillStyle = '#a0563c'; ctx.beginPath(); ctx.ellipse(px, py - S * 0.45, S * 0.3, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+      } else if (x.key === 'cache') {
+        // a chest half in the ground; searched, its lid stands open and it is empty
+        const bw = S * 0.8, bh = S * 0.5;
+        ctx.globalAlpha = x.done ? 0.55 : 1;
+        ctx.fillStyle = '#7a5428'; ctx.fillRect(px - bw / 2, py - bh / 2, bw, bh);
+        ctx.strokeStyle = dark; ctx.lineWidth = 1; ctx.strokeRect(px - bw / 2, py - bh / 2, bw, bh);
+        ctx.fillStyle = x.done ? '#3a2a18' : '#d8b25a'; ctx.fillRect(px - bw / 2, py - bh / 2 - (x.done ? S * 0.25 : 0), bw, S * 0.14);
+        if (!x.done) { ctx.fillStyle = '#f0d070'; ctx.fillRect(px - S * 0.06, py - S * 0.06, S * 0.12, S * 0.14); }
       } else if (x.key === 'smoke') {
         // a rack over a smouldering pit, smoke above it
         pole(px - S * 0.4, py + S * 0.3, 0.9); pole(px + S * 0.4, py + S * 0.3, 0.9);
@@ -323,6 +332,43 @@ export class Renderer {
       }
       ctx.restore();
       if (!x.done && S >= 5) { ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(px - S * 0.6, py + S * 0.55, S * 1.2, 3); ctx.fillStyle = '#d8b25a'; ctx.fillRect(px - S * 0.6, py + S * 0.55, S * 1.2 * k, 3); }
+    }
+  }
+
+  // The pieces of terrain (world/pieces.js): a mark over the cells that are more than ground — a column, a gravestone, a
+  // fallen trunk, a barricade, bones, a web, stones of rubble. Only the pieces' own frames are walked
+  drawProps(w) {
+    const ctx = this.ctx, S = this.S, g = w.grid; if (S < 4) return;
+    const lw = Math.max(1, S * 0.12);
+    for (const p of w.pieces) for (let y = Math.max(0, p.y); y < Math.min(w.h, p.y + p.h); y++) for (let x = Math.max(0, p.x); x < Math.min(w.w, p.x + p.w); x++) {
+      const i = y * w.w + x, t = g.terr[i], px = x * S, py = y * S, cx = px + S / 2, cy = py + S / 2, flip = ((x * 7 + y * 13) & 1) ? 1 : -1;
+      if (t === T.COLUMN) {
+        ctx.fillStyle = 'rgba(30,28,24,0.35)'; ctx.beginPath(); ctx.ellipse(cx + S * 0.08, cy + S * 0.12, S * 0.38, S * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9c3b4'; ctx.strokeStyle = '#4a463e'; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(cx, cy, S * 0.34, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      } else if (t === T.WALL) {
+        ctx.strokeStyle = 'rgba(40,38,32,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+        ctx.moveTo(px, cy); ctx.lineTo(px + S, cy); ctx.moveTo(px + S * (y & 1 ? 0.3 : 0.7), py); ctx.lineTo(px + S * (y & 1 ? 0.3 : 0.7), cy); ctx.stroke();
+      } else if (t === T.PALISADE) {
+        ctx.fillStyle = '#5a3f22'; for (const k of [0.2, 0.5, 0.8]) { ctx.beginPath(); ctx.arc(px + S * k, cy, S * 0.14, 0, Math.PI * 2); ctx.fill(); }
+      } else if (t === T.GRAVES) {
+        ctx.fillStyle = '#a8a598'; ctx.strokeStyle = '#3a3830'; ctx.lineWidth = Math.max(0.8, S * 0.06);
+        ctx.beginPath(); ctx.moveTo(cx - S * 0.2, cy + S * 0.3); ctx.lineTo(cx - S * 0.2, cy - S * 0.1); ctx.arc(cx, cy - S * 0.1, S * 0.2, Math.PI, 0); ctx.lineTo(cx + S * 0.2, cy + S * 0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (t === T.LOG) {
+        ctx.strokeStyle = '#5b4026'; ctx.lineCap = 'round'; ctx.lineWidth = S * 0.36; ctx.beginPath(); ctx.moveTo(px + S * 0.1, cy - flip * S * 0.25); ctx.lineTo(px + S * 0.9, cy + flip * S * 0.25); ctx.stroke();
+        ctx.strokeStyle = '#7a5a36'; ctx.lineWidth = S * 0.12; ctx.stroke(); ctx.lineCap = 'butt';
+      } else if (t === T.BARRICADE) {
+        ctx.strokeStyle = '#6e4e2c'; ctx.lineWidth = Math.max(1.4, S * 0.16); ctx.lineCap = 'round'; ctx.beginPath();
+        ctx.moveTo(px + S * 0.15, py + S * 0.2); ctx.lineTo(px + S * 0.85, py + S * 0.8); ctx.moveTo(px + S * 0.85, py + S * 0.2); ctx.lineTo(px + S * 0.15, py + S * 0.8); ctx.moveTo(px + S * 0.05, cy); ctx.lineTo(px + S * 0.95, cy); ctx.stroke(); ctx.lineCap = 'butt';
+      } else if (t === T.BONES) {
+        ctx.strokeStyle = '#ece4cc'; ctx.lineWidth = Math.max(0.8, S * 0.08); ctx.beginPath();
+        ctx.moveTo(cx - S * 0.25, cy - flip * S * 0.1); ctx.lineTo(cx + S * 0.2, cy + flip * S * 0.12); ctx.moveTo(cx - S * 0.05, cy + S * 0.25); ctx.lineTo(cx + S * 0.1, cy - S * 0.2); ctx.stroke();
+      } else if (t === T.WEB) {
+        ctx.strokeStyle = 'rgba(240,240,250,0.7)'; ctx.lineWidth = 0.7; ctx.beginPath();
+        for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4; ctx.moveTo(cx - Math.cos(a) * S * 0.5, cy - Math.sin(a) * S * 0.5); ctx.lineTo(cx + Math.cos(a) * S * 0.5, cy + Math.sin(a) * S * 0.5); }
+        ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, S * 0.25, 0, Math.PI * 2); ctx.stroke();
+      } else if (t === T.RUBBLE) {
+        ctx.fillStyle = '#8c877a'; for (const [dx, dy, r] of [[-0.2, 0.1, 0.16], [0.18, -0.12, 0.13], [0.15, 0.22, 0.1]]) { ctx.beginPath(); ctx.arc(cx + dx * S * flip, cy + dy * S, r * S, 0, Math.PI * 2); ctx.fill(); }
+      }
     }
   }
 

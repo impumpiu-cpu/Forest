@@ -18,6 +18,7 @@ import {scaleOf} from '../atlas/index.js';
 import {realmLabel} from '../atlas/index.js';
 import {atWar, trades, realmAlign} from '../atlas/index.js';
 import {townLabel} from '../atlas/index.js';
+import {ruinAt} from '../atlas/index.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {clamp, cap1} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
@@ -189,6 +190,23 @@ export function cellNeighbours(a, i, race = 'human') {
   return out;
 }
 
+// ── what the world says lies here, for the pieces of terrain of a camp's map (data/pieces.js `lore`, world/pieces.js):
+// ruins of a town or a fallen lair, graves (barrows of a battle or a raid), an old battlefield, rotten ground, a lair
+// whose land this is (its beasts, its spiders, its tribe), a river, a road. Plain flags and levels 0 … 1
+export function cellLore(a, i) {
+  const f = a.f, x = i % a.w, y = (i / a.w) | 0, near = (p, r) => Math.abs(p.x - x) <= r && Math.abs(p.y - y) <= r;
+  const lair = lairAt(a, i), L = lair ? LAIRS.get(lair.kind) : null;
+  const barrows = f.barrows?.[i] ?? 0, rot = a.rot && a.fauna ? a.rot[faunaCell(a, i)] ?? 0 : 0;
+  const out = {};
+  if (ruinAt(a, i) || (a.lairs || []).some(l => !l.alive && near(l, 1))) out.ruin = 1;
+  if (barrows >= SEAM.lore.battle || (f.scourge?.[i] ?? 0) > SEAM.lore.scourge) out.battle = r2(Math.max(barrows, SEAM.lore.field));
+  if (barrows >= SEAM.lore.graves) out.graves = r2(barrows);
+  if (rot >= SEAM.lore.rot) out.rot = r2(rot);
+  if (L) { if (L.species === 'spider') out.spiders = 1; else if (L.tribe) out.tribe = 1; else if (L.undead) out.rot = Math.max(out.rot || 0, SEAM.lore.dead); else out.beasts = 1; }
+  const river = riverKind(a, i); if (river === 'river' || river === 'great') out.river = 1;
+  return out;
+}
+
 // ── the plan of a settlement on a cell: everything the local map needs, independent of its size
 export function cellPlan(a, i, {name = '', id = null, race = 'human'} = {}) {
   const [x, y] = xy(a, i), seed = `${a.cfg.seed}@${x},${y}`;
@@ -197,6 +215,6 @@ export function cellPlan(a, i, {name = '', id = null, race = 'human'} = {}) {
     seed,
     ref: {id, name: name || `Мир ${a.cfg.seed}`, seed: a.cfg.seed, x, y, year: a.hist?.year ?? 0},
     region: cellRegion(a, i),
-    extra: {climate: cellClimate(a, i), gates: cellGates(a, i, seed), fert: r2(clamp(F.base + F.per * soil, F.min, F.max)), neighbours: cellNeighbours(a, i, race)},
+    extra: {lore: cellLore(a, i), climate: cellClimate(a, i), gates: cellGates(a, i, seed), fert: r2(clamp(F.base + F.per * soil, F.min, F.max)), neighbours: cellNeighbours(a, i, race)},
   };
 }

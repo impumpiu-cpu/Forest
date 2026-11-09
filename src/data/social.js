@@ -48,6 +48,13 @@ export const FACT_KINDS = {
   // the peaceful life (campaign/company.js welcome; social.js judge)
   welcomed:  {label: 'принял новичка', weight: {to: 0.4, by: 0.2, saw: 0.05}},
   frowned:   {label: 'не одобрил продажу пленного', weight: {by: 0.3, saw: 0.05}},
+  // experience (campaign/experience.js): a member grew a level
+  levelUp:   {label: 'набрался опыта', weight: {by: 0.3, saw: 0.05}},
+  perkTaken: {label: 'выучил новое', weight: {by: 0.3, saw: 0.05}},
+  // maims and wounds for life (campaign/maims.js, campaign/perks.js)
+  maimed:    {label: 'остался увечным', weight: {to: 0.3, saw: 0.05}},
+  scarred:   {label: 'вынес из похода страх', weight: {to: 0.3}},
+  overcame:  {label: 'перерос страх', weight: {by: 0.3, saw: 0.05}},
 };
 // the stories (campaign/social.js): a good turn — one of `good` done to one in the last `days` — is paid back unasked when the
 // one who did it is worn out on the watch (repay: the debtor at least `gap` fresher than it takes its watch; a good turn once);
@@ -85,6 +92,7 @@ export const DUTY = {
   per: 4,              // …one for every this many who may stand it (at least one)
   badly: 0.35,         // one this hurt does not stand watch (as CAMPAIGN.camp.badly)
   tiredWatch: 0.45,    // a night on watch adds this
+  walk: {tired: 0.1, frost: 2, hungry: 1.5},   // a day walked on foot adds this; × in frost (no warming brew), × hungry (Ver_E Р3: the road tires, not the watch alone); frost 2: a frosty day (0,2) tires more than a night after a march rests (rest.march 0,15)
   rest: {march: 0.15, camp: 0.3, town: 0.5},   // a night's sleep takes this off: after a day's march, on a camp, in a town
   healCut: 0.3,        // healing × (1 − healCut × tired)
   campRest: 0.3,       // on a camp's map the need of rest starts this × tired lower
