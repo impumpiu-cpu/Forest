@@ -56,7 +56,7 @@ import {pointCommands, allowed} from '../data/commands.js';
 import {pickLanes, tracing} from '../core/decide.js';
 import {people} from './people.js';
 import {fadeDay, noteFate, tell, reconcile} from './social.js';
-import {nightWatch, tiredOf, offDuty, escortAsk} from './duty.js';
+import {nightWatch, tiredOf, offDuty, escortAsk, walkTired} from './duty.js';
 import {ferryPlan, sailDay, aboard} from './ferry.js';
 import {councilChoose} from './council.js';
 import {DUTY} from '../data/social.js';
@@ -108,20 +108,22 @@ export const stopFood = (a, K) => campFx(K, 'food') * ((biomeAt(a, K.i)?.trees ?
 
 // ── the members
 const itemDef = id => gearDef(id);
-export function memberMight(m) {
+// scarred — its own strength in a fight, with what its wounds for life took (a lost arm's one thing, the wounds' strength and
+// health); without — the might the foe is bought by (Р3: the wounds must not buy a weaker foe and fewer blows)
+export function memberMight(m, scarred = false) {
   if (m.captive) return 0;   // a captive fights for nobody but itself (campaign/captives.js)
   const M = CAMPAIGN.might, s = m.special || {};
   // a lost arm holds one thing — the weapon, not the shield (campaign/camp.js campSetup, the same rule)
-  const hand = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => itemDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+  const hand = scarred && (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => itemDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
   const dmg = Math.max(0, ...hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
   // the maims and traumas for life weigh as on the map: their strength (mods.str) and health (hp) — Ver_E Э6
-  const scar = (m.wounds || []).filter(x => x.day == null).reduce((v, x) => { const W = WOUNDS.get(x.id); return v * (W?.mods?.str ?? 1) * (W?.hp ?? 1); }, 1);
+  const scar = !scarred ? 1 : (m.wounds || []).filter(x => x.day == null).reduce((v, x) => { const W = WOUNDS.get(x.id); return v * (W?.mods?.str ?? 1) * (W?.hp ?? 1); }, 1);
   return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp) * scar;
 }
 // the share of its might a fighter keeps with this much health
 const hurtMight = hp => CAMPAIGN.might.hurt[0] + CAMPAIGN.might.hurt[1] * hp;
-export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0)
+export const caravanMight = (K, scarred = false) => alive(K).reduce((s, m) => s + memberMight(m, scarred), 0)
   + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
 export const frosty = (a, K, seasonId) => !!SEASONS.get(seasonId).lean && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
@@ -604,6 +606,7 @@ export function caravanDay(a, K, day) {
     if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
     if (march(a, K, pace(a, K, seasonId)) > 0) {
       share(K, alive(K), 'road');   // a day on the road: the ground (campaign/experience.js)
+      walkTired(K, alive(K).filter(m => !m.ride && !m.captive), frosty(a, K, seasonId) && K.warm !== K.day, K.hungry > 0);   // the road tires those on foot (campaign/duty.js)
       if (frosty(a, K, seasonId) && K.warm !== K.day) { const D = draw(K, 'scars'); frostbite(K, alive(K).filter(m => !m.ride), true, tiredOf, D.r, (text, who) => say(a, K, text, 'people', false, who)); D.done(); }   // worn out in the frost on foot (campaign/maims.js)
     }
   }

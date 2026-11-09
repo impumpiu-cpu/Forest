@@ -9,7 +9,7 @@ import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
 import {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, snapshotOf, racesOf} from '../src/campaign/ascend.js';
-import {ensureXp} from '../src/campaign/experience.js';
+import {ensureXp, levelOn} from '../src/campaign/experience.js';
 
 let fails = 0;
 const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
@@ -66,5 +66,31 @@ ok(!mayAscend(K3).includes(sf) && !t2.reg.heroes.some(h => h.uid === 'odd'), 'п
 const K4 = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [s1]}); K4.phase = 'won';
 const again = snapshotOf(fresh(), K4, K4.members.find(m => m.summoned));
 ok(again.story.walks === 2 && again.story.before?.from === s1.story.from, 'вознесённый второй раз помнит, что это второй поход');
+
+// Р3: the core's needs (RETINUE.least) kept: one who closes a need gives place only to one who closes the same
+{
+  const plain = newCampaign(fresh(), hum.town, {mode: 'auto'});
+  const healer = plain.members.find(m => m.required === 'healer');
+  const beast = {...s1, uid: 'bc', fight: 'summoner', name: 'Звероклич'}, heal = {...s1, uid: 'hl', fight: 'healer', name: 'Травница'};
+  const Kb = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [beast]}), Kh = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [heal]});
+  const need = K => Object.entries({line: 2, shooter: 1, healer: 1}).every(([n, c]) => K.members.filter(m => m.required === n).length === c);
+  ok(healer && Kb.members.some(m => m.id === healer.id && m.name === healer.name) && need(Kb), 'призванный не знахарь не встаёт на место единственного знахаря', `знахарь ${healer?.name}`);
+  ok(Kh.members.find(m => m.id === healer.id)?.name === 'Травница' && Kh.members.find(m => m.id === healer.id).required === 'healer', 'призванная знахарка встаёт на место знахаря и закрывает ту же нужду');
+  const four = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [1, 2, 3, 4].map(k => ({...s1, uid: `f${k}`, fight: 'cleaver', name: `Рубака${k}`}))});
+  ok(four.members.filter(m => m.summoned).length === 4 && need(four), 'четверо призванных рубак — нужды ядра (линия 2, стрелок, знахарь) на месте');
+}
+// Р3: the level of one summoned on a day older than the daily record — its level at coming, not 1
+{
+  const Ks = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [s1]}), m = Ks.members.find(x => x.summoned);
+  Ks.day = 100; Ks.daily = [];
+  ok(levelOn(Ks, m, 5) === s1.level, 'уровень призванного на давний день — с каким пришёл', `${levelOn(Ks, m, 5)}`);
+}
+// Р3: two walks from one capital in one year are not one hero twice
+{
+  const A1 = fresh(), Ka = newCampaign(A1, hum.town, {mode: 'auto'}); Ka.phase = 'won'; Ka.day = 120;
+  const Kb2 = JSON.parse(JSON.stringify(Ka)); Kb2.day = 133; Kb2.ascended = null;
+  const r1 = ascend(A1, Ka, emptyRegistry()), r2 = ascend(A1, Kb2, r1);
+  ok(r2.heroes.length === 2 * r1.heroes.length, 'два похода из одной столицы в один год — герои обоих в реестре', `${r1.heroes.length} → ${r2.heroes.length}`);
+}
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

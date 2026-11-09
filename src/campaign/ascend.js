@@ -14,6 +14,7 @@ import {COMBAT_ROLES} from '../data/roles.js';
 import {gearDef} from '../local/index.js';
 import {townKin} from '../atlas/index.js';
 import {ensureXp} from './experience.js';
+import {GROUP} from './start.js';
 import {say} from './march.js';
 
 export const ASCEND = {version: 1, max: 4, keep: 50};   // max — summoned into one core; keep — the most the registry holds (oldest go)
@@ -33,7 +34,7 @@ export function snapshotOf(a, K, m) {
   const was = m.summoned || null;
   const lost = K.members.filter(x => x.died && !x.captive).map(x => x.name);
   return {
-    v: ASCEND.version, uid: `${K.seed}:${m.id}:${a.hist?.year ?? 0}`,
+    v: ASCEND.version, uid: `${K.seed}:${K.capital}:${a.hist?.year ?? 0}:${K.day}:${m.id}`,   // (the walk's seed, capital, year and last day: two walks from one world in one year do not meet — Р3)
     name: m.name, gender: m.gender, race: m.race, people: K.people, fight: m.fight || null, role: m.role,
     special: {...m.special}, align: m.align ? {...m.align} : null, values: m.values ? {...m.values} : null,
     local: m.local ? JSON.parse(JSON.stringify(m.local)) : null,
@@ -85,9 +86,12 @@ export function summonInto(a, K, snaps) {
   const take = (snaps || []).slice(0, ASCEND.max), used = new Set();
   K.summoned = take.map(s => JSON.parse(JSON.stringify(s)));
   for (const s of take) {
+    // its place: one who closes a need of the core (RETINUE.least, marked by drawCore) only if it closes the same — a healer by its
+    // role, the line and the shooter by the group; else one of its own group who closes none; else the last who closes none (Р3)
     const group = s.fight && COMBAT_ROLES.has(s.fight) ? COMBAT_ROLES.get(s.fight).group : null;
-    const core = K.members.filter(m => m.core && !used.has(m.id));
-    const at = core.find(m => group && m.fight && COMBAT_ROLES.get(m.fight)?.group === group) || core.at(-1); if (!at) break;
+    const closes = need => (need === 'healer' ? s.fight === 'healer' : group === GROUP[need]);
+    const core = K.members.filter(m => m.core && !used.has(m.id)), free = core.filter(m => !m.required);
+    const at = core.find(m => m.required && closes(m.required)) || free.find(m => group && m.fight && COMBAT_ROLES.get(m.fight)?.group === group) || free.at(-1) || core.at(-1); if (!at) break;
     used.add(at.id);
     const hand = s.gear.hand.filter(id => gearDef(id)), body = s.gear.body && gearDef(s.gear.body) ? s.gear.body : at.gear.body;
     Object.assign(at, {

@@ -118,6 +118,11 @@ export function nightWatch(a, K, {camping = false, say = () => {}} = {}) {
   D.on = on.map(m => m.id);
   return D.on;
 }
+// a day walked on foot (campaign/march.js, the day's march): the road wears them — more in frost with no warming brew, more hungry
+export function walkTired(K, ms, frost, hungry) {
+  const W = DUTY.walk, v = W.tired * (frost ? W.frost : 1) * (hungry ? W.hungry : 1);
+  for (const m of ms) { const L = loadOf(m); L.tired = Math.min(1, L.tired + v); }
+}
 const rest = (m, v) => { const L = loadOf(m); L.tired = Math.max(0, L.tired - v); };
 // a night off the watch for all (aboard a ferry the boat's crew keeps it: campaign/ferry.js) — rested as in a camp
 export function offDuty(K) { for (const m of K.members) if (m.alive && !m.captive) rest(m, DUTY.rest.camp); }

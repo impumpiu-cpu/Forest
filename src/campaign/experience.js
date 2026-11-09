@@ -216,7 +216,8 @@ export function levelOn(K, m, day) {
   const D = K.daily || [];
   for (let k = D.length - 1; k >= 0; k--) if (D[k].d < day && D[k].lv?.[m.id] != null) return D[k].lv[m.id];
   // older than the days kept (K.daily holds the last few): the levels it grew before that day (each level is one row of m.grew)
-  return 1 + (m.grew || []).filter(g => g.day < day).length;
+  // (one summoned came at its level: the grown rows are those of this walk — campaign/ascend.js summonInto)
+  return (m.summoned?.level ?? 1) + (m.grew || []).filter(g => g.day < day).length;
 }
 // the levels of all, the gone as they left, at the end of a day: for the day's summary
 export const levelsNow = K => Object.fromEntries(K.members.map(m => [m.id, m.level || 1]));

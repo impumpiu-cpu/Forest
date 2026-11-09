@@ -243,4 +243,18 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(n > 0 && most === 1, 'быстрый бой: увечный выбывает из боя — за один бой не больше одного увечья', `увечий ${n}, больше всего у одного ${most}`);
 }
 
+// Р3: a lost quick fight with nobody left on its feet — the maimed lying there may be finished off (as on the map); won — never
+{
+  let fin = 0, won = 0;
+  for (let s = 1; s <= 40; s++) {
+    // (two left of the company, worn to nothing: the quick fight's blows run out before eight are down — campaign/fight.js)
+    const {a, K} = fresh(); for (const m of K.members) { ensureXp(m); m.hp = 0.03; } for (const m of K.members.slice(2)) m.alive = false;
+    let k = s * 104729 + 11; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+    const win = fight(a, K, {kind: 'raiders', strength: 4, label: 'налётчики'}, r, 'night');
+    const f = K.members.filter(m => /лёжа без сознания/.test(m.died?.why || '')).length;
+    if (win) won += f; else fin += f;
+  }
+  ok(fin > 0 && won === 0, 'проигранный быстрый бой, когда стоять некому: увечных добивают; в выигранном — никогда', `добитых ${fin}, в победах ${won}`);
+}
+
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

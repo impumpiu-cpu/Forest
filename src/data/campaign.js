@@ -59,7 +59,7 @@ export const CAMPAIGN = {
   // of the food. `mortal` is tuned so that the quick mode loses as many of the eight as the local map
   // (tools/campaign-balance.mjs)
   // captive: the weight of a captive among those the blows fall on (it keeps out of the fight)
-  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02, wounded: 0.05},   // wounded: health lost in a fight that counts as a wound in its record (campaign/stats.js)
+  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02, wounded: 0.05, finishOff: 0.5},   // finishOff: one maimed in a lost quick fight, with nobody left standing — finished where it lies (Р3; the map: campaign/camp.js)   // wounded: health lost in a fight that counts as a wound in its record (campaign/stats.js)
   // a morning after a quiet night: a little food is found with `food`; something of worth only where it has a
   // reason to lie (FINDS below)
   morning: {food: 0.22, foodN: [1, 3], rich: 0.2, richCap: 1.2, tell: 0.25},   // the chance × min(richCap, the land's richness + rich); told with `tell`

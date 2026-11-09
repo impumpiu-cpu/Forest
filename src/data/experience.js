@@ -81,9 +81,9 @@ export const WORK_WHY = {melee: ['бился врукопашную', 'била�
 
 // the road's traumas (campaign/maims.js): night terrors — a friend (bond at least `bond`) seen dying: the chance, the timid's;
 // frostbite — a frosty day walked worn out (tiredness at least `tired`): the chance × (1 − Endurance / `endure`)
-// (Э6: tired 0.7 → 0.3 — on the frosty days of the probes the walkers were never wearier than 0.3 on the map, 0.5 in the quick
-// mode: at 0.7 the check never came; the chance kept, as the review advised — tools/xp-probe.mjs roadTraumaChecks)
-export const ROAD_TRAUMA = {terrors: {bond: 1, chance: 0.08, timid: 0.25}, frostbite: {tired: 0.3, chance: 0.04, endure: 12}};
+// (Р3: the road now tires those on foot — DUTY.walk, more in frost and hungry — so «worn out» is the road's, not the watch's:
+// tired 0.6, reached on long hungry or frosty marches; Э6 had 0.3 as a stopgap, when only the watch tired)
+export const ROAD_TRAUMA = {terrors: {bond: 1, chance: 0.08, timid: 0.25}, frostbite: {tired: 0.6, chance: 0.04, endure: 12}};
 
 // a foe's worth in a kill (agents/acts.js noteKill): its strength (КС) / `per` — a plain human with a spear is 1 — to a `round`th,
 // at least `least`; × `xp` experience

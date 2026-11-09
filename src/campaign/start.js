@@ -99,7 +99,7 @@ export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members |
 // The core (data/campaign.js RETINUE): CAMPAIGN.fighters fighters of the realm's kinds — at most RETINUE.big.max of the great
 // ones — each of a fighting role drawn by its kind's weights; first the roles a core has at least (RETINUE.least: the line, a
 // shooter, a healer), then the rest. → [{species, role}]
-const GROUP = {line: 'линия', shooter: 'дальний бой'};
+export const GROUP = {line: 'линия', shooter: 'дальний бой'};
 const mayRole = (sp, id) => { const R = COMBAT_ROLES.get(id); return !R.mount && !R.linkOnly; };   // (no horse at the start, no role of a link only)
 const rolesFor = (sp, test = () => true) => rolesOf(sp).filter(([id]) => mayRole(sp, id) && test(COMBAT_ROLES.get(id)));
 export function drawCore(a, K, rnd) {
@@ -114,7 +114,7 @@ export function drawCore(a, K, rnd) {
   for (const [need, n] of Object.entries(RETINUE.least)) for (let q = 0; q < n; q++) {
     const test = need === 'healer' ? R2 => R2.id === 'healer' : R2 => R2.group === GROUP[need];
     const m = out.find(x => !x.role && rolesFor(x.species, test).length); if (!m) continue;
-    m.role = weighted(rnd, rolesFor(m.species, test));
+    m.role = weighted(rnd, rolesFor(m.species, test)); m.required = need;   // (it closes a need of the core: a summoned does not take its place unless it closes the same — campaign/ascend.js)
   }
   for (const m of out) if (!m.role) m.role = weighted(rnd, rolesFor(m.species)) || null;
   return out;
@@ -145,7 +145,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local', summon = nu
     beasts: [], nextBeast: 1, vehicles: [], buildings: [...CAMP_KIT.start], cargo: {rope: CAPTIVE.campaign.startRope, pots: ALCHEMY.pots}, build: null, route: null,   // (pots for the healer's hut: data/market.js ALCHEMY)
   };
   const {r, done} = draw(K, 'birth');
-  drawCore(a, K, r).forEach((m, k) => K.members.push(member(K, a, r, m, k)));
+  drawCore(a, K, r).forEach((m, k) => { const x = member(K, a, r, m, k); if (m.required) x.required = m.required; K.members.push(x); });
   if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look

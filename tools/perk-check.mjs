@@ -24,7 +24,7 @@ import {refreshBody} from '../src/agents/special.js';
 import {gearSpec} from '../src/agents/itemDefs.js';
 import {noteScars} from '../src/campaign/maims.js';
 import {fight} from '../src/campaign/fight.js';
-import {inLine} from '../src/data/campaign.js';
+import {inLine, CAMPAIGN} from '../src/data/campaign.js';
 import {memberMight} from '../src/campaign/march.js';
 
 let fails = 0;
@@ -160,15 +160,29 @@ function bothModes(P) {
   let plain = 0, covered = 0;
   for (let s = 1; s <= 30; s++) { plain += run(s, () => {}); covered += run(s, K2 => { for (const m of K2.members.filter(inLine)) m.perks = [{id: 'shoulder', rank: 1}]; }); }
   ok(covered < plain * 0.9, 'быстрый бой: щитоносец «Плечом к плечу» отводит удары от остальных', `урон не стоящим в строю за 30 боёв: ${plain.toFixed(2)} → ${covered.toFixed(2)}`);
+  // …and saves lives, not bruises: the deadly chance of the covered ÷ cover (Р3) — the maims of those not in the line, many fights
+  const deadly = (s, cov) => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}); for (const m of K2.members) ensureXp(m);
+    if (cov) for (const m of K2.members.filter(inLine)) m.perks = [{id: 'shoulder', rank: 1}];
+    fight(a2, K2, {kind: 'raiders', strength: 2, label: 'налётчики'}, rng(s), 'night');
+    return K2.members.filter(m => !inLine(m)).reduce((v, m) => v + (m.maims || 0) + (m.alive ? 0 : 1), 0); };
+  // (the deadly chance raised for the count, then put back: 0.02 gives too few to tell)
+  const M0 = CAMPAIGN.fight.mortal; CAMPAIGN.fight.mortal = 0.3;
+  let d0 = 0, d1 = 0; for (let s = 1; s <= 60; s++) { d0 += deadly(s, false); d1 += deadly(s, true); }
+  CAMPAIGN.fight.mortal = M0;
+  ok(d1 < d0 * 0.85, 'быстрый бой: прикрытый щитоносцем реже получает смертельную рану', `увечий и смертей не в строю за 60 боёв (смертельный шанс 0,3 на время счёта): ${d0} → ${d1}`);
   // the one saved stands up stronger with «Полевая перевязь» in the company; one maimed is out of the fight
   const saved = perk => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}), [m, h] = K2.members; for (const x of K2.members) ensureXp(x);
     for (const x of K2.members) x.hp = x === m ? 0.01 : 5; if (perk) h.perks = [{id: 'fieldDressing', rank: 2}];
     fight(a2, K2, {kind: 'raiders', strength: 0.3, label: 'налётчики'}, () => 0.001, 'night'); return m.hp; };
   const h0 = saved(false), h1 = saved(true);
+  // the healer saved does not bind itself (Р3): its own «Полевая перевязь» does not raise it
+  const self = () => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}), [m] = K2.members; for (const x of K2.members) { ensureXp(x); x.hp = x === m ? 0.01 : 5; }
+    m.perks = [{id: 'fieldDressing', rank: 2}]; fight(a2, K2, {kind: 'raiders', strength: 0.3, label: 'налётчики'}, () => 0.001, 'night'); return m.hp; };
+  ok(Math.abs(self() - h0) < 1e-9, 'знахарь с «Полевой перевязью» не перевязывает сам себя', `${self().toFixed(2)} при ${h0.toFixed(2)} без перка`);
   ok(h1 > h0 + 0.15, 'быстрый бой: вытащенный встаёт крепче, если в отряде «Полевая перевязь»', `${h0.toFixed(2)} → ${h1.toFixed(2)}`);
   const a3 = fresh(), K3 = newCampaign(a3, cap.town, {mode: 'auto'}), arm = K3.members.find(m => m.gear.hand.length > 1) || K3.members[0];
-  const before = memberMight(arm); arm.wounds = [{id: 'lostArm', day: null}];
-  ok(memberMight(arm) < before, 'быстрый бой: потерянная рука — меньше силы в общем счёте (одна вещь в руке, Сила ×0,75)', `${before.toFixed(2)} → ${memberMight(arm).toFixed(2)}`);
+  const before = memberMight(arm, true), bought = memberMight(arm); arm.wounds = [{id: 'lostArm', day: null}];
+  ok(memberMight(arm, true) < before && memberMight(arm) === bought, 'быстрый бой: потерянная рука — меньше своей силы в бою (одна вещь, Сила ×0,75), а врага покупает та же сила', `${before.toFixed(2)} → ${memberMight(arm, true).toFixed(2)}; на закупку ${bought.toFixed(2)} → ${memberMight(arm).toFixed(2)}`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

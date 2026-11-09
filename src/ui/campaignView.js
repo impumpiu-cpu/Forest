@@ -319,9 +319,11 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   async begin() {
     const a = this.atlas; if (!a || this.capPick == null) return;
     // the ascended ticked: taken out of the registry at once (no undo), their snapshots into the campaign (K.summoned)
-    let summon = null;
-    if (this.heroPick?.size) { const {reg, snaps} = takeHeroes(await loadHeroes(), [...this.heroPick]); await saveHeroes(reg); summon = snaps; this.heroPick.clear(); }
+    // (the registry is written only once the campaign is made: a campaign that fails to start loses nobody — Р3)
+    let summon = null, rest = null;
+    if (this.heroPick?.size) ({reg: rest, snaps: summon} = takeHeroes(await loadHeroes(), [...this.heroPick]));
     newCampaign(a, this.capPick, {summon});
+    if (rest) { try { await saveHeroes(rest); } catch (e) { $('campSaveStatus').textContent = 'Реестр вознесённых не записан: ' + e.message; } this.heroPick.clear(); }
     if (this.follow) this.closeUp();
     this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null;
     this.runMode(); this.run();

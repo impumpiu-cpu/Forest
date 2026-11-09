@@ -92,6 +92,7 @@ export const DUTY = {
   per: 4,              // …one for every this many who may stand it (at least one)
   badly: 0.35,         // one this hurt does not stand watch (as CAMPAIGN.camp.badly)
   tiredWatch: 0.45,    // a night on watch adds this
+  walk: {tired: 0.1, frost: 1.5, hungry: 1.5},   // a day walked on foot adds this; × in frost (no warming brew), × hungry (Ver_E Р3: the road tires, not the watch alone)
   rest: {march: 0.15, camp: 0.3, town: 0.5},   // a night's sleep takes this off: after a day's march, on a camp, in a town
   healCut: 0.3,        // healing × (1 − healCut × tired)
   campRest: 0.3,       // on a camp's map the need of rest starts this × tired lower

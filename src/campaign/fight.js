@@ -287,7 +287,7 @@ function spoilsRest(a, K, d, r) {
 // ── at once (the quick mode): the foe's might against the caravan's
 function autoFight(a, K, d, r, how) {
   // the foe is bought by the caravan's might × the fight's weight (campaign/camp.js foeWeight, data/camp.js CAMP.foe), as on the local map
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = caravanMight(K, true) * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
   const share = P / (P + E), win = r() < share;
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
   // the blows: more when they lose, mostly on the first rank, who shield the rest
@@ -296,8 +296,8 @@ function autoFight(a, K, d, r, how) {
   // the perks of the fight that tell in the quick fight too (Ver_E Э6; the local map plays them blow by blow — data/perks.js `fight`):
   // a shield-bearer «Плечом к плечу» standing draws the blows off the others (the rest's share ÷ its cover), a healer with
   // «Полевая перевязь» stands the one it saved up stronger (+ its dressHp)
-  const free = () => alive(K).filter(m => !m.captive && !out.has(m.id));
-  const cover = () => Math.max(1, ...free().filter(inLine).map(m => perkMulA(m, 'cover'))), saved = () => F.saved + Math.max(0, ...free().map(m => perkOf(m, 'dressHp')));
+  const standing = () => alive(K).filter(m => !m.captive && !out.has(m.id));
+  const cover = () => Math.max(1, ...standing().filter(inLine).map(m => perkMulA(m, 'cover'))), saved = who => F.saved + Math.max(0, ...standing().filter(m => m !== who).map(m => perkOf(m, 'dressHp')));   // (another's hands: a healer does not bind itself better — Р3)
   while (hurt > 0 && alive(K).some(m => !out.has(m.id))) {
     // one maimed in this fight lies senseless and out of it, as on the map (agents/wounds.js maimFall): no more blows for it
     const ms = alive(K).filter(m => !out.has(m.id)), c = cover(), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1 / c));   // a captive keeps out of it
@@ -306,11 +306,16 @@ function autoFight(a, K, d, r, how) {
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
     if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;   // at the edge, a healing potion (campaign/potions.js)
     if (!hit.includes(m)) hit.push(m);
-    const mortal = r() < F.mortal;
-    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = saved(); out.add(m.id); } else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
+    // the blow's deadly chance: one not in the line, with a shield-bearer «Плечом к плечу» standing, is covered — ÷ its cover, as
+    // the map's shield saves lives, not bruises (Р3); the draw is the same one either way
+    const mortal = r() < F.mortal / (inLine(m) || m.captive ? 1 : c);
+    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = saved(m); out.add(m.id); } else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
     else if (m.hp <= 0 && spent(m)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);   // three maims borne: the fall that a won fight forgives others kills it, with no check (Р2-03)
-    else if (m.hp <= 0) { m.hp = saved(); award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
+    else if (m.hp <= 0) { m.hp = saved(m); award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
   }
+  // a lost fight with nobody left on its feet: the maimed lying senseless may be finished off, as on the map where no one is
+  // there to bind them (Р3; a draw for each only then)
+  if (!win && !standing().length) for (const m of alive(K).filter(x => out.has(x.id))) if (r() < F.finishOff) die(a, K, m, `${m.gender === 'f' ? 'добита' : 'добит'}, лёжа без сознания (${foe.label})`);
   if (!alive(K).length) return win;
   if (win) {
     const loot = Math.round(between(r, F.loot)); K.food += loot;
