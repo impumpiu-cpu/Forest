@@ -7,7 +7,10 @@
 //   node tools/ascend-check.mjs
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, newCampaign} from '../src/campaign/index.js';
+import {capitals, newCampaign, stepCampaign} from '../src/campaign/index.js';
+import {gearDef} from '../src/local/index.js';
+import {XP} from '../src/data/experience.js';
+import {playStop} from '../src/campaign/fight.js';
 import {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, snapshotOf, racesOf} from '../src/campaign/ascend.js';
 import {ensureXp, levelOn} from '../src/campaign/experience.js';
 
@@ -91,6 +94,34 @@ ok(again.story.walks === 2 && again.story.before?.from === s1.story.from, 'во�
   const Kb2 = JSON.parse(JSON.stringify(Ka)); Kb2.day = 133; Kb2.ascended = null;
   const r1 = ascend(A1, Ka, emptyRegistry()), r2 = ascend(A1, Kb2, r1);
   ok(r2.heroes.length === 2 * r1.heroes.length, 'два похода из одной столицы в один год — герои обоих в реестре', `${r1.heroes.length} → ${r2.heroes.length}`);
+}
+
+
+// К-1 (аудит Ver_E): the summoned walks — its values a list, as everywhere; a snapshot of the first build (values an object) read too;
+// the walk goes on in the quick mode, and a camp on the local map opens with it
+{
+  ok(Array.isArray(s1.values), 'снимок хранит ценности списком', JSON.stringify(s1.values));
+  const old = {...s1, uid: 'oldv', values: Object.fromEntries((s1.values || ['gold']).map((v, k) => [k, v]))};
+  const b = fresh(), Kw = newCampaign(b, hum.town, {mode: 'auto', summon: [s1, old]}); b.campaign = Kw;
+  ok(Kw.members.filter(m => m.summoned).every(m => Array.isArray(m.values)), 'призванные — с ценностями списком (и из снимка, где они были объектом)');
+  let err = null; try { for (let q = 0; q < 2; q++) stepCampaign(b); } catch (e) { err = e; }
+  ok(!err && Kw.day > 20, 'поход с призванными идёт (быстрый режим, два сезона)', err ? err.message : `день ${Kw.day}`);
+  const c = fresh(), Kl = newCampaign(c, hum.town, {mode: 'local', summon: [s1, old]}); c.campaign = Kl;
+  let errL = null; try { Kl.why = 'food'; playStop(c, Kl); } catch (e) { errL = e; }
+  ok(!errL, 'стоянка на карте с призванными открывается и играется', errL ? errL.message : 'ок');
+}
+// В-1: the camp's tools of the core stay when the summoned take their places (an axe is not lost for want of one in its hands)
+{
+  const tools = K => K.members.flatMap(m => m.gear.hand.filter(id => gearDef(id)?.tool)).sort().join(',');
+  const plain = newCampaign(fresh(), hum.town, {mode: 'auto'});
+  const bare = [1, 2, 3, 4].map(k => ({...s1, uid: `t${k}`, name: `Безрукий${k}`, gear: {hand: s1.gear.hand.filter(id => !gearDef(id)?.tool), body: s1.gear.body}}));
+  const Kt = newCampaign(fresh(), hum.town, {mode: 'auto', summon: bare});
+  ok(tools(Kt) === tools(plain), 'инструменты стоянки ядра на месте и с призванными без инструментов', `${tools(plain)} → ${tools(Kt)}`);
+}
+// the cap: one ascended past it comes at the cap
+{
+  const Kc = newCampaign(fresh(), hum.town, {mode: 'auto', summon: [{...s1, uid: 'cap', level: 46}]});
+  ok(Kc.members.find(m => m.summoned).level === XP.cap, `призванный старше потолка приходит на ${XP.cap}-м уровне`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

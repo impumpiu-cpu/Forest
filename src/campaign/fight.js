@@ -31,11 +31,21 @@ import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
 import {campActs, fightActs, award} from './experience.js';
+import {ACTS} from '../data/experience.js';
 import {maimsIn, maimInstead, spent} from './maims.js';
 import {perkOf, perkMulA} from '../data/perks.js';
 
-// the acts of a fight (data/experience.js): one who did one of them in a fight fought by its own deeds, not only by its place
-const FIGHT_ACTS = new Set(['killBlow', 'killShot', 'hit', 'shield', 'cover', 'bind', 'dress', 'tend']);
+// the acts of a fight (data/experience.js): one who did one of them in a fight fought by its own deeds, not only by its place.
+// Some come as acts of the map (agents/acts.js), some as the camp's facts (settlement/together.js: saved, aid, stoodUp)
+const FIGHT_ACTS = new Set(['killBlow', 'killShot', 'hit', 'shield', 'bind']);
+const FIGHT_FACTS = {saved: 'dress', aid: 'tend', stoodUp: 'cover'};
+// what each did in a fight on the map, as experience (campaign/experience.js fightActs: the ground goes by it) — Map(id → xp)
+function meritOf(camp) {
+  const out = new Map(), add = (id, v) => { if (v > 0) out.set(id, (out.get(id) || 0) + v); };
+  for (const mo of camp.members || []) for (const [id, n] of Object.entries(mo.acts || {})) if (FIGHT_ACTS.has(id)) add(mo.id, mo.actXp?.[id] ?? ACTS.get(id).xp * n);
+  for (const f of camp.facts || []) if (FIGHT_FACTS[f.kind] && f.by != null) add(f.by, ACTS.get(FIGHT_FACTS[f.kind]).xp);
+  return out;
+}
 
 // how long the local camps of a campaign took on this machine (not part of the campaign)
 export const CAMP_TIME = new WeakMap();
@@ -57,8 +67,9 @@ export function fight(a, K, d, r, how = 'night') {
   const camp = K.lastCamp;
   recordFight(a, K, d, how, win, before);
   // the ground of the fight for all who stood in it, and the role's letter for whoever did nothing of its own there (campaign/experience.js)
-  const ids = new Set(before.map(([id]) => id)), acted = new Set((camp?.members || []).filter(mo => Object.keys(mo.acts || {}).some(id => FIGHT_ACTS.has(id))).map(mo => mo.id));
-  fightActs(K, d, how, win, {...K.fights.at(-1), acted}, K.members.filter(m => ids.has(m.id)));
+  // (the merit of each on the map; the quick fight has none — null: all get the ground whole)
+  const ids = new Set(before.map(([id]) => id)), merit = K.mode !== 'auto' && camp ? meritOf(camp) : null, acted = new Set(merit?.keys() || []);
+  fightActs(K, d, how, win, {...K.fights.at(-1), acted, merit}, K.members.filter(m => ids.has(m.id)));
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); if (d.kind !== 'army') famed(a, K, 'win'); }   // fame with the realm about (campaign/road.js); not for beating that realm's own army
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
