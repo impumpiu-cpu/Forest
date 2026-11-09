@@ -262,6 +262,7 @@ function tradeNow(a, K, t, st) {
   // the town's purse lasts the whole visit (trade on entering and on leaving): kept on the caravan only while a purse is set
   if (M.purse != null && (!K.inTown || K.townPurse?.id !== t.id)) K.townPurse = {id: t.id, left: M.purse};
   const goldIn = K.gold;   // (a deal is struck when gold changed hands: campaign/experience.js)
+  let paid = false;   // …or when anything was paid for, either way (purchases may even out the sales to the coin — Р2)
   const P = M.purse != null ? K.townPurse : {left: Infinity}, unsold = [];
   const sell = keep => {
     let got = 0;
@@ -271,13 +272,15 @@ function tradeNow(a, K, t, st) {
       if (p > 0 && p <= can) { got += fromTown(t, p); P.left -= p; intoStore(t, goodOf(id), n * (goodOfRes(id)?.[1] ?? 1)); if (kept) K.cargo[id] = kept; else delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); }
       else if (p > can && !unsold.includes(id)) unsold.push(id);
     }
-    K.gold = gold(K.gold + got);
+    K.gold = gold(K.gold + got); if (got > 0) paid = true;
   };
   sell(id => ore.has(id));   // the ore for the smith kept (and the potions with a few of their makings: potionKeep)
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, townPurse(t))) unsold.push('spoils');
-  // (the spoils dearer when a dwarf wastes nothing: «Всё в дело», campaign/perks.js companyMul)
-  else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell * companyMul(K, 'spoils')); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  // (the spoils dearer when a dwarf wastes nothing: «Всё в дело», campaign/perks.js companyMul — the town must afford the price
+  // it pays, the perk's share in it: Р2)
+  const spoilsPrice = K.spoils?.length ? K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell * companyMul(K, 'spoils') : 0;
+  if (K.spoils?.length && spoilsPrice > Math.min(P.left, townPurse(t))) unsold.push('spoils');
+  else if (K.spoils?.length) { paid = true; const p = fromTown(t, spoilsPrice); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
@@ -286,7 +289,7 @@ function tradeNow(a, K, t, st) {
   const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st, T.buy);
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));
   const n = Math.floor(Math.min(want, K.gold / price));
-  if (n > 0) { K.food += n; K.gold = gold(K.gold - toTown(t, n * price)); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
+  if (n > 0) { paid = true; K.food += n; K.gold = gold(K.gold - toTown(t, n * price)); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
   const alms = Math.floor(Math.min(Math.max(0, capacity(K) - load(K)), need * WANTS.alms - K.food));
   if (K.hungry > 0 && alms > 0) { K.food += alms; K.stats.alms = (K.stats.alms || 0) + 1; done.push(`голодных накормили даром — ${pieces(alms, 'паёк', 'пайка', 'пайков')} на дорогу`); }
   // the rest, in order of need
@@ -307,7 +310,7 @@ function tradeNow(a, K, t, st) {
     if (o.kind === 'goods' && o.need === 'belt' && kindRoom(K, potionOf(o.id).potion, o.id) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
-    K.gold = gold(K.gold - toTown(t, p)); outOfStore(t, offerGood(o), o.kind === 'goods' ? o.n * (goodOfRes(o.id)?.[1] ?? 1) : 1);   // into the town's treasury, out of its store
+    paid = true; K.gold = gold(K.gold - toTown(t, p)); outOfStore(t, offerGood(o), o.kind === 'goods' ? o.n * (goodOfRes(o.id)?.[1] ?? 1) : 1);   // into the town's treasury, out of its store
     if (o.kind === 'beast') {
       K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`);
       // the town spends what it chose: one of its guard golems goes with the caravan (atlas/golems.js)
@@ -320,7 +323,7 @@ function tradeNow(a, K, t, st) {
     assign(K); K.path = null;
   }
   // a deal struck — something bought or sold, after the exchange: the best of them at the market struck it (campaign/experience.js)
-  if (K.gold !== goldIn) { const best = free(K).filter(m => !m.former).sort((p, q) => (q.local?.skill?.barter || 0) - (p.local?.skill?.barter || 0) || (q.special?.C || 0) - (p.special?.C || 0))[0]; award(K, best, 'trade'); }
+  if (paid || K.gold !== goldIn) { const best = free(K).filter(m => !m.former).sort((p, q) => (q.local?.skill?.barter || 0) - (p.local?.skill?.barter || 0) || (q.special?.C || 0) - (p.special?.C || 0))[0]; award(K, best, 'trade'); }
   return done;
 }
 

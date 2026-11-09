@@ -20,9 +20,14 @@ import {maimInstead, maimsIn, terrorsFrom, frostbite, noteScars, sinceScar, hasW
 import {meets, offered, pickPerk} from '../src/campaign/perks.js';
 import {PERKS} from '../src/data/perks.js';
 import {SPECIES} from '../src/data/species.js';
-import {campSetup, openCamp} from '../src/campaign/camp.js';
+import {campSetup, openCamp, campOutcome} from '../src/campaign/camp.js';
+import {fight, applyCamp} from '../src/campaign/fight.js';
+import {campActs} from '../src/campaign/experience.js';
+import {FOES} from '../src/data/campaign.js';
 import {bondBy} from '../src/campaign/social.js';
-import {ensureXp} from '../src/campaign/experience.js';
+import {ensureXp, specialOn} from '../src/campaign/experience.js';
+import {perksBy} from '../src/campaign/perks.js';
+import {scarsOn, maimsOn} from '../src/campaign/maims.js';
 
 let fails = 0;
 const ok = (cond, what, detail = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${what}${detail ? `: ${detail}` : ''}`); if (!cond) fails++; };
@@ -90,7 +95,7 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
 // ── the answers
 {
   const {K} = fresh(), m = ensureXp(K.members[3]);
-  m.level = 6; m.acts = {hit: 30, fight: 4, watch: 9}; m.wounds = [{id: 'eye', day: null}]; noteScars(m);
+  m.level = 6; m.fight = 'archer'; m.acts = {hit: 30, fight: 4, watch: 9}; m.wounds = [{id: 'eye', day: null}]; noteScars(m);
   ok(!meets(m, PERKS.get('oneEyed')), 'одноглазый стрелок: до дел после раны — нет');
   m.acts.hit += 20;
   ok(meets(m, PERKS.get('oneEyed')) && sinceScar(m, 'eye', 'hit') === 20, '20 попаданий после раны — открыт');
@@ -117,6 +122,97 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   const n = K.members[4]; frostbite(K, [n], true, () => 0.2, () => 0);
   ok(!hasWound(n, 'frostbite'), 'бодрый не обмораживается');
   ok(WOUNDS.filter(x => x.trauma && x.drawn !== false).every(x => !['terrors', 'frostbite'].includes(x.id)) && Object.values(MAIM_OF).every(id => WOUNDS.get(id).maim), 'дорожные травмы и увечья не выпадают смертельной ране обычной травмой');
+}
+
+// ══ Р2: the findings of the second review, each through the game's own doors
+// Р2-01: a member's perks and maims go onto the map with it — and back out of a replayed setup the same
+{
+  const {a, K} = fresh(), [m, x, y] = K.members;
+  m.perks = [{id: 'oldWolf', rank: 1, day: 0, at: [0]}]; m.maims = 3; m.wounds = [{id: 'blindEye', day: null}, {id: 'shatteredLeg', day: null}, {id: 'crushedChest', day: null}];
+  for (const g of [m, x, y]) g.race = 'goblin';
+  const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), S2 = JSON.parse(JSON.stringify(S));
+  const ag = w => [...w.campaign.people.values()].find(q => q.member === m.id);
+  const w1 = openCamp(S), w2 = openCamp(S2), a1 = ag(w1), a2 = ag(w2);
+  ok(a1.perks?.some(p => p.id === 'oldWolf') && a1.maims === 3 && a1.kinHere === 3, 'Р2-01: перк, увечья и сородичи входят на карту со снимком стоянки', `перки ${JSON.stringify(a1.perks)}, увечий ${a1.maims}, своих ${a1.kinHere}`);
+  ok(JSON.stringify([a2.perks, a2.maims, a2.kinHere, a2.mods]) === JSON.stringify([a1.perks, a1.maims, a1.kinHere, a1.mods]), 'Р2-01: повтор стоянки из сохранённого снимка — то же тело');
+  fix(w1, 0.99); a1.hp = -0.1; lethal(w1, a1, 'ран', null);
+  const o = campOutcome(w1), mo = o.members.find(q => q.id === m.id);
+  ok(a1.dead && !mo.alive, 'Р2-01: с тремя увечьями, принесёнными из похода, смертельная рана на карте убивает');
+  applyCamp(a, K, S, o, null, 'stop');
+  ok(!m.alive && m.maims === 3, 'Р2-01: в поход не возвращается четвёртое увечье', `увечий ${m.maims}, жив ${m.alive}`);
+}
+// Р2-02: the fates at the camp's end do not hang on the members' order; one stable alone comes to with no company's binding
+{
+  const run = flip => {
+    const {a, K} = fresh(), S = campSetup(a, K, {kind: 'stop', dayIn: 0});
+    if (flip) S.members.reverse();
+    const w = openCamp(S), P = [...w.campaign.people.values()].filter(q => q.member != null);
+    const st = P.find(q => q.member === K.members[0].id), bl = P.find(q => q.member === K.members[1].id);
+    for (const q of P) if (q !== st && q !== bl) { q.dead = true; w.agents = w.agents.filter(z => z !== q); }
+    st.downed = {since: w.tick, until: Number.MAX_SAFE_INTEGER, maim: 'lostArm'}; st.maimedNow = ['lostArm']; st.maims = 1;
+    bl.downed = {since: w.tick, until: w.tick + 1e6};
+    const o = campOutcome(w), f = id => o.members.find(q => q.id === id);
+    return {st: f(K.members[0].id).alive, bl: f(K.members[1].id).alive, bound: o.facts.filter(x => x.kind === 'boundAfter').length};
+  };
+  const p = run(false), q = run(true);
+  ok(p.st && !p.bl && p.bound === 0 && JSON.stringify(p) === JSON.stringify(q), 'Р2-02: стабильный увечный жив, истекающий кровью без помощи — нет, при любом порядке; факта перевязки отрядом нет', `${JSON.stringify(p)} / ${JSON.stringify(q)}`);
+}
+// Р2-03: the quick fight, won and lost: one with three maims whose health runs out dies, never rises «clean»
+{
+  let won = 0, lost = 0, bad = 0, n = 0;
+  for (let s = 0; s < 40 && (won < 2 || lost < 2); s++) {
+    const {a, K} = fresh();
+    for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.02; }
+    let k = s * 7919 + 1; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+    const win = fight(a, K, {kind: 'raiders', strength: 1.5, label: 'налётчики'}, r, 'night'); n++;
+    if (win) won++; else lost++;
+    bad += K.members.filter(m => m.alive && (m.acts?.clean || 0) > 0).length;
+  }
+  ok(won > 0 && lost > 0 && bad === 0, 'Р2-03: быстрый бой при победе и поражении: с тремя увечьями упавший погибает, «чисто» не встаёт', `боёв ${n}: побед ${won}, поражений ${lost}, вставших ${bad}`);
+}
+// Р2-04: an answer counts the deeds after the wound: «hit, then lost the eye» and «lost the eye, then hit» are not the same
+{
+  const seq = before => {
+    const {K} = fresh(), m = ensureXp(K.members[3]); m.level = 6; m.fight = 'archer'; m.wounds = [{id: 'blindEye', day: null}];
+    const mo = {id: m.id, alive: true, acts: {hit: 20}, scarsAt: {blindEye: {hit: before ? 20 : 0, work: 0}}, practiced: {}};
+    maimsIn(K, m, ['blindEye'], () => {}, mo, true); campActs(K, {members: [mo]});
+    return [sinceScar(m, 'blindEye', 'hit'), !!meets(m, PERKS.get('oneEyed'))];
+  };
+  const [h1, o1] = seq(true), [h2, o2] = seq(false);
+  ok(h1 === 0 && !o1 && h2 === 20 && o2, 'Р2-04: «попал, потом ослеп» — 0 попаданий после раны, ответа нет; «ослеп, потом попал» — 20, ответ открыт', `${h1}/${o1} и ${h2}/${o2}`);
+  const {K} = fresh(), m = ensureXp(K.members[4]); m.wounds = [{id: 'blindEye', day: null}]; m.acts.fight = 4;
+  maimsIn(K, m, ['blindEye'], () => {}, {acts: {}, practiced: {}}, true);
+  ok(sinceScar(m, 'blindEye', 'fight') === 0 && m.scarAt.blindEye.fight === 5, 'Р2-04: бой, в котором получена рана, — до неё');
+}
+// the bone-setter: no draw when there is no perk (the switch off keeps the old stream), and it spares two traumas of three
+{
+  const w = scene(), p = createAgent(w, 'human', 'colony', 25.5, 20.5), h = createAgent(w, 'human', 'colony', 25.5, 21.5); p.member = 5; h.member = 6;
+  p.hp = 1; p.downed = {since: 0, until: 1e9, trauma: 'limp'}; h.skill = {medicine: 0.3};
+  let draws = 0; const c0 = w.rngs.colony; w.rngs.colony = Object.assign(() => { draws++; return c0(); }, {state: 0});
+  stabilize(w, h, p); const d0 = draws;
+  ok(d0 === 0, 'без «Костоправа» перевязка не тянет число из потока', `чисел ${d0}`);
+  ok(PERKS.get('boneSetter').fight.cleanHelp >= 0.66, '«Костоправ»: втрое реже — остаётся треть травм', `${PERKS.get('boneSetter').fight.cleanHelp}`);
+}
+// the witnesses of a maim: those who saw the blow on the map, not all the company
+{
+  const {a, K} = fresh(), S = campSetup(a, K, {kind: 'stop', dayIn: 0}), w = openCamp(S);
+  const P = [...w.campaign.people.values()].filter(q => q.member != null), [v, d] = P;
+  d.dead = true; w.agents = w.agents.filter(z => z !== d);
+  fix(w, 0.99); v.hp = -0.1; lethal(w, v, 'ран', null);
+  const f = (w.campaign.facts || []).find(x => x.kind === 'maimed');
+  ok(f && f.to === K.members.find(m => m.id === v.member)?.id && !f.saw.includes(d.member), 'увечье на карте — факт с очевидцами удара; погибший прежде не видел', f ? `видели ${f.saw.length} из ${P.length - 2}` : 'нет факта');
+}
+
+// the card played back (Э5 is the screen, but the record is here): a rank as it stood, Luck granted later, a maim got later
+{
+  const {K} = fresh(), m = ensureXp(K.members[2]);
+  m.perks = [{id: 'strongBack', rank: 2, day: 3, at: [3, 9], why: 'level'}, {id: 'lucky', rank: 1, day: 12, at: [12], why: 'clean'}];
+  m.granted = [{day: 12, stat: 'L', n: 1}]; const L = m.special.L;
+  m.wounds = [{id: 'lostArm', day: null, got: 15}]; m.maims = 1; m.maimDays = [15]; K.day = 20;
+  const p6 = perksBy(K, m, 6);
+  ok(p6.length === 1 && p6[0].id === 'strongBack' && p6[0].rank === 1 && specialOn(K, m, 6).L === L - 1 && !scarsOn(K, m, 6).length && maimsOn(K, m, 6) === 0,
+    'карточка на день 6: «Крепкая спина» I ранга, Удача без «Везучего», руки ещё нет', JSON.stringify(p6.map(p => [p.id, p.rank])));
+  ok(perksBy(K, m, 20).length === 2 && scarsOn(K, m, 20).length === 1 && maimsOn(K, m, 16) === 1, 'на сегодня и после раны — всё как есть');
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

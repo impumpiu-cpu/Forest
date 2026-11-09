@@ -26,7 +26,8 @@ import {HIT_LOCATIONS} from '../data/anatomy.js';
 import {degreeOf, passed, degreeValue} from '../data/checks.js';
 import {caughtFrom} from '../data/afflictions.js';
 import {catchIll} from './afflictions.js';
-import {noteKill, noteAct} from './acts.js';
+import {noteKill, noteAct, noteScarNow} from './acts.js';
+import {noteFact} from '../settlement/facts.js';
 import {perkOf, hasPerkA, PERKS} from '../data/perks.js';
 import {CONDITIONS} from '../data/conditions.js';
 
@@ -66,6 +67,7 @@ export function lethal(w, t, cause, by) {
   const clean = sure || w.rngs.combat() < luckChance('clean', L);
   const trauma = clean ? null : weighted(w.rngs.combat, traumasAt(t).map(x => [x.id, x.weight ?? 1]));
   if (clean) noteAct(t, 'clean');   // survived a deadly wound with no mark: a member's count («Везучий», data/perks.js)
+  if (trauma) noteScarNow(t, trauma);   // the deeds before the wound (campaign/maims.js noteScars)
   fall(w, t, cause, by, trauma);
   return true;
 }
@@ -76,7 +78,8 @@ function maimFall(w, t, cause, by) {
   const maim = MAIM_OF[pick];
   fall(w, t, cause, by, null);
   t.downed.maim = maim; t.downed.until = Number.MAX_SAFE_INTEGER;   // (stable: it does not bleed out)
-  t.maims = (t.maims || 0) + 1; (t.maimedNow ||= []).push(maim);
+  t.maims = (t.maims || 0) + 1; (t.maimedNow ||= []).push(maim); noteScarNow(t, maim);
+  noteFact(w, 'maimed', null, t, {maim, n: t.maims});   // the company's fact, seen by those who saw the blow (settlement/facts.js)
   log(w, `<b>${esc(t.name)}</b> ${g(t, 'не умер', 'не умерла')}: ${WOUNDS.get(maim).label} — на всю жизнь.`, 'danger', 'notice');
 }
 
@@ -124,7 +127,7 @@ export function dressWound(w, a, medicine = 0) {
 
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
-  if (a.downed?.trauma && w.rngs.colony() < perkOf(helper, 'cleanHelp')) a.downed.trauma = null;   // a bone-setter's hands: no trauma left («Костоправ», data/perks.js)
+  { const ch = perkOf(helper, 'cleanHelp'); if (a.downed?.trauma && ch > 0 && w.rngs.colony() < ch) a.downed.trauma = null; }   // (no draw when no perk: the old stream untouched — Р2)   // a bone-setter's hands: no trauma left («Костоправ», data/perks.js)
   const d = dressWound(w, a, helper?.skill?.medicine || 0); if (!d) return;
   const up = perkOf(helper, 'dressHp'); if (up > 0) a.hp = Math.min(maxHp(a), a.hp + up * maxHp(a));   // stands up stronger (a perk: «Полевая перевязь», data/perks.js)
   // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)

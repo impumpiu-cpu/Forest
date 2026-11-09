@@ -55,19 +55,22 @@ PERKS.registerAll([
   {id: 'lucky', label: 'Везучий', kind: 'общие', how: 'grant', about: 'Удача +1 (в пределах расы): пережил смертельную рану без следа — единственный перк, двигающий букву',
     req: {level: 2, any: [['clean', 1]]}, grant: {L: 1}, pull: {}},
   {id: 'boneSetter', label: 'Костоправ', kind: 'поддержка', how: 'fight', about: 'вытащенный им с того света втрое реже уносит с собой травму',
-    req: {level: 5, any: [['dress', 3], ['work:medicine', 30]]}, fight: {cleanHelp: 0.3}, pull: {values: ['knowledge', 'family'], leans: {curious: 0.5}}},
+    // (0.67 spared: a third of the traumas left — «втрое реже», Р2)
+    req: {level: 5, any: [['dress', 3], ['work:medicine', 30]]}, fight: {cleanHelp: 0.67}, pull: {values: ['knowledge', 'family'], leans: {curious: 0.5}}},
   // ── the answers to a wound (Ver_E Э4): a perk that lets one live with what it bears; when one opens, it is taken first.
   //   scar — one of these wounds borne; since — deeds done after it ([act, n]: fights, hits, or `work` by its experience — campaign/maims.js scarAt)
-  {id: 'oneEyed', label: 'Одноглазый стрелок', kind: 'ответ', how: 'mods', answer: true, about: 'с одним глазом снова бьёт метко: меткость возвращается, обзор — нет',
-    req: {scar: ['eye', 'blindEye'], since: [['hit', 20], ['fight', 3]]}, mods: {aim: 0.08}, pull: {}},
+  {id: 'oneEyed', label: 'Одноглазый стрелок', kind: 'ответ', how: 'mods', answer: true, about: 'с одним глазом снова бьёт метко: меткость +0,08 — после выбитого глаза вся, после вытекшего не вся (−0,04 остаётся); обзор не возвращается',
+    // (a shooter's answer: one in a shooting role — Р2)
+    req: {group: ['дальний бой'], scar: ['eye', 'blindEye'], since: [['hit', 20], ['fight', 3]]}, mods: {aim: 0.08}, pull: {}},
   {id: 'lameSly', label: 'Хромой, да хитрый', kind: 'ответ', how: 'mods', answer: true, about: 'привык беречься: уклонение +0,05',
     req: {scar: ['limp', 'shatteredLeg'], since: [['fight', 2]]}, mods: {dodge: 0.05}, pull: {}},
   {id: 'leftHand', label: 'Левой рукой', kind: 'ответ', how: 'mods', answer: true, about: 'выучился делать всё одной рукой: удар и работа крепче',
     req: {scar: ['maimedHand', 'lostArm'], since: [['work', 4]]}, mods: {fin: 1.12, str: 1.08, work: 1.12}, pull: {}},
   {id: 'overcame', label: 'Переболел', kind: 'ответ', how: 'cure', answer: true, about: 'страх смерти отпустил: травма снята',
     req: {scar: ['dread'], since: [['fight', 3]]}, cure: 'dread', pull: {}},
-  {id: 'oldWound', label: 'Старая рана', kind: 'ответ', how: 'mods', answer: true, about: 'холод больше не берёт сильнее других; грудь ноет к дождю',
-    req: {level: 5, scar: ['chest', 'crushedChest']}, mods: {cold: 0.87}, pull: {}},
+  {id: 'oldWound', label: 'Старая рана', kind: 'ответ', how: 'mods', answer: true, about: 'привык к ране: холод ×0,87 — после пробитой груди как у всех, после раздавленной всё же сильнее (×1,09); грудь ноет к дождю',
+    // (lived with it a while first: two fights or two of work's experience since — Р2)
+    req: {level: 5, scar: ['chest', 'crushedChest'], since: [['fight', 2], ['work', 2]]}, mods: {cold: 0.87}, pull: {}},
   // ── the races: what their ways make of them
   {id: 'stopIn', label: 'Подменил', kind: 'расовые', how: 'mods', about: 'человек берётся за чужое дело: учится любому ремеслу на треть быстрее',
     req: {level: 4, race: ['human'], crafts: 4}, mods: {learn: 1.3}, pull: {leans: {curious: 1}, values: ['work', 'knowledge']}},

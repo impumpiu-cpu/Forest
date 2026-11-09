@@ -49,6 +49,7 @@ function bothModes(P) {
   const R = P.req || {}, o = {acts: {}, work: {}, special: {...(R.stat || {})}, level: (R.level || 1) + 6};
   if (R.race) o.race = R.race[0];
   if (R.role) { o.fight = R.role[0]; }
+  if (R.group) o.fight = {'линия': 'shieldman', 'дальний бой': 'archer'}[R.group[0]] || o.fight;
   if (R.hand) o.hand = [R.hand.find(f => FORMS[f]) || R.hand[0]];
   if (R.work) { const [sk, v] = Object.entries(R.work)[0]; o.work[sk] = v; }
   if (R.crafts) for (const sk of ['cooking', 'gathering', 'woodcutting', 'medicine', 'construction'].slice(0, R.crafts)) o.work[sk] = 5;

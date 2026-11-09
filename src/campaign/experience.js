@@ -226,7 +226,7 @@ export const levelsNow = K => Object.fromEntries(K.members.map(m => [m.id, m.lev
 export const grewBy = (K, m, day) => (m.grew || []).filter(g => day >= K.day || g.day < day);
 export function specialOn(K, m, day) {
   const s = {...(m.special || {})};
-  if (day < K.day) for (const g of m.grew || []) if (g.day >= day && g.stat) s[g.stat] -= 1;
+  if (day < K.day) { for (const g of m.grew || []) if (g.day >= day && g.stat) s[g.stat] -= 1; for (const g of m.granted || []) if (g.day >= day) s[g.stat] -= g.n; }   // (and what a perk granted: «Везучий»)
   return s;
 }
 // what a level grew, in words: «Сила 6 → 7: бил врага в рукопашной»

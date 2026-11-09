@@ -154,7 +154,8 @@ export function brewTheDay(K, use, ms) {
 // the wounds go the same way (agents/wounds.js: a grave wound heals by its time, a trauma never): on the world map
 // m.wounds [{id, day}] — the last day it is borne (null — for life); onto the local map [{id, ticks}] (null — for life)
 export const woundsOut = (K, m) => (m.wounds || []).filter(x => x.day == null || x.day >= K.day).map(x => ({id: x.id, ticks: x.day == null ? null : (x.day - K.day + 1) * DAY}));
-export const woundsIn = (K, list) => (list?.length ? list.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null);
+// (a wound for life keeps the day it was got — `got`, for the card played back: from `prev`, the wounds it bore before)
+export const woundsIn = (K, list, prev = null) => (list?.length ? list.map(x => (x.ticks == null ? {id: x.id, day: null, got: prev?.find(p => p.id === x.id && p.day == null)?.got ?? K.day} : {id: x.id, day: K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null);
 // onto the local map: [{id, ticks}] — what is left of each, no more than its own length; and back: [{id, day}]
 export const effectsOut = (K, m) => (m.effects || []).filter(e => e.day >= K.day).map(e => ({id: e.id, ticks: Math.min(CONDITIONS.get(e.id).ticks || DAY, (e.day - K.day + 1) * DAY)}));
 export const effectsIn = (K, list) => (list?.length ? list.map(e => ({id: e.id, day: K.day + Math.max(1, Math.ceil(e.ticks / DAY)) - 1})) : null);

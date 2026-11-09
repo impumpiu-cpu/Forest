@@ -15,6 +15,14 @@ export function noteAct(a, id, n = 1, xp = null) {
   if (xp != null) { const x = a.actXp ||= {}; x[id] = (x[id] || 0) + xp; }
 }
 
+// a wound for life taken here (agents/wounds.js lethal: a maim, or the trauma a fall carries): the counts of its own deeds on
+// this map at that moment, so the answers to the wound ask only what was done after it (campaign/maims.js noteScars; Р2-04)
+//   a.scarsAt — {wound id: {hit, work (units of practice)}}
+export function noteScarNow(a, id) {
+  if (a?.member == null || !id) return;
+  (a.scarsAt ||= {})[id] = {hit: a.acts?.hit || 0, work: Object.values(a.practiced || {}).reduce((s, v) => s + v, 0)};
+}
+
 export function notePractice(a, skill, units) {
   if (a?.member == null || !(units > 0)) return;
   const p = a.practiced ||= {};

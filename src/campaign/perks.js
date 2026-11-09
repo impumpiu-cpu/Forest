@@ -90,9 +90,10 @@ export function pickPerk(K, m) {
   while (acc < r && k < opts.length - 1) acc += ws[++k];
   const {P, rank, why} = opts[k];
   const had = m.perks.find(p => p.id === P.id);
-  if (had) Object.assign(had, {rank, day: K.day}); else m.perks.push({id: P.id, rank, day: K.day, why});
-  for (const [st, v] of Object.entries(P.grant || {})) m.special[st] = Math.min((m.special[st] ?? 0) + v, SPECIES.get(m.race).special?.[st]?.[1] ?? Infinity);   // «Везучий»: a letter at once, inside the race
-  if (P.cure) { m.wounds = (m.wounds || []).filter(x => x.id !== P.cure); if (!m.wounds.length) m.wounds = null; campaignFact(K, 'overcame', {by: m.id, saw: K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id), params: {wound: P.cure}}); }   // «Переболел»
+  // (day — the first rank's; at — the day of each rank: the card and the probe read a rank as it stood — Р2)
+  if (had) { had.rank = rank; (had.at ||= [had.day]).push(K.day); } else m.perks.push({id: P.id, rank, day: K.day, at: [K.day], why});
+  for (const [st, v] of Object.entries(P.grant || {})) { const was = m.special[st] ?? 0; m.special[st] = Math.min(was + v, SPECIES.get(m.race).special?.[st]?.[1] ?? Infinity); if (m.special[st] > was) (m.granted ||= []).push({day: K.day, stat: st, n: m.special[st] - was}); }   // «Везучий»: a letter at once, inside the race (kept by day: campaign/experience.js specialOn)
+  if (P.cure) { for (const x of (m.wounds || []).filter(x => x.id === P.cure)) (m.healed ||= []).push({id: x.id, got: x.got, off: K.day}); m.wounds = (m.wounds || []).filter(x => x.id !== P.cure); if (!m.wounds.length) m.wounds = null; campaignFact(K, 'overcame', {by: m.id, saw: K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id), params: {wound: P.cure}}); }   // «Переболел»
   const saw = K.members.filter(x => x.alive && x !== m && !x.captive).map(x => x.id);
   campaignFact(K, 'perkTaken', {by: m.id, saw, params: {perk: P.id, rank}});
   return {id: P.id, rank, why};
@@ -100,7 +101,7 @@ export function pickPerk(K, m) {
 // a perk in words: «Плечом к плечу» / «Торгаш II»
 export const perkLabel = (id, rank = 1) => `«${PERKS.get(id).label}»${rank > 1 ? ` ${['', 'I', 'II', 'III'][rank] || rank}` : ''}`;
 // the perks as they stood on a day shown (the screen plays the days back)
-export const perksBy = (K, m, day) => (m.perks || []).filter(p => day >= K.day || p.day < day);
+export const perksBy = (K, m, day) => (m.perks || []).map(p => (day >= K.day ? p : {...p, rank: (p.at || [p.day]).filter(d => d < day).length})).filter(p => p.rank > 0);   // (a rank as it stood: Р2)
 // for the card: what a perk does, and the deed that opened it, in words
 export const perkAbout = id => PERKS.get(id).about;
 const WHY = {clean: 'пережил смертельную рану без следа', watch: 'стоял в дозорах', swap: 'подменял уставших', trade: 'торговал', town: 'видел города', fight: 'прошёл бои', beside: 'бился рядом с иноплеменниками',
