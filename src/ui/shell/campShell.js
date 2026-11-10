@@ -1,6 +1,6 @@
 // The campaign screen in the shell (ui/shell/shell.js; docs/GAME.md «Экран похода»): the top bar with the day and what the
-// caravan has (read off the status list the view keeps), the rail — stock, fights, the council, the chronicle, the
-// layers, the world — the column with the world in small (the caravan and its goal), «Под рукой», «Итоги», «Последнее»,
+// caravan has (read off the status list the view keeps), the rail — stock, fights, the council, the walk's chronicle, the
+// world's chronicle, the layers, the world — the column with the world in small (the caravan and its goal), «Под рукой», «Итоги», «Последнее»,
 // and the company along the bottom as portraits, with a word said by the fire over the one who says it.
 import {$} from '../dom.js';
 import {Shell, SAY_EVENT} from './shell.js';
@@ -17,11 +17,12 @@ export class CampShell extends Shell {
     const S = () => $('campaign');
     super(view, {
       section: 'campaign', title: ['campTitle', 'campName2'], top: ['campDay'], topEnd: ['campSpeed', 'campPause', 'campBack'],
-      rail: [['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
+      rail: [['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись похода'], ['world', '◷', 'Летопись мира'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
       menus: {
         stock: [() => S().querySelector('[data-pane="stock"]'), 'Склад'], fights: [() => S().querySelector('[data-pane="fights"]'), 'Бои'],
         fire: [() => S().querySelector('[data-pane="fire"]'), 'Совет у костра', () => $('campDock')?.dispatchEvent(new CustomEvent('tab', {detail: {id: 'fire'}}))],   // (the scene drawn at its real size)
         chron: [() => S().querySelector(':scope > .obs-chron'), 'Летопись похода', () => { const log = $('campLog'); log.scrollTop = log.scrollHeight; }],
+        world: [() => $('campWorldBox'), 'Летопись мира', () => this.view.renderWorldLog?.(true)],   // (the world's history, ui/worldChron.js)
         layers: [() => $('campLayer')?.closest('.card'), 'Слои карты'], save: [() => $('campSave')?.closest('.card'), 'Мир и поход'],
       },
       mini: true, marks: a => { const K = a.campaign; return K ? [[K.goal, 4, 'rgba(255,220,120,0.9)', '#3a2a10'], [K.i, 3.5, '#f0e6c8', '#1b130a']] : []; },

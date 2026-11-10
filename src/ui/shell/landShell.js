@@ -1,7 +1,8 @@
 // The screens before the world lives, in the shell (ui/shell/shell.js): «Создать землю» (app/landView.js) — the land's
 // settings, the hand and the layers in the rail, the stages and the land's tally in the column, the land's chronicle
 // along the bottom; «Быстрый старт» — its form in the middle; and the campaign's setup (ui/campaignView.js, before the
-// caravan is on its way) — the world and the capital in the rail, the world's map in the middle.
+// caravan is on its way) — the world and the capital in the rail, the world's map in the middle, the world's chronicle
+// along the bottom.
 import {$} from '../dom.js';
 import {Shell, el} from './shell.js';
 
@@ -44,10 +45,11 @@ export class QuickShell extends Shell {
 export class CampSetupShell extends Shell {
   constructor(view) {
     super(view, {
-      section: 'campaign', key: 'campaignSetup', title: ['campTitle', 'campName2'], top: [], topEnd: ['campBack'],
+      section: 'campaign', key: 'campaignSetup', title: ['campTitle', 'campName2'], top: [], topEnd: ['campSpeed', 'campPause', 'campBack'],   // (the pace and the pause while a world is made: hidden otherwise, campaignView.syncRun)
       rail: [['world', '◍', 'Мир'], ['capital', '⚑', 'Столица'], ['layers', '❖', 'Слои']],
       menus: {world: [() => $('campLibField'), 'Мир из библиотеки'], capital: [() => $('campCapsField')?.closest('.card'), 'Столица и поход'], layers: [() => $('campLayer')?.closest('.card'), 'Слои карты']},
-      mini: false, side: [{id: 'hand', title: 'Под рукой', node: () => $('campInspect')}], strip: null,
+      mini: false, side: [{id: 'hand', title: 'Под рукой', node: () => $('campInspect')}],
+      strip: {title: 'Летопись мира', node: () => $('campWorldBox')},   // (the history as it is made, then all of it)
       opens: () => (!$('campEpicField').hidden || !$('campCapsField').hidden ? 'capital' : 'world'),
     });
   }

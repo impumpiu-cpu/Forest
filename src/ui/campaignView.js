@@ -29,6 +29,7 @@ import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
 import {SAY_EVENT} from './shell/shell.js';
 import {CampSetupShell} from './shell/landShell.js';
+import {WorldChron} from './worldChron.js';
 import {TickClock, dateText, paceOf} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
@@ -120,9 +121,14 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     });
     // the world's chronicle into a file: by its eras at the detail chosen, or the calamities only (atlas/chronicle.js)
     this.detail = loadDetail();
-    segOf($('campDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); });
+    // one detail for the file and for «Летопись мира» on screen (ui/worldChron.js): two rows of buttons that follow each other
+    const detail = v => { this.detail = v; saveDetail(v); press('campDetail', v); press('campWorldDetail', v); this.renderWorldLog(); };
+    segOf($('campDetail'), DETAILS, this.detail, detail);
+    segOf($('campWorldDetail'), DETAILS, this.detail, detail);
+    this.worldChron = new WorldChron($('campWorldLog'), {land: true, empty: 'Летопись мира появится, когда мир начнут творить или откроют из библиотеки.'});
     const file = what => { const a = this.atlas; if (a) exportChronicle(a, this.worldName, what); };
     $('campWorldFile').addEventListener('click', () => file(this.detail));
+    $('campWorldFile3').addEventListener('click', () => file(this.detail));
     $('campCalFile').addEventListener('click', () => file('calamity'));
     $('campWorldFile2').addEventListener('click', () => file(this.detail));
     // a new epic world (cfg.epic: three eras of 75–150 years), made here and put into the library
@@ -166,6 +172,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // drawn now and then. When it is done it goes into the library and the capitals can be chosen
   makeEpic() {
     this.halt(); this.seq = (this.seq || 0) + 1;   // a library world still loading is not shown over this one
+    (this.setupShell ||= new CampSetupShell(this)).enter();   // the world grows on the setup's screen: its map in the middle, «Летопись мира» along the bottom
     const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
     const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, profile: this.epicProfile, ...(this.epicYears ? {epicYears: this.epicYears} : {})});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
@@ -186,7 +193,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
         if (!P.season || !a.hist) { while (!atlasDone(a) && performance.now() - f0 < 30 && (!P.season || !a.hist)) runNextStage(a); }
         else if (f0 - stepAt >= P.season) { stepAt = f0; runNextStage(a); drawn = 0; }
       }
-      if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); }
+      if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); this.renderWorldLog(); }
       if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000, a); return; }
       this.genRaf = requestAnimationFrame(loop);
     };
@@ -197,7 +204,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // the world being made is let go, unsaved
   dropEpic() {
     this.making = false; this.genPaused = false; this.backPace(); cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
-    this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.';
+    this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; this.renderWorldLog();
   }
   async doneEpic(sec, a = this.atlas) {
     this.making = false; this.genPaused = false; this.backPace(); this.syncRun(); $('campEpicGo').textContent = 'Сотворить';
@@ -288,7 +295,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const past = this.atlas?.campaignsDone || [];
     $('campPastField').hidden = !past.length;
     $('campPast').innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>Поход из ${esc(P.from)}</b> · ${phaseWord(P.phase)}<br><small>${P.started?.year ?? '?'}–${P.ended?.year ?? '?'} год · ${P.crown ? esc(P.crown) : ''} · вернулись ${P.members.filter(m => m.core && !m.died).length} из ${P.members.filter(m => m.core).length}</small></span><button type="button" data-k="${k}">В файл</button></div>`).join('');
-    this.renderCaps(); this.renderLog();
+    this.renderCaps(); this.renderLog(); this.renderWorldLog(true);   // (the world's history up to now: its last lines in sight)
   }
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
@@ -505,7 +512,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
 
   renderSide() {
-    this.renderFights(); this.renderSummary(); if (!this.local) this.renderStock();
+    this.renderFights(); this.renderSummary(); if (!this.local) this.renderStock(); this.renderWorldLog();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     this.frame();
@@ -579,9 +586,17 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     document.dispatchEvent(new CustomEvent(SAY_EVENT, {detail: {who: line.who, said: line.said, kind: line.kind}}));
   }
   // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one
+  // «Летопись мира» (ui/worldChron.js): the world's history — the land's stages, then its years — whatever the caravan does;
+  // only new lines are added. `end` — scrolled to the last line (the menu just opened)
+  renderWorldLog(end = false) {
+    const a = this.atlas, box = $('campWorldLog');
+    this.worldChron?.render(a, this.detail);
+    $('campWorldWhat').textContent = !a ? '' : this.making ? (a.hist ? `пишется: ${a.hist.year}-й год` : 'пишется: земля') : a.hist ? `по ${a.hist.year}-й год` : '';
+    if (end && box) box.scrollTop = box.scrollHeight;
+  }
   renderLog() {
     const box = $('campLog'), K = this.atlas?.campaign;
-    if (!K) { box.innerHTML = '<small class="muted">Летопись начнётся, когда караван выступит.</small>'; this.logKey = ''; $('campWho').hidden = true; $('campExport').disabled = true; return; }
+    if (!K) { box.innerHTML = '<small class="muted">Летопись похода начнётся, когда караван выступит. История мира — в «Летописи мира».</small>'; this.logKey = ''; $('campWho').hidden = true; $('campExport').disabled = true; return; }
     $('campExport').disabled = false;
     const m = this.who != null ? K.members.find(x => x.id === this.who) : null;
     $('campWho').hidden = !m;
