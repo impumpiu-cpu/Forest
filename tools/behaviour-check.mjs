@@ -4,7 +4,7 @@
 // reworked on its own can be tried in seconds. Usage: node tools/behaviour-check.mjs [scene id]
 import {newGame, step} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
-import {createAgent} from '../src/agents/agent.js';
+import {createAgent, maxHp} from '../src/agents/agent.js';
 import {BRAINS} from '../src/agents/brains/index.js';
 import {TASKS} from '../src/agents/tasks.js';
 import {T} from '../src/data/terrain.js';
@@ -311,6 +311,23 @@ scene_('B19', 'налётчик вяжет упавшего поселенца �
   const gone = run(w, 2500, () => c.gone);
   if (!gone) return `за краем не исчез: «${r2.task?.id}» (${r2.x.toFixed(1)}, ${r2.y.toFixed(1)}), пленный в ${dist(c, r2).toFixed(1)}`;
   return (w.chronicle.taken === 1) || `летопись: taken ${w.chronicle.taken}`;
+});
+
+scene_('B20', 'свой упал и истекает кровью: единственный на ногах, сам раненый и далеко, бросает всё и бежит перевязать', () => {
+  const w = scene();
+  // the fallen one far off; the only one standing is hurt (35%) and 45 cells away — once too hurt and too far to go
+  const c = put(w, 'human', 'colony', 10.5, 60.5); c.name = 'Упавший';
+  c.downed = {since: w.tick, until: w.tick + 3000, cause: 'ран', by: null, trauma: null}; c.hp = 1; c.task = {id: 'downed'};
+  const h = put(w, 'human', 'colony', 55.5, 60.5); h.name = 'Последний'; h.hp = maxHp(h) * 0.35;
+  // one who went to help and fell himself on the way holds nobody
+  const f = put(w, 'human', 'colony', 30.5, 60.5); f.name = 'Не дошедший';
+  f.downed = {since: w.tick, until: w.tick + 3000, cause: 'ран', by: null, trauma: null}; f.hp = 1; f.task = {id: 'downed'};
+  const went = run(w, 30, () => h.task?.id === 'aid');
+  if (!went) return `не пошёл: «${h.task?.id}» (${h.why?.why ?? ''})`;
+  if (!h.task.fallen) return 'пошёл не как к упавшему';
+  const saved = run(w, 1500, () => !c.downed && !f.downed);
+  if (!saved) return `не успел за 1500 тиков: «${h.task?.id}», упавший ${c.downed ? 'лежит' : 'на ногах'}, второй ${f.downed ? 'лежит' : 'на ногах'}`;
+  return true;
 });
 
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {

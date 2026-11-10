@@ -12,7 +12,7 @@ import {wantsPrayer} from '../../settlement/life.js';
 import {maxHp, hpShare} from '../agent.js';
 import {attackerOf, darkness} from '../combat.js';
 import {agentInZone} from '../../settlement/zone.js';
-import {escortOption, aidOption} from '../../settlement/together.js';
+import {escortOption, aidOption, rescueOption} from '../../settlement/together.js';
 import {flagOptions, knownFoeWithin, redInSight, watchOption, BOARD} from '../../settlement/board.js';
 import {bindOption, keepInside} from '../../settlement/captives.js';
 import {assistOption} from '../../settlement/masters.js';
@@ -95,6 +95,8 @@ export const reserve = {want(w, a) {
 // together (settlement/together.js): go along with a lone gatherer when beasts roam, help the wounded
 export const company = {want(w, a) { const o = escortOption(w, a); return o ? [o] : null; }};
 export const aid = {want(w, a) { const o = aidOption(w, a); return o ? [o] : null; }};
+// a comrade fallen senseless: the yellow lane — before any work, meal or sleep (settlement/together.js rescueOption)
+export const rescue = {want(w, a) { const o = rescueOption(w, a); return o ? [o] : null; }};
 // after the fight: a foe lying senseless may be bound and taken (settlement/captives.js)
 export const bind = {want(w, a) { const o = bindOption(w, a); return o ? [o] : null; }};
 // a learner's place beside a master at work (settlement/masters.js)
