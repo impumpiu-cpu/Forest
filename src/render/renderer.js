@@ -317,12 +317,13 @@ export class Renderer {
         if (x.done) { ctx.fillStyle = '#a0563c'; ctx.beginPath(); ctx.ellipse(px, py - S * 0.45, S * 0.3, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
       } else if (x.key === 'cache') {
         // a chest half in the ground; searched, its lid stands open and it is empty
+        // (one the company has not seen yet: a faint shape for the watcher, no lock gleaming)
         const bw = S * 0.8, bh = S * 0.5;
-        ctx.globalAlpha = x.done ? 0.55 : 1;
+        ctx.globalAlpha = x.hidden ? 0.3 : x.done ? 0.55 : 1;
         ctx.fillStyle = '#7a5428'; ctx.fillRect(px - bw / 2, py - bh / 2, bw, bh);
         ctx.strokeStyle = dark; ctx.lineWidth = 1; ctx.strokeRect(px - bw / 2, py - bh / 2, bw, bh);
         ctx.fillStyle = x.done ? '#3a2a18' : '#d8b25a'; ctx.fillRect(px - bw / 2, py - bh / 2 - (x.done ? S * 0.25 : 0), bw, S * 0.14);
-        if (!x.done) { ctx.fillStyle = '#f0d070'; ctx.fillRect(px - S * 0.06, py - S * 0.06, S * 0.12, S * 0.14); }
+        if (!x.done && !x.hidden) { ctx.fillStyle = '#f0d070'; ctx.fillRect(px - S * 0.06, py - S * 0.06, S * 0.12, S * 0.14); }
       } else if (x.key === 'smoke') {
         // a rack over a smouldering pit, smoke above it
         pole(px - S * 0.4, py + S * 0.3, 0.9); pole(px + S * 0.4, py + S * 0.3, 0.9);

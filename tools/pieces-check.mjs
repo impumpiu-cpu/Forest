@@ -19,6 +19,7 @@ import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
 import {campSetup, openCamp, campOutcome, stepCamp, campDone} from '../src/campaign/camp.js';
 import {applyCamp} from '../src/campaign/fight.js';
+import {handsOf} from '../src/settlement/works.js';
 
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
@@ -133,7 +134,27 @@ const run = (S, ticks = 4 * 2400) => { const w = openCamp(S); for (let g = 0; g 
     const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), probe = openCamp(S);
     if (!(probe.works || []).some(x => x.key === 'cache')) continue;
     shown = true;
-    const {w, o} = run(S);
+    check('тайник поначалу никому не известен и не работа', probe.works.filter(x => x.key === 'cache').every(x => x.hidden && !x.done));
+    // the camp played tick by tick: no chore run to by the crowd (the mark «занято», settlement/works.js), caches seen first
+    const w = openCamp(S); let crowd = 0, busy = 0, scoutTicks = 0; const twoHands = new Set();
+    for (let g = 0; g < 4 * 2400 && !campDone(w); g++) {
+      stepCamp(w);
+      const on = new Map();
+      for (const ag of w.campaign.people.values()) if (!ag.dead && ag.task?.id === 'campwork' && !ag.task.scout) on.set(ag.task.work, (on.get(ag.task.work) || 0) + 1);
+      if (on.size) busy++;
+      // more on a chore than it has hands for (CAMP_WORKS[key].hands), or a crew over its hands
+      if ([...on].some(([id, n]) => { const x = w.works.find(v => v.id === id); return x && n > handsOf(x); }) || w.works.some(x => (x.crew?.length || 0) > handsOf(x))) crowd++;
+      for (const x of w.works) if ((x.crew?.length || 0) > 1) twoHands.add(x.key);
+      const sc = w.campaign.mind?.scout; if (sc) scoutTicks++;
+    }
+    const o = campOutcome(w);
+    check('к одной работе не бегут гурьбой: на деле не больше рук, чем ему положено', crowd <= Math.max(2, busy * 0.02), `тиков с работами ${busy}, из них сверх положенных рук ${crowd}`);
+    check('на деле в две руки встают двое', [...twoHands].every(k => handsOf({key: k}) > 1), `вдвоём: ${[...twoHands].join(', ') || 'нигде'}`);
+    const M = w.campaign.mind;
+    check('надмозг посылает одного разведать округу, и тот возвращается', M?.scouted >= 1 && scoutTicks > 0, `разведок ${M?.scouted ?? 0}, попыток ${M?.tries ?? 0}, тиков в пути ${scoutTicks}`);
+    const caches = w.works.filter(x => x.key === 'cache');
+    check('обыскан только замеченный тайник, и после того, как заметили', caches.every(x => !x.done || (x.spotted && !x.hidden)), caches.map(x => `${x.piece}: ${x.hidden ? 'не замечен' : `замечен ${x.spotted?.tick}`}${x.done ? ', обыскан' : ''}`).join('; '));
+    check('незамеченные тайники утром не обыскивают', o.found.length === caches.filter(x => !x.hidden).length || o.found.length <= caches.filter(x => !x.hidden).length);
     const onMap = w.works.filter(x => x.key === 'cache' && x.done).length;
     check('на стоянке тайник обыскали на карте', onMap > 0 && o.found.some(f => !f.late), `обыскано ${onMap}, находок ${o.found.length}`);
     const gold0 = K.gold, cargo0 = Object.values(K.cargo).reduce((s, v) => s + v, 0), finds0 = K.stats.finds || 0;

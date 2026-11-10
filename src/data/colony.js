@@ -134,6 +134,8 @@ export const TOGETHER = {
   aidEvery: 12 * HOUR, // once dressed, not again for this long
   aidHeal: 0.2,        // of max health, more with the healer's skill
   aidFallen: 1.7,      // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+  rescueFrom: 0.2,     // the fallen are rescued in the yellow lane (data/behaviours.js `rescue`) by anyone with at least this health share…
+  rescueFar: 0.01,     // …however far; the nearer fallen one first (this off the urgency per cell)
   aidSpite: 0.5,       // a fallen one it cannot stand (opinion at or below REL.dislike), for a helper not merciful enough (ALIGN.help): the urgency × this — it may go, it may not; at or below REL.dislike × spiteHate it does not go at all
   spiteHate: 1.5,
   aidPractice: 60,     // medicine practice for a life saved (units of agents/skills.js practice)

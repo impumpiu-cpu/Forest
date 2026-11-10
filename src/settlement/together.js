@@ -149,7 +149,8 @@ export function enterEscort(w, a, task) {
 }
 
 // ── aid
-const helper = (w, id) => colonists(w).find(o => o.task?.id === 'aid' && o.task.who === id);
+// the one already going to `id`; a helper who fell himself or died on the way holds nobody
+const helper = (w, id) => colonists(w).find(o => !o.dead && !o.downed && o.task?.id === 'aid' && o.task.who === id);
 // the fallen (agents/wounds.js) need help wherever they lie, and before anyone else
 const needsAid = (w, b) => b.ledBy == null && (!!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
   !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery)));   // (one led away in bonds is rescued by the sword, not the bandage)
@@ -172,6 +173,26 @@ export function aidOption(w, a) {
     if (s > bs) { bs = s; best = b; }
   }
   return best ? [{id: 'aid', who: best.id, fallen: !!best.downed}, bs, () => aidWhy(best)] : null;
+}
+
+// a comrade fallen senseless and bleeding out (agents/wounds.js): almost a red mark — the yellow lane (data/behaviours.js
+// `rescue`), above any work, meal or sleep, below only fighting off an attack. Whoever is on his feet and not near death
+// himself (TOGETHER.rescueFrom) goes, however far; one already on the way holds the fallen one (helper), the nearest is
+// taken first; only one it hates it leaves to the others, unless merciful. A foe over the body is met on the way (guardStep)
+export function rescueOption(w, a) {
+  if (a.downed || a.dead || hpShare(a) < TOGETHER.rescueFrom) return null;
+  const fallen = b => b && !b.dead && b.downed && b.ledBy == null;
+  if (a.task?.id === 'aid') { const b = byId(w, a.task.who); if (fallen(b)) return [a.task, TOGETHER.aidFallen, () => aidWhy(b)]; }
+  let best = null, bs = -Infinity;
+  for (const b of colonists(w)) {
+    if (b === a || !fallen(b)) continue;
+    const h = helper(w, b.id); if (h && h !== a) continue;
+    const op = opinion(a, b), merciful = (a.align?.mercy ?? 0) >= ALIGN.help;
+    if (!merciful && op <= REL.dislike * TOGETHER.spiteHate) continue;
+    const s = TOGETHER.aidFallen - dist(a, b) * TOGETHER.rescueFar;   // (the nearest first: a life does not wait on liking)
+    if (s > bs) { bs = s; best = b; }
+  }
+  return best ? [{id: 'aid', who: best.id, fallen: true}, bs, () => aidWhy(best)] : null;
 }
 
 // arrived: dress the wounds, then see them home. For the fallen this is what saves the life

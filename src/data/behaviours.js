@@ -111,6 +111,7 @@ BEHAVIOURS.registerAll([
   {id: 'idle', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'больше нечем заняться: отдыхает у костра'},
   {id: 'company', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'идёт в лес вместе с одиноким сборщиком, когда там опасно (settlement/together.js)'},
   {id: 'aid', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'спешит к раненому в лесу или упавшему без сознания: перевязать и довести'},
+  {id: 'rescue', task: false, band: 'yellow', requires: [], keep: ROSTER.keep, note: 'свой упал без сознания и истекает кровью — почти красная метка: бросает любую работу, еду и сон и бежит перевязать, как бы далеко ни лежал; важнее только бой (settlement/together.js rescueOption)'},
   {id: 'sulk', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'хандра держит своё (settlement/life.js)'},
   {id: 'spellbound', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'чары нечисти (astray, lured) держат, пока не спадут'},
   {id: 'pray', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'тяжело на душе — к святилищу (днём)'},
