@@ -1,4 +1,4 @@
-// The menu (forest.html, Forest.bat): Создать землю · Заселение мира · Кампания · Быстрый старт · Конструктор существ · Настройки.
+// The menu (forest.html, Forest.bat): Продолжить (the last walk, if any: ui/autosave.js) · Создать землю · Заселение мира · Кампания · Быстрый старт · Конструктор существ · Настройки.
 // A shell over the core: every screen is a module of src/app/ or src/ui/, shown in turn; the screens with a running
 // clock (the world settled, the campaign) share the observer's layout (docs/GAME.md «Наблюдатель»). docs/GAME.md.
 // first: the table edits of this browser go into the tables before anything reads them
@@ -17,6 +17,9 @@ import {mountTabs} from '../ui/tabs.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 import {minds} from '../render/minds.js';
 import {introWanted, playIntro, introEnabled, setIntroEnabled} from './intro.js';
+import {lastRun, continueOf, forgetRun} from '../ui/autosave.js';
+import {listWorlds} from '../ui/worlds.js';
+import {plural, esc} from '../core/util.js';
 
 import {$, seg, press} from '../ui/dom.js';
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
@@ -31,6 +34,7 @@ function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
+  if (id === 'home') renderResume();
   if (id === 'settings') tables.show();
   if (id === 'bestiary') (beasts ||= new BeastView()).show();
   if (id === 'land') (land ||= new LandView()).show();
@@ -54,6 +58,21 @@ function openCampaign(fn) {
   fn(v);
   requestAnimationFrame(() => v.draw());
 }
+// «Продолжить»: the last walk saved (ui/autosave.js), shown once its save is written (leaving the walk saves it)
+let resumeFor = null;
+async function renderResume() {
+  const card = $('launchResume');
+  await campaign?.saving?.catch(() => null);
+  let run = null;
+  try { run = continueOf(lastRun(), await listWorlds()); } catch (e) { /* the library unavailable: nothing to continue */ }
+  if (!run && lastRun()) forgetRun();   // (its world is gone from the library, or the walk is over)
+  resumeFor = run; card.hidden = !run;
+  if (!run) return;
+  const years = Math.floor(run.day / 120), rest = run.day % 120;
+  $('launchResumeText').innerHTML = `Поход из ${esc(run.from)} · ${years ? `${years} ${plural(years, 'год', 'года', 'лет')} и ` : ''}${rest} ${plural(rest, 'день', 'дня', 'дней')} в пути` +
+    `<br><small>${esc(run.name)}${run.year != null ? ` · ${run.year}-й год мира` : ''} · сохранено ${new Date(run.savedAt).toLocaleString('ru-RU', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'})}</small>`;
+}
+$('launchResume').addEventListener('click', () => { if (resumeFor) { const {id, name} = resumeFor; openCampaign(v => v.continueRun(id, name)); } });
 // «В поход →» of the world settled (app/campView.js march): that world from the library, on the campaign screen
 document.addEventListener(MARCH_EVENT, e => openCampaign(v => { v.show('library'); v.openFromLibrary(e.detail.id, e.detail.name); }));
 

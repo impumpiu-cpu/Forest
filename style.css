@@ -324,7 +324,9 @@ dd.q4{color:#c58cff;font-weight:600}
 .launch-card > span:last-child{color:var(--muted);font-size:14px;max-width:46ch}
 .launch-card:hover:not(:disabled){border-color:var(--ember)}
 .launch-card:disabled{opacity:.55;cursor:default}
-#launchResume{grid-column:1/-1;justify-self:start}
+#launchResume{grid-column:1/-1;justify-self:stretch;min-height:0;border-color:var(--ember)}
+#launchResume[hidden]{display:none}
+#launchResume > span:last-child{max-width:none}
 
 /* ───── the world map polygon ───── */
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}

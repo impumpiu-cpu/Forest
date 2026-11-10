@@ -55,8 +55,12 @@ import {campLocal, WATCH} from './campLocal.js';
 import {campStats} from './campStats.js';
 import {PROFILES, commandOf} from '../data/commands.js';
 import {loadHeroes, saveHeroes} from './heroes.js';
+import {saveDue, rememberRun, forgetRun} from './autosave.js';
 import {ASCEND, mayAscend, ascend, summonable, takeHeroes} from '../view/campaign.js';
 const phaseWord = p => WALK_PHASES[p]?.label || p;
+// the name of a world in the library without a walk's tail («Мир: поход из …» saved again for a new walk stays «Мир: поход из …»)
+const baseName = n => String(n || 'Мир').replace(/: поход из .*$/, '');
+const clockTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
 const itemShort = id => gearDef(id)?.short ?? id;
 
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame
@@ -166,6 +170,9 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     $('campExport').addEventListener('click', () => { const K = this.atlas?.campaign; if (K) offerText(latinTitle(`letopis-${K.capitalName}-${K.started?.year ?? ''}`), chronicleText(this.atlas, K)); });
     $('campPast').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const P = this.atlas?.campaignsDone?.[+b.dataset.k]; if (P) offerText(latinTitle(`letopis-${P.from}-${P.started?.year ?? ''}`), chronicleText(this.atlas, P)); });
     $('campAgain').addEventListener('click', () => { this.halt(); this.capPick = null; this.setupMode(); this.draw(); });
+    // the page hidden (another tab, the window folded, the browser closing): the walk is saved as it stands (ui/autosave.js)
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.autosave(true); });
+    window.addEventListener('pagehide', () => this.autosave(true));
   }
 
   // ── a new epic world: the land stage by stage, then the long history, as many steps as fit a frame; the map is
@@ -251,7 +258,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { this.shell?.leave(); this.setupShell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
+  halt() { this.autosave(true); this.shell?.leave(); this.setupShell?.leave(); if (this.making) this.dropEpic(); this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -273,6 +280,8 @@ export class CampaignView extends campStats(campLocal(MapView)) {
       if (seq !== this.seq) return;
       if (!atlasDone(a) && !a.campaign) { $('campWorldNote').textContent = 'История этого мира не дожита: доведите её до конца на экране «Мир».'; return; }
       this.atlas = a; this.worldId = id; this.worldName = name; this.saveId = a.campaign ? id : null;
+      this.saved = {a, day: a.campaign?.day, at: Date.now()};   // (as it lies in the library: nothing to save until the walk goes on)
+      if (a.campaign) this.pointAt(a, {id, name});
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;
       this.cam = new Camera(a.w, a.h);
       $('campWorldNote').textContent = warnEdits(a.tables) || '';
@@ -332,7 +341,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     newCampaign(a, this.capPick, {summon});
     if (rest) { try { await saveHeroes(rest); } catch (e) { $('campSaveStatus').textContent = 'Реестр вознесённых не записан: ' + e.message; } this.heroPick.clear(); }
     if (this.follow) this.closeUp();
-    this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null;
+    this.saveId = null; this.saved = null; this.logShown = 0; this.logKey = ''; this.who = null;   // (the first season's boundary saves the walk: ui/autosave.js)
     this.runMode(); this.run();
   }
 
@@ -370,7 +379,9 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const a = this.atlas; if (!a?.campaign || finished(a.campaign)) return false;
     const d0 = a.campaign.day;
     const was = ended(a.campaign);
+    this.autosave();   // (before the next season is computed: what is saved is what the viewer has just watched — ui/autosave.js)
     stepCampaign(a);
+    if (finished(a.campaign)) this.autosave(true);   // the walk is over: kept as it ended, and «Продолжить» lets it go
     if (!was && ended(a.campaign) && this.ids?.dock) openTab($(this.ids.dock), 'summary');   // the walk is over: its sums up front
     // the season's camps to watch, each at its day of the playback
     const W = WATCH[this.clock.pace], K = a.campaign, n = Math.max(1, K.track.length - 1);
@@ -612,11 +623,60 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.logShown = 1;
   }
 
+  // the world with the walk into the library: over its own record, or a new one the first time (a library world the walk
+  // set out from is kept as it was, for other walks). The world is written out at the call, before anything awaits — the
+  // state saved is the one at this moment. Returns the index record, or null when nothing was written.
+  async persist(a = this.atlas) {
+    const K = a?.campaign; if (!K) return null;
+    while (this.saving) await this.saving.catch(() => null);
+    if (a !== this.atlas) return null;
+    const name = this.saveId ? this.worldName : `${baseName(this.worldName)}: поход из ${K.capitalFrom || K.capitalName}`;
+    const day = K.day, p = saveWorldToLibrary(a, name, this.saveId);
+    this.saving = p;
+    try {
+      const rec = await p;
+      if (a === this.atlas) { this.saveId = rec.id; this.worldId = rec.id; this.worldName = rec.name; this.saved = {a, day, at: Date.now()}; }
+      this.pointAt(a, rec);
+      return rec;
+    } finally {
+      this.saving = null;
+      if (this.again) { this.again = false; this.autosave(true); }   // (asked for while this one was being written)
+    }
+  }
+  // «Продолжить» of the main menu points at this walk, or at nothing once it is over (ui/autosave.js)
+  pointAt(a, rec) {
+    const K = a.campaign;
+    if (finished(K)) { forgetRun(rec.id); return; }
+    rememberRun({id: rec.id, name: rec.name, from: K.capitalFrom || K.capitalName, day: K.day, year: a.hist?.year ?? null, phase: K.phase, done: false, savedAt: rec.savedAt || Date.now()});
+  }
+  // saved by itself (ui/autosave.js): at a season's boundary when the time has come; `now` — at once, if the walk changed
+  // since the last save (the screen left, the page hidden, the walk over). A failure is told, the walk goes on.
+  autosave(now = false) {
+    const a = this.atlas, K = a?.campaign;
+    if (!K || this.making) return;
+    if (this.saving) { if (now) this.again = true; return; }
+    const last = this.saved?.a === a ? this.saved : null;
+    if (now ? last?.day === K.day : !saveDue(last, Date.now(), K.day)) return;
+    if (now && !last && K.day === 0) return;   // (a walk not yet out of the gate: the first season's boundary saves it)
+    const say = t => { const el = $('campSaveStatus'); if (el) el.textContent = t; }, day = K.day;
+    this.persist(a).then(rec => { if (rec) say(`Автосохранено в ${clockTime(Date.now())}, день похода ${day}.`); },
+      e => say('Автосохранение не удалось: ' + e.message));
+  }
+  // «Продолжить» (app/main.js): the walk in memory goes on where it stood, else it is opened from the library and goes on
+  async continueRun(id, name) {
+    if (!(this.atlas?.campaign && this.saveId === id)) {
+      this.show('library'); await this.openFromLibrary(id, name);
+      if (this.saveId !== id) return;   // (it did not open: the note says why)
+    } else this.show('library');
+    if (finished(this.atlas.campaign)) return;
+    this.clock.resume(); this.animate(); this.syncRun();
+  }
+
   async saveRun() {
     const a = this.atlas; if (!a?.campaign) return;
     const say = t => { $('campSaveStatus').textContent = t; };
     say('Сохраняю…');
-    try { const rec = await saveWorldToLibrary(a, this.saveId ? this.worldName : `${this.worldName}: поход из ${a.campaign.capitalFrom || a.campaign.capitalName}`, this.saveId); this.saveId = rec.id; this.worldId = rec.id; this.worldName = rec.name; say(`Сохранено: «${rec.name}».`); this.refresh(); }
+    try { const rec = await this.persist(a); if (rec) { say(`Сохранено: «${rec.name}».`); this.refresh(); } }
     catch (e) { say('Не удалось сохранить: ' + e.message); }
   }
 }
