@@ -11,9 +11,10 @@ import {FREE} from '../data/history.js';
 import {atlasDone} from '../view/world.js';
 import {seasonLabel, endYear} from '../view/world.js';
 import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../view/world.js';
-import {lineLevel, keeps, DETAILS} from '../view/world.js';
+import {DETAILS} from '../view/world.js';
 import {realmLabel} from '../view/world.js';
 import {relationsHtml} from '../ui/inspect.js';
+import {WorldChron} from '../ui/worldChron.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
@@ -69,7 +70,7 @@ export class SettleView extends MapView {
     this.syncPaceBox = mountPace($('setPace'), this.clock, {pauseId: 'setPause', active: () => !$('settle').hidden,
       onPace: id => { this.clock.setPace(id); if (this.clock.paused) { this.clock.resume(); this.animate?.(); } this.syncRun(); },
       onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); if (!this.clock.paused) this.animate?.(); this.syncRun(); }});
-    segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
+    segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
     this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', skin: 'setSkin', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
@@ -105,7 +106,7 @@ export class SettleView extends MapView {
   // ── a world on the screen: a land made into a world with a clock, or a world of this screen saved before
   showWorld(a, id, name) {
     this.clock.stop(); this.clock.paused = false;
-    this.atlas = a; this.chronOf = null;
+    this.atlas = a;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
     this.bind(id, name); this.sync(); this.select(null); this.renderSide();
     if (!atlasDone(a)) this.clock.start();
@@ -179,15 +180,8 @@ export class SettleView extends MapView {
       (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${FELL_BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
       (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${ARTIFACT_AT[a.artifact.holder.kind] || '—'}</small>` : '') : '';
     $('setRels').innerHTML = relationsHtml(a);
-    // the chronicle only grows: new lines are appended
-    const box = $('setChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    if (this.chronOf !== a) { this.chronOf = a; this.chronShown = 0; box.innerHTML = ''; }
-    if (a.chronicle.length > this.chronShown) {
-      const shown = a.chronicle.slice(this.chronShown).filter(c => c.season != null && keeps(this.detail, lineLevel(c)));
-      box.insertAdjacentHTML('beforeend', shown.map(c => `<div class="lv-${c.hand ? 'notice' : lineLevel(c) === 'major' ? 'notice' : 'info'}${c.topic === 'calamity' ? ' lv-alert' : ''}"><small>год ${c.year}, ${seasonLabel(c.season)}</small> ${c.topic === 'calamity' || c.hand ? `<b>${esc(c.text)}</b>` : esc(c.text)}</div>`).join(''));
-      this.chronShown = a.chronicle.length;
-    }
-    if (atEnd) box.scrollTop = box.scrollHeight;
+    // the chronicle only grows: new lines are appended (ui/worldChron.js)
+    (this.chron ||= new WorldChron($('setChron'))).render(a, this.detail);
   }
 
   // ── the library: lands to settle, worlds of this screen to go on with

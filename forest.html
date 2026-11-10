@@ -171,6 +171,11 @@
   .obs-chron{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;gap:6px;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
   .obs-chron .log{flex:1;min-height:0;max-height:none;overflow-y:auto}
   .obs-chron .lbl{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  .world-chron{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
+  .world-chron .row{align-items:center;gap:8px;flex-wrap:wrap}
+  .world-chron .lbl{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  .world-chron .log{flex:1;min-height:0;max-height:none;overflow-y:auto}
+  .sh-strip .world-chron .row .lbl,.sh-drawer .world-chron .row .lbl{display:none}
   /* the realms among themselves: a matrix in the dock */
   .relmat{border-collapse:collapse;font-size:12px}
   .relmat th,.relmat td{border:1px solid var(--line);padding:2px 6px;text-align:center;white-space:nowrap}
@@ -543,6 +548,12 @@
       <div class="seg wrapseg camp-topics" id="campTopics" title="Темы летописи: нажмите, чтобы скрыть или показать"></div>
       <small id="campWho" class="camp-who" hidden></small>
       <div class="log" id="campLog"></div>
+    </aside>
+
+    <!-- the world's chronicle (ui/worldChron.js): along the bottom while the world is made and the capital picked, «Летопись мира» in the walk's menu -->
+    <aside class="world-chron" id="campWorldBox">
+      <div class="row"><span class="lbl">Летопись мира</span><div class="seg mini" id="campWorldDetail" title="Подробность летописи мира"></div><button type="button" id="campWorldFile3" class="quiet mini" title="Летопись мира текстом по эпохам, с выбранной подробностью">В файл</button><small class="muted" id="campWorldWhat"></small></div>
+      <div class="log" id="campWorldLog"></div>
     </aside>
   </section>
 
