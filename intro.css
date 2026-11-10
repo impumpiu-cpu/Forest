@@ -1,0 +1,85 @@
+/* The launch screen (src/app/intro.js): slides over the dark with embers rising, the main menu waits underneath.
+   Sizes follow the window: clamp() on the smaller side, so a phone and a 4K screen read alike. */
+body.intro-on{overflow:hidden}
+.intro{position:fixed;inset:0;z-index:1000;background:radial-gradient(ellipse at 50% 60%,#1f1a10 0%,#100f0a 55%,#070705 100%);
+  color:var(--fg);display:grid;place-items:center;user-select:none;-webkit-user-select:none;touch-action:none;cursor:default;
+  transition:opacity .6s ease}
+.intro:focus{outline:none}
+.intro.gone{opacity:0}
+.intro::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 18vmin rgba(0,0,0,.85)}
+.intro-sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.intro-stage{position:relative;width:min(92vw,980px);min-height:60vh;display:grid;place-items:center}
+.intro-slide{grid-area:1/1;display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.6vmin,18px);text-align:center;
+  opacity:0;transform:translateY(14px) scale(.985);transition:opacity .55s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.intro-slide.on{opacity:1;transform:none}
+.intro-slide.off{opacity:0;transform:translateY(-10px) scale(1.01);transition-duration:.45s}
+
+/* lines come one after another (--d) */
+.intro-slide .ln{margin:0;opacity:0;animation:intro-in .7s ease forwards;animation-delay:var(--d,0ms);text-wrap:balance}
+.intro .kick{font-family:var(--font-display);letter-spacing:.14em;color:var(--muted);font-size:clamp(14px,2.2vmin,22px)}
+.intro .head{font-family:var(--font-display);font-weight:500;font-size:clamp(24px,5vmin,52px);line-height:1.15;letter-spacing:.02em;max-width:22ch}
+.intro .sub{color:var(--muted);font-size:clamp(15px,2.6vmin,26px);max-width:40ch}
+.intro .big{font-family:var(--font-display);font-weight:700;font-size:clamp(34px,9vmin,96px);line-height:1.05;letter-spacing:.03em;color:var(--ember);
+  text-shadow:0 0 .4em rgba(232,137,58,.45);animation-name:intro-pop}
+.intro .ember{color:var(--ember)}
+.intro .foot{font-family:var(--font-mono);font-size:clamp(11px,1.5vmin,14px);color:var(--muted);margin-top:1.5vmin}
+.intro-title{margin:0;font-family:var(--font-display);font-weight:700;font-size:clamp(40px,11vmin,120px);letter-spacing:.06em;line-height:1;
+  background:linear-gradient(180deg,#f6e2b8 10%,#e8893a 70%,#9a4a1a);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 .25em rgba(232,137,58,.35));animation:intro-pop 1s ease both}
+.intro .beta{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.32em;font-size:clamp(11px,1.7vmin,16px);color:var(--ember);
+  border:1px solid rgba(232,137,58,.5);border-radius:3px;padding:.3em .9em}
+
+/* the d20 */
+.intro-die{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:1vmin}
+.intro-die svg{width:clamp(70px,14vmin,150px);height:auto;overflow:visible;animation:intro-tumble .9s cubic-bezier(.3,.6,.3,1) both}
+.intro-die .hex{fill:#241d12;stroke:#c9a36a;stroke-width:1.6}
+.intro-die .tri{fill:#2f2615;stroke:#c9a36a;stroke-width:1.6}
+.intro-die .edge{fill:none;stroke:#c9a36a;stroke-width:1.1;opacity:.75}
+.intro-die text{font-family:var(--font-display);font-weight:700;font-size:22px;fill:var(--fg);text-anchor:middle}
+.intro-die .die-note{margin:0;font-family:var(--font-mono);font-size:clamp(11px,1.6vmin,15px);color:var(--muted);opacity:0;transition:opacity .4s}
+.intro-die.landed .die-note{opacity:1}
+.intro-die.landed:not(.hot) text{fill:var(--raider)}
+.intro-die.hot.landed svg{filter:drop-shadow(0 0 14px rgba(232,137,58,.75))}
+.intro-die.hot.landed .hex,.intro-die.hot.landed .tri{stroke:var(--ember)}
+.intro-die.hot.landed text{fill:var(--ember)}
+.intro-die.hot.landed .die-note{color:var(--ember)}
+
+/* the group chat that never meets */
+.intro-chat{display:flex;flex-direction:column;gap:clamp(5px,1vmin,9px);width:min(100%,520px);margin-top:2vmin;text-align:left;font-size:clamp(13px,2vmin,17px)}
+.intro-chat .msg{align-self:flex-start;max-width:88%;background:#1d2017;border:1px solid #33372a;border-radius:12px 12px 12px 3px;padding:.45em .8em;
+  opacity:0;animation:intro-in .45s ease forwards;animation-delay:var(--d,0ms)}
+.intro-chat .msg:nth-child(odd){align-self:flex-end;border-radius:12px 12px 3px 12px;background:#242518}
+.intro-chat .msg b{display:block;font-size:.78em;letter-spacing:.04em;color:var(--colony);font-weight:700}
+.intro-chat .msg:first-child b{color:var(--ember)}
+.intro-chat .msg.sys{align-self:center;background:none;border:0;color:var(--raider);font-family:var(--font-mono);font-size:.82em;font-style:italic}
+
+/* the bar at the bottom: the hold ring, «Далее ›», «Пропустить всё» */
+.intro-bar{position:absolute;right:clamp(14px,3vmin,32px);bottom:clamp(14px,3vmin,32px);left:clamp(14px,3vmin,32px);
+  display:flex;align-items:center;justify-content:flex-end;gap:clamp(8px,1.4vmin,14px)}
+.intro-bar button{font:inherit;font-size:clamp(13px,1.7vmin,16px);padding:.45em 1em;border-radius:6px;cursor:pointer;
+  color:var(--fg);background:rgba(29,32,23,.75);border:1px solid #4a4e3c;transition:background .2s,border-color .2s,color .2s}
+.intro-bar button:hover{background:#2a2e20;border-color:#6c6245}
+.intro-bar button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.intro-bar .intro-skip{color:#1b130a;background:var(--ember);border-color:var(--ember);font-weight:700}
+.intro-bar .intro-skip:hover{background:#f09a4f;border-color:#f09a4f}
+.intro-hint{margin-right:clamp(4px,1vmin,12px);display:flex;align-items:center;gap:10px;
+  font-size:clamp(12px,1.6vmin,15px);color:#b9b59c;opacity:.85;transition:opacity .3s,color .3s}
+.intro-hint svg{width:clamp(22px,3vmin,30px);height:auto;transform:rotate(-90deg)}
+.intro-hint circle{fill:none;stroke-width:3}
+.intro-hint .bg{stroke:#4a4e3c}
+.intro-hint .fill{stroke:var(--ember);stroke-dasharray:100;stroke-dashoffset:100;stroke-linecap:round}
+.intro-hint.holding{opacity:1;color:var(--fg)}
+.intro-hint span{animation:intro-blink 2.4s ease-in-out infinite}
+.intro-hint.holding span{animation:none}
+
+@keyframes intro-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes intro-pop{0%{opacity:0;transform:scale(.8)}60%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:none}}
+@keyframes intro-tumble{0%{transform:translate(-40vw,-20vh) rotate(-540deg) scale(.6);opacity:0}15%{opacity:1}
+  70%{transform:translate(2vw,0) rotate(20deg) scale(1.05)}85%{transform:translate(-.5vw,0) rotate(-6deg)}100%{transform:none}}
+@keyframes intro-blink{0%,100%{opacity:.6}50%{opacity:1}}
+
+@media (prefers-reduced-motion: reduce){
+  .intro,.intro-slide,.intro-slide .ln,.intro-chat .msg,.intro-die svg,.intro-title,.intro-hint span{animation:none !important;transition:none !important}
+  .intro-slide .ln,.intro-chat .msg{opacity:1}
+}
+@media (max-width:600px){ .intro-hint span{display:none} .intro-hint{margin-right:auto} }

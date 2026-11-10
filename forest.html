@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="intro.css">
 <style>
   /* the new menu (src/app/): what style.css does not have */
   .app-screen[hidden]{display:none}
@@ -207,13 +208,15 @@
   .cal-list b{color:var(--fg)}
   .cal-list small{color:var(--muted)}
   .app-foot{color:var(--muted);font-size:12.5px}
+  label.check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-display);font-size:14px;letter-spacing:.05em;color:var(--fg)}
+  label.check input{accent-color:var(--ember);width:16px;height:16px;margin:0}
   .app-foot a{color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Тёплый Брод</h1>
+    <h1 id="appTitle">Тёплый Брод</h1>
     <span class="build" id="buildTag"></span>
     <p id="appInfo">Сотворите землю, заселите её и выведите караван за артефактом, пока не грянул катаклизм.</p>
   </header>
@@ -567,6 +570,7 @@
     <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
     <div class="card edits-bar">
       <div class="row"><span class="lbl">Оформление карт</span><div class="seg" id="setSkinSeg"></div><small>Картинки — рисунки src/art/ (docs/ART.md), схема — простые значки для проверки. Клавиша G на любом экране; <a href="gallery.html">витрина картинок</a>.</small></div>
+      <div class="row"><label class="check"><input type="checkbox" id="setIntro"> Заставка при запуске</label><small>Слайды перед главным меню (в этом браузере). <button type="button" class="link" id="setIntroPlay">Показать сейчас</button></small></div>
     </div>
     <div class="card edits-bar">
       <div class="row">
