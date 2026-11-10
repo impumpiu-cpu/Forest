@@ -53,8 +53,16 @@ body.intro-on{overflow:hidden}
 .intro-chat .msg:first-child b{color:var(--ember)}
 .intro-chat .msg.sys{align-self:center;background:none;border:0;color:var(--raider);font-family:var(--font-mono);font-size:.82em;font-style:italic}
 
-/* the skip ring */
-.intro-hint{position:absolute;right:clamp(14px,3vmin,32px);bottom:clamp(14px,3vmin,32px);display:flex;align-items:center;gap:10px;
+/* the bar at the bottom: the hold ring, «Далее ›», «Пропустить всё» */
+.intro-bar{position:absolute;right:clamp(14px,3vmin,32px);bottom:clamp(14px,3vmin,32px);left:clamp(14px,3vmin,32px);
+  display:flex;align-items:center;justify-content:flex-end;gap:clamp(8px,1.4vmin,14px)}
+.intro-bar button{font:inherit;font-size:clamp(13px,1.7vmin,16px);padding:.45em 1em;border-radius:6px;cursor:pointer;
+  color:var(--fg);background:rgba(29,32,23,.75);border:1px solid #4a4e3c;transition:background .2s,border-color .2s,color .2s}
+.intro-bar button:hover{background:#2a2e20;border-color:#6c6245}
+.intro-bar button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.intro-bar .intro-skip{color:#1b130a;background:var(--ember);border-color:var(--ember);font-weight:700}
+.intro-bar .intro-skip:hover{background:#f09a4f;border-color:#f09a4f}
+.intro-hint{margin-right:clamp(4px,1vmin,12px);display:flex;align-items:center;gap:10px;
   font-size:clamp(12px,1.6vmin,15px);color:#b9b59c;opacity:.85;transition:opacity .3s,color .3s}
 .intro-hint svg{width:clamp(22px,3vmin,30px);height:auto;transform:rotate(-90deg)}
 .intro-hint circle{fill:none;stroke-width:3}
@@ -74,4 +82,4 @@ body.intro-on{overflow:hidden}
   .intro,.intro-slide,.intro-slide .ln,.intro-chat .msg,.intro-die svg,.intro-title,.intro-hint span{animation:none !important;transition:none !important}
   .intro-slide .ln,.intro-chat .msg{opacity:1}
 }
-@media (max-width:600px){ .intro-hint{left:14px;justify-content:flex-end;text-align:right} }
+@media (max-width:600px){ .intro-hint span{display:none} .intro-hint{margin-right:auto} }

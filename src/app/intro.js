@@ -1,6 +1,7 @@
-// The launch screen (forest.html): a short slide show over the main menu, then the menu. A tap goes to the next slide;
-// press and hold (mouse, finger or any key) skips it all, Esc skips at once. Not shown when the page opens a screen of
-// its own (forest.html#settings) or with ?intro=0; ?intro=1 shows it whatever. Styles — intro.css. docs/GAME.md «Заставка».
+// The launch screen (forest.html): a short slide show over the main menu, then the menu. «Далее ›» or a tap goes to the
+// next slide, «Пропустить всё» or press and hold (mouse, finger or any key) skips it all, Esc skips at once. Turned off
+// by the tick in «Настройки» (kept in this browser); not shown when the page opens a screen of its own
+// (forest.html#settings) or with ?intro=0; ?intro=1 shows it whatever. Styles — intro.css. docs/GAME.md «Заставка».
 
 const HOLD = 900;   // ms of holding that skip the show
 const TAP = 250;    // a press shorter than this is a tap: the next slide
@@ -35,12 +36,16 @@ const SLIDES = [
   ]},
 ];
 
+const STORE = 'forest.app.intro';   // 'off' — the tick in «Настройки» taken off
+export function introEnabled() { try { return localStorage.getItem(STORE) !== 'off'; } catch (e) { return true; } }
+export function setIntroEnabled(on) { try { if (on) localStorage.removeItem(STORE); else localStorage.setItem(STORE, 'off'); } catch (e) { /* storage unavailable */ } }
+
 // whether the launch screen should play on this load
 export function introWanted() {
   const q = new URLSearchParams(location.search).get('intro');
   if (q === '0') return false;
   if (q === '1') return true;
-  return !location.hash.slice(1);
+  return !location.hash.slice(1) && introEnabled();
 }
 
 // plays the show over the page; resolves once it is gone
@@ -55,7 +60,11 @@ export function playIntro({title = document.title} = {}) {
     const stage = el('div', 'intro-stage');
     const hint = el('div', 'intro-hint');
     hint.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" class="bg"/><circle cx="18" cy="18" r="15" class="fill" pathLength="100"/></svg><span>Нажмите и удерживайте для пропуска</span>';
-    root.append(sky, stage, hint);
+    const bar = el('div', 'intro-bar');
+    const next = el('button', 'intro-next'); next.type = 'button'; next.textContent = 'Далее ›';
+    const skip = el('button', 'intro-skip'); skip.type = 'button'; skip.textContent = 'Пропустить всё »';
+    bar.append(hint, next, skip);
+    root.append(sky, stage, bar);
     document.body.append(root);
     document.body.classList.add('intro-on');
     root.focus({preventScroll: true});
@@ -97,7 +106,9 @@ export function playIntro({title = document.title} = {}) {
     function down(e) {
       if (done) return;
       if (e.type === 'keydown') {
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab') return;
+        // Enter or Space on a focused button presses that button
+        if (bar.contains(document.activeElement) && document.activeElement.tagName === 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) { e.stopPropagation(); return; }
         e.preventDefault(); e.stopPropagation();   // (the menu's keys — G, F, Esc — wait for the show to end)
         if (e.key === 'Escape') return finish();
         if (e.repeat) return;
@@ -126,6 +137,9 @@ export function playIntro({title = document.title} = {}) {
       on(window, 'pointerup', up), on(window, 'pointercancel', up), on(window, 'blur', up),
       on(window, 'keydown', down, true), on(window, 'keyup', up, true),
       on(root, 'contextmenu', e => e.preventDefault()),
+      on(bar, 'pointerdown', e => { if (e.target.closest('button')) e.stopPropagation(); }),   // (a button is pressed, not held)
+      on(next, 'click', () => go(at + 1)),
+      on(skip, 'click', () => finish()),
     ];
     const unbind = () => { cancelAnimationFrame(raf); off.forEach(f => f()); };
 
