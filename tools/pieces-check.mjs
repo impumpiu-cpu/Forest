@@ -133,7 +133,21 @@ const run = (S, ticks = 4 * 2400) => { const w = openCamp(S); for (let g = 0; g 
     const S = campSetup(a, K, {kind: 'stop', dayIn: 0}), probe = openCamp(S);
     if (!(probe.works || []).some(x => x.key === 'cache')) continue;
     shown = true;
-    const {w, o} = run(S);
+    check('тайник поначалу никому не известен и не работа', probe.works.filter(x => x.key === 'cache').every(x => x.hidden && !x.done));
+    // the camp played tick by tick: no chore run to by the crowd (the mark «занято», settlement/works.js), caches seen first
+    const w = openCamp(S); let crowd = 0, busy = 0;
+    for (let g = 0; g < 4 * 2400 && !campDone(w); g++) {
+      stepCamp(w);
+      const on = new Map();
+      for (const ag of w.campaign.people.values()) if (!ag.dead && ag.task?.id === 'campwork') on.set(ag.task.work, (on.get(ag.task.work) || 0) + 1);
+      if (on.size) busy++;
+      if ([...on.values()].some(n => n > 1)) crowd++;
+    }
+    const o = campOutcome(w);
+    check('к одной работе не бегут гурьбой', crowd <= Math.max(2, busy * 0.02), `тиков с работами ${busy}, из них с двумя и больше на одной ${crowd}`);
+    const caches = w.works.filter(x => x.key === 'cache');
+    check('обыскан только замеченный тайник, и после того, как заметили', caches.every(x => !x.done || (x.spotted && !x.hidden)), caches.map(x => `${x.piece}: ${x.hidden ? 'не замечен' : `замечен ${x.spotted?.tick}`}${x.done ? ', обыскан' : ''}`).join('; '));
+    check('незамеченные тайники утром не обыскивают', o.found.length === caches.filter(x => !x.hidden).length || o.found.length <= caches.filter(x => !x.hidden).length);
     const onMap = w.works.filter(x => x.key === 'cache' && x.done).length;
     check('на стоянке тайник обыскали на карте', onMap > 0 && o.found.some(f => !f.late), `обыскано ${onMap}, находок ${o.found.length}`);
     const gold0 = K.gold, cargo0 = Object.values(K.cargo).reduce((s, v) => s + v, 0), finds0 = K.stats.finds || 0;

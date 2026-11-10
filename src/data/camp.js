@@ -116,8 +116,10 @@ export const CAMP_WORKS = {
   stakes: {label: 'судесы', ticks: 25, radius: 6.5, cutTicks: 70, cutPerDay: 8, gap: 3},
   // a cache in a piece of terrain (world/pieces.js; what it holds: data/pieces.js PIECE_FINDS): searched `ticks` by one pair
   // of hands, and only when no foe is about — the foe beaten, or none coming. What is not searched on the map is searched
-  // in the morning, when the field is the caravan's (campaign/works.js cachesOutcome)
-  cache: {label: 'тайник', ticks: 40},
+  // in the morning, when the field is the caravan's (campaign/works.js cachesOutcome). The company does not know of a cache
+  // until one of it comes within `spot` cells of it (settlement/works.js stepWorks): then it is a chore, before — nothing,
+  // and one never seen is not searched in the morning either
+  cache: {label: 'тайник', ticks: 40, spot: 4},
 };
 
 // the game of the land (data/campaign.js GAME) and the flow that brings it to the map (data/migrations.js)

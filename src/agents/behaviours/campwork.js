@@ -1,8 +1,9 @@
 // Camp work: the evening's chores of the caravan's camp (campaign/works.js; data/camp.js CAMP_WORKS) — the cart drawn up,
 // the beasts tethered, the hides on their poles, the spit, the smoking rack, the stakes. Whoever is on its feet and not
 // badly hurt takes the nearest chore nobody is at; in the first hours after the camp opens the chores come before sleep
-// (CAMP_WORKS.setup), later they wait for an idle hour. A chore begun is held on to (ROSTER.keep); one that cannot be
-// reached is let go. Reads: nothing of its own.
+// (CAMP_WORKS.setup), later they wait for an idle hour. A chore is marked taken from the first step towards it, so each
+// goes to one pair of hands and the company spreads over them instead of running all to the same; held on to
+// (ROSTER.keep); one that cannot be reached is let go, and so is its mark. Reads: nothing of its own.
 import {approach} from '../movement.js';
 import {hpShare} from '../agent.js';
 import {endTask} from '../lifecycle.js';
@@ -22,6 +23,7 @@ export const campwork = {
   step(w, a, t) {
     const x = workById(w, t.work);
     if (!x || x.done || (x.by != null && x.by !== a.id)) { endTask(w, a, 'done'); return; }
+    x.by = a.id;   // taken up from the first step: «занято» — the others pick another chore on their way (exit lets it go)
     if (Math.hypot(x.x - a.x, x.y - a.y) > CAMP_WORKS.setup.reach) { if (approach(w, a, x.x, x.y, CAMP_WORKS.setup.pace) === null) { endTask(w, a, 'blocked', 'не подойти'); } return; }
     workOn(w, a, x);
   },

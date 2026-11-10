@@ -77,7 +77,7 @@ export function planCaches(w, S) {
     const F = PIECE_FINDS[pieceFinds(p)]; if (!F) continue;
     const loot = rollLoot(mulberry(seedNumber(`${S.seed}:cache:${i}`)), F);
     w.works ||= [];
-    addWork(w, 'cache', [i], D.ticks, {piece: p.label, loot, text: loot.text});
+    addWork(w, 'cache', [i], D.ticks, {piece: p.label, loot, text: loot.text, hidden: true});   // (unknown to the company till one of it passes near: settlement/works.js)
   }
 }
 const pieceFinds = p => PIECE_TABLE[p.id] ?? null;
@@ -103,7 +103,7 @@ export function cachesOutcome(w, won) {
   for (const x of worksOf(w)) {
     if (x.key !== 'cache') continue;
     const late = !x.done;
-    if (late && (!won || !camp || !(camp[x.cells[0]] < FAR))) continue;
+    if (late && (x.hidden || !won || !camp || !(camp[x.cells[0]] < FAR))) continue;   // (a cache nobody saw is not searched: nobody knows it is there)
     out.push({piece: x.piece, gold: x.loot.gold, goods: {...x.loot.goods}, items: [...x.loot.items], text: x.loot.text, late});
   }
   return out;
@@ -112,7 +112,7 @@ export function cachesOutcome(w, won) {
 // the label of a thing, for the map's card (ui/campLocal.js)
 export function workText(w, x) {
   const D = W()[x.key], label = D.label[0].toUpperCase() + D.label.slice(1);
-  if (x.key === 'cache') return x.done ? `Тайник (${x.piece}) обыскан` : `Тайник: ${x.piece}${x.by != null ? ' — обыскивают' : ''}`;
+  if (x.key === 'cache') return x.done ? `Тайник (${x.piece}) обыскан` : x.hidden ? `Тайник: ${x.piece} — отряд о нём не знает` : `Тайник: ${x.piece}${x.by != null ? ' — обыскивают' : ' — замечен, ещё не взялись'}`;
   if (x.key === 'wagon') return `${VEHICLES[x.kind]?.label === 'тележка' ? 'Тележка' : 'Повозка'} с припасами — у неё склад каравана`;
   if (!x.done) return `${label}: ${x.by != null ? 'делают' : 'ещё не взялись'}, ${Math.round(x.progress / x.ticks * 100)}%`;
   if (x.key === 'tether') return `${label}: звери привязаны — увести можно, лишь перерезав верёвку`;

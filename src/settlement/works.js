@@ -2,7 +2,9 @@
 // data/camp.js CAMP_WORKS; what is planned from what the caravan brought: campaign/works.js planWorks): the chores as
 // things on the map, taken up and made by the company (agents/behaviours/campwork.js), and what a finished one does.
 // w.works = [{id, key, cells, x, y (the middle), progress, ticks, done, by}]: `cells` — the cells it stands on (a stake
-// is one work a cell); `by` — the id of the one at it now; w.works.plan — what the planning left for the night.
+// is one work a cell); `by` — the id of the one who took it up, from his first step towards it (the flag «занято»: the
+// others take another chore, not all the same one); w.works.plan — what the planning left for the night. A cache has
+// `hidden` till one of the company passes within CAMP_WORKS.cache.spot of it (stepWorks): only then is it a chore.
 import {CAMP_WORKS} from '../data/camp.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {log} from '../core/log.js';
@@ -57,7 +59,7 @@ export function workFor(w, a) {
   let best = null, bd = Infinity;
   for (const x of worksOf(w)) {
     if (x.done || (x.by != null && x.by !== a.id)) continue;
-    if (x.key === 'cache' && !searchable(w)) continue;
+    if (x.key === 'cache' && (x.hidden || !searchable(w))) continue;
     const d = Math.hypot(x.x - a.x, x.y - a.y) + (x.key === 'stakes' ? 0 : -2);   // (the things by the fire first, the ring after)
     if (d < bd) { bd = d; best = x; }
   }
@@ -79,9 +81,23 @@ export function tetherAt(w) { const t = worksOf(w).find(x => x.key === 'tether' 
 // a tick of the camp (campaign/camp.js stepCamp): the smoking rack turns fresh meat into jerky while it stands
 export function stepWorks(w) {
   if (!w.works) return;
+  spotCaches(w);
   const S = W().smoke, P = w.works.plan;
   // a stop's hunt brought fresh meat: a smoking rack is wanted (once)
   if (P?.stop && !P.smoked && (w.stock.meat || 0) >= S.min) { P.smoked = true; const taken = new Set(worksOf(w).flatMap(x => x.cells)); const cells = spotNear(w, S.at, P.a0 + W().place.smoke, taken, 1); if (cells) addWork(w, 'smoke', cells, P.stood ? 0 : S.ticks); }
   if (workDone(w, 'smoke') && (w.stock.meat || 0) > 0) { const d = Math.min(w.stock.meat, S.perTick); w.stock.meat -= d; w.stock.jerky = (w.stock.jerky || 0) + d * S.jerky; }
 }
 
+
+// the caches nobody of the company knows of: one who comes within `spot` cells sees it, and from then it is a chore
+function spotCaches(w) {
+  const R = W().cache.spot, C = w.campaign; if (!C?.people) return;
+  for (const x of w.works) {
+    if (x.key !== 'cache' || !x.hidden) continue;
+    let by = null;
+    for (const a of C.people.values()) if (!a.dead && !a.downed && !a.captive && Math.hypot(a.x - x.x, a.y - x.y) <= R) { by = a; break; }
+    if (!by) continue;
+    x.hidden = false; x.spotted = {tick: w.tick, by: by.id};
+    log(w, `${by.name || 'Кто-то из отряда'} ${by.gender === 'f' ? 'заметила' : 'заметил'} тайник: ${x.piece}.`, 'build');
+  }
+}
