@@ -96,6 +96,16 @@ export const CAMP = {
 // the same place everything stands from the first (campaign/camp.js S.stayed).
 export const CAMP_WORKS = {
   setup: {hours: 2.5, want: 1.6, idle: 0.5, hurt: 0.5, reach: 1.4, pace: 1.2},   // (`reach` — a chore is worked from this close, walked to at `pace`)
+  // the camp's overmind (settlement/campMind.js): each chore takes `hands` pairs of hands (1 unless its row says more); a
+  // free chore is taken before joining one begun — a begun one weighs `join` cells further off
+  mind: {join: 3},
+  // a walk round the camp to see what lies about (the caches are found so): once the first chores are done, by day, with
+  // no foe about, the overmind sends one — the guide if there is one, else the healthiest free hand at least `hurt`
+  // healthy — on a ring of `points` places `radius` cells from the fire (or nearer, down to `inner`, where the land stops
+// one) and back, within `hours`; given up after
+  // `tries` sendings that came to nothing. `want` — the walk against the needs (data/needs.js), `dark` — the night that
+  // stops it (core/time.js nightness)
+  scout: {radius: 14, inner: 5, points: 8, hours: 6, want: 1.6, hurt: 0.7, dark: 0.5, tries: 2},
   // where things stand about the fire: the cart at a random bearing, the rest turned from it by these angles (radians); a
   // taken cell is passed by `step` of a turn at a time
   place: {step: 0.26, tether: 0.9, racks: 2.5, spit: 4.4, smoke: 1.25},   // (`idle` — the chores' weight after the first hours; one below `hurt` of its health sits by the fire)
@@ -103,7 +113,7 @@ export const CAMP_WORKS = {
   wagon:  {label: 'повозка с припасами', at: 3.5},
   // a rope between posts (`posts` cells): the beasts keep within `keep` of it (agents/behaviours/penned.js) and a raider who
   // would lead one off first cuts the rope — `cut` ticks beside it (campaign/camp.js stepCamp)
-  tether: {label: 'коновязь', ticks: 40, at: 4.5, posts: 3, keep: 1.8, stroll: 0.7, cut: 60},   // (a tethered beast strolls `stroll` × keep about the rope)
+  tether: {label: 'коновязь', ticks: 40, hands: 2, at: 4.5, posts: 3, keep: 1.8, stroll: 0.7, cut: 60},   // (a tethered beast strolls `stroll` × keep about the rope)
   // poles with the hunt's hides stretched on them: a night on the racks cures `hides` hides into `leather` leather
   racks:  {label: 'колья со шкурами', ticks: 30, at: 4, cure: {hides: 3, leather: 2}},
   // the spit over the fire: the evening meal is cooked by one (the dish itself: data/transport.js CAMP_KIT.dish)
@@ -119,7 +129,7 @@ export const CAMP_WORKS = {
   // in the morning, when the field is the caravan's (campaign/works.js cachesOutcome). The company does not know of a cache
   // until one of it comes within `spot` cells of it (settlement/works.js stepWorks): then it is a chore, before — nothing,
   // and one never seen is not searched in the morning either
-  cache: {label: 'тайник', ticks: 40, spot: 4},
+  cache: {label: 'тайник', ticks: 40, spot: 4, hands: 2},
 };
 
 // the game of the land (data/campaign.js GAME) and the flow that brings it to the map (data/migrations.js)

@@ -10,7 +10,7 @@
 import {CAMP_WORKS} from '../data/camp.js';
 import {VEHICLES} from '../data/transport.js';
 import {T} from '../data/terrain.js';
-import {worksOf, workDone, spotNear, addWork, freeCell, gearDef, FAR} from '../local/index.js';
+import {worksOf, workDone, spotNear, addWork, freeCell, gearDef, FAR, handsOf} from '../local/index.js';
 import {PIECES, PIECE_FINDS} from '../data/pieces.js';
 import {RESOURCES} from '../data/resources.js';
 import {mulberry, seedNumber} from '../core/rng.js';
@@ -114,7 +114,7 @@ export function workText(w, x) {
   const D = W()[x.key], label = D.label[0].toUpperCase() + D.label.slice(1);
   if (x.key === 'cache') return x.done ? `Тайник (${x.piece}) обыскан` : x.hidden ? `Тайник: ${x.piece} — отряд о нём не знает` : `Тайник: ${x.piece}${x.by != null ? ' — обыскивают' : ' — замечен, ещё не взялись'}`;
   if (x.key === 'wagon') return `${VEHICLES[x.kind]?.label === 'тележка' ? 'Тележка' : 'Повозка'} с припасами — у неё склад каравана`;
-  if (!x.done) return `${label}: ${x.by != null ? 'делают' : 'ещё не взялись'}, ${Math.round(x.progress / x.ticks * 100)}%`;
+  if (!x.done) return `${label}: ${x.crew?.length ? `делают${handsOf(x) > 1 ? ` (${x.crew.length} из ${handsOf(x)})` : ''}` : 'ещё не взялись'}, ${Math.round(x.progress / x.ticks * 100)}%`;
   if (x.key === 'tether') return `${label}: звери привязаны — увести можно, лишь перерезав верёвку`;
   if (x.key === 'racks') return `${label}: за ночь ${W().racks.cure.hides} шкуры станут кожей`;
   if (x.key === 'smoke') return `${label}: свежее мясо коптится в вяленое${(w.stock.meat || 0) > 0 ? ` (мяса ${Math.round(w.stock.meat)})` : ''}`;
