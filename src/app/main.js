@@ -16,6 +16,7 @@ import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
 import {minds} from '../render/minds.js';
+import {introWanted, playIntro} from './intro.js';
 
 import {$, seg, press} from '../ui/dom.js';
 const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
@@ -119,3 +120,5 @@ mountTabs($('setDock'));
 $('buildTag').textContent = `версия ${VERSION}${editCount() ? ` · правки таблиц: ${editCount()}` : ''}${BOOT_PROBLEMS.length ? ' · ⚠' : ''}`;
 // forest.html#settings and the like open that screen
 show(SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+// the launch screen over the menu (app/intro.js): a short slide show, a tap for the next slide, press and hold to skip
+if (introWanted()) playIntro({title: $('appTitle').textContent}).then(() => document.querySelector('#home .launch-card')?.focus({preventScroll: true}));
