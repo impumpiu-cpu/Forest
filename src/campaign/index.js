@@ -5,9 +5,38 @@ import {stepHistory, startHistory} from '../atlas/index.js';
 import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/index.js';
-import {upgradeMembers} from './start.js';
+import {upgradeMembers, draw} from './start.js';
+import {makeErrand} from './errands.js';
+import {questTarget, questIntro} from './quest.js';
+import {capacity} from './baggage.js';
+import {say} from './march.js';
+import {plural} from '../core/util.js';
+import {YEAR_DAYS} from '../data/seasons.js';
 
 export {newCampaign, capitals} from './start.js';
+export {errandsFor, errandOf} from './errands.js';
+
+// ── a campaign of chapters (campaign/ending.js handIn): the caravan at its capital, an errand handed in
+// another errand for the same company (data/errands.js id): fresh from the capital — the satchels full, the wounds tended
+export function nextErrand(a, id) {
+  const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не ждёт поручения.');
+  const {r, done} = draw(K, 'errand');
+  const Q = makeErrand(a, K, r, id); if (!Q) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
+  K.quest = Q; K.phase = 'out'; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0; K.hungry = 0;
+  K.food = Math.max(K.food, capacity(K));
+  for (const m of alive(K)) if (!m.captive) m.hp = 1;
+  K.goal = questTarget(a, K, r);
+  done();
+  say(a, K, `Караван снова выходит из столицы. ${questIntro(a, K)}`, 'start', true);
+  return K;
+}
+// the end: the company goes home for good — the epilogue, then the ascension (campaign/ascend.js)
+export function endCampaign(a) {
+  const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не в столице.');
+  K.phase = 'won';
+  say(a, K, `Караван распущен: ${K.done.length} ${plural(K.done.length, 'поручение', 'поручения', 'поручений')} исполнено, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути.`, 'home', true);
+  finish(a, K);
+}
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
 export {chronicleText} from './chronicle.js';
 
@@ -16,6 +45,7 @@ export {chronicleText} from './chronicle.js';
 export function stepCampaign(a) {
   const K = a.campaign;
   if (!K) return false;
+  if (K.phase === 'home') return true;   // the errand handed in: the world waits for the player's word (nextErrand, endCampaign)
   if (ended(K)) {
     if (!K.epilogue) finish(a, K);   // a campaign saved at its very end, before this was
     if (!K.epilogue.done) stepEpilogue(a, K);

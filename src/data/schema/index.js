@@ -66,6 +66,7 @@ import {SHAPE} from '../atlas.js';
 import {EROSION, RIVERS} from '../hydrology.js';
 import {CAMPAIGN as CAMP_RULES, GAME, MINE, NIGHT} from '../campaign.js';
 import {QUEST} from '../quest.js';
+import {ERRANDS} from '../errands.js';
 import {MARKET, VISIT, LOYALTY, CONTRACT, COMPANIONS, FREED, HIRES, SMITH, EARN} from '../market.js';
 import {BUBBLE, THINGS, AMBUSH, HERD as GAME_HERD, TRAIN} from '../bubble.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../camp.js';
@@ -575,6 +576,7 @@ TABLES.push(
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
   autoTable({id: 'acts', label: 'Дела и опыт', group: 'Караван', note: 'За что участник похода получает опыт (data/experience.js ACTS): основа (ground) — всем, кто был, без буквы; дела — тому, кто сделал, с буквой SPECIAL (stat; skill — буква навыка, role — буквы роли), которую растит вечер нового уровня (campaign/experience.js).', rows: () => ACTS.all()}),
+  autoTable({id: 'errands', label: 'Поручения', group: 'Караван', note: 'Что столица поручает каравану (data/errands.js; docs/CAMPAIGN.md «Поручения»): tier — ступень I–V; how — crown (корона истории мира), epic (бедствие эпохи), lair (логово мира: lairs — какие виды, captives — где держат пленных, leader — с живым главарём); at — дальность в долях диагонали мира; clueAt — следы на пути (пусто — место известно); guard — × стражи; trophy — что несут в столицу; pursuit — погоня; years — срок; gold — плата столицы.', rows: () => ERRANDS.all()}),
   autoTable({id: 'perks', label: 'Перки', group: 'Караван', note: 'Приёмы, что участник похода берёт с уровнем (data/perks.js): req — что нужно (уровень, раса, роль, вещь в руках, буквы, дела any — хоть одно из, работа work), how — как работает (mods — тело, fight — бой, camp — день похода, aura — от своих рядом), pull — что в характере тянет к нему (campaign/perks.js).', rows: () => PERKS.all()}),
   {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × (L − 1) × (L + lead) до потолка cap, доля бывшего в бою без своих дел (merit.present), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),

@@ -27,6 +27,7 @@ import {say, reveal} from './march.js';
 import {EPIC} from '../data/calamities.js';
 import {capacity} from './baggage.js';
 import {makeQuest, questTarget, questIntro} from './quest.js';
+import {makeErrand} from './errands.js';
 import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
 import {CAMP_KIT} from '../data/transport.js';
@@ -132,7 +133,9 @@ function member(K, a, rnd, {species, role}, k) {
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
 // summon — the snapshots of the ascended chosen for its core (campaign/ascend.js): taken whole into K.summoned
-export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null} = {}) {
+// errand — the errand chosen of the capital's (data/errands.js; none: the world's own, as before errands were); chapters — the
+// errand handed in does not end the campaign: the player gives the next or ends it (campaign/ending.js handIn — the screen's)
+export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null, errand = null, chapters = false} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
   const t = a.towns.find(x => x.id === townId && x.alive);
   if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error('Это не столица мажорного народа.');
@@ -149,7 +152,9 @@ export function newCampaign(a, townId, {seed = null, mode = 'local', summon = nu
   if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
-  K.quest = makeQuest(a, K, r);
+  K.quest = errand ? makeErrand(a, K, r, errand) : makeQuest(a, K, r);
+  if (chapters) K.chapters = true;
+  if (K.quest && !K.quest.errand) { K.quest.errand = K.quest.epic ? 'calamity' : 'crown'; K.quest.tier = K.quest.epic ? 4 : 3; K.quest.from = 0; }   // (the world's own: named as an errand of the list)
   K.goal = K.quest ? questTarget(a, K, r) : null;
   if (K.quest?.epic) K.years = EPIC.years;
   done();

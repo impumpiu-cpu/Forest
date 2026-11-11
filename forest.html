@@ -511,12 +511,14 @@
               <button type="button" id="campEpicGo">Сотворить</button>
             </div>
             <small id="campEpicNote" class="status" role="status">Три эпохи по 75–150 лет: долгая история, в которой будет место бедствиям. На среднем мире — минута-другая.</small></div>
-          <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
-            <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small>
+          <div class="field" id="campErrandsField" hidden><span class="lbl">Поручение</span><div id="campErrands" class="savelist errands"></div>
+            <small>Что столица поручает каравану. Ступень — от I до V: чем выше, тем дальше, сильнее стража и дольше дорога. Исполнив поручение, караван вернётся в столицу — и можно будет взять новое той же командой.</small>
             <small id="campQuestNote" class="camp-quest"></small></div>
           <div class="field" id="campHeroesField" hidden><span class="lbl">Вознесённые</span><div id="campHeroes" class="savelist"></div>
             <small>Герои прошлых походов, которых эта столица может позвать: каждый займёт место в восьмёрке (не больше четырёх) и сразу уйдёт из списка — снова смертным.</small></div>
           <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
+          <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
+            <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
         </div>
         <details class="card obs-lib" id="campLibField" open>
           <summary>Мир из библиотеки</summary>
@@ -557,6 +559,14 @@
       <div class="obs-canvas camp-box"><canvas id="campMap" aria-label="Карта мира с караваном"></canvas>
         <canvas id="campLocal" hidden aria-label="Стоянка каравана на локальной карте"></canvas>
         <div id="campLocalBar" class="camp-local-bar" hidden><span id="campLocalText"></span><button type="button" id="campMinds" class="quiet mini" aria-label="Надмозг на карте">⚑</button><button type="button" id="campLocalSkip">Дальше по карте мира</button></div>
+        <div id="campOffer" class="camp-offer" hidden role="dialog" aria-labelledby="campOfferTitle">
+          <h3 id="campOfferTitle">Поручение исполнено</h3>
+          <p id="campOfferText"></p>
+          <span class="lbl">Взять новое?</span>
+          <div id="campOfferList" class="savelist errands"></div>
+          <div class="row actions"><button type="button" id="campOfferGo" class="primary">Взять поручение</button><button type="button" id="campOfferEnd">Завершить поход</button></div>
+          <small id="campOfferNote">Новое поручение — та же команда, те же уровни и раны, обоз и казна; в столице сумки наполнят и раны залечат. Завершить — эпилог: судьбы участников и вознесение живых.</small>
+        </div>
         <div class="seg zoomseg obs-zoom" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
           <button type="button" id="campZoomIn" aria-label="Приблизить">+</button>
           <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>

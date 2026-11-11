@@ -2,6 +2,8 @@
 // The fates are templates: (m, w) → a line, where m is the member and w the words of the ending —
 //   g(male, female) — the word by the member's gender; town — a town of the realm (in its cases: town[0…4]);
 //   capital — the capital in its cases; crown — the crown's name; knights — the people's knights (many);
+//   the errand's words (campaign/ending.js words — the crown's by default): keeps (whose keeper: «короны»), tales (what it told of:
+//   «о походе за короной»), about («о короне»), sought (what it gave up seeking: «короны»), crownAcc (what it still seeks);
 //   where — a side of the world; race — the member's race.
 
 export const EPILOGUE = {
@@ -10,6 +12,8 @@ export const EPILOGUE = {
   // a crown brought home: the capital grows (pilgrims, the court, the fame), the realms that know the realm
   // think better of it (attitude, data/diplomacy.js), the realm keeps the crown as its relic
   crown: {pop: 1.12, att: 1, attMax: 5},
+  // an errand of a lair handed in (campaign/ending.js homeReward): the realms that know the realm think better of it, `att` × its tier
+  errand: {att: 0.2},
 };
 
 const pick = (r, list) => list[(r() * list.length) | 0];
@@ -18,8 +22,8 @@ export const FATES = {
   won: {
     knight: [
       (m, w) => `${m.name} ${w.g('получил', 'получила')} от правителя землю под ${w.town[4]} и титул.`,
-      (m, w) => `${m.name} ${w.g('стал хранителем', 'стала хранительницей')} короны: ${w.crown} не покидает ${w.capital[2]} без ${w.g('него', 'неё')}.`,
-      (m, w) => `${m.name} ещё не раз ${w.g('водил', 'водила')} караваны, а о походе за короной ${w.g('рассказывал', 'рассказывала')} до самой старости.`,
+      (m, w) => `${m.name} ${w.g('стал хранителем', 'стала хранительницей')} ${w.keeps}: ${w.crown} не покидает ${w.capital[2]} без ${w.g('него', 'неё')}.`,
+      (m, w) => `${m.name} ещё не раз ${w.g('водил', 'водила')} караваны, а ${w.tales} ${w.g('рассказывал', 'рассказывала')} до самой старости.`,
       (m, w) => `${m.name} ${w.g('возглавил', 'возглавила')} стражу ${w.capital[2]}.`,
     ],
     squire: [
@@ -30,7 +34,7 @@ export const FATES = {
     ],
     other: [
       (m, w) => `${m.name} (${w.race}) ${w.g('осел', 'осела')} в ${w.capital[3]}.`,
-      (m, w) => `${m.name} (${w.race}) ${w.g('вернулся', 'вернулась')} к своему народу с рассказами о короне.`,
+      (m, w) => `${m.name} (${w.race}) ${w.g('вернулся', 'вернулась')} к своему народу с рассказами ${w.about}.`,
       (m, w) => `${m.name} (${w.race}) ${w.g('ушёл', 'ушла')} ${w.where} искать своей судьбы.`,
     ],
   },
@@ -45,7 +49,7 @@ export const FATES = {
   captive: {
     won: [
       (m, w) => `${m.name} (${w.race}), ${w.g('пленный', 'пленная')} каравана, ${w.g('получил', 'получила')} в ${w.capital[3]} волю и ${w.g('остался', 'осталась')} там работать.`,
-      (m, w) => `${m.name} (${w.race}), ${w.g('пленный', 'пленная')} каравана, ${w.g('был отпущен', 'была отпущена')} домой с рассказом о короне.`,
+      (m, w) => `${m.name} (${w.race}), ${w.g('пленный', 'пленная')} каравана, ${w.g('был отпущен', 'была отпущена')} домой с рассказом ${w.about}.`,
     ],
     lost: [
       (m, w) => `${m.name} (${w.race}) ${w.g('перетёр', 'перетёрла')} путы и ${w.g('ушёл', 'ушла')} к своим.`,
@@ -54,8 +58,8 @@ export const FATES = {
   },
   // twenty-five years on the road: those still walking settle where they are
   timeout: [
-    (m, w) => `${m.name} ${w.g('осел', 'осела')} в ${w.town[3]} и больше не ${w.g('искал', 'искала')} короны.`,
-    (m, w) => `${m.name} ${w.g('вернулся', 'вернулась')} в ${w.capital[1]} стариком — без короны, но живым.`.replace('стариком — без короны, но живым', w.g('стариком — без короны, но живым', 'старухой — без короны, но живой')),
+    (m, w) => `${m.name} ${w.g('осел', 'осела')} в ${w.town[3]} и больше не ${w.g('искал', 'искала')} ${w.sought}.`,
+    (m, w) => `${m.name} ${w.g('вернулся', 'вернулась')} в ${w.capital[1]} ${w.g('стариком', 'старухой')} — без ${w.sought}, но ${w.g('живым', 'живой')}.`,
     (m, w) => `${m.name} так и ${w.g('остался', 'осталась')} в пути: говорят, ${w.g('он', 'она')} до сих пор ищет ${w.crownAcc}.`,
   ],
 };

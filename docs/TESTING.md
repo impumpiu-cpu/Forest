@@ -30,7 +30,7 @@ check-layers · art-check · atlas-check 2 · atlas-save-check 1 · map-check 3 
 check-data · check-tables · align-check · leaders-check · buildings-check · elves-check · dwarves-check · greenskins-check · humans-check ·
 caravan-check · economy-check · economy-regression-check · chain-balance 5 --check · kinds-check · fight-check ·
 conditions-check · ranks-check · potions-check · review-check · checks-check · clock-check · kingdom-check · polity-check · mind-check ·
-demography-check · build-check · needs-check · donors-check · social-check · autosave-check · fisc-check · content-check · land-check · settle-check ·
+demography-check · build-check · needs-check · donors-check · social-check · autosave-check · errand-check · fisc-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · minds-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
@@ -57,6 +57,7 @@ quest-hand-check · audit-check · logic-check · minds-check · behaviour-check
 | `npm run map` | `map-check.mjs` | локальная карта: тот же участок — та же карта; вода, скалы, биомы, лес по участку; лагерь на открытой земле и связан с краями; руды на склонах; озёра; справочники местности сходятся |
 | `npm run pieces` | `pieces-check.mjs` | лекала террейна стоянок: маски, сцены и находки сходятся; на многих картах якоря и тайники достижимы, лагерь и кольцо судес свободны, на воде не строят, тот же сид — та же карта; сцена по врагу; кладка держит стрелу, завал укрывает; стража штурма стоит у сердца сцены; тайник поначалу никому не известен, обыскан только замеченный, незамеченный утром не обыскивают; на деле стоянки не больше рук, чем ему положено, а на дело в две руки встают двое; надмозг посылает одного разведать округу, и тот возвращается; находки тайников приходят в караван; старые стоянки — без лекал |
 | `npm run seam` | `seam-check.mjs` | шов: план клетки мира — простые данные и повторяется; регион, климат, ворота по дорогам и рекам; соседи — только существующие банды и недалеко; игра на клетке и её сохранение; угрозы полигона |
+| `npm run errands` | `errand-check.mjs` | поручения: список с причинами; корона рукой — тот же поход; каждое поручение мира доходит до конца, то же дважды; логово разорено рукой столицы, трофей дома; главы — ждут в столице (мир стоит), сохранение там, новое поручение той же командой как непрерывное, конец с эпилогом без короны, архив поручений, вознесение |
 | `npm run autosave` | `autosave-check.mjs` | автосохранение похода: сохранённый на границе сезона поход идёт как непрерывный до конца; окончённый загружается окончённым; «Продолжить» — только живой поход, чей мир в библиотеке; когда сохранение пора |
 | `npm run campaign` | `campaign-check.mjs` | поход: караван из каждой столицы, квест и подсказки, конец и эпилог, архив походов, обоз и колёса, торговля, найм, пузырь, ночные бои; тот же сид — тот же поход; сохранение посреди похода; бои и стоянки на локальной карте |
 | `npm run campaign:balance` | `campaign-balance.mjs` | баланс похода: много походов параллельно, итог против целей ([ниже](#баланс-похода)) |

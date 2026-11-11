@@ -78,7 +78,7 @@ export function walkStats(a, K) {
   const here = ms.filter(m => m.alive && !m.captive), captives = ms.filter(m => m.alive && m.captive);
   const out = [];
   out.push({title: 'Поход', rows: [
-    ['Итог', END[K.phase] || 'в пути'],
+    ['Итог', K.phase === 'won' && K.done?.length ? `исполнили поручений: ${K.done.length} — и вернулись` : K.phase === 'won' && K.quest?.how === 'lair' ? 'поручение исполнено' : K.phase === 'home' ? 'поручение сдано — ждут в столице' : END[K.phase] || 'в пути'],   // (an errand's words: campaign/errands.js)
     ['В пути', `${K.day} дн. (${years} г.)`],
     ['Пройдено', `${Math.round(s.walked || 0)} клеток`],
     ['Стоянок', `${v('camps')}, дней на стоянке ${v('stopDays')}`],
@@ -89,8 +89,10 @@ export function walkStats(a, K) {
   ]});
   if (K.quest) {
     const Q = K.quest, C = Q.crown;
-    out.push({title: 'Корона', rows: [
-      ['Корона', `${Q.name}: ${CROWN[C.state] || (C.exact || C.seen ? 'известно где' : C.area ? 'известен круг' : 'где — неизвестно')}`],
+    const lair = Q.how === 'lair';
+    out.push({title: lair ? 'Поручение' : 'Корона', rows: [
+      ...(K.done?.length ? [['Исполнено', K.done.map(d => d.label).join(', ')]] : []),
+      [lair ? 'Трофей' : 'Корона', `${Q.name}: ${CROWN[C.state] || (C.exact || C.seen ? 'известно где' : C.area ? 'известен круг' : 'где — неизвестно')}`],
       ['Следы', `найдено ${Q.found} из ${Q.clues.length}`],
       ['Слухов', v('rumours')], ['Штурмов', v('storms')], ['Погонь', v('pursuers')],
     ]});

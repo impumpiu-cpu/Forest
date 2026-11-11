@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {handIn} from './ending.js';
 import {WOUNDS} from '../data/wounds.js';
 import {toTown} from '../atlas/index.js';
 import {scaleOf} from '../atlas/index.js';
@@ -81,6 +82,8 @@ const guided = K => alive(K).some(m => m.role === 'guide');
 // the years a campaign has: an epic one its own (data/calamities.js EPIC.years), any other CAMPAIGN.maxYears
 export const yearsOf = K => K.years ?? CAMPAIGN.maxYears;
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
+// over for now: ended, or the errand handed in and the caravan waiting at the capital (campaign/ending.js handIn)
+const over = K => ended(K) || K.phase === 'home';
 // ended, and its epilogue told (campaign/ending.js)
 export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
 export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : m.former ? (m.gender === 'f' ? 'бывшая рабыня' : 'бывший раб') : (isFighter(m) ? RETINUE[K.people].title[0] : null) || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
@@ -338,7 +341,8 @@ const CAMP_ASK = {
 
 function homecoming(a, K, ms) {
   const t = a.towns.find(x => x.id === K.capital), Q = K.quest;
-  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? (Q.epic ? ` — ${Q.name} отныне в столице, и сила бедствия сломлена` : ` с короной — ${Q.name} снова дома`) : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
+  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? (Q.epic ? ` — ${Q.name} отныне в столице, и сила бедствия сломлена` : Q.how === 'lair' ? ` — ${Q.name[0].toLowerCase()}${Q.name.slice(1)} в доказательство` : ` с короной — ${Q.name} снова дома`) : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
+  if (K.chapters) { handIn(a, K); return; }   // a campaign of chapters: the errand handed in, the next is the player's to give (campaign/ending.js)
   K.phase = 'won';
 }
 
@@ -581,7 +585,7 @@ export const dayShot = (K, d) => ({d, food: Math.round(K.food * 10) / 10, gold: 
   rel: Object.fromEntries(Object.entries(K.social?.relations || {}).map(([a, row]) => [a, {...row}])),
   tired: Object.fromEntries(K.members.filter(m => m.alive).map(m => [m.id, m.social?.load?.tired || 0])), lv: levelsNow(K), xp: xpNow(K)});
 export function caravanDay(a, K, day) {
-  if (ended(K)) return;
+  if (ended(K) || K.phase === 'home') return;   // (an errand handed in: the caravan waits at the capital for the player's word — campaign/ending.js handIn)
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
   assign(K);
   K.dayIn = day % SEASON_DAYS;   // the day of the season: a camp on the local map begins on it (campaign/camp.js)
@@ -661,8 +665,8 @@ export function caravanDay(a, K, day) {
   if (sailing) offDuty(K);   // (aboard the boat's crew keeps the watch: the company rests — campaign/duty.js)
   else {
     if (core(K).length) { entered(a, K, before); evening(a, K); }
-    if (core(K).length && !ended(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
-    if (core(K).length && !ended(K)) night(a, K);
+    if (core(K).length && !over(K)) nightWatch(a, K, {camping, say: (text, who) => say(a, K, text, 'people', false, who)});   // who stands watch tonight, the requests and promises (campaign/duty.js)
+    if (core(K).length && !over(K)) night(a, K);
   }
   // a level for whoever has the experience for it — after the night's fight and the quest's last word, before the day's summary (campaign/experience.js)
   if (core(K).length) levelEvening(a, K, (text, who) => say(a, K, text, 'people', false, who));
@@ -673,12 +677,13 @@ export function caravanDay(a, K, day) {
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
   }
-  if (!ended(K) && K.day >= yearsOf(K) * YEAR_DAYS) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
+  if (!over(K) && K.quest?.until != null && K.day >= K.quest.until) { K.phase = 'timeout'; say(a, K, `Срок поручения вышел: ${Math.round((K.quest.until - (K.quest.from || 0)) / YEAR_DAYS)} лет, а караван так и не вернулся с ним.`, 'end', true); }   // (an errand's own deadline: data/errands.js)
+  else if (!over(K) && K.quest?.until == null && K.day >= yearsOf(K) * YEAR_DAYS) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
   reveal(a, K, seen, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0) + companyVal(K, 'sight') * scaleOf(a));
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit (none over the water)
-  if (K.quest && !ended(K) && !sailing) {
+  if (K.quest && !over(K) && !sailing) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');
     questSight(a, K, tell); pursuit(a, K, rq, tell); epicDay(a, K, rq, tell); dq();
   }

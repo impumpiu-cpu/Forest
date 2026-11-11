@@ -34,6 +34,7 @@ import {cellDist, weighted} from '../core/util.js';
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickFirst, tracing, noteDecision} from '../core/decide.js';
 import {share} from './experience.js';
+import {errandIntro, errandReady, errandStormed} from './errands.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -73,7 +74,7 @@ export function foot(a, mask, i, r = 3) {
 // ── the places of the world's history the quest can use
 const lairName = l => `${LAIRS.get(l.kind).label} «${l.name}»`;
 const friendly = (a, K, t) => t.realm && (t.realm === K.realm || (trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm)));
-function places(a, K, mask) {
+export function places(a, K, mask) {
   const out = [], add = (p, at) => { const i = foot(a, mask, at); if (i >= 0) out.push({...p, at, i}); };
   for (const b of a.ancientBarrows || []) add({kind: 'barrow', label: 'древний курган'}, b);
   for (const l of a.lairs || []) {
@@ -90,7 +91,7 @@ function places(a, K, mask) {
 }
 
 // who guards a place, and how strong: stronger the further from home
-function guardOf(a, K, p, crown = false) {
+export function guardOf(a, K, p, crown = false) {
   const G = QUEST.guard, diag = Math.hypot(a.w, a.h), s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, p.i) / diag) * (crown ? G.crown : 1));
   const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null;
   if (p.kind === 'town') return null;
@@ -122,9 +123,14 @@ export function circle(a, i, r, rnd) {
 }
 
 // ── the quest is laid out when the caravan sets out
+// (no errand chosen — a campaign of the checks, of a save from before: the world's own, as before errands were)
 export function makeQuest(a, K, rnd) {
   // an epic world tells its own story: the graves of its bosses, the lair of the fourth (campaign/epic.js)
   if (epicWorld(a)) { const E = makeEpicQuest(a, K, rnd); if (E) return E; }   // (and a world of «Заселение мира», campaign/epic.js)
+  return crownQuest(a, K, rnd);
+}
+// the crown of the world's history (the errand «Вернуть корону», data/errands.js)
+export function crownQuest(a, K, rnd) {
   const {mask, cells} = reachable(a, K);
   if (!cells.length) return null;
   const diag = Math.hypot(a.w, a.h), G = CAMPAIGN.goal, home = K.home, d = i => dist(a, home, i) / diag;
@@ -141,11 +147,23 @@ export function makeQuest(a, K, rnd) {
     if (i === home) return null;
     crown = {kind: 'wild', label: biomeAt(a, i)?.where || 'в глуши', at: i, i};
   }
-  // the clues: places near points on the way, each a little off the straight line
+  const clues = layClues(a, K, rnd, all, cells, crown);
+  const [name, acc, g] = pick(rnd, QUEST.names);
+  const Q = {name, acc, g, story: story(a, crown, g), crown: {kind: crown.kind, at: crown.at, i: crown.i, label: crown.label, guard: crown.kind === 'wild' ? guardOf(a, K, {...crown, kind: 'ruin'}, true) : guardOf(a, K, crown, true),
+    area: null, exact: false, seen: false, state: 'lost', carrier: null}, clues, search: null, stormAt: 0, next: null, found: 0};
+  // the capital knows only where the first clue may be looked for
+  if (clues.length) clues[0].area = circle(a, clues[0].i, QUEST.area, rnd);
+  return Q;
+}
+
+// the clues: places of history near points on the way to the goal (at the shares `clueAt` of it), each a little off the straight
+// line; no place near — a cairn in the wilds. `all` — the places of the world (places), `cells` — the walkable ones
+export function layClues(a, K, rnd, all, cells, crown, clueAt = QUEST.clueAt) {
+  const home = K.home;
   const used = new Set([crown.at]), usedI = new Set([crown.i]), clues = [];
   const [hx, hy] = xy(a, home), [cx, cy] = xy(a, crown.i), len = Math.hypot(cx - hx, cy - hy), nx = -(cy - hy) / (len || 1), ny = (cx - hx) / (len || 1);
-  for (let k = 0; k < QUEST.clueAt.length; k++) {
-    const f = QUEST.clueAt[k], off = (rnd() * 2 - 1) * QUEST.scatter * len;
+  for (let k = 0; k < clueAt.length; k++) {
+    const f = clueAt[k], off = (rnd() * 2 - 1) * QUEST.scatter * len;
     const px = hx + (cx - hx) * f + nx * off, py = hy + (cy - hy) * f + ny * off;
     const fit = all.filter(p => QUEST.clueKinds[p.kind] && !used.has(p.at) && !usedI.has(p.i) && p.i !== home);
     let best = null, bv = Infinity;
@@ -161,12 +179,7 @@ export function makeQuest(a, K, rnd) {
     used.add(best.at); usedI.add(best.i);
     clues.push({k, kind: best.kind, at: best.at, i: best.i, label: best.label, town: best.town ?? null, guard: best.kind === 'cairn' ? null : guardOf(a, K, best), area: null, seen: false, found: false});
   }
-  const [name, acc, g] = pick(rnd, QUEST.names);
-  const Q = {name, acc, g, story: story(a, crown, g), crown: {kind: crown.kind, at: crown.at, i: crown.i, label: crown.label, guard: crown.kind === 'wild' ? guardOf(a, K, {...crown, kind: 'ruin'}, true) : guardOf(a, K, crown, true),
-    area: null, exact: false, seen: false, state: 'lost', carrier: null}, clues, search: null, stormAt: 0, next: null, found: 0};
-  // the capital knows only where the first clue may be looked for
-  if (clues.length) clues[0].area = circle(a, clues[0].i, QUEST.area, rnd);
-  return Q;
+  return clues;
 }
 
 // where a circle lies from a cell, in words: «на северо-востоке, дней за 20 пути»
@@ -179,6 +192,7 @@ const KIND_HINT = {grave: 'у могилы былого бедствия', seat:
 const clueHint = (a, K, c, from) => `${KIND_HINT[c.kind] || 'где-то'} ${whereFrom(a, K, from, c.area)}`;
 export const questIntro = (a, K) => {
   const Q = K.quest, c = Q.clues[0];
+  if (Q.how === 'lair') return errandIntro(a, K, clueHint);   // an errand of a lair (campaign/errands.js)
   return `Их поручение — найти ${Q.acc || Q.name}. ${Q.story} Где ${gx(Q, 'она лежит', 'он лежит')}, не знает никто; ` + (c ? `в столице знают лишь, где искать первый след: ${clueHint(a, K, c, K.home)}.` : Q.crown.area ? `беглецы указали, где искать: ${whereFrom(a, K, K.home, Q.crown.area)}.` : 'следов нет — искать придётся наугад.');
 };
 
@@ -211,7 +225,7 @@ const QUEST_ASK = {
   // (not a place left after storms beaten back: meanwhile they heal where they are)
   back: (a, K, rnd, Q, C) => {
     if (!Q.clues.every(c => c.found || c.area)) return undefined;
-    const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms').sort((p, q) => p.rest - q.rest)[0];
+    const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms' && p.restWhy !== 'away').sort((p, q) => p.rest - q.rest)[0];   // (nor a goal whose leader is away: it is waited for — campaign/errands.js)
     if (!back) return undefined;
     back.rest = 0; return target(a, K, rnd);
   },
@@ -266,7 +280,7 @@ export function questSight(a, K, say) {
   const C = Q.crown;
   if (C.state !== 'carried' && !C.seen && (C.area || C.exact || C.state === 'taken') && d(C.at) <= sight) {
     C.seen = true; K.path = null;
-    if (!C.exact) say(`Разведчики нашли место, где лежит ${Q.name}: ${C.label}.`, 'quest', true);
+    if (!C.exact) say(Q.how === 'lair' ? `Разведчики нашли то, что искали: ${C.label}.` : `Разведчики нашли место, где лежит ${Q.name}: ${C.label}.`, 'quest', true);
   }
 }
 
@@ -277,15 +291,16 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
   const Q = K.quest; if (!Q) return false;
   const C = Q.crown, here = [...Q.clues.filter(c => !c.found && c.seen), ...(C.state !== 'carried' && (C.seen || C.exact) ? [C] : [])].find(p => p.i === K.i && !(p.rest > K.day));   // (a place left for a while is not stormed meanwhile)
   if (!here) return false;
+  if (!errandReady(a, K, here, say)) return false;   // an errand's goal not to be stormed yet (a leader away: campaign/errands.js)
   if (here.guard) {
     // (the company's health: the free only — a captive's wounds hold no storm back, as nowhere else: campaign/captives.js)
     const fs = free(K), hp = fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
-    if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
+    if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма', a, rnd); return false; }   // too few left: for people first
     // beaten back once, the council does not send the same company against the same guards: it comes back stronger
     // than the one that lost (QUEST.stronger) — or, not grown so in time, leaves the place for a while
     if (here.lost && might < here.lost.might * QUEST.stronger) {
-      if (K.day - here.lost.day >= QUEST.grow) leaveFor(K, here, say, `сил не прибавилось, а стража не ослабла`);
+      if (K.day - here.lost.day >= QUEST.grow) leaveFor(K, here, say, `сил не прибавилось, а стража не ослабла`, a, rnd);
       return false;
     }
     K.stats.storms = (K.stats.storms || 0) + 1;
@@ -293,21 +308,27 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     const win = fight(rulerAtHead(a, here.guard));   // (its lair's ruler, at home, at its head: campaign/land.js)
     if (!win) {
       Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day};
-      if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`);   // beaten back again and again: leave it for a while, look elsewhere
+      if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`, a, rnd);   // beaten back again and again: leave it for a while, look elsewhere
       return true;
     }
     delete here.lost;
   }
-  if (here === C) takeCrown(a, K, say); else takeClue(a, K, here, rnd, say);
+  if (here === C) { errandStormed(a, K, say); takeCrown(a, K, say); } else takeClue(a, K, here, rnd, say);   // (an errand's lair laid waste in the world: campaign/errands.js)
   K.path = null; Q.search = null;
   return true;
 }
 
 // a guarded place left for a while (QUEST.giveUpRest): the council looks elsewhere meanwhile
-function leaveFor(K, here, say, why) {
+function leaveFor(K, here, say, why, a = null, rnd = null) {
   const Q = K.quest, C = Q.crown;
   here.fails = 0; delete here.lost; here.rest = K.day + QUEST.giveUpRest; here.restWhy = 'storms'; here.seen = here === C ? here.seen : false; K.path = null; Q.search = null;
   say(`${here.label[0].toUpperCase()}${here.label.slice(1)} не взять: ${why}. Совет решил пока искать в другом месте.`, 'quest');
+  // an errand of a lair has few clues: its only way to the goal left, the old folk of the land tell roughly where the lair is
+  // (the circle of the next narrowing: data/quest.js QUEST.narrow) — the caravan searches for it as for a crown in its circle
+  if (Q.how === 'lair' && here !== C && !C.exact && !C.area && a && rnd) {
+    C.area = circle(a, C.i, QUEST.narrow[1], rnd);
+    say(`От старожилов узнали другое: ${C.label} где-то ${whereFrom(a, K, K.i, C.area)} — в округе ${Math.round(C.area.r)} клеток.`, 'quest');
+  }
 }
 
 function takeClue(a, K, c, rnd, say) {
@@ -317,10 +338,12 @@ function takeClue(a, K, c, rnd, say) {
   const t = c.town != null ? a.towns.find(x => x.id === c.town) : null;
   const how = c.epitaph ? `${graveLine(c)} По ней и по старым летописям поняли` : t ? `В ${townLabel(t, 3)} ${t.name} летописец открыл старые свитки` : c.guard ? 'Среди добычи нашлась старая грамота' : 'Под камнями нашлась старая грамота';
   // the crown narrowed down
-  const r = QUEST.narrow[Math.min(Q.found, QUEST.narrow.length) - 1];
+  // (an errand of fewer clues starts further down the list: two narrow to a small circle and then the place, one to a small circle)
+  const r = QUEST.narrow[Math.min(Q.found + (Q.how === 'lair' ? Math.min(1, QUEST.narrow.length - Q.clues.length) : 0), QUEST.narrow.length) - 1];
   let told;
-  if (r <= 0 || Q.found >= QUEST.narrow.length) { C.exact = true; C.area = null; told = `${Q.name} лежит здесь: ${C.label}, ${whereFrom(a, K, K.i, {x: xy(a, C.i)[0], y: xy(a, C.i)[1], r: 0})}`; }
-  else { C.area = circle(a, C.i, r, rnd); told = `${Q.name} где-то ${whereFrom(a, K, K.i, C.area)} — в округе ${Math.round(C.area.r)} клеток`; }
+  const what = Q.how === 'lair' ? 'Логово' : Q.name;   // (an errand's goal is a lair, not a thing lying somewhere: campaign/errands.js)
+  if (r <= 0 || Q.found >= QUEST.narrow.length) { C.exact = true; C.area = null; told = `${Q.how === 'lair' ? 'логово — здесь' : `${Q.name} лежит здесь`}: ${C.label}, ${whereFrom(a, K, K.i, {x: xy(a, C.i)[0], y: xy(a, C.i)[1], r: 0})}`; }
+  else { C.area = circle(a, C.i, r, rnd); told = `${what} где-то ${whereFrom(a, K, K.i, C.area)} — в округе ${Math.round(C.area.r)} клеток`; }
   // and another clue: the nearest one not yet known
   const next = Q.clues.filter(x => !x.found && !x.area).sort((p, q) => dist(a, c.i, p.i) - dist(a, c.i, q.i))[0];
   if (next && !C.exact) next.area = circle(a, next.i, QUEST.area, rnd);
@@ -334,6 +357,7 @@ function takeCrown(a, K, say) {
   if (!again) share(K, K.members.filter(x => x.alive), 'crown');   // (campaign/experience.js)
   K.phase = 'back'; K.goal = K.home; Q.next = K.day + QUEST.pursuit.first; Q.carriedFrom = K.day;
   if (Q.epic && !again) { epicTaken(a, K, m?.name || 'караван'); say(`${C.label[0].toUpperCase()}${C.label.slice(1)} взято штурмом: ${C.guard?.boss?.name || 'босс'} пал${(C.guard?.boss?.g ?? a.calamities?.find(c => c.id === Q.calamity)?.boss?.g) === 'f' ? 'а' : ''}. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой! Весть летит быстрее каравана, и враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null); return; }
+  if (Q.how === 'lair' && !again) { say(`${C.label[0].toUpperCase()}${C.label.slice(1)}: штурм удался. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой, сдать поручение${Q.pursuit ? ': весть летит быстрее каравана, и враги не дадут дойти спокойно' : ''}.`, 'crown', true, m ? [m.id] : null); return; }
   say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null);
 }
 // who carries the crown: a knight first, the healthiest
@@ -388,7 +412,7 @@ export function rumour(a, K, t, rnd) {
 
 // ── the way home with the crown: the world sends its bands after the caravan
 export function pursuit(a, K, rnd, say) {
-  const Q = K.quest; if (!Q || Q.crown.state !== 'carried' || K.inTown || K.day < (Q.next ?? Infinity)) return;
+  const Q = K.quest; if (!Q || Q.pursuit === false || Q.crown.state !== 'carried' || K.inTown || K.day < (Q.next ?? Infinity)) return;   // (an errand's trophy nobody hunts: data/errands.js)
   const P = QUEST.pursuit;
   if (bubbleOf(K).things.filter(t => t.pursuit).length >= P.at) { Q.next = K.day + P.full; return; }   // enough on its trail already
   Q.next = K.day + Math.round(P.every * (P.jitter[0] + P.jitter[1] * rnd()));
