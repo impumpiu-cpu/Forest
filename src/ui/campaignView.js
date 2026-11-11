@@ -60,6 +60,14 @@ import {ASCEND, mayAscend, ascend, summonable, takeHeroes} from '../view/campaig
 const phaseWord = p => WALK_PHASES[p]?.label || p;
 // the name of a world in the library without a walk's tail («Мир: поход из …» saved again for a new walk stays «Мир: поход из …»)
 const baseName = n => String(n || 'Мир').replace(/: поход из .*$/, '');
+// a world of the library as a row of a list (here and on «Новый поход», app/main.js): its button «Продолжить» for a walk
+// under way, «Открыть» otherwise; `data-live` marks the walk under way
+export function worldRow(r, cur = false) {
+  const live = r.campaign && !WALK_PHASES[r.campaign.phase]?.done;
+  return `<div class="sv${cur ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"${live ? ' data-live="1"' : ''}><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : r.free ? ' · заселённый' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
+    (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${phaseWord(r.campaign.phase)}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
+    `</span><button type="button">${live ? 'Продолжить' : 'Открыть'}</button></div>`;
+}
 const clockTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
 const itemShort = id => gearDef(id)?.short ?? id;
 
@@ -265,10 +273,8 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     const box = $('campWorlds');
     let list;
     try { list = (await listWorlds()).filter(r => r.type !== 'land'); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }   // a land has no peoples to march from
-    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите эпический мир ниже или мир на экране «Мир».</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : r.free ? ' · заселённый' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
-      (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${phaseWord(r.campaign.phase)}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
-      `</span><button type="button">${r.campaign && !WALK_PHASES[r.campaign.phase]?.done ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
+    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите мир в «Новом походе» главного меню или заселите его в «Заселении мира».</small>'; return; }
+    box.innerHTML = list.map(r => worldRow(r, r.id === this.worldId)).join('');
   }
 
   async openFromLibrary(id, name) {
@@ -305,6 +311,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     $('campPastField').hidden = !past.length;
     $('campPast').innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>Поход из ${esc(P.from)}</b> · ${phaseWord(P.phase)}<br><small>${P.started?.year ?? '?'}–${P.ended?.year ?? '?'} год · ${P.crown ? esc(P.crown) : ''} · вернулись ${P.members.filter(m => m.core && !m.died).length} из ${P.members.filter(m => m.core).length}</small></span><button type="button" data-k="${k}">В файл</button></div>`).join('');
     this.renderCaps(); this.renderLog(); this.renderWorldLog(true);   // (the world's history up to now: its last lines in sight)
+    if (this.atlas && this.setupShell?.open !== 'capital') this.setupShell?.toggle('capital');   // a world chosen: its capitals next
   }
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }

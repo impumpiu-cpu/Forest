@@ -327,6 +327,23 @@ dd.q4{color:#c58cff;font-weight:600}
 #launchResume{grid-column:1/-1;justify-self:stretch;min-height:0;border-color:var(--ember)}
 #launchResume[hidden]{display:none}
 #launchResume > span:last-child{max-width:none}
+/* the main menu's groups: Играть on top, the workshop below and quieter */
+.menu-group{font-family:var(--font-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:400;margin:4px 0 10px}
+.launch.play{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width: 700px){ .launch.play{grid-template-columns:1fr} }
+.launch.workshop{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.launch.workshop .launch-card{min-height:0;padding:12px 16px;gap:4px}
+.launch.workshop .launch-card b{font-size:20px}
+.launch.workshop .launch-card > span:last-child{font-size:13px}
+/* «Новый поход»: a new world on the left, the library on the right */
+.newrun{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.newrun .menu-group{margin:0}
+.newrun .savelist{max-height:60vh;overflow:auto}
+@media (max-width: 900px){ .newrun{grid-template-columns:1fr} }
+/* «Настройки» */
+.card.prefs{display:flex;flex-direction:column;gap:14px;padding:16px}
+.card.prefs .row{align-items:center;gap:12px;flex-wrap:wrap}
+.card.prefs .row > small{color:var(--muted)}
 
 /* ───── the world map polygon ───── */
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}

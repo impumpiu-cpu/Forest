@@ -223,52 +223,73 @@
   <header>
     <h1 id="appTitle">Тёплый Брод</h1>
     <span class="build" id="buildTag"></span>
-    <p id="appInfo">Сотворите землю, заселите её и выведите караван за артефактом, пока не грянул катаклизм.</p>
+    <p id="appInfo">Караван уходит из столицы по живому миру. Он решает сам — вы смотрите, чем кончится.</p>
   </header>
 
-  <!-- ───────── the main menu ───────── -->
+  <!-- ───────── the main menu: Играть · Мастерская (docs/GAME.md «Главное меню») ───────── -->
   <section class="app-screen" id="home" aria-label="Главное меню">
-    <div class="launch">
+    <div class="launch play">
       <button type="button" class="launch-card" id="launchResume" hidden>
         <span class="tag">продолжить</span>
         <b>Продолжить</b>
         <span id="launchResumeText"></span>
       </button>
+      <button type="button" class="launch-card" data-go="quick">
+        <span class="tag">новый поход</span>
+        <b>Новый поход</b>
+        <span>Сотворить мир с долгой историей или взять мир из библиотеки, выбрать столицу — и караван уходит сам. Вы смотрите, чем кончится.</span>
+      </button>
+      <button type="button" class="launch-card" id="launchQuick">
+        <span class="tag">одной кнопкой</span>
+        <b>Быстрый старт</b>
+        <span id="launchQuickText">Случайный мир, столица на выбор — и в путь.</span>
+      </button>
+    </div>
+    <h3 class="menu-group">Мастерская</h3>
+    <div class="launch workshop">
       <button type="button" class="launch-card" data-go="land">
         <span class="tag">земля</span>
         <b>Создать землю</b>
-        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка плит, рельефа и климата, сохранение земли.</span>
+        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории.</span>
       </button>
       <button type="button" class="launch-card" data-go="settle">
         <span class="tag">история</span>
         <b>Заселение мира</b>
-        <span>Загрузить землю, высадить расы, монстров и логова, задать катаклизмы и мотать время на 5–100 лет.</span>
-      </button>
-      <button type="button" class="launch-card" data-go="campaign">
-        <span class="tag">поход</span>
-        <b>Кампания</b>
-        <span>Караван из столицы идёт по живому миру из библиотеки за артефактом, который остановит грядущий катаклизм.</span>
-      </button>
-      <button type="button" class="launch-card" data-go="quick">
-        <span class="tag">всё сразу</span>
-        <b>Быстрый старт</b>
-        <span>Случайный мир с долгой историей, выбор столицы и поход — одной кнопкой.</span>
+        <span>Высадить на землю расы, монстров и логова, задать бедствия и мотать время.</span>
       </button>
       <button type="button" class="launch-card" data-go="bestiary">
         <span class="tag">бестиарий</span>
         <b>Конструктор существ</b>
-        <span>Звери, чудовища и нечисть в одном окне: имя и облик, тело и SPECIAL, теги, список поведений, повадки, добыча. Правка существующего вида или новый на его основе.</span>
+        <span>Облик, тело и SPECIAL, повадки и добыча зверей, чудовищ и нечисти.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="settings">
+        <span class="tag">числа</span>
+        <b>Таблицы</b>
+        <span>Все числа игры: смотреть, править в этом браузере, выгружать.</span>
       </button>
     </div>
     <div class="row">
-      <button type="button" data-go="settings">⚙ Настройки</button>
+      <button type="button" data-go="prefs">⚙ Настройки</button>
     </div>
   </section>
 
-  <!-- ───────── quick start: the epic campaign of the old menu, with its seed in sight ───────── -->
+  <!-- ───────── «Настройки»: what the player sets for this browser (the tables are the workshop's: #settings) ───────── -->
+  <section class="app-screen" id="prefs" hidden aria-labelledby="prefsTitle">
+    <div class="app-head"><h2 id="prefsTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card prefs">
+      <div class="row"><span class="lbl">Оформление карт</span><div class="seg" id="setSkinSeg"></div><small>Картинки или простые значки. На любом экране — клавиша G.</small></div>
+      <div class="row"><label class="check"><input type="checkbox" id="setMinds"> Надмозг на карте</label><small>Флаги угроз, дозор, сбор у огня, цель совета над локальной картой. На любом экране — клавиша F.</small></div>
+      <div class="row"><label class="check"><input type="checkbox" id="setIntro"> Заставка при запуске</label><small>Слайды перед главным меню. <button type="button" id="setIntroPlay" class="quiet mini">Показать сейчас</button></small></div>
+      <small class="note">Настройки хранятся в этом браузере.</small>
+    </div>
+  </section>
+
+  <!-- ───────── «Новый поход»: a new epic world with its seed in sight, or a world of the library ───────── -->
   <section class="app-screen" id="quick" hidden aria-labelledby="quickTitle">
-    <div class="app-head"><h2 id="quickTitle">Быстрый старт</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="app-head"><h2 id="quickTitle">Новый поход</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="newrun">
     <div class="menu-form">
+      <h3 class="menu-group">Новый мир</h3>
       <div class="field">
         <span class="lbl">Сид мира</span>
         <div class="row seed-row">
@@ -288,7 +309,13 @@
         </div>
         <small>Сколько длится каждая эпоха: дикая, эльфов и дварфов, людей и зеленокожих. Короткая эпоха древних — молодым народам достаётся больше земли. Земля, потом история; на среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
       </div>
-      <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить и выступить</button></div>
+      <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить мир</button><small>Потом — столица и выход.</small></div>
+    </div>
+    <div class="menu-form">
+      <h3 class="menu-group">Мир из библиотеки</h3>
+      <div id="newWorlds" class="savelist"><small>Открываю библиотеку…</small></div>
+      <small>Миры, которые вы сотворили, заселили или прожили с походом. В одном мире можно ходить снова: прошлые походы остаются в его летописи.</small>
+    </div>
     </div>
   </section>
 
@@ -583,11 +610,7 @@
   </section>
 
   <section class="app-screen" id="settings" hidden aria-labelledby="setTitle">
-    <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="card edits-bar">
-      <div class="row"><span class="lbl">Оформление карт</span><div class="seg" id="setSkinSeg"></div><small>Картинки — рисунки src/art/ (docs/ART.md), схема — простые значки для проверки. Клавиша G на любом экране; <a href="gallery.html">витрина картинок</a>.</small></div>
-      <div class="row"><label class="check"><input type="checkbox" id="setIntro"> Заставка при запуске</label><small>Слайды перед главным меню (в этом браузере). <button type="button" class="link" id="setIntroPlay">Показать сейчас</button></small></div>
-    </div>
+    <div class="app-head"><h2 id="setTitle">Таблицы</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
     <div class="card edits-bar">
       <div class="row">
         <button type="button" id="edMode" aria-pressed="false" title="Включить правку: щелчок по ячейке — новое значение">Правка: выкл</button>

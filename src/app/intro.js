@@ -1,7 +1,7 @@
 // The launch screen (forest.html): a short slide show over the main menu, then the menu. «Далее ›» or a tap goes to the
 // next slide, «Пропустить всё» or press and hold (mouse, finger or any key) skips it all, Esc skips at once. Turned off
 // by the tick in «Настройки» (kept in this browser); not shown when the page opens a screen of its own
-// (forest.html#settings) or with ?intro=0; ?intro=1 shows it whatever. Styles — intro.css. docs/GAME.md «Заставка».
+// («Настройки», forest.html#prefs) or with ?intro=0; ?intro=1 shows it whatever. Styles — intro.css. docs/GAME.md «Заставка».
 
 const HOLD = 900;   // ms of holding that skip the show
 const TAP = 250;    // a press shorter than this is a tap: the next slide

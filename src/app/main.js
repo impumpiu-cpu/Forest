@@ -1,4 +1,6 @@
-// The menu (forest.html, Forest.bat): Продолжить (the last walk, if any: ui/autosave.js) · Создать землю · Заселение мира · Кампания · Быстрый старт · Конструктор существ · Настройки.
+// The menu (forest.html, Forest.bat), docs/GAME.md «Главное меню»: to play — Продолжить (the last walk, if any:
+// ui/autosave.js) · Новый поход (a new world or one of the library) · Быстрый старт (a random world at one click); the
+// workshop — Создать землю · Заселение мира · Конструктор существ · Таблицы; and the player's Настройки.
 // A shell over the core: every screen is a module of src/app/ or src/ui/, shown in turn; the screens with a running
 // clock (the world settled, the campaign) share the observer's layout (docs/GAME.md «Наблюдатель»). docs/GAME.md.
 // first: the table edits of this browser go into the tables before anything reads them
@@ -10,19 +12,19 @@ import {TablesView} from './tablesView.js';
 import {BeastView} from './beastView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
-import {CampaignView} from '../ui/campaignView.js';
+import {CampaignView, worldRow} from '../ui/campaignView.js';
 import {QuickShell} from '../ui/shell/landShell.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
 import {skin, SKINS, SKIN_EVENT} from '../render/skin.js';
-import {minds} from '../render/minds.js';
+import {minds, MINDS_EVENT} from '../render/minds.js';
 import {introWanted, playIntro, introEnabled, setIntroEnabled} from './intro.js';
 import {lastRun, continueOf, forgetRun} from '../ui/autosave.js';
 import {listWorlds} from '../ui/worlds.js';
 import {plural, esc} from '../core/util.js';
 
 import {$, seg, press} from '../ui/dom.js';
-const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'bestiary'];
+const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'prefs', 'bestiary'];   // (#quick — «Новый поход», #settings — «Таблицы», #prefs — «Настройки»)
 const OBSERVER = new Set(['settle', 'campaign']);   // the screens laid out as the observer's: no page scroll, the map fills the window
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
@@ -34,7 +36,8 @@ function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
-  if (id === 'home') renderResume();
+  if (id === 'home') { renderResume(); renderQuickCard(); }
+  if (id === 'quick') renderLibrary();
   if (id === 'settings') tables.show();
   if (id === 'bestiary') (beasts ||= new BeastView()).show();
   if (id === 'land') (land ||= new LandView()).show();
@@ -73,6 +76,20 @@ async function renderResume() {
     `<br><small>${esc(run.name)}${run.year != null ? ` · ${run.year}-й год мира` : ''} · сохранено ${new Date(run.savedAt).toLocaleString('ru-RU', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'})}</small>`;
 }
 $('launchResume').addEventListener('click', () => { if (resumeFor) { const {id, name} = resumeFor; openCampaign(v => v.continueRun(id, name)); } });
+// «Новый поход»: the worlds of the library a caravan can set out from (not a bare land); a row opens the world on the
+// campaign screen at its capital, a walk under way goes on
+async function renderLibrary() {
+  const box = $('newWorlds');
+  await campaign?.saving?.catch(() => null);
+  let list;
+  try { list = (await listWorlds()).filter(r => r.type !== 'land'); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
+  box.innerHTML = list.length ? list.map(r => worldRow(r)).join('') : '<small>Пока пусто: сотворите мир слева — он ляжет сюда сам.</small>';
+}
+$('newWorlds').addEventListener('click', e => {
+  const row = e.target.closest('.sv'); if (!row) return;
+  const {id, name, live} = row.dataset;
+  openCampaign(v => (live ? v.continueRun(id, name) : (v.show('library'), v.openFromLibrary(id, name))));
+});
 // «В поход →» of the world settled (app/campView.js march): that world from the library, on the campaign screen
 document.addEventListener(MARCH_EVENT, e => openCampaign(v => { v.show('library'); v.openFromLibrary(e.detail.id, e.detail.name); }));
 
@@ -80,7 +97,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
   show(b.dataset.go);
 });
-// the look of the maps on the settings screen: a row of two buttons that follows the switch
+// the look of the maps on the settings screen («Настройки», #prefs): a row of two buttons that follows the switch
 {
   seg('setSkinSeg', SKINS, skin.mode, v => skin.set(v), {toggle: true});   // (pressed by the switch itself: SKIN_EVENT)
   document.addEventListener(SKIN_EVENT, () => press('setSkinSeg', skin.mode));
@@ -91,6 +108,10 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') skin.toggle();
   if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') minds.toggle();   // the overmind's marks (render/minds.js)
 });
+// the overmind's marks on the settings screen: a tick that follows the switch (F)
+$('setMinds').checked = minds.on;
+$('setMinds').addEventListener('change', e => minds.set(e.target.checked));
+document.addEventListener(MINDS_EVENT, () => { $('setMinds').checked = minds.on; });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || screen === 'home' || e.target.closest('input, textarea, select')) return;
   e.preventDefault(); show('home');
@@ -125,11 +146,16 @@ for (const [id, el] of ERA_SLIDERS) {
 }
 
 // the epic campaign: a new world with a long history on the campaign screen, then the capital and the walk
+const makeEpic = () => openCampaign(v => { v.show('epic'); v.startEpic({seed: quick.seed, size: quick.size, years: {...quick.years}}); });
 $('quickGo').addEventListener('click', () => {
   if (!seedBox.value.trim()) { quick.seed = seedBox.value = randomSeed(); }
-  keep();
-  openCampaign(v => { v.show('epic'); v.startEpic({seed: seedBox.value.trim(), size: quick.size, years: {...quick.years}}); });
+  keep(); makeEpic();
 });
+// «Быстрый старт» of the menu: the same at one click — a new seed, the size and the eras as last set on «Новый поход»
+// (the seed lands in its form: a world liked can be made again)
+const sizeWord = () => (EPIC_SIZES.find(([id]) => id === quick.size)?.[1] || '').toLowerCase();
+function renderQuickCard() { $('launchQuickText').textContent = `Случайный ${sizeWord()} мир с долгой историей — столица на выбор, и в путь. Размер и эпохи — как в «Новом походе».`; }
+$('launchQuick').addEventListener('click', () => { quick.seed = seedBox.value = randomSeed(); keep(); makeEpic(); });
 
 // ── settings: the tables of src/data/schema/
 const tables = new TablesView();
@@ -144,4 +170,4 @@ const intro = () => playIntro({title: $('appTitle').textContent});
 $('setIntro').checked = introEnabled();
 $('setIntro').addEventListener('change', e => setIntroEnabled(e.target.checked));
 $('setIntroPlay').addEventListener('click', e => intro().then(() => e.target.focus({preventScroll: true})));
-if (introWanted()) intro().then(() => document.querySelector('#home .launch-card')?.focus({preventScroll: true}));
+if (introWanted()) intro().then(() => document.querySelector('#home .launch-card:not([hidden])')?.focus({preventScroll: true}));
