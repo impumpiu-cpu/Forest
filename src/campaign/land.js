@@ -183,7 +183,7 @@ export function rulerAtHead(a, g) {
 export function lairFoe(kind) {
   const L = LAIRS.get(kind);
   if (LAIR_BANDS[kind]) return {band: LAIR_BANDS[kind]};
-  return L?.species && !L.dragon ? {beast: L.species} : {};
+  return L?.dragon ? {beast: 'dragon', one: true} : L?.species ? {beast: L.species} : {};   // (the dragon: one beast, data/migrations.js)
 }
 
 // what may come at night, each with how likely it makes a fight: [{kind, p, strength, label, beast | band, species?}]

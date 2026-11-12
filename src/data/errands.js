@@ -42,14 +42,15 @@ export const TIER_LABEL = ['', 'I', 'II', 'III', 'IV', 'V'];
 // the rules of the errands of a lair (campaign/errands.js):
 //   wait   — days the council waits near a lair whose leader is away before it looks again
 //   lesser — × the pay when the leader's head is not to be had (it got away, or fell to another hand): the lair's banner instead
-//   dragon — the drake that stands for the dragon on the local map (there is no dragon there yet): its letters grown past its kind
+//   dragon — the dragon itself on the local map (data/bestiary.js `dragon`, one, never more): its letters grown past its kind;
+//            `brood` — the share of the guard's strength its drakes take (the rest is the dragon's)
 // the board (campaign/errands.js boardFor): `per` targets of an errand whose place is known (no clues), the nearest first;
 // the guard against the company in words — its strength over the company's (a fresh caravan of eight is a point of it,
 // data/camp.js CAMP.foe.unit): up to each bound of `risk` the word beside it, past the last — the last; the towns the lair
 // reaches, at most `towns`, and a raid on them told when not older than `raidYears`
 // an errand failed in a campaign of chapters (campaign/ending.js failErrand): the attitude of every realm that knows the capital's
 // realm to it falls by `att` (atlas/diplomacy.js: −5 … 5, drifting back by itself), never below `floor` by this alone
-export const ERRAND = {wait: 10, lesser: 0.5, dragon: {S: 5, E: 5, A: 2}, fail: {att: 0.3, floor: -2},
+export const ERRAND = {wait: 10, lesser: 0.5, dragon: {S: 4, E: 6, A: 2}, brood: 0.12, fail: {att: 0.3, floor: -2},
   board: {per: 3, towns: 3, raidYears: 5, risk: [[0.7, 'по силам'], [1.1, 'тяжело'], [1.6, 'опасно'], [Infinity, 'не по силам']]}};
 
 // the errand a campaign takes when none is chosen (a campaign of tests, of a save from before): the epic one where the world has

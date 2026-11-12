@@ -14,7 +14,7 @@ import {plural} from '../core/util.js';
 import {YEAR_DAYS} from '../data/seasons.js';
 
 export {newCampaign, capitals} from './start.js';
-export {foundGuild, hire, stepGuild, guildBoard, takeChore, choreWhy, launch, launchWhy, expedition, membersOf, atHouse, healing, ageOf, roleWord, questWord, GUILD} from './guild.js';
+export {foundGuild, hire, stepGuild, guildBoard, takeChore, choreWhy, launch, launchWhy, expedition, membersOf, atHouse, healing, ageOf, roleWord, questWord, rankOf, rankWhy, GUILD} from './guild.js';
 export {errandsFor, errandOf, boardFor} from './errands.js';
 
 // ── a campaign of chapters (campaign/ending.js handIn): the caravan at its capital, an errand handed in

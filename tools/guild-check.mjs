@@ -4,7 +4,7 @@
 //   node tools/guild-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf} from '../src/campaign/index.js';
+import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf} from '../src/campaign/index.js';
 import {GUILD} from '../src/data/guild.js';
 import {CHORES} from '../src/data/chores.js';
 import {SPECIES} from '../src/data/species.js';
@@ -26,6 +26,8 @@ function guildHash(G) {
   for (const l of G.log) for (let k = 0; k < l.text.length; k++) mix(l.text.charCodeAt(k));
   return (h >>> 0).toString(16);
 }
+// the people up to an errand's rank (GUILD.rank): grown on paper, as the deeds in town would grow them
+const ranked = (G, ids, errand) => { for (const id of ids) G.members.find(m => m.id === id).level = rankOf(errand); };
 const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G]; };
 
 // ── the founding and the door
@@ -70,9 +72,13 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
 
 // ── an expedition of the guild's own people
 {
-  const [a, G] = opened(), ids = membersOf(G).map(m => m.id).slice(0, 4), B = guildBoard(a, ids);
-  const card = B.errands.find(e => e.ok && e.targetId != null) || B.errands.find(e => e.ok);
-  ok(!!card, 'на доске есть поручение мира', card?.id);
+  const [a, G] = opened(), ids = membersOf(G).map(m => m.id).slice(0, 4), B0 = guildBoard(a, ids);
+  ok(B0.errands.length > 0 && B0.errands.every(e => !e.ok), 'новички не идут на логово: поручения мира — рано', B0.errands.find(e => e.why?.startsWith('рано'))?.why);
+  const first = B0.errands.find(e => e.why?.startsWith('рано') && e.targetId != null) || B0.errands.find(e => e.why?.startsWith('рано'));
+  ok(!!launchWhy(a, {ids, errand: first.errand}), 'и в поход их не отправить', launchWhy(a, {ids, errand: first.errand}));
+  ranked(G, ids, first.errand);
+  const B = guildBoard(a, ids), card = B.errands.find(e => e.ok && e.id === first.id) || B.errands.find(e => e.ok);
+  ok(!!card, 'доросли — поручение открыто', `${card?.id}, ур. ${rankOf(first.errand)}`);
   ok(!!throws(() => launch(a, {errand: card.errand, ids: membersOf(G).map(m => m.id)})), `больше ${GUILD.party.max} — отказ`);
   const g0 = G.gold, K = launch(a, {errand: card.errand, targetId: card.targetId, ids, mode: 'auto'});
   ok(K === a.campaign && K.members.every(m => G.members.includes(m)), 'в отряде — те же люди, что в гильдии (не копии)');
@@ -100,7 +106,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
   m.dies = a.hist.year;
   stepGuild(a);
   ok(!m.alive && m.guild.state === 'dead' && m.died?.why === 'умер от старости', 'старость: умер дома весной', m.died?.why);
-  const ids = membersOf(G, 'ready').map(m => m.id).slice(0, 3), card = guildBoard(a, ids).errands.find(e => e.ok);
+  const ids = membersOf(G, 'ready').map(m => m.id).slice(0, 3);
+  ranked(G, ids, guildBoard(a, ids).errands[0].errand);
+  const card = guildBoard(a, ids).errands.find(e => e.ok);
   const K = launch(a, {errand: card.errand, targetId: card.targetId, ids, mode: 'auto'});
   stepGuild(a);   // (out of the gate: the next spring finds them on the road)
   if (!expedition(a)) ok(true, 'старость в пути: отряд вернулся в первый сезон — не проверить на этом сиде');

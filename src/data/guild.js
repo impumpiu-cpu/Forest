@@ -13,6 +13,8 @@
 //   purse     — the gold an expedition takes from the treasury by default (its food, ferries, hires on the way); what is left
 //               comes back; `food` — the price of a day's ration bought for the road
 //   roster    — at most this many in the guild (the barracks of Г6 raise it)
+//   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
+//               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
 export const GUILD = {
   start: {gold: 150, candidates: 20, pick: 8},
   party: {min: 1, max: 6},
@@ -22,4 +24,5 @@ export const GUILD = {
   age: {span: 0.35, skew: 1.6, dies: [0.85, 1.15]},
   purse: 20, food: 0.15,
   roster: 16,
+  rank: [0, 3, 6, 9, 12, 16],
 };

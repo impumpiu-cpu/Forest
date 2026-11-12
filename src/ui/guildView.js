@@ -214,7 +214,7 @@ export class GuildView extends CampaignView {
     const offer = B.chores.find(o => o.uid === this.offerUid), choreOk = offer && !offer.why && ids.length;
     this.board = B.errands;
     this.gerrand = errandPicked(B.errands, this.gerrand);
-    const why = launchWhy(a, {ids});
+    const why = launchWhy(a, {ids, errand: B.errands.find(e => e.id === this.gerrand)?.errand || null});
     return `<div class="row"><small>Кого послать: <b>${esc(picked)}</b></small></div>` +
       `<div class="savelist guild-pick">${membersOf(G, 'ready').map(m => this.memberRow(m)).join('')}</div>` +
       `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +

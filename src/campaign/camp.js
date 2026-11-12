@@ -104,7 +104,7 @@ export function campSetup(a, K, ev) {
     // the pieces of terrain of this map (world/pieces.js): a scene on a storm or a boss, else the land's and the scatter
     // (a camp kept from before the pieces has none, and is watched again as it was played)
     layout: {v: 1, kind: ev.kind, scene: ev.kind === 'guard' || !!ev.foe?.boss, foe: ev.foe ? {kind: ev.foe.kind, band: ev.foe.band || CAMP_FOES[ev.foe.kind]?.band || null, beast: ev.foe.beast || CAMP_FOES[ev.foe.kind]?.beast || null, boss: ev.foe.boss?.species || null} : null},
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null, one: !!ev.foe.one} : null,
   };
 }
 
@@ -258,7 +258,7 @@ function spawnFoe(w) {
   const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);   // (a second kind with no arrival stays home)
   const part = (who, b, first) => {
     if (who.beast && MIGRATIONS.has(who.beast)) {
-      const n = Math.min(S.kind === 'guard' ? CAMP.foe.mostGuard : CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
+      const n = first && F.one ? 1 : Math.min(S.kind === 'guard' ? CAMP.foe.mostGuard : CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
       const g = spawnGroup(w, who.beast, n, opts);
       // they came for a meal, at the camp: a crowd has to outnumber the pack to scare it, the camp's zone does not keep it off,
       // and it does not wander away for want of game (agents/behaviours/scare.js, wanderOff.js)

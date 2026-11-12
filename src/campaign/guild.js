@@ -221,23 +221,33 @@ function homeK(a, G) {
 export function guildBoard(a, ids = []) {
   const G = a.guild, ms = ids.map(id => G.members.find(m => m.id === id)).filter(Boolean);
   const chores = G.offers.map(o => { const R = CHORES.get(o.id); return {...o, label: R.label, text: R.text, hands: R.hands, days: R.days, stat: R.stat, xp: R.xp, why: ms.length ? choreWhy(a, o, ids) : null}; });
-  const errands = expedition(a) ? [] : boardFor(a, G.town, ms.length ? {K: {members: ms, beasts: G.store.beasts}} : {});
+  // an errand above the people's rank is greyed with why: those picked, or (none picked) the best of those at the house
+  const who = ms.length ? ms : membersOf(G, 'ready');
+  const errands = (expedition(a) ? [] : boardFor(a, G.town, ms.length ? {K: {members: ms, beasts: G.store.beasts}} : {}))
+    .map(e => { const why = e.ok ? rankWhy(who, e.errand) : null; return why ? {...e, ok: false, why} : e; });
   return {chores, errands};
+}
+// the rank an errand asks (GUILD.rank, by its tier): null, or why the people are not up to it yet
+export const rankOf = errand => GUILD.rank[Math.min(GUILD.rank.length - 1, ERRANDS.get(errand)?.tier ?? 1)];
+export function rankWhy(ms, errand) {
+  const need = rankOf(errand), best = Math.max(0, ...ms.map(m => m.level || 1));
+  return best >= need ? null : `рано: ведущему нужен хотя бы ${need}-й уровень (${ms.length ? `лучший — ${best}-й` : 'свободных нет'}); новички начинают с городских дел`;
 }
 
 // ── an expedition: the people picked set out on an errand of the board (campaign/start.js newExpedition), with `purse` from
 // the treasury and the road's food bought besides; one at a time (two and more — Г3)
-export function launchWhy(a, {ids = [], purse = GUILD.purse} = {}) {
+export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null} = {}) {
   const G = a.guild;
   if (G?.phase !== 'open') return 'гильдия закрыта';
   if (expedition(a)) return 'отряд уже в пути';
   if (ids.length < GUILD.party.min || ids.length > GUILD.party.max) return `в отряде ${GUILD.party.min}–${GUILD.party.max} человек`;
   if (ids.some(id => G.members.find(m => m.id === id)?.guild?.state !== 'ready')) return 'не все свободны';
   if (G.gold < purse) return `в казне нет ${purse} зол. на дорогу`;
+  if (errand) return rankWhy(ids.map(id => G.members.find(m => m.id === id)), errand);
   return null;
 }
 export function launch(a, {errand, targetId = null, ids = [], purse = GUILD.purse, mode = 'local'} = {}) {
-  const G = a.guild, why = launchWhy(a, {ids, purse});
+  const G = a.guild, why = launchWhy(a, {ids, purse, errand});
   if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
   const ms = ids.map(id => G.members.find(m => m.id === id));
   const K = a.campaign = newExpedition(a, G, ms, {errand, targetId, purse, mode});

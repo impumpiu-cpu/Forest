@@ -137,7 +137,7 @@ function lairErrand(a, K, rnd, E, targetId = null) {
   const T = targetId != null ? Ts.find(x => x.l.id === targetId) : Ts[0]; if (!T) return null;
   const {l, i} = T, L = LAIRS.get(l.kind), s = garrison(l, E.guard);   // its garrison, by the lair and the errand's tier (campaign/land.js), not the distance
   const guard = L.dragon
-    ? {kind: 'lair', strength: s, beast: 'drake', label: `дракон и его выводок — ${lairName(l)}`, seat: l.id, boss: {name: `Дракон логова «${l.name}»`, g: 'm', species: 'drake', add: {...ERRAND.dragon}, mustDie: true}}
+    ? {kind: 'lair', strength: s, beast: 'dragon', one: true, with: {beast: 'drake', share: ERRAND.brood}, label: `дракон и его выводок — ${lairName(l)}`, seat: l.id, boss: {name: `Дракон логова «${l.name}»`, g: 'm', species: 'dragon', add: {...ERRAND.dragon}, mustDie: true}}
     : {...lairGuard(a, l.kind, i, s, l), label: lairName(l)};
   const goal = {kind: L.dragon ? 'dragon' : L.undead ? 'dread' : 'lair', at: l.i, i, label: lairName(l), lair: l.id};
   const clues = E.clueAt.length ? layClues(a, K, rnd, places(a, K, mask).filter(p => p.lair !== l.id), cells, goal, E.clueAt) : [];
