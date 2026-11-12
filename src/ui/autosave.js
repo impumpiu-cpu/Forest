@@ -31,7 +31,7 @@ export function forgetRun(id = null) {
 export function continueOf(pointer, index) {
   if (!pointer || pointer.done) return null;
   const rec = index.find(r => r.id === pointer.id);
-  return rec?.campaign ? {...pointer, name: rec.name} : null;
+  return rec?.campaign || (pointer.guild && rec?.guild && rec.guild.phase !== 'over') ? {...pointer, name: rec.name} : null;   // (a walk, or a guild: ui/guildView.js)
 }
 
 // is a save at this season's boundary due: the walk changed since the last save, and the time has come

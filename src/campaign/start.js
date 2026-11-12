@@ -12,6 +12,7 @@ import {gearDef, gearType} from '../local/index.js';
 import {rollCreature} from '../local/index.js';
 import {personality} from '../local/index.js';
 import {SPECIES, isSentient} from '../data/species.js';
+import {makeName} from '../data/names.js';
 import {CAMP} from '../data/camp.js';
 import {ensureSocial} from './social.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -61,6 +62,7 @@ export function makeMember(K, rnd, {race, role, gear, core = false, lean = null,
   rollCreature({rngs: {birth: rnd}}, m, spOf, {...(lean ? {lean} : {}), ...(align ? {align} : {})});
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
+  else if (K.moreNames) { m.gender = rnd() * 2 < 1 ? 'f' : 'm'; m.name = makeName(race, rnd, {gender: m.gender, nick: 'always', used}) || m.name; }   // (the guild's door: more people than the race's list of names — data/names.js makeName, a nickname after)
   m.gear = {hand: [...gear.hand], body: gear.body};
   ensureXp(m);   // experience and level (campaign/experience.js)
   memberLocal(K, m);   // the working character, from the day one joins — not from the first camp (docs/CAMPAIGN.md «Живая команда: договор»)
@@ -103,11 +105,11 @@ export function upgradeMembers(K) { ensureSocial(K); for (const m of K.members |
 export const GROUP = {line: 'линия', shooter: 'дальний бой'};
 const mayRole = (sp, id) => { const R = COMBAT_ROLES.get(id); return !R.mount && !R.linkOnly; };   // (no horse at the start, no role of a link only)
 const rolesFor = (sp, test = () => true) => rolesOf(sp).filter(([id]) => mayRole(sp, id) && test(COMBAT_ROLES.get(id)));
-export function drawCore(a, K, rnd) {
+export function drawCore(a, K, rnd, n = CAMPAIGN.fighters) {   // (n — how many: the guild's candidates at its door, guild/index.js)
   const R = RETINUE[K.people], cap = a.towns.find(t => t.id === K.capital);
   const kinds = R.kinds === 'kin' ? (townKin(a, cap) || {[WORLD_PEOPLES.get(K.people).race]: 1}) : R.kinds;
   const B = RETINUE.big, out = [];
-  for (let k = 0; k < CAMPAIGN.fighters; k++) {
+  for (let k = 0; k < n; k++) {
     const big = out.filter(m => B.kinds.includes(m.species)).length >= B.max;
     out.push({species: weighted(rnd, Object.entries(kinds).filter(([sp, w]) => w > 0 && SPECIES.has(sp) && !(big && B.kinds.includes(sp))))});
   }
@@ -120,8 +122,8 @@ export function drawCore(a, K, rnd) {
   for (const m of out) if (!m.role) m.role = weighted(rnd, rolesFor(m.species)) || null;
   return out;
 }
-// one of the core: of its kind, in its role's kit, a camp's tool on its back
-function member(K, a, rnd, {species, role}, k) {
+// one of the core: of its kind, in its role's kit, a camp's tool on its back (also the guild's recruit: guild/index.js)
+export function coreMember(K, a, rnd, {species, role}, k) {
   const r = realmOf(a, K.realm), R = role ? COMBAT_ROLES.get(role) : null;
   const kit = role ? roleKit(species, role, rnd, RETINUE.level) : [];
   const body = kit.find(id => gearDef(id)?.slot === 'body') || RETINUE.body;
@@ -129,6 +131,43 @@ function member(K, a, rnd, {species, role}, k) {
   const lean = R ? RETINUE.lean[R.group] || [] : [];
   const own = species === WORLD_PEOPLES.get(K.people).race;
   return makeMember(K, rnd, {race: species, role: 'fighter', fight: role, potions: R?.potions || 0, gear: {hand, body}, core: true, lean, align: own ? realmAlign(a, K.realm) : null});
+}
+
+// ── an expedition of the adventurers' guild (guild/index.js launch; plan claude/guild-plan.md Г1): a campaign of chapters
+// whose people are the guild's own — the same objects as its roster (one person, two lists: the save keeps them shared,
+// core/serialize.js), their bonds the guild's (G.social), what they know of the world the guild's (G.seen), the beasts, carts
+// and goods of the guild's store taken along. Its seed is the guild's and the expedition's number: two expeditions never
+// share a stream. The guild settles what comes back (guild/index.js closeExpedition).
+//   ms — the guild's members going (alive, free); errand, targetId — as newCampaign's; purse — gold from the treasury
+export function newExpedition(a, G, ms, {errand, targetId = null, purse = 0, mode = 'local'} = {}) {
+  const t = a.towns.find(x => x.id === G.town && x.alive);
+  if (!t) throw new Error('Город гильдии пал.');
+  if (targetId != null) { const why = targetWhy(a, {home: t.i, people: t.people, realm: t.realm, capital: t.id}, errand, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
+  const n = G.nextExpedition = (G.nextExpedition || 0) + 1, S = G.store;
+  const K = {
+    seed: `${G.seed}:exp:${n}`, mode, guild: G.id, expedition: n, chapters: true, started: {year: a.hist.year, season: a.hist.season}, day: 0,
+    capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
+    members: ms, nextMember: G.nextMember, food: 0, gold: purse, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
+    seen: G.seen, log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null, social: G.social,
+    beasts: S.beasts, nextBeast: S.nextBeast || 1, vehicles: S.vehicles, buildings: S.buildings, cargo: S.cargo, build: null, route: null,
+  };
+  S.beasts = []; S.vehicles = []; S.cargo = {}; S.buildings = [];   // (taken along: they come back with whoever comes back)
+  for (const m of ms) { m.joined = 0; m.core = true; memberLocal(K, m); ensureXp(m); }
+  const {r, done} = draw(K, 'birth');
+  K.food = capacity(K);
+  K.quest = makeErrand(a, K, r, errand, {targetId});
+  if (!K.quest) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
+  K.goal = questTarget(a, K, r);
+  if (K.quest.epic) K.years = EPIC.years;
+  done();
+  reveal(a, K, K.home, CAMPAIGN.fog.known * scaleOf(a));
+  const p = {id: (a.hist.nextParty = (a.hist.nextParty || 0) + 1), kind: 'caravan', i: t.i, x: K.x, y: K.y, px: K.x, py: K.y, home: t.i, goal: K.goal,
+    state: 'camp', days: 0, stay: 0, speed: 'foot', people: t.people, might: 0, men: ms.length, owner: t.realm, target: null,
+    label: `отряд гильдии «${G.name}»`, color: WORLD_PEOPLES.get(t.people).color};
+  (a.parties ||= []).push(p); K.party = p.id;
+  say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел отряд гильдии «${G.name}»: ${ms.map(m => `${m.name} (${m.fight ? COMBAT_ROLES.get(m.fight).label : SPECIES.get(m.race).label}, ур. ${m.level || 1})`).join(', ')}. ` +
+    `${questIntro(a, K)} Еды — на ${Math.floor(K.food / ms.length)} дней.`, 'start', true);
+  return K;
 }
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
@@ -150,7 +189,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local', summon = nu
     beasts: [], nextBeast: 1, vehicles: [], buildings: [...CAMP_KIT.start], cargo: {rope: CAPTIVE.campaign.startRope, pots: ALCHEMY.pots}, build: null, route: null,   // (pots for the healer's hut: data/market.js ALCHEMY)
   };
   const {r, done} = draw(K, 'birth');
-  drawCore(a, K, r).forEach((m, k) => { const x = member(K, a, r, m, k); if (m.required) x.required = m.required; K.members.push(x); });
+  drawCore(a, K, r).forEach((m, k) => { const x = coreMember(K, a, r, m, k); if (m.required) x.required = m.required; K.members.push(x); });
   if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look

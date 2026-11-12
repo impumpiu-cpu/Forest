@@ -234,18 +234,21 @@
         <b>Продолжить</b>
         <span id="launchResumeText"></span>
       </button>
-      <button type="button" class="launch-card" data-go="quick">
-        <span class="tag">новый поход</span>
-        <b>Новый поход</b>
-        <span>Сотворить мир с долгой историей или взять мир из библиотеки, выбрать столицу — и караван уходит сам. Вы смотрите, чем кончится.</span>
+    </div>
+    <h3 class="menu-group">Новая игра</h3>
+    <div class="launch play">
+      <button type="button" class="launch-card" id="launchGuild">
+        <span class="tag">гильдия</span>
+        <b>Гильдия</b>
+        <span>Сотворить или открыть мир, основать в столице гильдию приключенцев, нанять восьмерых — и брать то, что просит живой мир: от крыс в подвале до логова в горах.</span>
       </button>
-      <button type="button" class="launch-card" id="launchQuick">
-        <span class="tag">одной кнопкой</span>
-        <b>Быстрый старт</b>
-        <span id="launchQuickText">Случайный мир, столица на выбор — и в путь.</span>
+      <button type="button" class="launch-card" id="launchCampaign">
+        <span class="tag">полигон</span>
+        <b>Быстрая кампания</b>
+        <span>Прежний поход: столица снаряжает восьмёрку на поручение, и вы смотрите, чем кончится. Площадка для проверок — потом уйдёт.</span>
       </button>
     </div>
-    <h3 class="menu-group">Мастерская</h3>
+    <h3 class="menu-group">Модификации</h3>
     <div class="launch workshop">
       <button type="button" class="launch-card" data-go="land">
         <span class="tag">земля</span>
@@ -270,6 +273,18 @@
     </div>
     <div class="row">
       <button type="button" data-go="prefs">⚙ Настройки</button>
+      <button type="button" data-go="about">Об игре</button>
+    </div>
+  </section>
+
+  <!-- ───────── «Об игре» ───────── -->
+  <section class="app-screen" id="about" hidden aria-labelledby="aboutTitle">
+    <div class="app-head"><h2 id="aboutTitle">Об игре</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card prefs about">
+      <p><b id="aboutName">Тёплый Брод</b> · <span id="aboutVersion"></span></p>
+      <p>Мир, который живёт сам: земля, климат, народы, державы, войны, торговля, логова и бедствия — история на сотни лет, которую никто не пишет вручную. В этот мир можно прийти гильдией приключенцев: основать дом в столице, нанять людей и брать работу, которую мир сам предлагает. Решают люди сами — в пути, у костра и в бою; вы решаете, кого и куда послать.</p>
+      <p><b>Гильдия</b> — основная игра. <b>Быстрая кампания</b> — прежний поход одного каравана, площадка для проверок. <b>Модификации</b> — создать землю, заселить мир, собрать существо, поправить числа.</p>
+      <p class="muted">Сид мира задаёт всё: тот же сид и те же решения дают ту же историю. Мир и игра сохраняются в этом браузере.</p>
     </div>
   </section>
 
@@ -516,6 +531,9 @@
             <small id="campQuestNote" class="camp-quest"></small></div>
           <div class="field" id="campHeroesField" hidden><span class="lbl">Вознесённые</span><div id="campHeroes" class="savelist"></div>
             <small>Герои прошлых походов, которых эта столица может позвать: каждый займёт место в восьмёрке (не больше четырёх) и сразу уйдёт из списка — снова смертным.</small></div>
+          <div class="field" id="guildFoundField" hidden><span class="lbl">Гильдия</span>
+            <div class="row"><input id="guildName" type="text" maxlength="40" autocomplete="off" placeholder="Название гильдии" aria-label="Название гильдии"></div>
+            <small>Дом гильдии встанет в выбранной столице: казна от державы, к дверям придут люди этого города — из двадцати возьмёте восьмерых. Мир живёт сам; гильдия берёт то, что он просит.</small></div>
           <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
           <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
             <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
@@ -532,6 +550,12 @@
           <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
             <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
         </details>
+      </div>
+      <div id="guildSide" class="guild-panel" hidden>
+        <dl class="kv" id="guildStatus"></dl>
+        <div class="seg" id="guildTabs"></div>
+        <div id="guildBody"></div>
+        <small class="status" id="guildNote" role="status"></small>
       </div>
       <div id="campRunSide" hidden>
         <div class="card"><dl class="kv" id="campStatus"></dl></div>
@@ -566,6 +590,12 @@
           <div id="campOfferList" class="savelist errands"></div>
           <div class="row actions"><button type="button" id="campOfferGo" class="primary">Взять поручение</button><button type="button" id="campOfferEnd">Завершить поход</button></div>
           <small id="campOfferNote">Новое поручение — та же команда, те же уровни и раны, обоз и казна; в столице сумки наполнят и раны залечат. Завершить — эпилог: судьбы участников и вознесение живых.</small>
+        </div>
+        <div id="guildHire" class="camp-offer guild-hire" hidden role="dialog" aria-labelledby="guildHireTitle">
+          <h3 id="guildHireTitle">К дверям гильдии пришли</h3>
+          <p id="guildHireText"></p>
+          <div id="guildHireList" class="savelist hire"></div>
+          <div class="row actions"><button type="button" id="guildHireGo" class="primary" disabled>Принять в гильдию</button><small id="guildHireCount"></small></div>
         </div>
         <div class="seg zoomseg obs-zoom" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
           <button type="button" id="campZoomIn" aria-label="Приблизить">+</button>

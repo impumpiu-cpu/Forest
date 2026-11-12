@@ -27,7 +27,7 @@ export {goHome, partyAt} from './parties.js';
 export {landOf, townAt} from './peoples.js';
 export {agedOut, isAt, memberFate, personCaptured, personDies, personLabel, personOf, personsAt} from './persons.js';
 export {profileOf, rulerOf, rulerTitle} from './polities.js';
-export {bandSum, headsOf, killShare} from './population.js';
+export {bandSum, headsOf, killShare, lifeOf} from './population.js';
 export {realmLabel, realmLabelGen, realmLand, realmOf, realmTowns} from './realms.js';
 export {moveCost, roadAccess, roadLevel} from './roads.js';
 export {LAND_KIND, WORLD_KIND, isWorldSave, loadAtlas, saveAtlas} from './save.js';

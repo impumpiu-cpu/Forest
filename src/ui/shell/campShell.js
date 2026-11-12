@@ -17,8 +17,9 @@ export class CampShell extends Shell {
     const S = () => $('campaign');
     super(view, {
       section: 'campaign', title: ['campTitle', 'campName2'], top: ['campDay'], topEnd: ['campSpeed', 'campPause', 'campBack'],
-      rail: [['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись похода'], ['world', '◷', 'Летопись мира'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
+      rail: [['guild', '⚑', 'Гильдия'], ['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись похода'], ['world', '◷', 'Летопись мира'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
       menus: {
+        guild: [() => $('guildSide'), 'Гильдия'],   // (the adventurers' guild: ui/guildView.js; hidden on a campaign of its own)
         stock: [() => S().querySelector('[data-pane="stock"]'), 'Склад'], fights: [() => S().querySelector('[data-pane="fights"]'), 'Бои'],
         fire: [() => S().querySelector('[data-pane="fire"]'), 'Совет у костра', () => $('campDock')?.dispatchEvent(new CustomEvent('tab', {detail: {id: 'fire'}}))],   // (the scene drawn at its real size)
         chron: [() => S().querySelector(':scope > .obs-chron'), 'Летопись похода', () => { const log = $('campLog'); log.scrollTop = log.scrollHeight; }],
@@ -30,7 +31,7 @@ export class CampShell extends Shell {
         {id: 'last', title: 'Последнее', note: 'летопись — в меню', rows: 'calc(118 * var(--u))'}],
       strip: {title: 'Отряд', cls: 'sh-party', body: `<button type="button" class="arrow" data-dir="-1" aria-label="Назад">‹</button><div class="scroll" id="campShParty"></div><button type="button" class="arrow" data-dir="1" aria-label="Дальше">›</button>`},
       watch: [[() => $('campStatus'), () => this.syncTop()], [() => $('campRoster'), () => this.portraits()], [() => $('campLog'), () => this.last($('campLog'), this.slot('last'))]],
-      onEnter: () => this.take($('campRoster'), $('campShParty')),
+      onEnter: () => { this.take($('campRoster'), $('campShParty')); const b = this.rail.querySelector('[data-menu="guild"]'); if (b) b.hidden = !this.view.atlas?.guild; },
     });
     this.pawns = new Map(); this.bubbles = []; this.bubbleTimer = 0;
     document.addEventListener(SAY_EVENT, e => this.speak(e.detail.who, e.detail.said));

@@ -63,20 +63,20 @@ const phaseWord = p => WALK_PHASES[p]?.label || p;
 // the phase in the words of its errand: an errand of a lair is no crown sought (campaign/errands.js)
 const walkWord = (K, p) => (p === 'empty' ? phaseWord(p) : K?.quest?.how === 'lair' && p === 'out' ? `идут к логову: ${K.quest.crown.label}` : K?.quest?.how === 'lair' && p === 'back' ? `несут ${K.quest.acc[0].toLowerCase()}${K.quest.acc.slice(1)} в столицу` : phaseWord(p));
 // the name of a world in the library without a walk's tail («Мир: поход из …» saved again for a new walk stays «Мир: поход из …»)
-const baseName = n => String(n || 'Мир').replace(/: поход из .*$/, '');
+export const baseName = n => String(n || 'Мир').replace(/: поход из .*$/, '').replace(/: гильдия .*$/, '');
 // a world of the library as a row of a list (here and on «Новый поход», app/main.js): its button «Продолжить» for a walk
 // under way, «Открыть» otherwise; `data-live` marks the walk under way
 export function worldRow(r, cur = false) {
-  const live = r.campaign && !WALK_PHASES[r.campaign.phase]?.done;
+  const live = (r.campaign && !WALK_PHASES[r.campaign.phase]?.done) || (r.guild && r.guild.phase !== 'over');   // (a walk under way, or a guild: ui/guildView.js)
   return `<div class="sv${cur ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"${live ? ' data-live="1"' : ''}><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : r.free ? ' · заселённый' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
-    (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${phaseWord(r.campaign.phase)}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
+    (r.guild ? `<br><small>гильдия «${esc(r.guild.name)}»: ${r.guild.phase === 'over' ? 'закрыта' : `людей ${r.guild.people}`}, ${Math.round(r.guild.day / 12) / 10} лет с основания</small>` : r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${phaseWord(r.campaign.phase)}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
     `</span><button type="button">${live ? 'Продолжить' : 'Открыть'}</button></div>`;
 }
 // the board of a capital as cards to pick one of (campaign/errands.js boardFor; the screen's two boards: at the capital, and after
 // an errand handed in): a card of a known place for each of its nearest lairs, the guard against the company in words, what the
 // world tells of the target; a card is a radio (the keys go over them), the unavailable greyed with why
 //   list — boardFor; pick — the card's id picked; name — the radios' group
-function errandCards(list, pick, name) {
+export function errandCards(list, pick, name) {
   return list.map(e => `<label class="sv${e.ok ? '' : ' off'}${e.id === pick ? ' cur' : ''}" data-card="${esc(e.id)}"><input type="radio" name="${name}" value="${esc(e.id)}"${e.id === pick ? ' checked' : ''}${e.ok ? '' : ' disabled'}>` +
     `<span class="t"><span class="tier">${TIER_LABEL[e.tier]}</span><b>${esc(e.label)}</b>${e.years ? ` · срок ${e.years} ${plural(e.years, 'год', 'года', 'лет')}` : ''} · плата ${e.gold} зол.` +
     `<br><small>${esc(e.ok ? e.goal || e.about : e.why)}</small>` +
@@ -87,9 +87,9 @@ function errandCards(list, pick, name) {
 const BOARD_ZOOM = 2.5;   // how close the camera comes to a card's target when it is picked (lookAtCard)
 const RISK_CLASS = {'по силам': 1, 'тяжело': 2, 'опасно': 3, 'не по силам': 4};
 // the card picked by default: the one asked for if the world has it, else the world's own (the calamity, else the crown), else the first it has
-const errandPicked = (list, want) => (list.find(e => e.id === want && e.ok) || list.find(e => e.id === 'calamity' && e.ok) || list.find(e => e.id === 'crown' && e.ok) || list.find(e => e.ok))?.id ?? null;
-const clockTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
-const itemShort = id => gearDef(id)?.short ?? id;
+export const errandPicked = (list, want) => (list.find(e => e.id === want && e.ok) || list.find(e => e.id === 'calamity' && e.ok) || list.find(e => e.id === 'crown' && e.ok) || list.find(e => e.ok))?.id ?? null;
+export const clockTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+export const itemShort = id => gearDef(id)?.short ?? id;
 
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame
 // the layers of the campaign's map: these of the «Мир» map's (ui/atlasView.js ATLAS_OPTS)
@@ -770,7 +770,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // dashed line from the capital to them (a place the clues must find is not drawn: the board does not tell it)
   drawBoard(a, px, k) {
     const B = this.board; if (!B?.length) return;
-    const pick = !$('campOffer').hidden ? this.offerPick : this.errandPick, home = a.towns.find(t => t.id === (a.campaign?.capital ?? this.capPick));
+    const pick = this.boardPick ? this.boardPick() : !$('campOffer').hidden ? this.offerPick : this.errandPick, home = a.towns.find(t => t.id === (this.boardHome?.() ?? a.campaign?.capital ?? this.capPick));   // (the guild's board: ui/guildView.js)
     for (const c of B) {
       if (!c.ok || !c.at) continue;
       const on = c.id === this.boardHover || c.id === pick, x = c.at.x + 0.5, y = c.at.y + 0.5;

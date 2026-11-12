@@ -1,6 +1,6 @@
-// The menu (forest.html, Forest.bat), docs/GAME.md «Главное меню»: to play — Продолжить (the last walk, if any:
-// ui/autosave.js) · Новый поход (a new world or one of the library) · Быстрый старт (a random world at one click); the
-// workshop — Создать землю · Заселение мира · Конструктор существ · Таблицы; and the player's Настройки.
+// The menu (forest.html, Forest.bat), docs/GAME.md «Главное меню»: Продолжить (the last game, if any: ui/autosave.js) ·
+// Новая игра — Гильдия (the game: ui/guildView.js) or Быстрая кампания (the old walk of one caravan, a testing ground);
+// Модификации — Создать землю · Заселение мира · Конструктор существ · Таблицы; Настройки; Об игре.
 // A shell over the core: every screen is a module of src/app/ or src/ui/, shown in turn; the screens with a running
 // clock (the world settled, the campaign) share the observer's layout (docs/GAME.md «Наблюдатель»). docs/GAME.md.
 // first: the table edits of this browser go into the tables before anything reads them
@@ -12,7 +12,8 @@ import {TablesView} from './tablesView.js';
 import {BeastView} from './beastView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
-import {CampaignView, worldRow} from '../ui/campaignView.js';
+import {worldRow} from '../ui/campaignView.js';
+import {GuildView} from '../ui/guildView.js';
 import {QuickShell} from '../ui/shell/landShell.js';
 import {MARCH_EVENT} from './campView.js';
 import {mountTabs} from '../ui/tabs.js';
@@ -24,7 +25,7 @@ import {listWorlds} from '../ui/worlds.js';
 import {plural, esc} from '../core/util.js';
 
 import {$, seg, press} from '../ui/dom.js';
-const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'prefs', 'bestiary'];   // (#quick — «Новый поход», #settings — «Таблицы», #prefs — «Настройки»)
+const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'prefs', 'bestiary', 'about'];   // (#quick — «Новый поход», #settings — «Таблицы», #prefs — «Настройки»)
 const OBSERVER = new Set(['settle', 'campaign']);   // the screens laid out as the observer's: no page scroll, the map fills the window
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
@@ -36,21 +37,21 @@ function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
-  if (id === 'home') { renderResume(); renderQuickCard(); }
+  if (id === 'home') renderResume();
   if (id === 'quick') renderLibrary();
   if (id === 'settings') tables.show();
   if (id === 'bestiary') (beasts ||= new BeastView()).show();
   if (id === 'land') (land ||= new LandView()).show();
   if (id === 'quick') (quickShell ||= new QuickShell({})).enter();   // (the form in the shell's frame: ui/shell/landShell.js)
   if (id === 'settle') (settle ||= new SettleView()).show();
-  if (id === 'campaign') theCampaign().show('library');
+  if (id === 'campaign') theCampaign().show('library', {guild: quickMode === 'guild'});
   window.scrollTo(0, 0);
   // the maps size themselves to the window: a screen just shown draws once its box is laid out
   requestAnimationFrame(() => { if (id === 'settle') settle?.draw(); if (id === 'campaign') campaign?.draw(); });
 }
 // the campaign screen (ui/campaignView.js), made when first needed; «← Главное меню» there comes back here
 function theCampaign() {
-  if (!campaign) { campaign = new CampaignView({onBack: () => show('home')}); mountTabs($('campDock')); }
+  if (!campaign) { campaign = new GuildView({onBack: () => show('home')}); mountTabs($('campDock')); }   // (the campaign's screen with the guild on it: ui/guildView.js)
   return campaign;
 }
 // the campaign screen shown for a world or a new epic one (the quick start): shown without `show`, which would halt it
@@ -72,10 +73,10 @@ async function renderResume() {
   resumeFor = run; card.hidden = !run;
   if (!run) return;
   const years = Math.floor(run.day / 120), rest = run.day % 120;
-  $('launchResumeText').innerHTML = `Поход из ${esc(run.from)} · ${years ? `${years} ${plural(years, 'год', 'года', 'лет')} и ` : ''}${rest} ${plural(rest, 'день', 'дня', 'дней')} в пути` +
+  $('launchResumeText').innerHTML = `${run.guild ? `Гильдия «${esc(run.guild)}» · ${years ? `${years} ${plural(years, 'год', 'года', 'лет')} и ` : ''}${rest} ${plural(rest, 'день', 'дня', 'дней')} с основания` : `Поход из ${esc(run.from)} · ${years ? `${years} ${plural(years, 'год', 'года', 'лет')} и ` : ''}${rest} ${plural(rest, 'день', 'дня', 'дней')} в пути`}` +
     `<br><small>${esc(run.name)}${run.year != null ? ` · ${run.year}-й год мира` : ''} · сохранено ${new Date(run.savedAt).toLocaleString('ru-RU', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'})}</small>`;
 }
-$('launchResume').addEventListener('click', () => { if (resumeFor) { const {id, name} = resumeFor; openCampaign(v => v.continueRun(id, name)); } });
+$('launchResume').addEventListener('click', () => { if (resumeFor) { const {id, name} = resumeFor; quickMode = resumeFor.guild ? 'guild' : 'campaign'; openCampaign(v => (v.guildOn = !!resumeFor.guild, v.continueRun(id, name))); } });
 // «Новый поход»: the worlds of the library a caravan can set out from (not a bare land); a row opens the world on the
 // campaign screen at its capital, a walk under way goes on
 async function renderLibrary() {
@@ -88,10 +89,11 @@ async function renderLibrary() {
 $('newWorlds').addEventListener('click', e => {
   const row = e.target.closest('.sv'); if (!row) return;
   const {id, name, live} = row.dataset;
-  openCampaign(v => (live ? v.continueRun(id, name) : (v.show('library'), v.openFromLibrary(id, name))));
+  const guild = quickMode === 'guild' || row.textContent.includes('гильдия «');   // (a world with a guild opens as the guild's)
+  openCampaign(v => (live ? (v.guildOn = guild, v.continueRun(id, name)) : (v.show('library', {guild}), v.openFromLibrary(id, name))));
 });
 // «В поход →» of the world settled (app/campView.js march): that world from the library, on the campaign screen
-document.addEventListener(MARCH_EVENT, e => openCampaign(v => { v.show('library'); v.openFromLibrary(e.detail.id, e.detail.name); }));
+document.addEventListener(MARCH_EVENT, e => openCampaign(v => { v.show('library', {guild: false}); v.openFromLibrary(e.detail.id, e.detail.name); }));
 
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
@@ -146,22 +148,28 @@ for (const [id, el] of ERA_SLIDERS) {
 }
 
 // the epic campaign: a new world with a long history on the campaign screen, then the capital and the walk
-const makeEpic = () => openCampaign(v => { v.show('epic'); v.startEpic({seed: quick.seed, size: quick.size, years: {...quick.years}}); });
+const makeEpic = () => openCampaign(v => { v.show('epic', {guild: quickMode === 'guild'}); v.startEpic({seed: quick.seed, size: quick.size, years: {...quick.years}}); });
 $('quickGo').addEventListener('click', () => {
   if (!seedBox.value.trim()) { quick.seed = seedBox.value = randomSeed(); }
   keep(); makeEpic();
 });
-// «Быстрый старт» of the menu: the same at one click — a new seed, the size and the eras as last set on «Новый поход»
-// (the seed lands in its form: a world liked can be made again)
-const sizeWord = () => (EPIC_SIZES.find(([id]) => id === quick.size)?.[1] || '').toLowerCase();
-function renderQuickCard() { $('launchQuickText').textContent = `Случайный ${sizeWord()} мир с долгой историей — столица на выбор, и в путь. Размер и эпохи — как в «Новом походе».`; }
-$('launchQuick').addEventListener('click', () => { quick.seed = seedBox.value = randomSeed(); keep(); makeEpic(); });
+// «Новая игра»: the guild or the quick campaign — the same «Новый мир / Мир из библиотеки» screen (#quick), its title and
+// what opens after (the capital to found the guild in, or to send a caravan from) by the mode
+let quickMode = 'guild';
+function newGame(mode) {
+  quickMode = mode;
+  $('quickTitle').textContent = mode === 'guild' ? 'Новая гильдия' : 'Быстрая кампания';
+  show('quick');
+}
+$('launchGuild').addEventListener('click', () => newGame('guild'));
+$('launchCampaign').addEventListener('click', () => newGame('campaign'));
 
 // ── settings: the tables of src/data/schema/
 const tables = new TablesView();
 // the settled world's dock (the tabs under the map) is wired once the screen exists
 mountTabs($('setDock'));
 
+$('aboutVersion').textContent = `версия ${VERSION}`;
 $('buildTag').textContent = `версия ${VERSION}${editCount() ? ` · правки таблиц: ${editCount()}` : ''}${BOOT_PROBLEMS.length ? ' · ⚠' : ''}`;
 // forest.html#settings and the like open that screen
 show(SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');

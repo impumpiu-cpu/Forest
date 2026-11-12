@@ -50,7 +50,9 @@ export function worldMeta(a, name, kind = WORLD_KIND) {
     // made under table edits (src/data/schema/layer.js): how many
     tables: a.tables?.n || 0,
     // a campaign under way in this world (campaign/): where it is
-    campaign: a.campaign ? {phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName, crown: a.campaign.quest?.name || null} : null,
+    campaign: a.campaign && !a.guild ? {phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName, crown: a.campaign.quest?.name || null} : null,
+    // the adventurers' guild of this world (campaign/guild.js): its name, its day, how many it has
+    guild: a.guild ? {name: a.guild.name, day: a.guild.day, phase: a.guild.phase, people: a.guild.members.filter(m => m.alive && !['dead', 'left'].includes(m.guild?.state)).length, year: a.hist?.year ?? null} : null,
     // campaigns finished in this world (campaign/ending.js): their chronicles stay with it
     campaigns: (a.campaignsDone || []).length,
     // what quest a caravan from this world goes on (atlas/calamity.js questHint): 'hand' | 'epic' | null — the crown
