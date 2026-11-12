@@ -40,7 +40,7 @@ if (parts.has('errands')) {
   out.push(`## Поручения (режим ${mode === 'auto' ? 'быстрый: путь как на карте, бои приблизительно' : 'локальная карта'})`, '', '| Поручение | Походов | Сдано | Провал (срок) | Погибли | Дней до сдачи: мин / медиана / макс | Штурмов (медиана) | Лучший уровень (медиана) | Ядра живо (медиана) |', '|---|---|---|---|---|---|---|---|---|');
   for (const [id, rs] of Object.entries(rows)) {
     const h = rs.filter(r => r.phase === 'handed'), ds = h.map(r => r.days);
-    out.push(`| ${ERRANDS.get(id).label} (${'I II III IV V'.split(' ')[ERRANDS.get(id).tier - 1]}) | ${rs.length} | ${h.length} | ${rs.filter(r => r.phase === 'failed').length} | ${rs.filter(r => r.phase === 'lost').length} | ${ds.length ? `${q(ds, 0)} / ${q(ds, 0.5)} / ${q(ds, 1)}` : '—'} | ${q(rs.map(r => r.storms), 0.5)} | ${q(h.map(r => r.lv), 0.5) ?? '—'} | ${q(rs.map(r => r.alive), 0.5)} |`);
+    out.push(`| ${ERRANDS.get(id).label} (${'I II III IV V'.split(' ')[ERRANDS.get(id).tier - 1]}) | ${rs.length} | ${h.length} | ${rs.filter(r => r.phase === 'failed' || r.phase === 'timeout').length} | ${rs.filter(r => r.phase === 'lost').length} | ${ds.length ? `${q(ds, 0)} / ${q(ds, 0.5)} / ${q(ds, 1)}` : '—'} | ${q(rs.map(r => r.storms), 0.5)} | ${q(h.map(r => r.lv), 0.5) ?? '—'} | ${q(rs.map(r => r.alive), 0.5)} |`);
   }
   out.push('');
 }
