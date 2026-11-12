@@ -12,7 +12,7 @@ import {segOf, loadDetail, saveDetail, exportChronicle, MapView, ATLAS_OPTS} fro
 import {DETAILS} from '../view/world.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../view/campaign.js';
-import {errandsFor, nextErrand, endCampaign} from '../view/campaign.js';
+import {boardFor, nextErrand, endCampaign} from '../view/campaign.js';
 import {ERRANDS, TIER_LABEL} from '../data/errands.js';
 import {readLines, lineLevel, dateOf} from '../view/campaign.js';
 import {CHRONICLE} from '../data/campaign.js';
@@ -61,7 +61,7 @@ import {saveDue, rememberRun, forgetRun} from './autosave.js';
 import {ASCEND, mayAscend, ascend, summonable, takeHeroes} from '../view/campaign.js';
 const phaseWord = p => WALK_PHASES[p]?.label || p;
 // the phase in the words of its errand: an errand of a lair is no crown sought (campaign/errands.js)
-const walkWord = (K, p) => (K?.quest?.how === 'lair' && p === 'out' ? `идут к логову: ${K.quest.crown.label}` : K?.quest?.how === 'lair' && p === 'back' ? `несут ${K.quest.acc[0].toLowerCase()}${K.quest.acc.slice(1)} в столицу` : phaseWord(p));
+const walkWord = (K, p) => (p === 'empty' ? phaseWord(p) : K?.quest?.how === 'lair' && p === 'out' ? `идут к логову: ${K.quest.crown.label}` : K?.quest?.how === 'lair' && p === 'back' ? `несут ${K.quest.acc[0].toLowerCase()}${K.quest.acc.slice(1)} в столицу` : phaseWord(p));
 // the name of a world in the library without a walk's tail («Мир: поход из …» saved again for a new walk stays «Мир: поход из …»)
 const baseName = n => String(n || 'Мир').replace(/: поход из .*$/, '');
 // a world of the library as a row of a list (here and on «Новый поход», app/main.js): its button «Продолжить» for a walk
@@ -72,14 +72,21 @@ export function worldRow(r, cur = false) {
     (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${phaseWord(r.campaign.phase)}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
     `</span><button type="button">${live ? 'Продолжить' : 'Открыть'}</button></div>`;
 }
-// the errands of a capital as rows to pick one of (data/errands.js; the screen's two lists: at the capital, and after one handed in)
-//   list — errandsFor (campaign/errands.js); pick — the id picked; name — the radios' group
-function errandRows(list, pick, name) {
-  return list.map(e => `<label class="sv${e.ok ? '' : ' off'}${e.id === pick ? ' cur' : ''}"><input type="radio" name="${name}" value="${e.id}"${e.id === pick ? ' checked' : ''}${e.ok ? '' : ' disabled'}>` +
+// the board of a capital as cards to pick one of (campaign/errands.js boardFor; the screen's two boards: at the capital, and after
+// an errand handed in): a card of a known place for each of its nearest lairs, the guard against the company in words, what the
+// world tells of the target; a card is a radio (the keys go over them), the unavailable greyed with why
+//   list — boardFor; pick — the card's id picked; name — the radios' group
+function errandCards(list, pick, name) {
+  return list.map(e => `<label class="sv${e.ok ? '' : ' off'}${e.id === pick ? ' cur' : ''}" data-card="${esc(e.id)}"><input type="radio" name="${name}" value="${esc(e.id)}"${e.id === pick ? ' checked' : ''}${e.ok ? '' : ' disabled'}>` +
     `<span class="t"><span class="tier">${TIER_LABEL[e.tier]}</span><b>${esc(e.label)}</b>${e.years ? ` · срок ${e.years} ${plural(e.years, 'год', 'года', 'лет')}` : ''} · плата ${e.gold} зол.` +
-    `<br><small>${esc(e.ok ? e.goal || e.about : e.why)}</small></span></label>`).join('');
+    `<br><small>${esc(e.ok ? e.goal || e.about : e.why)}</small>` +
+    (e.ok && e.guard != null ? `<br><small class="risk r-${RISK_CLASS[e.risk] || 0}">стража ≈ ${String(e.guard).replace('.', ',')} отряда · ${esc(e.risk)}${e.days ? ` · от ${e.days} дн. пути` : ''}${e.known ? '' : ' · где — укажут следы'}</small>` : '') +
+    (e.ok && e.facts.length ? e.facts.map(f => `<br><small class="fact">${esc(f)}</small>`).join('') : '') +
+    `</span></label>`).join('');
 }
-// the errand picked by default: the one asked for if the world has it, else the world's own (the calamity, else the crown), else the first it has
+const BOARD_ZOOM = 2.5;   // how close the camera comes to a card's target when it is picked (lookAtCard)
+const RISK_CLASS = {'по силам': 1, 'тяжело': 2, 'опасно': 3, 'не по силам': 4};
+// the card picked by default: the one asked for if the world has it, else the world's own (the calamity, else the crown), else the first it has
 const errandPicked = (list, want) => (list.find(e => e.id === want && e.ok) || list.find(e => e.id === 'calamity' && e.ok) || list.find(e => e.id === 'crown' && e.ok) || list.find(e => e.ok))?.id ?? null;
 const clockTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
 const itemShort = id => gearDef(id)?.short ?? id;
@@ -131,8 +138,16 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     });
     $('campGo').addEventListener('click', () => this.begin());
     // the errand of the capital picked (data/errands.js), and the next one after an errand handed in
-    $('campErrands').addEventListener('change', e => { const r = e.target.closest('input[name="errand"]'); if (r) { this.errandPick = r.value; this.renderErrands(); } });
-    $('campOfferList').addEventListener('change', e => { const r = e.target.closest('input[name="offer"]'); if (r) { this.offerPick = r.value; $('campOfferList').querySelectorAll('.sv').forEach(x => x.classList.toggle('cur', x.querySelector('input')?.value === r.value)); } });
+    $('campErrands').addEventListener('change', e => { const r = e.target.closest('input[name="errand"]'); if (r) { this.errandPick = r.value; this.renderErrands(); this.lookAtCard(r.value); } });
+    $('campOfferList').addEventListener('change', e => { const r = e.target.closest('input[name="offer"]'); if (r) { this.offerPick = r.value; $('campOfferList').querySelectorAll('.sv').forEach(x => x.classList.toggle('cur', x.dataset.card === r.value)); this.lookAtCard(r.value); } });
+    // a card under the pointer or the keys: its target ringed on the map (the camera stays: a pick moves it — lookAtCard)
+    for (const id of ['campErrands', 'campOfferList']) {
+      const box = $(id), hover = card => { if ((card ?? null) !== this.boardHover) { this.boardHover = card ?? null; this.draw(); } };
+      box.addEventListener('pointerover', e => hover(e.target.closest('[data-card]')?.dataset.card));
+      box.addEventListener('pointerleave', () => hover(null));
+      box.addEventListener('focusin', e => hover(e.target.closest('[data-card]')?.dataset.card));
+      box.addEventListener('focusout', () => hover(null));
+    }
     $('campOfferGo').addEventListener('click', () => this.takeOffer());
     $('campOfferEnd').addEventListener('click', () => this.endOffer());
     // the ascended this capital may summon (ui/heroes.js, campaign/ascend.js): ticked up to ASCEND.max
@@ -348,15 +363,15 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     this.renderErrands();
     this.renderHeroes();
   }
-  // the errands the picked capital gives (campaign/errands.js errandsFor): the unavailable greyed with why
+  // the board of the picked capital (campaign/errands.js boardFor): the unavailable greyed with why
   renderErrands() {
     const a = this.atlas, field = $('campErrandsField');
     if (!a || this.capPick == null) { field.hidden = true; return; }
-    const list = errandsFor(a, this.capPick);
+    const list = this.board = boardFor(a, this.capPick);
     this.errandPick = errandPicked(list, this.errandPick);
     field.hidden = false;
-    $('campErrands').innerHTML = errandRows(list, this.errandPick, 'errand');
-    const E = ERRANDS.get(this.errandPick);
+    $('campErrands').innerHTML = errandCards(list, this.errandPick, 'errand');
+    const E = ERRANDS.get(this.cardOf(this.errandPick)?.errand);
     if (E && E.how !== 'epic') $('campQuestNote').textContent = E.about;
     $('campGo').disabled = this.errandPick == null;
   }
@@ -372,11 +387,15 @@ export class CampaignView extends campStats(campLocal(MapView)) {
 
   async begin() {
     const a = this.atlas; if (!a || this.capPick == null) return;
+    // the card's target still there? (the board as it stands now: boardFor) — asked before the ascended leave the registry
+    const card = this.cardOf(this.errandPick);
+    if (card?.targetId != null && !boardFor(a, this.capPick).some(c => c.id === card.id && c.ok)) { $('campQuestNote').textContent = 'Цель не ждёт: этого логова больше нет на доске.'; this.renderErrands(); return; }
     // the ascended ticked: taken out of the registry at once (no undo), their snapshots into the campaign (K.summoned)
     // (the registry is written only once the campaign is made: a campaign that fails to start loses nobody — Р3)
     let summon = null, rest = null;
     if (this.heroPick?.size) ({reg: rest, snaps: summon} = takeHeroes(await loadHeroes(), [...this.heroPick]));
-    newCampaign(a, this.capPick, {summon, errand: this.errandPick, chapters: true});   // (a campaign of chapters: the errand handed in, the next is the player's — offer)
+    newCampaign(a, this.capPick, {summon, errand: card?.errand ?? null, targetId: card?.targetId ?? null, chapters: true});   // (a campaign of chapters: the errand handed in, the next is the player's — offer)
+    this.board = null; this.boardHover = null;
     if (rest) { try { await saveHeroes(rest); } catch (e) { $('campSaveStatus').textContent = 'Реестр вознесённых не записан: ' + e.message; } this.heroPick.clear(); }
     if (this.follow) this.closeUp();
     this.saveId = null; this.saved = null; this.logShown = 0; this.logKey = ''; this.who = null;   // (the first season's boundary saves the walk: ui/autosave.js)
@@ -406,7 +425,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
     if (this.making) $('campPause').textContent = this.genPaused ? 'Дальше' : 'Пауза';
   }
 
-  clickAt(e) { this.selectAt(e); }   // a click on the world map: the card of what is here (ui/inspect.js)
+  clickAt(e) { if (this.board && this.pickCardAt(e)) return; this.selectAt(e); }   // a click on the world map: a target of the board, else the card of what is here (ui/inspect.js)   // a click on the world map: the card of what is here (ui/inspect.js)
   // the date in the head, with the day of the season the playback is at
   frame() { const a = this.atlas; if (a?.hist) $('campDay').textContent = dateText(a, this.clock, seasonLabel); }
 
@@ -490,6 +509,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
         px.strokeStyle = c.town === this.capPick ? '#ffd36a' : 'rgba(255,250,235,0.7)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
         px.beginPath(); px.arc(c.x + 0.5, c.y + 0.5, r, 0, Math.PI * 2); px.stroke();
       }
+      this.drawBoard(a, px, k);
       return;
     }
     px.imageSmoothingEnabled = false;
@@ -524,6 +544,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
         px.fill(); px.stroke();
       }
     }
+    if (K.phase === 'home') this.drawBoard(a, px, k);   // (the errand handed in: the next one's targets)
     // the caravan: a banner in the people's colour
     if (skin.art && ART.caravan(px, K, x, y, r, k, this.cam.S, a, col)) return;   // the picture (render/art/)
     px.fillStyle = ended(K) && K.phase !== 'won' ? 'rgb(90,90,90)' : `rgb(${col.join(',')})`; px.strokeStyle = 'rgba(255,250,235,0.95)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
@@ -716,21 +737,53 @@ export class CampaignView extends campStats(campLocal(MapView)) {
   // ── the errand handed in (campaign/ending.js handIn): the caravan waits at its capital — another errand, or the end
   showOffer() {
     const a = this.atlas, K = a?.campaign; if (K?.phase !== 'home') return;
-    const last = K.done?.at(-1), list = errandsFor(a, K.capital);
+    const last = K.done?.at(-1), list = this.board = boardFor(a, K.capital, {K});
     this.offerPick = errandPicked(list, this.offerPick);
     const alive = K.members.filter(m => m.alive && !m.captive && m.core).length;
-    $('campOfferTitle').textContent = `Поручение исполнено: ${last?.label || 'поручение'}`;
-    $('campOfferText').textContent = `${K.done.length > 1 ? `Это ${K.done.length}-е поручение каравана. ` : ''}${last?.goal ? `${last.goal[0].toUpperCase()}${last.goal.slice(1)} — сдано в столице` : 'Сдано в столице'}${last?.gold ? `, плата — ${last.gold} зол.` : '.'} В отряде ${alive} из тех, кто вышел; в пути ${Math.round(K.day / 12) / 10} лет.`;
-    $('campOfferList').innerHTML = errandRows(list, this.offerPick, 'offer');
+    $('campOfferTitle').textContent = `${last?.failed ? 'Поручение провалено' : 'Поручение исполнено'}: ${last?.label || 'поручение'}`;
+    $('campOfferText').textContent = `${K.done.length > 1 ? `Это ${K.done.length}-е поручение каравана. ` : ''}${last?.failed ? `Срок вышел: ${last.goal || 'цель'} — так и не взято. Вернулись ни с чем, столица не платит.` : `${last?.goal ? `${last.goal[0].toUpperCase()}${last.goal.slice(1)} — сдано в столице` : 'Сдано в столице'}${last?.gold ? `, плата — ${last.gold} зол.` : '.'}`} В отряде ${alive} из тех, кто вышел; в пути ${Math.round(K.day / 12) / 10} лет.`;
+    $('campOfferList').innerHTML = errandCards(list, this.offerPick, 'offer');
     $('campOfferGo').disabled = this.offerPick == null;
     $('campOffer').hidden = false;
     this.clock.pause(); this.syncRun(); this.renderSide();
     this.autosave(true);   // (left now, «Продолжить» comes back to this choice)
   }
-  hideOffer() { $('campOffer').hidden = true; }
+  hideOffer() { $('campOffer').hidden = true; this.board = null; this.boardHover = null; }
+  // ── the board's cards (boardFor): the card of an id, the camera on its target when picked
+  cardOf(id) { return (this.board || []).find(c => c.id === id) || null; }
+  lookAtCard(id) {
+    const c = this.cardOf(id); if (!c?.at || !this.cam) { this.draw(); return; }
+    // (the whole world in view: the side panel may hide its edge — closer in, the target at the middle)
+    this.cam.zoom = Math.max(this.cam.zoom, BOARD_ZOOM); this.cam.cx = c.at.x + 0.5; this.cam.cy = c.at.y + 0.5; this.follow = false; this.draw();
+  }
+  // a lair clicked on the map while the board is up: its card picked (the first of it, if two errands want it)
+  pickCardAt(e) {
+    const i = this.cellAt(e); if (i < 0 || !this.board) return false;
+    const x = i % this.atlas.w, y = (i / this.atlas.w) | 0;
+    const c = this.board.find(b => b.ok && b.at && Math.abs(b.at.x - x) <= 1 && Math.abs(b.at.y - y) <= 1); if (!c) return false;
+    const offer = !$('campOffer').hidden, box = $(offer ? 'campOfferList' : 'campErrands');
+    if (offer) this.offerPick = c.id; else this.errandPick = c.id;
+    const r = box.querySelector(`input[value="${CSS.escape(c.id)}"]`); if (r) { r.checked = true; r.dispatchEvent(new Event('change', {bubbles: true})); r.closest('.sv')?.scrollIntoView?.({block: 'nearest'}); }
+    return true;
+  }
+  // the board's targets on the map: the cards' known places faint, the one under the pointer and the one picked ringed, a
+  // dashed line from the capital to them (a place the clues must find is not drawn: the board does not tell it)
+  drawBoard(a, px, k) {
+    const B = this.board; if (!B?.length) return;
+    const pick = !$('campOffer').hidden ? this.offerPick : this.errandPick, home = a.towns.find(t => t.id === (a.campaign?.capital ?? this.capPick));
+    for (const c of B) {
+      if (!c.ok || !c.at) continue;
+      const on = c.id === this.boardHover || c.id === pick, x = c.at.x + 0.5, y = c.at.y + 0.5;
+      px.strokeStyle = c.id === pick ? '#ffd36a' : on ? 'rgba(255,240,200,0.95)' : 'rgba(240,110,80,0.6)'; px.lineWidth = Math.max(this.minW, (on ? 0.3 : 0.16) * k);
+      px.beginPath(); px.arc(x, y, (on ? 2.2 : 1.3) * Math.max(0.6, k), 0, Math.PI * 2); px.stroke();
+      if (on && home) { px.setLineDash([0.6 * k, 0.5 * k]); px.beginPath(); px.moveTo(home.x + 0.5, home.y + 0.5); px.lineTo(x, y); px.stroke(); px.setLineDash([]); }
+    }
+  }
   takeOffer() {
     const a = this.atlas; if (a?.campaign?.phase !== 'home' || !this.offerPick) return;
-    try { nextErrand(a, this.offerPick); } catch (e) { $('campOfferNote').textContent = e.message; return; }
+    const card = this.cardOf(this.offerPick);
+    try { nextErrand(a, card?.errand ?? this.offerPick, {targetId: card?.targetId ?? null}); } catch (e) { $('campOfferNote').textContent = e.message; this.showOffer(); return; }
+    this.board = null; this.boardHover = null;
     this.hideOffer(); this.renderSide(); this.draw(); this.run();
   }
   endOffer() {

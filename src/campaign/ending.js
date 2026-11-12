@@ -15,7 +15,7 @@ import {SPECIES} from '../data/species.js';
 import {RETINUE, inLine} from '../data/campaign.js';
 import {EPILOGUE, FATES, fate} from '../data/epilogue.js';
 import {draw} from './start.js';
-import {say, isCore, rank} from './march.js';
+import {say, isCore, rank, handedOf} from './march.js';
 import {perkLabel} from './perks.js';
 import {woundLabel} from './maims.js';
 import {ERRANDS, ERRAND} from '../data/errands.js';
@@ -78,6 +78,30 @@ export function handIn(a, K) {
   K.phase = 'home';
 }
 
+// ── a campaign of chapters, the errand failed (the author's word 11.11, claude/ver_f-status.md): its deadline past on the way
+// there — the caravan goes home on its own feet with nothing («возвращаются ни с чем»: the road home is still a story — fights,
+// camps, towns; no pursuit, no trophy), the realms that know the capital's realm think worse of it (data/errands.js ERRAND.fail),
+// and at the capital the player's word waits again: another errand, or the end
+export function failErrand(a, K) {
+  const Q = K.quest, E = ERRANDS.get(Q?.errand) || null, F = ERRAND.fail;
+  Q.failed = {day: K.day, year: a.hist.year, why: 'срок'};
+  K.phase = 'empty'; K.goal = K.home; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0;
+  if (K.bubble) K.bubble.things = K.bubble.things.filter(t => !t.pursuit);   // (no one hunts a caravan that carries nothing)
+  let cooled = 0;
+  for (const [k, rel] of Object.entries(a.rel || {})) {
+    const [p, q] = k.split(':').map(Number); if (p !== K.realm && q !== K.realm) continue;
+    if ((rel.att ?? 0) > F.floor) { rel.att = Math.max(F.floor, rel.att - F.att); cooled++; }   // (never pushed into enmity by it alone)
+  }
+  say(a, K, `Срок поручения вышел: ${(E?.label || 'поручение').toLowerCase()} — ${Q.crown?.label || 'цель'} — так и не исполнено. Караван возвращается в столицу ни с чем${cooled ? '; соседние державы думают о столице хуже' : ''}.`, 'end', true);
+}
+// home with nothing: the failure told at the capital, no pay; the player's word waits (as after an errand handed in)
+export function emptyHome(a, K, t = homeTown(a, K), ms = K.members.filter(m => m.alive)) {
+  const Q = K.quest, E = ERRANDS.get(Q?.errand) || null;
+  (K.done ||= []).push({errand: Q?.errand || null, tier: Q?.tier || null, label: E?.label || 'поручение', name: Q?.name, goal: Q?.crown?.label || null, from: Q?.from ?? 0, day: K.day, year: a.hist.year, gold: 0, failed: true});
+  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'} ни с чем: ${ms.length} ${plural(ms.length, 'человек', 'человека', 'человек')}. Поручение провалено — ${(E?.label || 'поручение').toLowerCase()}; столица не платит.`, 'home', true);
+  K.phase = 'home';
+}
+
 // once, when the campaign has just ended: the world's consequences and the fates to tell
 export function finish(a, K) {
   if (K.epilogue) return;
@@ -98,7 +122,7 @@ export function finish(a, K) {
   if (K.phase === 'won') {
     // the crown home: people of the realm's towns flock to the capital (E.pop × its people: drawn from them, not made —
     // atlas/demography.js drawTo), the realms that know the realm think better of it
-    if (K.done?.length) lines.push({text: `В ${capital ? `${townLabel(capital, 3)} ${capital.name}` : 'столице'} встречают караван, исполнивший ${K.done.length} ${plural(K.done.length, 'поручение', 'поручения', 'поручений')}: ${K.done.map(d => d.label.toLowerCase()).join(', ')}.`, world: true});
+    if (handedOf(K).length) lines.push({text: `В ${capital ? `${townLabel(capital, 3)} ${capital.name}` : 'столице'} встречают караван, исполнивший ${handedOf(K).length} ${plural(handedOf(K).length, 'поручение', 'поручения', 'поручений')}: ${handedOf(K).map(d => d.label.toLowerCase()).join(', ')}.`, world: true});
     else lines.push({text: homeReward(a, K, capital), world: true});
     for (const m of K.members.filter(x => x.alive)) tellFate(m, m.captive ? FATES.captive.won : isCore(m) ? FATES.won[inLine(m) ? 'knight' : 'squire'] : FATES.won.other);
     const fallen = K.members.filter(m => isCore(m) && m.died);

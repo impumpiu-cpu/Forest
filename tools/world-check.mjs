@@ -25,7 +25,7 @@ import {breakAway} from '../src/atlas/realms.js';
 import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
-import {foeWeight} from '../src/campaign/camp.js';
+import {foeWeight, foeBudget} from '../src/campaign/camp.js';
 import {foeOf} from '../src/campaign/march.js';
 import {CAMP} from '../src/data/camp.js';
 import {CAPTIVE_RAID, WILD, NECRO} from '../src/data/lairs.js';
@@ -489,14 +489,17 @@ scene_('W23', 'второй вид — одной стороны: звери с�
   if (withCompany(ds[0], ds, () => 0.99).with) return 'второй пришёл без удачи';
   return true;
 });
-scene_('W23b', 'сколько пришло — по плотности: густая земля шлёт больше, редкая меньше; именных и войска это не касается', () => {
-  const D = CAMP.foe.density, w = F => foeWeight(() => 0.5, F, 'night');
-  const thin = w({kind: 'beasts', strength: 0.3}), mean = w({kind: 'beasts', strength: D.ref.beasts}), thick = w({kind: 'beasts', strength: 3});
+scene_('W23b', 'сила врага — от самой вещи (земля, логово, ступень), не от каравана: густая земля шлёт больше, редкая меньше; без силы — средняя своего вида', () => {
+  const D = CAMP.foe.density, U = CAMP.foe.unit, w = F => foeWeight(() => 0.5, F, 'night'), b = F => foeBudget(() => 0.5, F, 'night');
+  const thin = b({kind: 'beasts', strength: 0.3}), mean = b({kind: 'beasts', strength: D.ref.beasts}), thick = b({kind: 'beasts', strength: 3});
   if (!(thin < mean && mean < thick)) return `редкая ${thin}, средняя ${mean}, густая ${thick}`;
+  if (Math.abs(thick / thin - 10) > 1e-9) return `не пропорционально силе: ${thin} / ${thick}`;
+  if (Math.abs(b({kind: 'beasts'}) - mean) > 1e-9) return 'без силы — не средняя вида';
   const B = CAMP.foe, mid = B.skirmish[0] + 0.5 * (B.skirmish[1] - B.skirmish[0]);
-  if (Math.abs(thin - mid * D.lo) > 1e-9 || Math.abs(thick - mid * D.hi) > 1e-9) return `пределы: ${thin} / ${thick}`;
-  if (w({kind: 'army', strength: 3}) !== w({kind: 'army', strength: 0.3})) return 'войско зависит от плотности';
-  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, person: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, person: 1})) return 'именной бой зависит от плотности';
+  if (Math.abs(w({kind: 'beasts', strength: 3}) - mid) > 1e-9 || Math.abs(thick - U * 3 * mid) > 1e-9) return `вес стычки: ${w({kind: 'beasts', strength: 3})}`;
+  if (w({kind: 'army', strength: 3}) !== B.force) return 'войско не в полную силу';
+  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, person: 1}) !== B.leader) return 'главарь не тяжелее';
+  if (Math.abs(foeBudget(() => 0.5, {kind: 'lair', strength: 2}, 'guard', B.quickUnit) / foeBudget(() => 0.5, {kind: 'lair', strength: 2}, 'guard') - B.quickUnit / U) > 1e-9) return 'быстрый режим — не та же сила';
   return true;
 });
 scene_('W23c', 'что пришло в пузыре, то и в бою: второй вид, пул культа, логово (его пленные), главарь — не теряются по дороге', () => {

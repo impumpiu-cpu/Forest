@@ -27,7 +27,7 @@ import {say, reveal} from './march.js';
 import {EPIC} from '../data/calamities.js';
 import {capacity} from './baggage.js';
 import {makeQuest, questTarget, questIntro} from './quest.js';
-import {makeErrand} from './errands.js';
+import {makeErrand, targetWhy} from './errands.js';
 import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
 import {CAMP_KIT} from '../data/transport.js';
@@ -135,10 +135,12 @@ function member(K, a, rnd, {species, role}, k) {
 // summon — the snapshots of the ascended chosen for its core (campaign/ascend.js): taken whole into K.summoned
 // errand — the errand chosen of the capital's (data/errands.js; none: the world's own, as before errands were); chapters — the
 // errand handed in does not end the campaign: the player gives the next or ends it (campaign/ending.js handIn — the screen's)
-export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null, errand = null, chapters = false} = {}) {
+// targetId — the lair picked on the board (campaign/errands.js boardFor); one no longer there throws before the campaign is made
+export function newCampaign(a, townId, {seed = null, mode = 'local', summon = null, errand = null, targetId = null, chapters = false} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
   const t = a.towns.find(x => x.id === townId && x.alive);
   if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error('Это не столица мажорного народа.');
+  if (targetId != null) { const why = targetWhy(a, {home: t.i, people: t.people, realm: t.realm, capital: t.id}, errand, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
   const K = a.campaign = {
     seed: seed || `${a.cfg.seed}:${t.id}`, mode, started: {year: a.hist.year, season: a.hist.season}, day: 0,
     capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
@@ -152,7 +154,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local', summon = nu
   if (summon?.length) summonInto(a, K, summon);   // the ascended take places in the core (the eight drawn first: the birth stream is the same)
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
-  K.quest = errand ? makeErrand(a, K, r, errand) : makeQuest(a, K, r);
+  K.quest = errand ? makeErrand(a, K, r, errand, {targetId}) : makeQuest(a, K, r);
   if (chapters) K.chapters = true;
   if (K.quest && !K.quest.errand) { K.quest.errand = K.quest.epic ? 'calamity' : 'crown'; K.quest.tier = K.quest.epic ? 4 : 3; K.quest.from = 0; }   // (the world's own: named as an errand of the list)
   K.goal = K.quest ? questTarget(a, K, r) : null;

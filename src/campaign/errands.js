@@ -11,12 +11,16 @@ import {QUEST} from '../data/quest.js';
 import {YEAR_DAYS} from '../data/seasons.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {EPIC} from '../data/calamities.js';
-import {townLabel, wherePhrase} from '../atlas/index.js';
+import {townLabel, wherePhrase, lairReach} from '../atlas/index.js';
+import {scaleOf} from '../atlas/index.js';
 import {isAt} from '../atlas/index.js';
 import {cellDist, plural} from '../core/util.js';
 import {reachable, foot, places, layClues, circle, whereFrom, crownQuest} from './quest.js';
 import {makeEpicQuest, epicWorld} from './epic.js';
-import {lairGuard} from './land.js';
+import {lairGuard, garrison} from './land.js';
+import {caravanMight} from './march.js';
+import {CAMP} from '../data/camp.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
 
 const lairName = l => `${LAIRS.get(l.kind).label} «${l.name}»`;
 const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
@@ -60,14 +64,64 @@ export function errandsFor(a, townId) {
   });
 }
 
+// ── the board (plan claude/guild-plan.md Д1): the errands of a capital as cards, an errand whose place is known (no clues:
+// «Разорить логово», «Вызволить пленных») a card for each of its nearest `per` lairs (data/errands.js ERRAND.board), the
+// rest a card each. Only read: the world, the campaign and every stream of chance stay as they were (no makeErrand, no draw).
+//   K — the campaign waiting at its capital (its might to weigh the guard by); none — a fresh caravan of eight
+// → [{id, errand, targetId, tier, label, about, years, gold, ok, why, goal, known, at, guard, risk, facts, days}]
+//   id        — `${errand}:${lair id}` for a card of a target, the errand's own id for the rest (two errands of one lair: two cards)
+//   known     — the place is known: `at` — its cell {x, y}; else none (the clues tell where — no point on the map)
+//   guard     — the garrison's strength, in fresh caravans of eight; risk — it against the company, in words
+//   facts     — what the world tells of the target: its leader, the captives it holds by people, the towns it reaches and their raids
+//   days      — the walk there on open ground, at the least
+export function boardFor(a, townId, {per = ERRAND.board.per, K = null} = {}) {
+  const t = a.towns.find(x => x.id === townId); if (!t) return [];
+  const S = stub(a, t), {mask} = reachable(a, S), B = ERRAND.board, diag = Math.hypot(a.w, a.h);
+  const might = K ? caravanMight(K) : CAMP.foe.quickUnit, day = CAMPAIGN.speed * scaleOf(a);
+  const out = [];
+  for (const row of errandsFor(a, townId)) {
+    const E = ERRANDS.get(row.id), base = {...row, errand: row.id, targetId: null, known: false, at: null, guard: null, risk: null, facts: [], days: null};
+    if (E.how !== 'lair' || !row.ok) { out.push(base); continue; }
+    const known = !E.clueAt.length, Ts = lairTargets(a, S, E, mask).slice(0, known ? per : 1);
+    for (const T of Ts) {
+      const s = garrison(T.l, E.guard), r = CAMP.foe.quickUnit * s / Math.max(1e-6, might);
+      out.push({...base, id: known ? `${E.id}:${T.l.id}` : E.id, targetId: known ? T.l.id : null, goal: `${lairName(T.l)}, ${wherePhrase(a, T.l.i)}`, known,
+        at: known ? {x: T.l.x, y: T.l.y} : null, guard: Math.round(s * 10) / 10, risk: (B.risk.find(([up]) => r <= up) || B.risk.at(-1))[1],
+        facts: lairFacts(a, T.l, t), days: Math.max(1, Math.round(T.d * diag / day))});
+    }
+  }
+  return out;
+}
+// what the world tells of a lair (only read): its leader (at home or away), the captives it holds by people, the towns its land
+// reaches (atlas/deeds/clearLair.js lairReach) — of the capital's realm first — and a raid on them of the last years
+function lairFacts(a, l, home) {
+  const B = ERRAND.board, out = [], year = a.hist?.year ?? 0;
+  if (l.leader) out.push(`${l.leader.title?.[0] || 'Главарь'} ${l.leader.name}${isAt(l.leader, 'lair', l.id) ? '' : ' — сейчас не в логове'}`);
+  const held = Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p)?.label || p} — ${n}`);
+  if (held.length) out.push(`В плену: ${held.join(', ')}`);
+  const reach = lairReach(a, l), near = a.towns.filter(x => x.alive && Math.hypot(x.x - l.x, x.y - l.y) <= reach)
+    .sort((p, q) => (q.realm === home.realm) - (p.realm === home.realm) || Math.hypot(p.x - l.x, p.y - l.y) - Math.hypot(q.x - l.x, q.y - l.y)).slice(0, B.towns);
+  if (near.length) out.push(`Достаёт до: ${near.map(x => `${x.name}${x.raided != null && year - x.raided <= B.raidYears ? ` (набег в ${x.raided}-м году)` : ''}`).join(', ')}`);
+  return out;
+}
+// the target the player named (a card of the board): is it still there for this errand? → null, or why not (said before any draw)
+export function targetWhy(a, K, id, targetId) {
+  const E = ERRANDS.get(id); if (!E || E.how !== 'lair') return 'у этого поручения нет цели на выбор';
+  const l = (a.lairs || []).find(x => x.id === targetId);
+  if (!l?.alive) return 'этого логова больше нет';
+  return lairTargets(a, K, E, reachable(a, K).mask).some(T => T.l.id === targetId) ? null : `${lairName(l)} больше не ждёт этого поручения`;
+}
+
 // K.quest for the errand `id` (null: the world's own — the crown or the calamity, as before errands were). The deadline
-// (Q.until) counts from today. → null when the world has none to give
-export function makeErrand(a, K, rnd, id = null) {
+// (Q.until) counts from today. `targetId` — the lair the player picked on the board (none: the nearest, as before); one no
+// longer there throws, before any draw. → null when the world has none to give
+export function makeErrand(a, K, rnd, id = null, {targetId = null} = {}) {
   const E = ERRANDS.get(id || DEFAULT_ERRAND(epicWorld(a)));
+  if (targetId != null) { const why = targetWhy(a, K, E.id, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
   let Q = null;
   if (E.how === 'epic') Q = makeEpicQuest(a, K, rnd);
   else if (E.how === 'crown') Q = crownQuest(a, K, rnd);
-  else Q = lairErrand(a, K, rnd, E);
+  else Q = lairErrand(a, K, rnd, E, targetId);
   if (!Q) return null;
   Q.errand = E.id; Q.tier = E.tier; Q.from = K.day;
   // the deadline: the row's; the crown's and the calamity's — the campaign's own years (data/campaign.js maxYears, EPIC.years), from
@@ -78,10 +132,10 @@ export function makeErrand(a, K, rnd, id = null) {
 }
 
 // an errand of a lair: the lair is the goal (stormed, laid waste), its trophy is carried home
-function lairErrand(a, K, rnd, E) {
-  const {mask, cells} = reachable(a, K);
-  const T = lairTargets(a, K, E, mask)[0]; if (!T) return null;
-  const {l, i} = T, L = LAIRS.get(l.kind), G = QUEST.guard, s = Math.min(G.max, (G.base + G.perDiag * T.d) * E.guard);
+function lairErrand(a, K, rnd, E, targetId = null) {
+  const {mask, cells} = reachable(a, K), Ts = lairTargets(a, K, E, mask);
+  const T = targetId != null ? Ts.find(x => x.l.id === targetId) : Ts[0]; if (!T) return null;
+  const {l, i} = T, L = LAIRS.get(l.kind), s = garrison(l, E.guard);   // its garrison, by the lair and the errand's tier (campaign/land.js), not the distance
   const guard = L.dragon
     ? {kind: 'lair', strength: s, beast: 'drake', label: `дракон и его выводок — ${lairName(l)}`, seat: l.id, boss: {name: `Дракон логова «${l.name}»`, g: 'm', species: 'drake', add: {...ERRAND.dragon}, mustDie: true}}
     : {...lairGuard(a, l.kind, i, s, l), label: lairName(l)};

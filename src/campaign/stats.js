@@ -5,6 +5,8 @@
 import {YEAR_DAYS} from '../data/atlas.js';
 import {FOES} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
+// the errands handed in (K.done keeps the failed too: campaign/ending.js emptyHome)
+const handedOf = K => (K.done || []).filter(d => !d.failed);
 
 const sum = (xs, f) => xs.reduce((s, x) => s + (f(x) || 0), 0);
 const avg = (xs, f) => (xs.length ? sum(xs, f) / xs.length : 0);
@@ -78,7 +80,7 @@ export function walkStats(a, K) {
   const here = ms.filter(m => m.alive && !m.captive), captives = ms.filter(m => m.alive && m.captive);
   const out = [];
   out.push({title: 'Поход', rows: [
-    ['Итог', K.phase === 'won' && K.done?.length ? `исполнили поручений: ${K.done.length} — и вернулись` : K.phase === 'won' && K.quest?.how === 'lair' ? 'поручение исполнено' : K.phase === 'home' ? 'поручение сдано — ждут в столице' : END[K.phase] || 'в пути'],   // (an errand's words: campaign/errands.js)
+    ['Итог', K.phase === 'won' && handedOf(K).length ? `исполнили поручений: ${handedOf(K).length} — и вернулись` : K.phase === 'won' && K.quest?.how === 'lair' ? 'поручение исполнено' : K.phase === 'home' ? 'поручение сдано — ждут в столице' : END[K.phase] || 'в пути'],   // (an errand's words: campaign/errands.js)
     ['В пути', `${K.day} дн. (${years} г.)`],
     ['Пройдено', `${Math.round(s.walked || 0)} клеток`],
     ['Стоянок', `${v('camps')}, дней на стоянке ${v('stopDays')}`],
@@ -91,7 +93,7 @@ export function walkStats(a, K) {
     const Q = K.quest, C = Q.crown;
     const lair = Q.how === 'lair';
     out.push({title: lair ? 'Поручение' : 'Корона', rows: [
-      ...(K.done?.length ? [['Исполнено', K.done.map(d => d.label).join(', ')]] : []),
+      ...(handedOf(K).length ? [['Исполнено', handedOf(K).map(d => d.label).join(', ')]] : []), ...(K.done?.some(d => d.failed) ? [['Провалено', K.done.filter(d => d.failed).map(d => d.label).join(', ')]] : []),
       [lair ? 'Трофей' : 'Корона', `${Q.name}: ${CROWN[C.state] || (C.exact || C.seen ? 'известно где' : C.area ? 'известен круг' : 'где — неизвестно')}`],
       ['Следы', `найдено ${Q.found} из ${Q.clues.length}`],
       ['Слухов', v('rumours')], ['Штурмов', v('storms')], ['Погонь', v('pursuers')],

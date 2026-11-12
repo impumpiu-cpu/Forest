@@ -25,7 +25,7 @@ import {QUEST} from '../data/quest.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {BUBBLE} from '../data/bubble.js';
 import {YEAR_DAYS} from '../data/seasons.js';
-import {lairFoe, lairGuard, rulerAtHead} from './land.js';
+import {lairFoe, lairGuard, rulerAtHead, garrison} from './land.js';
 import {bubbleOf, cellAt} from './bubble.js';
 import {free} from './captives.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
@@ -92,8 +92,9 @@ export function places(a, K, mask) {
 
 // who guards a place, and how strong: stronger the further from home
 export function guardOf(a, K, p, crown = false) {
-  const G = QUEST.guard, diag = Math.hypot(a.w, a.h), s = Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, p.i) / diag) * (crown ? G.crown : 1));
-  const l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null;
+  const G = QUEST.guard, diag = Math.hypot(a.w, a.h), l = p.lair != null ? a.lairs.find(x => x.id === p.lair) : null;
+  // a living lair is held by its garrison (campaign/land.js); a place of no lair, by the distance from home (data/quest.js)
+  const s = l?.alive ? garrison(l, crown ? G.crown : 1) : Math.min(G.max, (G.base + G.perDiag * dist(a, K.home, p.i) / diag) * (crown ? G.crown : 1));
   if (p.kind === 'town') return null;
   if (p.kind === 'dragon') return {kind: 'lair', strength: s, label: `выводок дракона — ${p.label}`, beast: 'drake'};
   if (p.kind === 'barrow') return {kind: 'undead', strength: s, label: 'мертвецы древнего кургана', band: 'undead'};
@@ -297,9 +298,12 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     const fs = free(K), hp = fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
     if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма', a, rnd); return false; }   // too few left: for people first
-    // beaten back once, the council does not send the same company against the same guards: it comes back stronger
-    // than the one that lost (QUEST.stronger) — or, not grown so in time, leaves the place for a while
-    if (here.lost && might < here.lost.might * QUEST.stronger) {
+    // beaten back once, the council does not send the same company against the same guards: it comes back when the odds
+    // have grown — the company stronger (QUEST.stronger) over the guards as they stand now (bled by the storm lost, filling
+    // back meanwhile) — or, not grown so in time, leaves the place for a while
+    mendGuard(K, here);
+    const odds = might / Math.max(1e-6, here.guard.strength);
+    if (here.lost && odds < here.lost.odds * QUEST.stronger) {
       if (K.day - here.lost.day >= QUEST.grow) leaveFor(K, here, say, `сил не прибавилось, а стража не ослабла`, a, rnd);
       return false;
     }
@@ -307,7 +311,8 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     const sk = here === C ? 'stormsLair' : here.kind === 'grave' ? 'stormsGrave' : null; if (sk) K.stats[sk] = (K.stats[sk] || 0) + 1;
     const win = fight(rulerAtHead(a, here.guard));   // (its lair's ruler, at home, at its head: campaign/land.js)
     if (!win) {
-      Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day};
+      bleedGuard(K, here);
+      Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day, odds: might / Math.max(1e-6, here.guard.strength)};
       if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`, a, rnd);   // beaten back again and again: leave it for a while, look elsewhere
       return true;
     }
@@ -316,6 +321,22 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
   if (here === C) { errandStormed(a, K, say); takeCrown(a, K, say); } else takeClue(a, K, here, rnd, say);   // (an errand's lair laid waste in the world: campaign/errands.js)
   K.path = null; Q.search = null;
   return true;
+}
+
+// the guards of a place after a storm they held (data/quest.js QUEST.guard): what the storm cut down of them is gone — its
+// share of their strength × `bled` (on the local map, the heads beaten of those who came; in the quick mode, the caravan's
+// share of the might of both), at least `held` of their full strength left; they fill back `mend` of it a month
+function bleedGuard(K, here) {
+  const G = QUEST.guard, g = here.guard, f = K.fights?.at(-1); if (!g || !f) return;
+  const cut = f.killed != null && f.foes ? (f.killed + (f.taken || 0)) / f.foes : f.ours != null && f.theirs != null ? f.ours / Math.max(1e-6, f.ours + f.theirs) : 0;
+  g.full ??= g.strength;
+  g.strength = Math.max(g.full * G.held, g.strength * (1 - G.bled * Math.min(1, Math.max(0, cut))));
+  g.bled = K.day;
+}
+function mendGuard(K, here) {
+  const G = QUEST.guard, g = here.guard; if (!g || g.full == null || g.bled == null) return;
+  g.strength = Math.min(g.full, g.strength + g.full * G.mend * (K.day - g.bled) / 30); g.bled = K.day;
+  if (g.strength >= g.full) { delete g.full; delete g.bled; }
 }
 
 // a guarded place left for a while (QUEST.giveUpRest): the council looks elsewhere meanwhile

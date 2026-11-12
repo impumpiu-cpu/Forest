@@ -38,20 +38,25 @@ export const CAMP = {
   band: {sight: 14, want: 3, rescue: {friend: 2.5, per: 0.3, cap: 1.2, near: 10, foe: 4}, falter: {hp: 0.45, bravery: 0.8, over: 0.5}},
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,
-  // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone
-  // who stands in the fight, with all they wear — campaign/camp.js campSetup): the fight's budget is that strength
-  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (outside/bands.js fill `up`: when a
-  // giant and a half fit, two come). In the quick mode the same, in the caravan's own might (campaign/fight.js)
+  // the foe is bought by the thing's own strength, never by the caravan's (plan claude/guild-plan.md Г2а): the strength
+  // comes from the world — the land (how thick the wild is there, the road, the rot, an army's foragers: campaign/land.js
+  // dangers), the lair (its kind's danger, its strength, at its land or at its walls) and the errand's tier (its guard ×) —
+  // and the budget in strength rating (agents/strength.js) is `unit` × that strength × the fight's weight, ± `sway` of it at
+  // random. So a company better armed, healed, grown meets the same foe and beats it more often, and a caravan worn down to
+  // two meets what eight met. Heads are always rounded up (outside/bands.js fill `up`: when a giant and a half fit, two
+  // come). In the quick mode the same, in might (campaign/march.js caravanMight): `quickUnit` a point
+  //   unit:      a point of strength — about a caravan of eight just out, in bone and wood (its strength rating 1200–2200;
+  //              might 8–12): an ordinary night's band of the wild (strength 0.6–1.2) is a fight it wins, a stormed lair's
+  //              guard (1.5–3 and more) is the hard one
   foe: {
+    unit: 1200, quickUnit: 8,
     skirmish: [0.7, 1],   // a chance meeting — a nameless band at night or in ambush: down to −30 %
     force: 1,             // a realm's army, the guards of a place stormed
     leader: 1.15, mini: 1.25, boss: 1.5,   // a leader of an old lair, a grave's guard, the fourth and its lair (campaign/epic.js)
-    sway: 0.25, floor: 0.1,   // (never lighter than `floor` of the caravan, however the sway falls)
-    // a chance meeting is as many as live there (campaign/land.js: the thing's strength grows with the density of who
-    // came): × its strength over `ref` of its kind (the mean of that kind in the wild; `else` for the rest), within
-    // [lo, hi] — a thick land sends more, a thin one fewer; a kind as a whole is as strong as before
-    density: {ref: {beasts: 0.8, wolves: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, cultists: 1.4, else: 1.2}, lo: 0.6, hi: 1.5},
-    most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
+    sway: 0.25, floor: 0.1,   // (the weight never below `floor`, however the sway falls)
+    // a thing that came with no strength of its own: its kind's mean in the wild (`else` for the rest)
+    density: {ref: {beasts: 0.8, wolves: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, cultists: 1.4, else: 1.2}},
+    most: 18, mostGuard: 30,   // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague); a place stormed holds more
     hungry: 0.2,          // a pack of beasts comes this hungry (its food need; boldness grows below hunts.hungry, data/bestiary.js)
   },
   // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick

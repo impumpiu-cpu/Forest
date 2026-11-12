@@ -273,8 +273,10 @@ export const WILD_FOES = {at: 0.04, beasts: {p: 0.025, cap: 1.5, s: [0.6, 0.4]},
   mix: {chance: 0.6, share: [0.25, 0.45]}};
 
 // What may come at the caravan's camp at night (campaign/land.js dangers): each a chance of a fight `p` and its strength.
-//   lair:    in a lair's land: p[0] + p[1] × its strength (at most pCap), strength s[0] + s[1] × its strength (at most sCap)
+//   lair:    in a lair's land: p[0] + p[1] × its strength (at most pCap), strength s[0] + s[1] × its strength (at most sCap),
+//            × the lair's danger (data/lairs.js) — its own band out at night, harder than its kind met roaming the wild
+//            (WILD_FOES above: 0.6–1.2 × the danger) and lighter than its garrison stormed (data/quest.js QUEST.guard.lair)
 //   army:    where an army's foragers stripped the land above `at`: p × how badly;  undead: where the rot is above `at`:
 //            p × it, strength s + it;  bandits: by a road above `at` of the way: p × the road
-export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.6, 0.6], sCap: 2},
+export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.5, 0.5], sCap: 1},
   army: {at: 0.3, p: 0.2, s: 1}, undead: {at: 0.2, p: 0.06, s: 0.8}, bandits: {at: 0.1, p: 0.02, s: 1}};

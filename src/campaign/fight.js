@@ -22,7 +22,7 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
-import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
+import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget} from './camp.js';
 import {takeOnce, takeBonds, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
 import {shake} from './people.js';
@@ -86,7 +86,7 @@ function recordFight(a, K, d, how, win, before) {
   const fell = K.members.filter(m => ids.has(m.id) && !m.alive && !m.left?.escaped && !m.left?.taken).map(m => m.name);   // (a captive who ran, one led off: gone, not fallen)
   const hurt = K.members.filter(m => m.alive && ids.has(m.id) && m.hp < before.find(([id]) => id === m.id)[1] - CAMPAIGN.fight.wounded).map(m => m.name);
   const F = o?.foes, B = F?.boss;
-  const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
+  const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local', strength: d.strength ?? null,
     fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
     plundered: o ? !!o.plundered : null, foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, led: o ? o.led || 0 : null, species: F ? F.species : null,
     ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null, weight: F ? F.weight : A?.weight ?? null,
@@ -313,8 +313,8 @@ function spoilsRest(a, K, d, r) {
 
 // ── at once (the quick mode): the foe's might against the caravan's
 function autoFight(a, K, d, r, how) {
-  // the foe is bought by the caravan's might × the fight's weight (campaign/camp.js foeWeight, data/camp.js CAMP.foe), as on the local map
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = caravanMight(K, true) * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
+  // the foe is bought by its own strength × the fight's weight, in might (campaign/camp.js foeBudget, data/camp.js CAMP.foe quickUnit), as on the local map
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), E = foeBudget(r, d, how, CAMP.foe.quickUnit), weight = E / Math.max(1e-6, might), P = caravanMight(K, true) * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
   const share = P / (P + E), win = r() < share;
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
   // the blows: more when they lose, mostly on the first rank, who shield the rest

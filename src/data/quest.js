@@ -27,13 +27,18 @@ export const QUEST = {
   // the search: within this of the place the scouts see it (+ the fog's sight); a search of an area walks
   // to a cell of it, at most `tries` cells before the council gives it up for a while (`rest` days)
   sight: 1.5, tries: 6, rest: 30,
-  // a guarded place: the guards' strength — base + perDiag × the distance from home as a share of the
-  // world's diagonal (× crown for the crown's own); the council storms it when the company is this whole,
-  // and after a lost storm waits `retry` days — and comes back only `stronger` than the company that lost was
-  // (campaign/march.js caravanMight: hired, healed, better armed; the guards are bought by the caravan's strength,
-  // data/camp.js CAMP.foe, so the same company meets the same guards); not grown so in `grow` days, it leaves the
+  // a guarded place: the guards' strength (a point of it — data/camp.js CAMP.foe.unit of strength rating). A lair's is its
+  // garrison: lair[0] + lair[1] × the lair's strength in the world (0 … 1), × its kind's danger (data/lairs.js), × the
+  // errand's guard (data/errands.js) or `crown` for the crown's own (campaign/land.js garrison) — a goblins' den of middle
+  // strength ≈ 0.9 (a full one 1.2), a giants' camp ≈ 1.8, a dragon's ≈ 3.1 — before the errand's ×. A storm is the
+  // hardest of the three meetings with a lair's folk even at the same strength: the guards hold the place to the last (campaign/camp.js) A place of no lair (a barrow, a ruin, a dragon's brood of the
+  // crown): base + perDiag × the distance from home as a share of the world's diagonal (× crown), at most `max`.
+  // The council storms it when the company is this whole, and after a lost storm waits `retry` days — and comes back only
+  // when the odds have grown: the company `stronger` than the one that lost (campaign/march.js caravanMight: hired, healed,
+  // better armed) over the guards as they stand now (a storm lost still costs them the share it cut down — `bled`, at least
+  // `held` of them stand; they fill back `mend` of their full strength a month); not grown so in `grow` days, it leaves the
   // place as after `giveUp` storms
-  guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12, stronger: 1.2, grow: 60,
+  guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3, lair: [0.6, 0.6], bled: 0.8, held: 0.35, mend: 0.1}, storm: 0.75, retry: 12, stronger: 1.1, grow: 60,
   // and never with fewer than `hands` on their feet: one or two left do not storm, they go for people
   hands: 3,
   // after `giveUp` storms of one place beaten back the council leaves it for `giveUpRest` days (a clue is not a must);

@@ -19,12 +19,16 @@ import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
 
 
+// how far a lair's land reaches the towns about it, world cells: its territory + TOWN_WAR.reach (only read — the board of
+// errands asks it too: campaign/errands.js boardFor)
+export const lairReach = (a, l) => (LAIRS.get(l.kind).radius + TOWN_WAR.reach) * scaleOf(a);
+
 export const clearLair = {
   want(a, realm, {r}) {
-    const out = [], k = scaleOf(a);
+    const out = [];
     for (const l of a.lairs || []) {
       if (!l.alive || l.boss != null || l.hidden) continue;   // a hidden lair must be found first (atlas/deeds/scout.js)
-      const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k;
+      const L = LAIRS.get(l.kind), reach = lairReach(a, l);
       for (const t of liveTowns(a, realm)) {
         if (Math.hypot(t.x - l.x, t.y - l.y) > reach || r() > TOWN_WAR.chance / SEASONS_PER_YEAR) continue;
         out.push([{town: t.id, lair: l.id}, 1, () => `${L.label} «${l.name}» достаёт до ${t.name}`]);

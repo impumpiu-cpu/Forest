@@ -33,6 +33,7 @@ import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {NIGHT, WILD_FOES} from '../data/campaign.js';
+import {QUEST} from '../data/quest.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {SEASONS} from '../data/seasons.js';
 import {lairPolity} from '../data/polities.js';
@@ -91,8 +92,8 @@ export function wildFoes(a, i, lair = lairAt(a, i)) {
     if (s.role === 'dead') { kind = 'undead'; who = {band: 'undead'}; }   // the risen of a necromancer (atlas/necro.js)
     else if (s.role === 'folk') { if (!FOLK_BAND()[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND()[s.id]}; }
     else { const m = hunterOf(s.id); if (!m) continue; kind = s.lair ? 'lair' : 'beasts'; who = {beast: m}; }
-    const P = W[kind === 'undead' ? 'dead' : kind], x = Math.min(P.cap, v);
-    out.push({kind, p: P.p * x, strength: P.s[0] + P.s[1] * x, label: s.sp.plural, species: s.id, ...who});
+    const P = W[kind === 'undead' ? 'dead' : kind], x = Math.min(P.cap, v), k = kind === 'lair' || kind === 'tribe' ? speciesDanger(s.id) : 1;   // (a lair's folk roaming: its danger)
+    out.push({kind, p: P.p * x, strength: (P.s[0] + P.s[1] * x) * k, label: s.sp.plural, species: s.id, ...who});
   }
   return out;
 }
@@ -140,6 +141,26 @@ export function withCompany(d, ds, r) {
 // (its beasts). (A raid of a lair counts a lair of neither kind a tribe, a guard of a grave counts a fiend undead: their own rules)
 export const lairFoeKind = L => (L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair');
 
+// How hard a lair's folk are to fight (data/lairs.js `danger`): × the strength of every fight with them — roaming the wild,
+// at their lair's land, at its walls. A species of several lairs (the trolls of the forest, the swamp, the ice) takes the
+// hardest of its kinds; a species of no lair, 1
+export const lairDanger = kind => LAIRS.get(kind)?.danger ?? 1;
+const DANGER = new Map();
+onEdit(() => DANGER.clear()); onSpeciesChange(() => DANGER.clear());
+export function speciesDanger(id) {
+  if (!DANGER.has(id)) DANGER.set(id, Math.max(1, ...LAIRS.all().filter(L => L.species === id).map(L => L.danger ?? 1)));
+  return DANGER.get(id);
+}
+// The three strengths of a lair's folk as the caravan meets them (plan claude/guild-plan.md Г2а), each × the lair's danger:
+//   in the wild, away from it — by how thick they are there (data/campaign.js WILD_FOES, wildFoes below);
+//   at its land — by the lair's strength (NIGHT.lair: a band of its own out at night), a leader at home harder still;
+//   at its walls — its garrison (QUEST.guard.lair): the whole of it, holding the place
+// lair's strength in the world 0 … 1 (atlas/lairs.js); × `x` — an errand's guard or the crown's (data/errands.js, QUEST.guard.crown)
+export function garrison(l, x = 1) {
+  const G = QUEST.guard.lair;
+  return (G[0] + G[1] * Math.min(1, Math.max(0, l.strength || 0))) * lairDanger(l.kind) * x;
+}
+
 // the guard of a lair's seat (the quest's places — campaign/quest.js guardOf, the epic's — campaign/epic.js guardFor): the lair's own
 // band (a demons' rift has none on the local map: its demons come as the dead do), and those its uklad's ruler raises
 // beside it (data/polities.js `guard.summons`: the necromancer's dead). `seat` — the lair's id, for its ruler at the storm
@@ -175,7 +196,7 @@ export function dangers(a, i, K = null) {
     const L = LAIRS.get(lair.kind), kind = lairFoeKind(L);
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
     const ld = lair.leader && isAt(lair.leader, 'lair', lair.id) ? lair.leader : null, M = ld ? LEADER.camp : null;   // (a leader out with its band is not at home: atlas/persons.js)
-    out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
+    out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * lairDanger(lair.kind) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
       lair: lair.id, species: L.species,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, person: ld.id} : {})});
   }

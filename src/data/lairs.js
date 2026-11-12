@@ -13,6 +13,9 @@
 //   flies:    the owners fly: their broods go on the wing (atlas/parties.js)
 //   dragon:   the dragon's lair — no prey, no broods, no raids of the usual kind; it flies out itself
 //   nouns:    the second word of a lair's name, [word, gender]; adjectives come from NAME_ADJ
+//   danger:   how hard its folk are to fight, × the strength of every fight with them in the campaign (campaign/land.js
+//             lairDanger: a varg's den 1, a giants' camp 1.8, a dragon 2.6) — the band itself is bought by that strength
+//             (data/camp.js CAMP.foe.unit), so a giant comes alone where five goblins come
 //
 // Tribes (`tribe: true`) are lairs with a thinking owner (data/races.js): a camp of goblins, gnolls,
 // ogres, trolls or giants. They have no towns, roads or trade; the camp lives off its land (the
@@ -36,65 +39,65 @@ import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
 LAIRS.registerAll([
-  {id: 'griffin', gen: 'грифонов', species: 'griffin', flies: true, from: 'из гнезда', label: 'гнездо грифонов', g: 'n', color: [214, 170, 90], radius: 9, ground: 'heights', density: 25, max: 8, breed: 0.12, rivals: ['wyvern', 'drake'],
+  {id: 'griffin', danger: 1.4, gen: 'грифонов', species: 'griffin', flies: true, from: 'из гнезда', label: 'гнездо грифонов', g: 'n', color: [214, 170, 90], radius: 9, ground: 'heights', density: 25, max: 8, breed: 0.12, rivals: ['wyvern', 'drake'],
     nouns: [['гнездо', 'n'], ['утёс', 'm'], ['скала', 'f'], ['кручи', 'pl']]},
-  {id: 'wyvern', gen: 'виверны', species: 'wyvern', flies: true, from: 'из логова', label: 'логово виверны', g: 'n', color: [120, 150, 90], radius: 10, ground: 'heights', density: 18, max: 6, breed: 0.08, rivals: ['griffin', 'drake'],
+  {id: 'wyvern', danger: 1.6, gen: 'виверны', species: 'wyvern', flies: true, from: 'из логова', label: 'логово виверны', g: 'n', color: [120, 150, 90], radius: 10, ground: 'heights', density: 18, max: 6, breed: 0.08, rivals: ['griffin', 'drake'],
     nouns: [['логово', 'n'], ['ущелье', 'n'], ['гора', 'f'], ['пик', 'm']]},
-  {id: 'drake', gen: 'дрейка', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],
+  {id: 'drake', danger: 2, gen: 'дрейка', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],
     nouns: [['жерло', 'n'], ['кратер', 'm'], ['пепелище', 'n'], ['гора', 'f']]},
   // the dragon's lair: one or two in a world, ancient, at a volcano; it does not feed on prey and sends no
   // broods — the dragon sleeps for years and flies out (atlas/parties.js, data/parties.js DRAGON)
-  {id: 'dragon', gen: 'дракона', dragon: true, species: 'dragon', flies: true, from: 'из логова', label: 'логово дракона', g: 'n', color: [150, 30, 20], radius: 14, ground: 'volcano', density: 30, max: 2, breed: 0, rivals: [],
+  {id: 'dragon', danger: 2.6, gen: 'дракона', dragon: true, species: 'dragon', flies: true, from: 'из логова', label: 'логово дракона', g: 'n', color: [150, 30, 20], radius: 14, ground: 'volcano', density: 30, max: 2, breed: 0, rivals: [],
     nouns: [['жерло', 'n'], ['престол', 'm'], ['гора', 'f'], ['пещера', 'f']]},
-  {id: 'spider', gen: 'пауков', species: 'spider', from: 'из гнезда', label: 'паучье гнездо', g: 'n', color: [150, 110, 170], radius: 6, ground: 'deep', density: 14, max: 10, breed: 0.07, rivals: [],
+  {id: 'spider', danger: 1, gen: 'пауков', species: 'spider', from: 'из гнезда', label: 'паучье гнездо', g: 'n', color: [150, 110, 170], radius: 6, ground: 'deep', density: 14, max: 10, breed: 0.07, rivals: [],
     nouns: [['чаща', 'f'], ['паутинник', 'm'], ['дебри', 'pl'], ['лог', 'm']]},
-  {id: 'stoneworm', gen: 'каменного червя', species: 'stoneworm', from: 'из норы', label: 'нора каменного червя', labelAcc: 'нору каменного червя', g: 'f', color: [160, 140, 110], radius: 8, ground: 'caves', density: 10, max: 6, breed: 0.06, rivals: [],
+  {id: 'stoneworm', danger: 1.3, gen: 'каменного червя', species: 'stoneworm', from: 'из норы', label: 'нора каменного червя', labelAcc: 'нору каменного червя', g: 'f', color: [160, 140, 110], radius: 8, ground: 'caves', density: 10, max: 6, breed: 0.06, rivals: [],
     nouns: [['нора', 'f'], ['провал', 'm'], ['ход', 'm'], ['пустошь', 'f']]},
-  {id: 'bat', gen: 'кровопийц', species: 'bat', flies: true, from: 'из пещеры', label: 'пещера кровопийц', labelAcc: 'пещеру кровопийц', g: 'f', color: [120, 70, 90], radius: 6, ground: 'caves', density: 12, max: 8, breed: 0.08, rivals: [],
+  {id: 'bat', danger: 0.9, gen: 'кровопийц', species: 'bat', flies: true, from: 'из пещеры', label: 'пещера кровопийц', labelAcc: 'пещеру кровопийц', g: 'f', color: [120, 70, 90], radius: 6, ground: 'caves', density: 12, max: 8, breed: 0.08, rivals: [],
     nouns: [['пещера', 'f'], ['грот', 'm'], ['подземелье', 'n'], ['расселина', 'f']]},
-  {id: 'varg', gen: 'варгов', species: 'varg', from: 'из логова', label: 'логово варгов', g: 'n', color: [130, 130, 140], radius: 10, ground: 'open', density: 8, max: 8, breed: 0.08, rivals: [],
+  {id: 'varg', danger: 1, gen: 'варгов', species: 'varg', from: 'из логова', label: 'логово варгов', g: 'n', color: [130, 130, 140], radius: 10, ground: 'open', density: 8, max: 8, breed: 0.08, rivals: [],
     nouns: [['логово', 'n'], ['падь', 'f'], ['урочище', 'n'], ['буреломы', 'pl']]},
   // ── tribes: camps of the thinking wild
-  {id: 'goblins', tribe: true, gen: 'гоблинов', species: 'goblin', from: 'из нор', label: 'гоблинские норы', labelAcc: 'гоблинские норы', g: 'pl', color: [150, 180, 60], radius: 7, ground: 'home', needsAny: ['caves', 'heights'],
+  {id: 'goblins', danger: 1, tribe: true, gen: 'гоблинов', species: 'goblin', from: 'из нор', label: 'гоблинские норы', labelAcc: 'гоблинские норы', g: 'pl', color: [150, 180, 60], radius: 7, ground: 'home', needsAny: ['caves', 'heights'],
     density: 14, max: 10, breed: 0.14, rivals: [], riders: 'varg', on: 'на варгах',
     nouns: [['норы', 'pl'], ['щель', 'f'], ['яма', 'f'], ['нора', 'f']]},
-  {id: 'gnolls', tribe: true, gen: 'гноллов', species: 'gnoll', from: 'из стана', label: 'стан гноллов', g: 'm', color: [190, 150, 70], radius: 9, ground: 'home',
+  {id: 'gnolls', danger: 1.1, tribe: true, gen: 'гноллов', species: 'gnoll', from: 'из стана', label: 'стан гноллов', g: 'm', color: [190, 150, 70], radius: 9, ground: 'home',
     density: 9, max: 8, breed: 0.09, rivals: [], riders: 'hyena', on: 'с гиенами',
     nouns: [['стан', 'm'], ['кочевье', 'n'], ['курган', 'm'], ['балка', 'f']]},
-  {id: 'ogres', tribe: true, gen: 'огров', species: 'ogre', from: 'из логова', label: 'логово огров', g: 'n', color: [160, 110, 90], radius: 8, ground: 'home',
+  {id: 'ogres', danger: 1.4, tribe: true, gen: 'огров', species: 'ogre', from: 'из логова', label: 'логово огров', g: 'n', color: [160, 110, 90], radius: 8, ground: 'home',
     density: 5, max: 6, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['пещера', 'f'], ['котёл', 'm'], ['холм', 'm']]},
   // the trolls: one race, three kinds of lair, each on its own ground (`home`)
-  {id: 'trolls', tribe: true, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}, plural: 'лесные тролли', gen: 'лесных троллей', species: 'troll', from: 'из логова', label: 'логово лесных троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
+  {id: 'trolls', danger: 1.5, tribe: true, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}, plural: 'лесные тролли', gen: 'лесных троллей', species: 'troll', from: 'из логова', label: 'логово лесных троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
     density: 5, max: 5, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['мост', 'm'], ['бурелом', 'm'], ['валуны', 'pl']]},
-  {id: 'swamptrolls', tribe: true, home: {swamp: 1, jungle: 0.5, forest: 0.3}, plural: 'болотные тролли', gen: 'болотных троллей', species: 'troll', from: 'из логова', label: 'логово болотных троллей', g: 'n', color: [80, 110, 80], radius: 8, ground: 'home',
+  {id: 'swamptrolls', danger: 1.5, tribe: true, home: {swamp: 1, jungle: 0.5, forest: 0.3}, plural: 'болотные тролли', gen: 'болотных троллей', species: 'troll', from: 'из логова', label: 'логово болотных троллей', g: 'n', color: [80, 110, 80], radius: 8, ground: 'home',
     density: 25, max: 4, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['топь', 'f'], ['гать', 'f'], ['омут', 'm']]},
-  {id: 'icetrolls', tribe: true, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}, plural: 'ледяные тролли', gen: 'ледяных троллей', species: 'troll', from: 'из логова', label: 'логово ледяных троллей', g: 'n', color: [150, 180, 200], radius: 9, ground: 'home',
+  {id: 'icetrolls', danger: 1.5, tribe: true, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}, plural: 'ледяные тролли', gen: 'ледяных троллей', species: 'troll', from: 'из логова', label: 'логово ледяных троллей', g: 'n', color: [150, 180, 200], radius: 9, ground: 'home',
     density: 4, max: 4, breed: 0.04, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['ледник', 'm'], ['наст', 'm'], ['торосы', 'pl']]},
   // ── the dead
-  {id: 'wights', undead: true, gen: 'костяков', species: 'skeleton', from: 'из кургана', label: 'курганник', g: 'm', color: [190, 190, 210], radius: 6, ground: 'rot', rotAt: 0.25, at: 'barrows',
+  {id: 'wights', danger: 1.2, undead: true, gen: 'костяков', species: 'skeleton', from: 'из кургана', label: 'курганник', g: 'm', color: [190, 190, 210], radius: 6, ground: 'rot', rotAt: 0.25, at: 'barrows',
     spawn: 0.3, max: 8, breed: 0.04, rivals: [], might: 1.8, raidVerb: 'разорили',
     nouns: [['курган', 'm'], ['могильник', 'm'], ['холм', 'm'], ['кости', 'pl']]},
-  {id: 'ghouls', undead: true, gen: 'упырей', species: 'upyr', from: 'из гнезда', label: 'гнездо упырей', g: 'n', color: [150, 90, 120], radius: 6, ground: 'rot', rotAt: 0.2, at: 'ruins',
+  {id: 'ghouls', danger: 1.2, undead: true, gen: 'упырей', species: 'upyr', from: 'из гнезда', label: 'гнездо упырей', g: 'n', color: [150, 90, 120], radius: 6, ground: 'rot', rotAt: 0.2, at: 'ruins',
     spawn: 0.35, max: 8, breed: 0.05, rivals: [], might: 1.8, raidVerb: 'обескровили',
     nouns: [['гнездо', 'n'], ['пепелище', 'n'], ['подвал', 'm'], ['развалины', 'pl']]},
-  {id: 'necromancer', undead: true, domain: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
+  {id: 'necromancer', danger: 1.8, undead: true, domain: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
     spawn: 0.1, max: 3, breed: 0, rivals: [], might: 2.5, raidVerb: 'опустошили', leads: 'Некромант повёл мертвецов',
     nouns: [['башня', 'f'], ['склеп', 'm'], ['цитадель', 'f'], ['обитель', 'f']]},
   // a vampire settles in a mixed town — where strangers come and go, nobody counts the missing; the lair is the
   // town itself: it drinks the town, not its land, and the town's own folk root it out as they would a lair
-  {id: 'vampire', undead: true, gen: 'вампира', species: 'vampire', from: 'из усадьбы', label: 'усадьба вампира', labelAcc: 'усадьбу вампира', g: 'f', color: [110, 30, 60], radius: 4, ground: 'rot', rotAt: 0.12, at: 'town',
+  {id: 'vampire', danger: 1.8, undead: true, gen: 'вампира', species: 'vampire', from: 'из усадьбы', label: 'усадьба вампира', labelAcc: 'усадьбу вампира', g: 'f', color: [110, 30, 60], radius: 4, ground: 'rot', rotAt: 0.12, at: 'town',
     spawn: 0.12, max: 3, breed: 0, rivals: [], might: 1.5, drinks: 0.025, raidVerb: 'обескровили', leads: 'Вампир и его свита',
     nouns: [['усадьба', 'f'], ['дом', 'm'], ['башня', 'f'], ['подвал', 'm']]},
   // the rifts: the one magic left — demons come through where the earth is torn, at live volcanoes and the seams of
   // the plates; a rift does not eat, it just stands, and sends its demons at the nearest town now and then
-  {id: 'rift', fiend: true, gen: 'демонов', species: 'demon', from: 'из разлома', label: 'разлом', g: 'm', color: [220, 40, 20], radius: 8, ground: 'rift',
+  {id: 'rift', danger: 2.2, fiend: true, gen: 'демонов', species: 'demon', from: 'из разлома', label: 'разлом', g: 'm', color: [220, 40, 20], radius: 8, ground: 'rift',
     spawn: 0.03, max: 2, breed: 0, rivals: [], might: 2, raidVerb: 'выжгли', leads: 'Демоны',
     nouns: [['разлом', 'm'], ['жерло', 'n'], ['трещина', 'f'], ['пасть', 'f']]},
-  {id: 'giants', tribe: true, gen: 'великанов', species: 'giant', from: 'из становища', label: 'становище великанов', g: 'n', color: [200, 200, 190], radius: 11, ground: 'home', needsAny: ['heights'],
+  {id: 'giants', danger: 1.8, tribe: true, gen: 'великанов', species: 'giant', from: 'из становища', label: 'становище великанов', g: 'n', color: [200, 200, 190], radius: 11, ground: 'home', needsAny: ['heights'],
     density: 10, max: 4, breed: 0.03, rivals: [], riders: null,
     nouns: [['становище', 'n'], ['престол', 'm'], ['скалы', 'pl'], ['перевал', 'm']]},
 ]);

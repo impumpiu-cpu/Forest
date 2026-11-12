@@ -14,6 +14,7 @@
     "ascend": "node tools/ascend-check.mjs",
     "autosave": "node tools/autosave-check.mjs",
     "errands": "node tools/errand-check.mjs",
+    "baseline": "node tools/guild-baseline.mjs",
     "art": "node tools/art-build.mjs",
     "art:check": "node tools/art-check.mjs",
     "gallery": "node tools/serve.mjs --page=gallery.html",

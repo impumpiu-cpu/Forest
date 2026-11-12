@@ -2,11 +2,11 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/index.js';
-import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
+import {caravanDay, ended, finished, alive, die, dayShot, handedOf} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/index.js';
 import {upgradeMembers, draw} from './start.js';
-import {makeErrand} from './errands.js';
+import {makeErrand, targetWhy} from './errands.js';
 import {questTarget, questIntro} from './quest.js';
 import {capacity} from './baggage.js';
 import {say} from './march.js';
@@ -14,14 +14,16 @@ import {plural} from '../core/util.js';
 import {YEAR_DAYS} from '../data/seasons.js';
 
 export {newCampaign, capitals} from './start.js';
-export {errandsFor, errandOf} from './errands.js';
+export {errandsFor, errandOf, boardFor} from './errands.js';
 
 // ── a campaign of chapters (campaign/ending.js handIn): the caravan at its capital, an errand handed in
 // another errand for the same company (data/errands.js id): fresh from the capital — the satchels full, the wounds tended
-export function nextErrand(a, id) {
+// targetId — the lair picked on the board (campaign/errands.js boardFor): one no longer there throws, the campaign untouched
+export function nextErrand(a, id, {targetId = null} = {}) {
   const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не ждёт поручения.');
+  if (targetId != null) { const why = targetWhy(a, K, id, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
   const {r, done} = draw(K, 'errand');
-  const Q = makeErrand(a, K, r, id); if (!Q) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
+  const Q = makeErrand(a, K, r, id, {targetId}); if (!Q) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
   K.quest = Q; K.phase = 'out'; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0; K.hungry = 0;
   K.food = Math.max(K.food, capacity(K));
   for (const m of alive(K)) if (!m.captive) m.hp = 1;
@@ -34,7 +36,7 @@ export function nextErrand(a, id) {
 export function endCampaign(a) {
   const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не в столице.');
   K.phase = 'won';
-  say(a, K, `Караван распущен: ${K.done.length} ${plural(K.done.length, 'поручение', 'поручения', 'поручений')} исполнено, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути.`, 'home', true);
+  say(a, K, `Караван распущен: ${handedOf(K).length} ${plural(handedOf(K).length, 'поручение', 'поручения', 'поручений')} исполнено${K.done.length > handedOf(K).length ? `, ${K.done.length - handedOf(K).length} провалено` : ''}, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути.`, 'home', true);
   finish(a, K);
 }
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';

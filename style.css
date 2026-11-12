@@ -358,6 +358,8 @@ dd.q4{color:#c58cff;font-weight:600}
 .savelist.errands .sv b{font-weight:700}
 .savelist.errands .sv input{margin:3px 6px 0 0;accent-color:var(--ember)}
 .savelist.errands .sv.off{opacity:.5;cursor:default}
+.savelist.errands .risk.r-1{color:var(--good)} .savelist.errands .risk.r-2{color:#d8c070} .savelist.errands .risk.r-3{color:#e0a080} .savelist.errands .risk.r-4{color:var(--raider)}
+.savelist.errands .sv:hover,.savelist.errands .sv:focus-within{border-color:rgba(255,240,200,.5)}
 .savelist.errands .tier{display:inline-block;min-width:2.4em;font-family:var(--font-mono);font-size:11px;color:var(--ember)}
 /* the errand handed in: what next — over the map, the clock stopped (ui/campaignView.js offer) */
 .camp-offer{position:absolute;inset:6% 0 auto 0;margin:0 auto;width:min(92%,640px);max-height:88%;overflow:hidden;z-index:5;display:flex;flex-direction:column;gap:8px;padding:16px 18px;border:1px solid var(--ember);border-radius:8px;background:rgba(20,22,16,.96);color:var(--fg);box-shadow:0 10px 40px rgba(0,0,0,.5)}

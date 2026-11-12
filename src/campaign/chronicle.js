@@ -7,7 +7,7 @@ import {SEASONS} from '../data/seasons.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CHRONICLE} from '../data/campaign.js';
-import {rank, yearsOf} from './march.js';
+import {rank, yearsOf, handedOf} from './march.js';
 import {plural} from '../core/util.js';
 
 const SEASON_LIST = SEASONS.all();
@@ -40,9 +40,10 @@ export function chronicleText(a, K) {
   out.push(`Мир: ${a.cfg?.name || `сид ${a.cfg?.seed}`}. Народ: ${P?.label || K.people}.`);
   if (K.started) out.push(`Вышли: ${K.started.year}-й год, ${season(K.started.season)}.`);
   const crown = K.quest?.name || K.crown;
-  if (K.done?.length) out.push(`Исполнено поручений: ${K.done.length} — ${K.done.map(d => `${d.label.toLowerCase()} (${d.goal || d.name}, ${d.year}-й год)`).join('; ')}.`);
+  if (handedOf(K).length) out.push(`Исполнено поручений: ${handedOf(K).length} — ${handedOf(K).map(d => `${d.label.toLowerCase()} (${d.goal || d.name}, ${d.year}-й год)`).join('; ')}.`);
+  if (K.done?.some(d => d.failed)) out.push(`Провалено: ${K.done.filter(d => d.failed).map(d => `${d.label.toLowerCase()} (${d.goal || d.name}, ${d.year}-й год)`).join('; ')}.`);
   if (crown) out.push(K.quest?.how === 'lair' ? `Поручение${K.done?.length ? ' последнее' : ''}: ${K.quest.crown.label}. ${K.quest.story}` : `Поручение: найти ${K.quest?.acc || crown}.${K.quest ? ` ${K.quest.story}` : ''}`);
-  const result = {won: K.done?.length ? 'исполнили поручения и вернулись домой' : K.quest?.how === 'lair' ? 'исполнили поручение' : 'вернулись с короной', lost: 'погибли все, кто вышел из столицы', timeout: `за ${yearsOf(K)} ${plural(yearsOf(K), 'год', 'года', 'лет')} не вернулись`, out: 'в пути', back: 'несут корону домой', home: 'ждут в столице нового поручения'}[K.phase] || K.phase;
+  const result = {won: handedOf(K).length ? 'исполнили поручения и вернулись домой' : K.quest?.how === 'lair' ? 'исполнили поручение' : 'вернулись с короной', lost: 'погибли все, кто вышел из столицы', timeout: `за ${yearsOf(K)} ${plural(yearsOf(K), 'год', 'года', 'лет')} не вернулись`, out: 'в пути', back: 'несут корону домой', home: 'ждут в столице нового поручения'}[K.phase] || K.phase;
   out.push(`Итог: ${result}; в пути ${Math.round(K.day ?? K.days ?? 0)} дней (${((K.day ?? K.days ?? 0) / 120).toFixed(1)} г.).`, '');
   out.push('Отряд:');
   for (const m of K.members) {

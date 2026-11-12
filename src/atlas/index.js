@@ -37,6 +37,7 @@ export {shapeCount} from './shape.js';
 export {siteAt, siteRadius} from './sites.js';
 export {ATLAS_STAGES} from './stages.js';
 export {scaleOf} from './tectonics.js';
+export {lairReach} from './deeds/clearLair.js';
 export {needsOf} from './townNeeds.js';
 export {realmBand, realmMetalWords, realmWorks, room, slotsOf, slotsUsed, townFx, townKin, townLabel} from './towns.js';
 export {fromTown, goodOfRes, intoStore, marketK, outOfStore, toTown, townPurse} from './treasury.js';
