@@ -24,13 +24,14 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 
 const lairName = l => `${LAIRS.get(l.kind).label} «${l.name}»`;
 const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
-export const errandOf = Q => (Q?.errand ? ERRANDS.get(Q.errand) : null);
+// (a contract's quest carries its own row: campaign/contracts.js contractQuest)
+export const errandOf = Q => Q?.spec || (Q?.errand ? ERRANDS.get(Q.errand) : null);
 
 // a caravan's start as the errands see it: its capital, its people, where home is (K of a campaign, or one only thought of)
 const stub = (a, t) => ({home: t.i, people: t.people, realm: t.realm, capital: t.id});
 
 // the lairs an errand of a lair may be sent against, the nearest first: [{l, i (the cell at its foot), d (share of the diagonal)}]
-function lairTargets(a, K, E, mask) {
+export function lairTargets(a, K, E, mask) {
   const diag = Math.hypot(a.w, a.h), out = [];
   for (const l of a.lairs || []) {
     if (!l.alive || l.hidden || l.boss != null) continue;   // (a hidden lair is not known; a boss's seat is the calamity's own)
@@ -84,17 +85,22 @@ export function boardFor(a, townId, {per = ERRAND.board.per, K = null} = {}) {
     if (E.how !== 'lair' || !row.ok) { out.push(base); continue; }
     const known = !E.clueAt.length, Ts = lairTargets(a, S, E, mask).slice(0, known ? per : 1);
     for (const T of Ts) {
-      const s = garrison(T.l, E.guard), r = CAMP.foe.quickUnit * s / Math.max(1e-6, might);
+      const s = garrison(T.l, E.guard);
       out.push({...base, id: known ? `${E.id}:${T.l.id}` : E.id, targetId: known ? T.l.id : null, goal: `${lairName(T.l)}, ${wherePhrase(a, T.l.i)}`, known,
-        at: known ? {x: T.l.x, y: T.l.y} : null, guard: Math.round(s * 10) / 10, risk: (B.risk.find(([up]) => r <= up) || B.risk.at(-1))[1],
+        at: known ? {x: T.l.x, y: T.l.y} : null, guard: Math.round(s * 10) / 10, risk: riskWord(s, might),
         facts: lairFacts(a, T.l, t), days: Math.max(1, Math.round(T.d * diag / day))});
     }
   }
   return out;
 }
+// a guard of strength `s` (in fresh eights) against a company of might `might`, in words (ERRAND.board.risk)
+export function riskWord(s, might) {
+  const B = ERRAND.board, r = CAMP.foe.quickUnit * s / Math.max(1e-6, might);
+  return (B.risk.find(([up]) => r <= up) || B.risk.at(-1))[1];
+}
 // what the world tells of a lair (only read): its leader (at home or away), the captives it holds by people, the towns its land
 // reaches (atlas/deeds/clearLair.js lairReach) — of the capital's realm first — and a raid on them of the last years
-function lairFacts(a, l, home) {
+export function lairFacts(a, l, home) {
   const B = ERRAND.board, out = [], year = a.hist?.year ?? 0;
   if (l.leader) out.push(`${l.leader.title?.[0] || 'Главарь'} ${l.leader.name}${isAt(l.leader, 'lair', l.id) ? '' : ' — сейчас не в логове'}`);
   const held = Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p)?.label || p} — ${n}`);
@@ -132,7 +138,7 @@ export function makeErrand(a, K, rnd, id = null, {targetId = null} = {}) {
 }
 
 // an errand of a lair: the lair is the goal (stormed, laid waste), its trophy is carried home
-function lairErrand(a, K, rnd, E, targetId = null) {
+export function lairErrand(a, K, rnd, E, targetId = null) {
   const {mask, cells} = reachable(a, K), Ts = lairTargets(a, K, E, mask);
   const T = targetId != null ? Ts.find(x => x.l.id === targetId) : Ts[0]; if (!T) return null;
   const {l, i} = T, L = LAIRS.get(l.kind), s = garrison(l, E.guard);   // its garrison, by the lair and the errand's tier (campaign/land.js), not the distance
@@ -159,6 +165,10 @@ function errandStory(a, E, l) {
 // how the capital tells its errand of a lair (campaign/quest.js questIntro)
 export function errandIntro(a, K, clueHint) {
   const Q = K.quest, E = errandOf(Q), C = Q.crown, c = Q.clues[0];
+  if (Q.contract) {   // a contract's (campaign/contracts.js): its own words, its deadline in days
+    const where = C.exact ? `Где — знают: ${whereFrom(a, K, K.home, {x: C.i % a.w + 0.5, y: ((C.i / a.w) | 0) + 0.5, r: 0})}.` : c ? `Где — точно не знает никто; первый след ищут ${clueHint(a, K, c, K.home)}.` : '';
+    return `Договор — ${E.label.toLowerCase()}: ${C.label}. ${Q.story} ${where} В доказательство — ${Q.acc[0].toLowerCase()}${Q.acc.slice(1)}. Срок — ${Math.max(1, Q.until - K.day)} дн.`;
+  }
   const where = C.exact ? `Где оно, знают: ${whereFrom(a, K, K.home, {x: C.i % a.w + 0.5, y: ((C.i / a.w) | 0) + 0.5, r: 0})}.` : c ? `Где оно, точно не знает никто; первый след ищут ${clueHint(a, K, c, K.home)}.` : '';
   return `Их поручение — ${E.label.toLowerCase()}: ${C.label}. ${Q.story} ${where} В доказательство — ${Q.acc[0].toLowerCase()}${Q.acc.slice(1)} в столицу. Срок — ${years(E.years)}.`;
 }
@@ -168,6 +178,7 @@ export function errandIntro(a, K, clueHint) {
 // errand a lair's to lay waste; a lair already laid waste by another hand gives its trophy up without a fight
 export function errandReady(a, K, here, say) {
   const Q = K.quest; if (Q?.how !== 'lair' || here !== Q.crown) return true;
+  if (Q.camp != null) return true;   // (a contract's camp: it waits for them — campaign/contracts.js)
   const l = (a.lairs || []).find(x => x.id === Q.lair);
   if (!l?.alive) {
     if (here.guard) { here.guard = null; say(`${cap(here.label)}: разорено без них — ${Q.acc[0].toLowerCase()}${Q.acc.slice(1)} нашли на пепелище.`, 'quest'); }
@@ -187,6 +198,11 @@ const cap = s => s[0].toUpperCase() + s.slice(1);
 // already told by the fight (campaign/march.js worldOutcome); a leader who got away leaves a lesser trophy
 export function errandStormed(a, K, say) {
   const Q = K.quest; if (Q?.how !== 'lair') return;
+  if (Q.camp != null) {   // a contract's camp (campaign/contracts.js): struck; the contract is settled at home
+    const c = (a.contracts?.camps || []).find(x => x.id === Q.camp);
+    if (c?.alive) { c.alive = false; say(`${cap(c.label)}: разбит. ${Q.name} — в руках отряда.`, 'quest', true); }
+    return;
+  }
   const l = (a.lairs || []).find(x => x.id === Q.lair), t = a.towns.find(x => x.id === K.capital);
   if (l?.alive) {
     l.alive = false; l.died = a.hist.year; l.clearedBy = K.capital;

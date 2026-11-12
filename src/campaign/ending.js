@@ -19,6 +19,7 @@ import {say, isCore, rank, handedOf} from './march.js';
 import {perkLabel} from './perks.js';
 import {woundLabel} from './maims.js';
 import {ERRANDS, ERRAND} from '../data/errands.js';
+import {errandOf} from './errands.js';
 import {plural} from '../core/util.js';
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
@@ -66,14 +67,14 @@ const homeTown = (a, K) => a.towns.find(t => t.id === K.capital && t.alive) || a
 // end the campaign — the world rewards it now, the capital pays, and the caravan waits there (K.phase 'home') for the player's
 // word: another errand (campaign/index.js nextErrand) or the end (endCampaign: the epilogue, the ascension)
 export function handIn(a, K) {
-  const Q = K.quest, E = ERRANDS.get(Q?.errand) || null, capital = homeTown(a, K);
+  const Q = K.quest, E = errandOf(Q), capital = homeTown(a, K);
   const A = a.artifact;
   if (Q?.epic && A?.holder.kind === 'caravan') { A.holder = {kind: 'capital', town: capital?.id ?? K.capital}; A.trail.push({year: a.hist.year, era: a.hist.era, i: A.i, text: 'принесён караваном в столицу'}); }
   const text = homeReward(a, K, capital);
   const gold = E ? Math.round(E.gold * (Q.half ? ERRAND.lesser : 1)) : 0;
   K.gold = Math.round((K.gold + gold) * 10) / 10;
   Q.handed = true;
-  (K.done ||= []).push({errand: Q.errand || null, tier: Q.tier || null, label: E?.label || 'поручение', name: Q.name, goal: Q.crown?.label || null, from: Q.from ?? 0, day: K.day, year: a.hist.year, gold});
+  (K.done ||= []).push({errand: Q.errand || null, contract: Q.contract || null, tier: Q.tier || null, label: E?.label || 'поручение', name: Q.name, goal: Q.crown?.label || null, from: Q.from ?? 0, day: K.day, year: a.hist.year, gold});
   say(a, K, `Поручение исполнено — ${(E?.label || 'поручение').toLowerCase()}. ${text}${gold ? ` Столица платит каравану ${gold} зол.` : ''}`, 'home', true);
   K.phase = 'home';
 }
@@ -83,7 +84,7 @@ export function handIn(a, K) {
 // camps, towns; no pursuit, no trophy), the realms that know the capital's realm think worse of it (data/errands.js ERRAND.fail),
 // and at the capital the player's word waits again: another errand, or the end
 export function failErrand(a, K) {
-  const Q = K.quest, E = ERRANDS.get(Q?.errand) || null, F = ERRAND.fail;
+  const Q = K.quest, E = errandOf(Q), F = ERRAND.fail;
   Q.failed = {day: K.day, year: a.hist.year, why: 'срок'};
   K.phase = 'empty'; K.goal = K.home; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0;
   if (K.bubble) K.bubble.things = K.bubble.things.filter(t => !t.pursuit);   // (no one hunts a caravan that carries nothing)
@@ -96,8 +97,8 @@ export function failErrand(a, K) {
 }
 // home with nothing: the failure told at the capital, no pay; the player's word waits (as after an errand handed in)
 export function emptyHome(a, K, t = homeTown(a, K), ms = K.members.filter(m => m.alive)) {
-  const Q = K.quest, E = ERRANDS.get(Q?.errand) || null;
-  (K.done ||= []).push({errand: Q?.errand || null, tier: Q?.tier || null, label: E?.label || 'поручение', name: Q?.name, goal: Q?.crown?.label || null, from: Q?.from ?? 0, day: K.day, year: a.hist.year, gold: 0, failed: true});
+  const Q = K.quest, E = errandOf(Q);
+  (K.done ||= []).push({errand: Q?.errand || null, contract: Q?.contract || null, tier: Q?.tier || null, label: E?.label || 'поручение', name: Q?.name, goal: Q?.crown?.label || null, from: Q?.from ?? 0, day: K.day, year: a.hist.year, gold: 0, failed: true});
   say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'} ни с чем: ${ms.length} ${plural(ms.length, 'человек', 'человека', 'человек')}. Поручение провалено — ${(E?.label || 'поручение').toLowerCase()}; столица не платит.`, 'home', true);
   K.phase = 'home';
 }

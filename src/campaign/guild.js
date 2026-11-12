@@ -26,6 +26,8 @@ import {bondBy, bondOf} from './social.js';
 import {opinion} from '../data/relations.js';
 import {TRAITS} from '../data/traits.js';
 import {XP} from '../data/experience.js';
+import {DAY} from '../core/time.js';
+import {stepContracts, contractCards, contractOf, contractWhy, takeContract, settleContract, campsOf} from './contracts.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -110,12 +112,12 @@ export function hire(a, ids) {
   const R = G.social.relations, kept = new Set(take.map(m => String(m.id)));   // the bonds of those not taken go with them
   for (const k of Object.keys(R)) { if (!kept.has(k)) delete R[k]; else for (const j of Object.keys(R[k])) if (!kept.has(j)) delete R[k][j]; }
   G.candidates = null; G.phase = 'open';
-  offerChores(a, G);
+  offerChores(a, G); contracts(a, G);
   tell(a, G, `В гильдию вступили: ${take.map(m => `${m.name} (${roleWord(m)}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')})`).join(', ')}.`, 'people');
   return G;
 }
 // an expedition's errand in words: «Разорить логово: логово варгов «Мёртвые буреломы»»
-export const questWord = K => [ERRANDS.has(K?.quest?.errand) ? ERRANDS.get(K.quest.errand).label : null, K?.quest?.crown?.label || K?.quest?.name].filter(Boolean).join(': ') || 'поручение';
+export const questWord = K => [K?.quest?.spec?.label || (ERRANDS.has(K?.quest?.errand) ? ERRANDS.get(K.quest.errand).label : null), K?.quest?.crown?.label || K?.quest?.name].filter(Boolean).join(': ') || 'поручение';
 export const roleWord = m => (m.fight && COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m.fight).label : SPECIES.get(m.race)?.label || m.race);
 
 // ── the clock: one season of the world with the guild's days in it (and the expedition's, if one is out). The decisions are
@@ -128,12 +130,14 @@ export function stepGuild(a) {
   if (K) { upgradeMembers(K); K.track = []; K.seasonFrom = K.day; K.daily = [dayShot(K, K.day - 1)]; }
   const spring = a.hist.season === 0;
   wages(a, G);
+  leaveCold(a, G);
   stepHistory(a, () => {
     if (K && !K.closed) { caravanDay(a, K, K.day); if (K.phase === 'home' || ended(K)) closeExpedition(a, G, K); }
     homeDay(a, G);
   });
   if (spring) ageGuild(a, G);
   offerChores(a, G);
+  contracts(a, G);
   if (!membersOf(G).length && !expedition(a)) { G.phase = 'over'; tell(a, G, `В гильдии «${G.name}» не осталось никого. Дом заколочен.`, 'end', true); }
   return G.phase === 'open';
 }
@@ -149,10 +153,19 @@ function wages(a, G) {
   const W = GUILD.wage;
   for (const m of membersOf(G)) {
     const w = Math.round((W.base + W.perLevel * ((m.level || 1) - 1)) * 10) / 10;
-    if (G.gold >= w) { pay(G, -w, `жалованье: ${m.name}`); m.unpaid = 0; continue; }
+    if (G.gold >= w) { pay(G, -w, `жалованье: ${m.name}`); m.unpaid = 0; m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.paid); continue; }
     m.unpaid = (m.unpaid || 0) + 1;
     if (m.unpaid >= W.leave && m.guild.state === 'ready') { m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'не платили жалованья'}; tell(a, G, `${m.name} ушёл из гильдии: жалованья не видел ${m.unpaid} ${plural(m.unpaid, 'сезон', 'сезона', 'сезонов')}.`, 'people'); }
     else tell(a, G, `${m.name} не получил жалованья: казна пуста.`, 'people');
+  }
+}
+// devotion (GUILD.devotion): one who has none written yet has the start's
+export const devotionOf = m => m.devotion ?? GUILD.devotion.start;
+// one whose devotion is gone leaves (at the house, at a season's start)
+function leaveCold(a, G) {
+  for (const m of membersOf(G, 'ready')) if (devotionOf(m) < GUILD.devotion.leave) {
+    m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'разуверился в гильдии'};
+    tell(a, G, `${m.name} ушёл из гильдии: не простил, что его гнали в поход силой.`, 'people');
   }
 }
 // spring: age takes those whose years are out — at the house, on a deed, on the road
@@ -171,6 +184,12 @@ function fall(a, G, m, why) {
   tell(a, G, `${m.name} ${m.gender === 'f' ? 'умерла' : 'умер'}: ${why}.`, 'death', true);
 }
 
+// the world's contracts on the guild's board (campaign/contracts.js): a season's posting, offers run out, stories go on
+function contracts(a, G) {
+  const {r, done} = gdraw(G, 'contracts');
+  stepContracts(a, G, {r, tell: (text, kind) => tell(a, G, text, kind), pay});
+  done();
+}
 // ── the deeds in town (tier 0): offered each season from data/chores.js, taken by 1–4 of those at the house, settled by one
 // draw of their own at the end (settleChore)
 function offerChores(a, G) {
@@ -242,14 +261,15 @@ export function guildBoard(a, ids = []) {
   const chores = G.offers.map(o => { const R = CHORES.get(o.id); return {...o, label: R.label, text: R.text, hands: R.hands, days: R.days, stat: R.stat, xp: R.xp, why: ms.length ? choreWhy(a, o, ids) : null}; });
   // an errand above the people's rank is greyed with why: those picked, or (none picked) the best of those at the house
   const who = ms.length ? ms : membersOf(G, 'ready');
-  const errands = (expedition(a) ? [] : boardFor(a, G.town, ms.length ? {K: {members: ms, beasts: G.store.beasts}} : {}))
-    .map(e => { const why = e.ok ? rankWhy(who, e.errand) : null; return why ? {...e, ok: false, why} : e; });
+  const errands = (expedition(a) ? [] : contractCards(a, G, ms))
+    .map(e => { const why = e.ok ? rankWhy(who, e.tier) : null; return why ? {...e, ok: false, why} : e; });
   return {chores, errands};
 }
 // the rank an errand asks (GUILD.rank, by its tier): null, or why the people are not up to it yet
-export const rankOf = errand => GUILD.rank[Math.min(GUILD.rank.length - 1, ERRANDS.get(errand)?.tier ?? 1)];
-export function rankWhy(ms, errand) {
-  const need = rankOf(errand), best = Math.max(0, ...ms.map(m => m.level || 1));
+// (`what` — a tier, or an errand's id: data/errands.js)
+export const rankOf = what => GUILD.rank[Math.min(GUILD.rank.length - 1, typeof what === 'number' ? what : ERRANDS.get(what)?.tier ?? 1)];
+export function rankWhy(ms, what) {
+  const need = rankOf(what), best = Math.max(0, ...ms.map(m => m.level || 1));
   return best >= need ? null : `рано: ведущему нужен хотя бы ${need}-й уровень (${ms.length ? `лучший — ${best}-й` : 'свободных нет'}); новички начинают с городских дел`;
 }
 
@@ -260,22 +280,25 @@ export function rankWhy(ms, errand) {
 export const namedMost = size => Math.max(1, Math.floor(size * GUILD.muster.named));
 const braveryOf = m => 1 + (m.local?.traits || []).reduce((s, t) => s + (TRAITS.has(t) ? TRAITS.get(t).mods?.bravery || 0 : 0), 0);
 const likes = (G, x, y) => opinion({...x, species: x.race}, {...y, species: y.race}) + bondOf(G, x.id, y.id);
-export function muster(a, {errand, size = GUILD.party.max, named = []} = {}) {
-  const G = a.guild, M = GUILD.muster, need = errand ? rankOf(errand) : 0;
+export function muster(a, {errand = null, contract = null, size = GUILD.party.max, named = []} = {}) {
+  const G = a.guild, M = GUILD.muster, rec = contract ? contractOf(a, contract) : null, need = rec ? rankOf(rec.tier) : errand ? rankOf(errand) : 0;
+  errand = errand || contract;
   const going = named.map(id => G.members.find(m => m.id === id)).filter(Boolean);
   const r = mulberry(seedNumber(`${G.seed}:muster:${G.day}:${errand}:${named.join(',')}`));
   const rest = membersOf(G, 'ready').filter(m => !going.includes(m)).map(m => ({m, sway: (2 * r() - 1) * M.sway}));
-  const answers = going.map(m => ({id: m.id, go: true, named: true, why: 'назначен'}));
-  const weigh = ({m, sway}) => {
+  const answers = [];
+  const weigh = ({m, sway}, with_ = going) => {
     const fear = Math.max(0, need - (m.level || 1)) * M.risk, hurt = Math.max(0, GUILD.home.ready - (m.hp ?? 1)) * M.hurt;
     const tired = m.guild?.from === 'expedition' && G.day - (m.guild.since || 0) < M.restDays ? M.rest : 0;
-    let w = M.base + M.brave * (braveryOf(m) - 1) - fear - hurt - tired + sway, foe = null, friend = null;
-    for (const y of going) { const v = likes(G, m, y); w += M.bond * (v - M.neutral); if (v <= M.foe && (!foe || v < foe.v)) foe = {y, v}; if (v >= M.friend && (!friend || v > friend.v)) friend = {y, v}; }
+    let w = M.base + M.brave * (braveryOf(m) - 1) + GUILD.devotion.will * (devotionOf(m) - GUILD.devotion.start) - fear - hurt - tired + sway, foe = null, friend = null;
+    for (const y of with_) { const v = likes(G, m, y); w += M.bond * (v - M.neutral); if (v <= M.foe && (!foe || v < foe.v)) foe = {y, v}; if (v >= M.friend && (!friend || v > friend.v)) friend = {y, v}; }
     const go = !foe && !(hurt > 0) && w > M.line;
     const why = go ? (friend ? `идёт: в отряде друг — ${friend.y.name}` : fear > 0 ? 'идёт, хоть и боязно' : 'согласен')
       : foe ? `не пойдёт: в отряде недруг — ${foe.y.name}` : hurt > 0 ? 'ещё не оправился от ран' : fear > M.base ? 'не по силам: боится' : tired ? 'только с дороги' : 'не хочет';
     return {w: foe || hurt > 0 ? -Infinity : w, why};   // (a foe in the party, or wounds not mended: not of himself — only named)
   };
+  // the named go — each one's own answer asked all the same: one who would not have gone goes against his will (launch: devotion, mood)
+  for (const m of going) { const v = weigh({m, sway: 0}, going.filter(y => y !== m)); answers.push({id: m.id, go: true, named: true, unwilling: !(v.w > M.line), why: v.w > M.line ? 'назначен' : `назначен против воли: ${v.why}`}); }
   let left = rest;
   while (going.length < size && left.length) {
     const scored = left.map(x => ({x, ...weigh(x)})).sort((p, q) => q.w - p.w || p.x.m.id - q.x.m.id), best = scored[0];
@@ -293,23 +316,35 @@ export function musterWhy(a, {size = GUILD.party.max, named = []} = {}) {
 
 // ── an expedition: the people picked set out on an errand of the board (campaign/start.js newExpedition), with `purse` from
 // the treasury and the road's food bought besides; one at a time (two and more — Г3)
-export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null} = {}) {
+export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null, contract = null} = {}) {
   const G = a.guild;
   if (G?.phase !== 'open') return 'гильдия закрыта';
   if (expedition(a)) return 'отряд уже в пути';
   if (ids.length < GUILD.party.min || ids.length > GUILD.party.max) return `в отряде ${GUILD.party.min}–${GUILD.party.max} человек`;
   if (ids.some(id => G.members.find(m => m.id === id)?.guild?.state !== 'ready')) return 'не все свободны';
   if (G.gold < purse) return `в казне нет ${purse} зол. на дорогу`;
+  if (contract) { const why = contractWhy(a, contract); if (why) return why; return rankWhy(ids.map(id => G.members.find(m => m.id === id)), contractOf(a, contract).tier); }
   if (errand) return rankWhy(ids.map(id => G.members.find(m => m.id === id)), errand);
   return null;
 }
-export function launch(a, {errand, targetId = null, ids = null, named = null, size = GUILD.party.max, purse = GUILD.purse, mode = 'local'} = {}) {
+//   contract — the uid of a contract of the board (campaign/contracts.js); errand — an errand of the capital's (data/errands.js:
+//              the checks of before the contracts)
+export function launch(a, {contract = null, errand = null, targetId = null, ids = null, named = null, size = GUILD.party.max, purse = GUILD.purse, mode = 'local'} = {}) {
   // the named and the volunteers (muster); `ids` — a party set by hand (the checks, the quick probes)
-  if (!ids) { const w = musterWhy(a, {size, named: named || []}); if (w) throw new Error(w[0].toUpperCase() + w.slice(1) + '.'); ids = muster(a, {errand, size, named}).ids; }
-  const G = a.guild, why = launchWhy(a, {ids, purse, errand});
+  let M = null;
+  if (!ids) { const w = musterWhy(a, {size, named: named || []}); if (w) throw new Error(w[0].toUpperCase() + w.slice(1) + '.'); M = muster(a, {errand, contract, size, named}); ids = M.ids; }
+  const G = a.guild, why = launchWhy(a, {ids, purse, errand, contract});
   if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
   const ms = ids.map(id => G.members.find(m => m.id === id));
-  const K = a.campaign = newExpedition(a, G, ms, {errand, targetId, purse, mode});
+  const rec = contract ? takeContract(a, G, contract, (G.expeditions.length || 0) + 1) : null;
+  const K = a.campaign = newExpedition(a, G, ms, {errand, targetId, purse, mode, contract: rec});
+  // sent against his will (GUILD.devotion): less devoted, and a bad mood on the road
+  const D = GUILD.devotion;
+  for (const x of M?.answers || []) if (x.unwilling) {
+    const m = G.members.find(y => y.id === x.id); m.devotion = Math.max(0, devotionOf(m) - D.forced);
+    ((m.social ||= {}).mood ||= []).push({id: 'forced', text: 'Послан в поход против воли.', mood: D.mood, endDay: K.day + D.days, span: D.days * DAY});
+    tell(a, G, `${m.name} идёт против воли (${x.why.replace('назначен против воли: ', '')}).`, 'people');
+  }
   pay(G, -purse, `в дорогу отряду: ${questWord(K)}`);
   const food = Math.round(K.food * GUILD.food * 10) / 10;
   if (G.gold >= food) pay(G, -food, 'еда в дорогу'); else { K.food = Math.floor(K.food * G.gold / Math.max(1e-6, food)); pay(G, -G.gold, 'еда в дорогу: на что хватило'); }
@@ -326,7 +361,7 @@ export function closeExpedition(a, G, K) {
   const back = alive(K), mine = back.filter(m => m.guild), fell = K.members.filter(m => m.guild && !m.alive);
   for (const m of mine) m.guild = {state: 'ready', since: G.day, from: 'expedition'};
   // the errand's experience (data/experience.js XP.quest, by its tier): whole when handed in, a little when back with nothing
-  const done = K.done?.at(-1), tier = done?.tier ?? ERRANDS.get(K.quest?.errand)?.tier ?? 0, H = homeK(a, G);
+  const done = K.done?.at(-1), tier = done?.tier ?? K.quest?.tier ?? ERRANDS.get(K.quest?.errand)?.tier ?? 0, H = homeK(a, G);
   const qx = (XP.quest[Math.min(XP.quest.length - 1, tier)] || 0) * (done && !done.failed ? 1 : XP.questFail);
   if (qx > 0) for (const m of mine) award(H, m, 'quest', 1, {xp: qx});
   for (const m of fell) if (m.guild.state !== 'dead') m.guild = {...m.guild, state: 'dead'};
@@ -338,11 +373,14 @@ export function closeExpedition(a, G, K) {
   G.store = {beasts: K.beasts.filter(b => b.hp > 0), vehicles: K.vehicles, cargo: K.cargo, buildings: K.buildings, nextBeast: K.nextBeast};
   const p = (a.parties || []).find(x => x.id === K.party); if (p) p.state = 'gone';
   const last = K.done?.at(-1), how = !back.length ? 'не вернулся' : last?.failed ? 'вернулся ни с чем' : 'вернулся с победой';
-  if (last && !last.failed) G.fame += last.tier || 1;
-  G.expeditions.push({n: K.expedition, errand: K.quest?.errand, name: K.quest?.name, how, from: K.started, back: {year: year(a), season: a.hist.season}, days: K.day,
+  if (last && !last.failed) for (const m of mine) m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.back);
+  if (K.contract) { const {r, done} = gdraw(G, 'contracts'); settleContract(a, G, K, {r, tell: (text, kind) => tell(a, G, text, kind), pay}); done(); }
+  else if (last && !last.failed) G.fame += last.tier || 1;
+  G.expeditions.push({n: K.expedition, errand: K.quest?.errand, contract: K.contract || null, name: K.quest?.name, how, from: K.started, back: {year: year(a), season: a.hist.season}, days: K.day,
     went: K.members.filter(m => m.guild || stay.includes(m)).map(m => m.id), fell: fell.map(m => m.id), joined: stay.map(m => m.id)});
   tell(a, G, `Отряд ${how} (${questWord(K)})${back.length ? `: ${back.filter(m => m.guild).map(m => m.name).join(', ')}` : ''}${fell.length ? `; пали ${fell.map(m => m.name).join(', ')}` : ''}${stay.length ? `; в гильдию вступили ${stay.map(m => m.name).join(', ')}` : ''}. ${K.day} ${plural(K.day, 'день', 'дня', 'дней')} в пути.`, back.length ? 'home' : 'death', true);
   if (qx > 0) levelEvening(a, homeK(a, G), (text) => tell(a, G, text, 'level'));
 }
 export {GUILD};
 export const isGuildMember = m => !!m?.guild && isCore(m);
+export {campsOf};

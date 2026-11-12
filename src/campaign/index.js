@@ -14,7 +14,7 @@ import {plural} from '../core/util.js';
 import {YEAR_DAYS} from '../data/seasons.js';
 
 export {newCampaign, capitals} from './start.js';
-export {foundGuild, hire, stepGuild, guildBoard, takeChore, choreWhy, launch, launchWhy, expedition, membersOf, atHouse, healing, ageOf, roleWord, questWord, rankOf, rankWhy, muster, musterWhy, namedMost, GUILD} from './guild.js';
+export {foundGuild, hire, stepGuild, guildBoard, takeChore, choreWhy, launch, launchWhy, expedition, membersOf, atHouse, healing, ageOf, roleWord, questWord, rankOf, rankWhy, muster, musterWhy, namedMost, devotionOf, campsOf, GUILD} from './guild.js';
 export {errandsFor, errandOf, boardFor} from './errands.js';
 
 // ── a campaign of chapters (campaign/ending.js handIn): the caravan at its capital, an errand handed in
@@ -125,3 +125,4 @@ export {woundLabel, maimMax, scarsOn, maimsOn, scarEased} from './maims.js';
 export {FATES, HOWS, fightReportText, fightStats, groupText, walkReportText, walkStats} from './stats.js';
 export {workText} from './works.js';
 export {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, summonLine, snapshotOf} from './ascend.js';
+export {contractsOf, contractOf, contractCards, issuerName} from './contracts.js';

@@ -28,6 +28,7 @@ import {say, reveal} from './march.js';
 import {EPIC} from '../data/calamities.js';
 import {capacity} from './baggage.js';
 import {makeQuest, questTarget, questIntro} from './quest.js';
+import {contractQuest} from './contracts.js';
 import {makeErrand, targetWhy} from './errands.js';
 import {CAPTIVE} from '../data/captives.js';
 import {ALCHEMY} from '../data/market.js';
@@ -139,7 +140,8 @@ export function coreMember(K, a, rnd, {species, role}, k) {
 // and goods of the guild's store taken along. Its seed is the guild's and the expedition's number: two expeditions never
 // share a stream. The guild settles what comes back (guild/index.js closeExpedition).
 //   ms — the guild's members going (alive, free); errand, targetId — as newCampaign's; purse — gold from the treasury
-export function newExpedition(a, G, ms, {errand, targetId = null, purse = 0, mode = 'local'} = {}) {
+// contract — a contract of the board taken (campaign/contracts.js takeContract): its quest instead of an errand's
+export function newExpedition(a, G, ms, {errand = null, targetId = null, purse = 0, mode = 'local', contract = null} = {}) {
   const t = a.towns.find(x => x.id === G.town && x.alive);
   if (!t) throw new Error('Город гильдии пал.');
   if (targetId != null) { const why = targetWhy(a, {home: t.i, people: t.people, realm: t.realm, capital: t.id}, errand, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
@@ -155,7 +157,8 @@ export function newExpedition(a, G, ms, {errand, targetId = null, purse = 0, mod
   for (const m of ms) { m.joined = 0; m.core = true; memberLocal(K, m); ensureXp(m); }
   const {r, done} = draw(K, 'birth');
   K.food = capacity(K);
-  K.quest = makeErrand(a, K, r, errand, {targetId});
+  K.quest = contract ? contractQuest(a, K, r, contract, G) : makeErrand(a, K, r, errand, {targetId});
+  if (contract) K.contract = contract.uid;
   if (!K.quest) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
   K.goal = questTarget(a, K, r);
   if (K.quest.epic) K.years = EPIC.years;

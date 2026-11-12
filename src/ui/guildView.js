@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
 import {raceLabel} from '../view/local.js';
@@ -160,6 +160,9 @@ export class GuildView extends CampaignView {
     if (!this.G || this.choosing || a.campaign) return super.overlay(a, px, cam);
     const t = a.towns.find(x => x.id === this.G.town), k = this.unit(a);
     if (t) { px.strokeStyle = '#ffd36a'; px.lineWidth = Math.max(this.minW, 0.3 * k); px.beginPath(); px.arc(t.x + 0.5, t.y + 0.5, 2.4 * Math.max(0.6, k), 0, Math.PI * 2); px.stroke(); }
+    // the camps of the contracts (campaign/contracts.js), those whose place is known: a small tent each
+    px.fillStyle = '#d8573f';
+    for (const c of this.board || []) if (c.at && c.ok !== undefined) { const x = c.at.x + 0.5, y = c.at.y + 0.5, s = 0.9 * Math.max(0.6, k); px.beginPath(); px.moveTo(x, y - s); px.lineTo(x + s, y + s * 0.7); px.lineTo(x - s, y + s * 0.7); px.closePath(); px.fill(); }
     this.drawBoard(a, px, k);
   }
 
@@ -196,7 +199,7 @@ export class GuildView extends CampaignView {
       `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
       `<span class="hp"><i class="${(m.hp ?? 1) < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp ?? 1) * 100)}%"></i></span>` +
       (nx != null ? `<span class="xp" title="опыт до ${lv + 1}-го уровня: ${Math.round(nx * 100)}%"><i style="width:${Math.round(nx * 100)}%"></i></span>` : '') +
-      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''}</small></span></label>`;
+      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}%</small></span></label>`;
   }
   peopleHtml() {
     const G = this.G, live = membersOf(G), gone = G.members.filter(m => !live.includes(m));
@@ -216,15 +219,15 @@ export class GuildView extends CampaignView {
     this.board = B.errands;
     this.gerrand = errandPicked(B.errands, this.gerrand);
     // the muster (campaign/guild.js): the picked are the named; the others answer for themselves — shown before the gate
-    const errand = B.errands.find(e => e.id === this.gerrand)?.errand || null, M = errand && ids.length ? muster(a, {errand, size: this.gsize, named: ids}) : null;
-    const why = musterWhy(a, {size: this.gsize, named: ids}) || launchWhy(a, {ids: M ? M.ids : ids, errand});
+    const contract = B.errands.find(e => e.id === this.gerrand)?.contract || null, M = contract && ids.length ? muster(a, {contract, size: this.gsize, named: ids}) : null;
+    const why = musterWhy(a, {size: this.gsize, named: ids}) || launchWhy(a, {ids: M ? M.ids : ids, contract});
     const sizes = Array.from({length: GUILD.party.max - GUILD.party.min + 1}, (_, k) => GUILD.party.min + k).map(n => `<option value="${n}"${n === this.gsize ? ' selected' : ''}>${n}</option>`).join('');
     const answers = M ? `<div class="guild-muster">${M.answers.map(x => { const m = G.members.find(y => y.id === x.id); return `<div class="${x.go ? 'go' : 'no'}">${x.go ? '✓' : '✗'} <b>${esc(m.name)}</b> <small>ур. ${m.level || 1} · ${esc(x.why)}</small></div>`; }).join('')}</div>` : '';
     return `<div class="row"><small>Отмечены (на дело в городе — все они; в поход — назначенные): <b>${esc(picked)}</b></small></div>` +
       `<div class="savelist guild-pick">${membersOf(G, 'ready').map(m => this.memberRow(m)).join('')}</div>` +
       `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +
       `<div class="row actions"><button type="button" data-act="chore"${choreOk ? '' : ' disabled'}>Послать на дело</button><small>${offer ? (offer.why ? esc(offer.why) : `отчёт — через ${offer.days[0] === offer.days[1] ? offer.days[0] : `${offer.days[0]}–${offer.days[1]}`} дн.`) : 'выберите дело'}</small></div>` +
-      `<h4 class="menu-group">Поручения мира</h4>` +
+      `<h4 class="menu-group">Договоры</h4>` +
       (K ? `<p class="note">Отряд в пути: ${esc(questWord(K))}. Второй отряд — позже (Г3).</p>` :
         `<div class="savelist errands">${errandCards(B.errands, this.gerrand, 'gerrand')}</div>` +
         `<div class="row"><small>Отряд: <select data-gsize>${sizes}</select> чел.; назначить — до ${namedMost(this.gsize)} (отмеченные выше), остальные решают сами</small></div>` + answers +
@@ -244,7 +247,7 @@ export class GuildView extends CampaignView {
   doLaunch() {
     const a = this.atlas, card = this.cardOf(this.gerrand), ids = [...this.gpick];
     if (!card) return;
-    try { launch(a, {errand: card.errand, targetId: card.targetId, named: ids, size: this.gsize}); } catch (e) { $('guildNote').textContent = e.message; return; }
+    try { launch(a, {contract: card.contract, named: ids, size: this.gsize}); } catch (e) { $('guildNote').textContent = e.message; return; }
     this.gpick.clear(); this.gerrand = null; this.board = null; this.boardHover = null;
     $('guildNote').textContent = 'Отряд ушёл. Его бои на локальной карте — если включено «⚔»; иначе — только строки летописи.';
     this.logShown = 0; this.logKey = ''; this.who = null;

@@ -56,26 +56,26 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
 
 // ── the muster: one to a quarter named, the others answer for themselves
 {
-  const [a, G] = opened(), ms = membersOf(G), lead = ms[0], errand = guildBoard(a, [lead.id]).errands[0].errand;
-  ranked(G, [lead.id], errand);
+  const [a, G] = opened(), ms = membersOf(G), lead = ms[0], card0 = guildBoard(a, [lead.id]).errands[0], contract = card0.contract;
+  ranked(G, [lead.id], card0.tier);
   ok(Object.keys(G.social.relations).length > 0, 'знакомые по городу: связи у пришедших есть', `${Object.keys(G.social.relations).length} со связями`);
   ok(namedMost(4) === 1 && namedMost(8) === 2 && namedMost(2) === 1, 'назначить — не больше четверти, не меньше одного');
-  ok(!!throws(() => launch(a, {errand, named: [ms[0].id, ms[1].id], size: 6})), 'двоих на шестерых — отказ');
-  ok(!!throws(() => launch(a, {errand, named: [], size: 4})), 'никого не назначили — отказ');
-  const M = muster(a, {errand, size: 6, named: [lead.id]});
+  ok(!!throws(() => launch(a, {contract, named: [ms[0].id, ms[1].id], size: 6})), 'двоих на шестерых — отказ');
+  ok(!!throws(() => launch(a, {contract, named: [], size: 4})), 'никого не назначили — отказ');
+  const M = muster(a, {contract, size: 6, named: [lead.id]});
   ok(M.ids[0] === lead.id && M.answers.length === ms.length && M.answers.every(x => x.why), 'назначенный идёт, у каждого — ответ с причиной', M.answers.map(x => `${G.members.find(m => m.id === x.id).name}: ${x.go ? '+' : '−'} ${x.why}`).join('; '));
-  ok(JSON.stringify(M) === JSON.stringify(muster(a, {errand, size: 6, named: [lead.id]})), 'тот же день и те же имена — тот же ответ');
+  ok(JSON.stringify(M) === JSON.stringify(muster(a, {contract, size: 6, named: [lead.id]})), 'тот же день и те же имена — тот же ответ');
   const foe = ms[1], friend = ms[2];
   G.social.relations[foe.id] = {...(G.social.relations[foe.id] || {}), [lead.id]: -4};
   G.social.relations[friend.id] = {...(G.social.relations[friend.id] || {}), [lead.id]: 4};
-  const M2 = muster(a, {errand, size: 6, named: [lead.id]}), ans = id => M2.answers.find(x => x.id === id);
+  const M2 = muster(a, {contract, size: 6, named: [lead.id]}), ans = id => M2.answers.find(x => x.id === id);
   ok(!ans(foe.id).go && ans(foe.id).why.startsWith('не пойдёт'), 'враг назначенного не идёт', ans(foe.id).why);
   ok(ans(friend.id).go, 'друг назначенного идёт', ans(friend.id).why);
   friend.hp = 0.3;
-  ok(!muster(a, {errand, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).go, 'раненый не идёт сам', muster(a, {errand, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).why);
+  ok(!muster(a, {contract, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).go, 'раненый не идёт сам', muster(a, {contract, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).why);
   friend.hp = 1;
-  const K = launch(a, {errand, named: [lead.id], size: 6, mode: 'auto'});
-  ok(K.members.length === muster(a, {errand, size: 6, named: [lead.id]}).ids.length || K.members.every(m => m.guild?.state === 'expedition'), 'ушли те, кто согласился', K.members.map(m => m.name).join(', '));
+  const K = launch(a, {contract, named: [lead.id], size: 6, mode: 'auto'});
+  ok(K.members.length === muster(a, {contract, size: 6, named: [lead.id]}).ids.length || K.members.every(m => m.guild?.state === 'expedition'), 'ушли те, кто согласился', K.members.map(m => m.name).join(', '));
 }
 
 // ── the deeds in town: one at a time each, settled with the pay and the experience
@@ -99,14 +99,14 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
 // ── an expedition of the guild's own people
 {
   const [a, G] = opened(), ids = membersOf(G).map(m => m.id).slice(0, 4), B0 = guildBoard(a, ids);
-  ok(B0.errands.length > 0 && B0.errands.every(e => !e.ok), 'новички не идут на логово: поручения мира — рано', B0.errands.find(e => e.why?.startsWith('рано'))?.why);
+  ok(B0.errands.length > 0 && B0.errands.every(e => !e.ok), 'новички не идут на логово: договоры — рано', B0.errands.find(e => e.why?.startsWith('рано'))?.why);
   const first = B0.errands.find(e => e.why?.startsWith('рано') && e.targetId != null) || B0.errands.find(e => e.why?.startsWith('рано'));
-  ok(!!launchWhy(a, {ids, errand: first.errand}), 'и в поход их не отправить', launchWhy(a, {ids, errand: first.errand}));
-  ranked(G, ids, first.errand);
+  ok(!!launchWhy(a, {ids, contract: first.contract}), 'и в поход их не отправить', launchWhy(a, {ids, contract: first.contract}));
+  ranked(G, ids, first.tier);
   const B = guildBoard(a, ids), card = B.errands.find(e => e.ok && e.id === first.id) || B.errands.find(e => e.ok);
-  ok(!!card, 'доросли — поручение открыто', `${card?.id}, ур. ${rankOf(first.errand)}`);
-  ok(!!throws(() => launch(a, {errand: card.errand, ids: membersOf(G).map(m => m.id)})), `больше ${GUILD.party.max} — отказ`);
-  const g0 = G.gold, K = launch(a, {errand: card.errand, targetId: card.targetId, ids, mode: 'auto'});
+  ok(!!card, 'доросли — поручение открыто', `${card?.id}, ур. ${rankOf(first.tier)}`);
+  ok(!!throws(() => launch(a, {contract: card.contract, ids: membersOf(G).map(m => m.id)})), `больше ${GUILD.party.max} — отказ`);
+  const g0 = G.gold, K = launch(a, {contract: card.contract, ids, mode: 'auto'});
   ok(K === a.campaign && K.members.every(m => G.members.includes(m)), 'в отряде — те же люди, что в гильдии (не копии)');
   ok(K.social === G.social && K.seen === G.seen, 'связи и знание мира — гильдии');
   ok(G.gold < g0 && ids.every(id => G.members.find(m => m.id === id).guild.state === 'expedition'), 'кошель и еда — из казны, ушедшие в походе', `${g0} → ${G.gold}`);
@@ -122,9 +122,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
   const back = K.members.filter(m => m.alive && m.guild);
   ok(back.every(m => m.guild.state === 'ready') && K.members.filter(m => m.guild && !m.alive).every(m => m.guild.state === 'dead'), 'живые — дома, павшие — павшие');
   ok(back.every(m => G.members.includes(m)), 'вернувшиеся — те же люди: уровни, вещи, раны с ними', back.map(m => `${m.name} ур. ${m.level}`).join(', '));
-  const last = K.done?.at(-1), qx = XP.quest[ERRANDS.get(K.quest.errand).tier] * (last && !last.failed ? 1 : XP.questFail);
+  const last = K.done?.at(-1), qx = XP.quest[K.quest.tier] * (last && !last.failed ? 1 : XP.questFail);
   ok(back.filter(m => m.guild).every(m => Math.abs((m.xpOf.quest || 0) - qx) < 0.01), 'опыт за поручение — по тиру, каждому вернувшемуся', `${qx}: ${back.map(m => m.xpOf.quest || 0).join(', ')}`);
-  ok(back.filter(m => m.guild).every(m => m.level <= rankOf(first.errand) + 3), 'одно поручение — не больше трёх уровней', back.map(m => m.level).join(', '));
+  ok(back.filter(m => m.guild).every(m => m.level <= rankOf(first.tier) + 3), 'одно поручение — не больше трёх уровней', back.map(m => m.level).join(', '));
   ok(sum(G) === G.gold, 'казна сходится с записями после похода', `${G.gold} / ${sum(G)}`);
 }
 
@@ -136,9 +136,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
   stepGuild(a);
   ok(!m.alive && m.guild.state === 'dead' && m.died?.why === 'умер от старости', 'старость: умер дома весной', m.died?.why);
   const ids = membersOf(G, 'ready').map(m => m.id).slice(0, 3);
-  ranked(G, ids, guildBoard(a, ids).errands[0].errand);
+  ranked(G, ids, guildBoard(a, ids).errands[0].tier);
   const card = guildBoard(a, ids).errands.find(e => e.ok);
-  const K = launch(a, {errand: card.errand, targetId: card.targetId, ids, mode: 'auto'});
+  const K = launch(a, {contract: card.contract, ids, mode: 'auto'});
   stepGuild(a);   // (out of the gate: the next spring finds them on the road)
   if (!expedition(a)) ok(true, 'старость в пути: отряд вернулся в первый сезон — не проверить на этом сиде');
   else {

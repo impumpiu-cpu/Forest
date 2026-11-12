@@ -23,6 +23,10 @@
 //   acquaint  — the founding: two of those who came to the door know each other from the town with the chance `chance`: a bond of
 //               `least`…1 × ±`spread` (campaign/social.js relations), a little more often good than bad (`good`); each way of it
 //               apart by up to ±`diff` × `spread`
+//   devotion  — a member's devotion to the guild, 0 … 1 (`start` when taken in): sent against his will (named, though he would not
+//               have gone) − `forced`, with a bad mood on the road (`mood` for `days` days: campaign/social.js); + `paid` a season
+//               his wage is paid, + `back` home from an errand handed in; below `leave` he leaves the guild (at the house, at a
+//               season's start); in the muster + `will` × (devotion − `start`)
 //   bond      — a deed done together: the bond between each two of them, + `won` when it went right, `lost` when it went wrong
 //   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
 //               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
@@ -39,4 +43,5 @@ export const GUILD = {
   muster: {named: 0.25, base: 0.15, brave: 0.6, risk: 0.12, bond: 0.15, neutral: 2, rest: 0.2, restDays: 30, hurt: 1.5, sway: 0.25, line: 0, foe: -1, friend: 4},
   acquaint: {chance: 0.4, spread: 3.5, good: 0.6, least: 0.25, diff: 0.25},
   bond: {won: 0.5, lost: -0.2},
+  devotion: {start: 0.7, forced: 0.2, paid: 0.02, back: 0.05, leave: 0.2, will: 0.5, mood: -0.15, days: 30},
 };
