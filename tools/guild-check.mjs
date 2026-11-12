@@ -4,7 +4,9 @@
 //   node tools/guild-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf} from '../src/campaign/index.js';
+import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost} from '../src/campaign/index.js';
+import {XP} from '../src/data/experience.js';
+import {ERRANDS} from '../src/data/errands.js';
 import {GUILD} from '../src/data/guild.js';
 import {CHORES} from '../src/data/chores.js';
 import {SPECIES} from '../src/data/species.js';
@@ -52,6 +54,30 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
   ok(G.ledger.some(l => l.why.startsWith('жалованье')) && sum(G) === G.gold, 'жалованье из казны; казна сходится с записями', `${G.gold} / ${sum(G)}`);
 }
 
+// ── the muster: one to a quarter named, the others answer for themselves
+{
+  const [a, G] = opened(), ms = membersOf(G), lead = ms[0], errand = guildBoard(a, [lead.id]).errands[0].errand;
+  ranked(G, [lead.id], errand);
+  ok(Object.keys(G.social.relations).length > 0, 'знакомые по городу: связи у пришедших есть', `${Object.keys(G.social.relations).length} со связями`);
+  ok(namedMost(4) === 1 && namedMost(8) === 2 && namedMost(2) === 1, 'назначить — не больше четверти, не меньше одного');
+  ok(!!throws(() => launch(a, {errand, named: [ms[0].id, ms[1].id], size: 6})), 'двоих на шестерых — отказ');
+  ok(!!throws(() => launch(a, {errand, named: [], size: 4})), 'никого не назначили — отказ');
+  const M = muster(a, {errand, size: 6, named: [lead.id]});
+  ok(M.ids[0] === lead.id && M.answers.length === ms.length && M.answers.every(x => x.why), 'назначенный идёт, у каждого — ответ с причиной', M.answers.map(x => `${G.members.find(m => m.id === x.id).name}: ${x.go ? '+' : '−'} ${x.why}`).join('; '));
+  ok(JSON.stringify(M) === JSON.stringify(muster(a, {errand, size: 6, named: [lead.id]})), 'тот же день и те же имена — тот же ответ');
+  const foe = ms[1], friend = ms[2];
+  G.social.relations[foe.id] = {...(G.social.relations[foe.id] || {}), [lead.id]: -4};
+  G.social.relations[friend.id] = {...(G.social.relations[friend.id] || {}), [lead.id]: 4};
+  const M2 = muster(a, {errand, size: 6, named: [lead.id]}), ans = id => M2.answers.find(x => x.id === id);
+  ok(!ans(foe.id).go && ans(foe.id).why.startsWith('не пойдёт'), 'враг назначенного не идёт', ans(foe.id).why);
+  ok(ans(friend.id).go, 'друг назначенного идёт', ans(friend.id).why);
+  friend.hp = 0.3;
+  ok(!muster(a, {errand, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).go, 'раненый не идёт сам', muster(a, {errand, size: 6, named: [lead.id]}).answers.find(x => x.id === friend.id).why);
+  friend.hp = 1;
+  const K = launch(a, {errand, named: [lead.id], size: 6, mode: 'auto'});
+  ok(K.members.length === muster(a, {errand, size: 6, named: [lead.id]}).ids.length || K.members.every(m => m.guild?.state === 'expedition'), 'ушли те, кто согласился', K.members.map(m => m.name).join(', '));
+}
+
 // ── the deeds in town: one at a time each, settled with the pay and the experience
 {
   const [a, G] = opened(), ids = membersOf(G).map(m => m.id);
@@ -96,6 +122,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G
   const back = K.members.filter(m => m.alive && m.guild);
   ok(back.every(m => m.guild.state === 'ready') && K.members.filter(m => m.guild && !m.alive).every(m => m.guild.state === 'dead'), 'живые — дома, павшие — павшие');
   ok(back.every(m => G.members.includes(m)), 'вернувшиеся — те же люди: уровни, вещи, раны с ними', back.map(m => `${m.name} ур. ${m.level}`).join(', '));
+  const last = K.done?.at(-1), qx = XP.quest[ERRANDS.get(K.quest.errand).tier] * (last && !last.failed ? 1 : XP.questFail);
+  ok(back.filter(m => m.guild).every(m => Math.abs((m.xpOf.quest || 0) - qx) < 0.01), 'опыт за поручение — по тиру, каждому вернувшемуся', `${qx}: ${back.map(m => m.xpOf.quest || 0).join(', ')}`);
+  ok(back.filter(m => m.guild).every(m => m.level <= rankOf(first.errand) + 3), 'одно поручение — не больше трёх уровней', back.map(m => m.level).join(', '));
   ok(sum(G) === G.gold, 'казна сходится с записями после похода', `${G.gold} / ${sum(G)}`);
 }
 
