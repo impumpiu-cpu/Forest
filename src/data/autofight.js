@@ -14,7 +14,7 @@
 //   table  — {key: {r: [ratios], win, dead, maim, hp, pot}} — per one who stood in it; the ratios rising, the wins never
 //            falling with them, the costs never rising (the tool smooths them so). `npm run autofight:calibrate` rewrites it.
 export const AUTOFIGHT = {
-  doubt: 1.2, extra: 1.15, below: 2,
+  doubt: 1.6, extra: 1.05, below: 3,   // (measured on fresh worlds, 1104 fights: no foe beaten more often than on the map; all — 69 % against 84 %)
   least: {member: 0.05, beast: 0.1},   // the least share of health a member, a beast is rated at (as the map sets them: campaign/camp.js openCamp)
   // ── the table (written by tools/autofight-calibrate.mjs --write; one line per kind of foe)
   table: {
