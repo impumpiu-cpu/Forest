@@ -83,6 +83,15 @@ export const SQUAD = {
   // round the side of the foe's line where the foe is weakest (agents/influence.js) — `side` cells aside its middle, `deep`
   // past it; there (within `near`), or struck on the way, it turns on the nearest foe; its blows from the side and behind
   // land harder as any (data/balance/combat.js COMBAT.flank, back)
+  // an ambush (plan claude/combat-plan.md Бой-4; the donor OpenXcom setupAmbush): a band that lies in wait creeps up unseen (its
+  // members `sneaking`: seen only close, agents/combat.js) to within `strike` cells of the caravan's people, and strikes when
+  // all of it is there, or it is seen, or `wait` ticks pass — the first blows fall on the unaware (from behind: COMBAT.back)
+  lurk: {wait: 150, strike: 3, ready: 0.75},
+  creep: 0.6,   // the pace of one creeping up (× its own)
+  // a line (Бой-4, «стенка на стенку»): a living band of at least `least` come to fight (goal kill, slaughter) first forms a line
+  // `form` cells short of the foe, its members `space` cells apart across the way, and comes on together once `ready` of them
+  // stand in it or `wait` ticks pass
+  line: {least: 6, form: 8, space: 1.6, ready: 0.75, wait: 120},   // (and a band with ranks, whatever it came for: data/raids.js `ranks`)
   flank: {least: 4, share: 0.34, side: 6, deep: 2, near: 2, answer: 2.5},   // (`answer`: a foe this close on the way is answered)   // (`turn`: the angle between two guards' spots — the golden one, so they spread)
   looters: 0.4,      // share of a looting band sent to the stores
   campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)

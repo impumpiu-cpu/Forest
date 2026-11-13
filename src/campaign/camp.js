@@ -9,6 +9,8 @@
 //   campSetup(a, K, ev)  → setup: everything the camp is made of (saved in K.camps to be watched again);
 //   openCamp(setup)      → the local world, at the hour the camp begins;  stepCamp(w) — a tick;  campDone(w);
 //   campOutcome(w)       → what came out of it, for the campaign to take back (campaign/march.js).
+import {SQUAD as SQUAD_RULES} from '../data/behaviour.js';
+import {RAID_BANDS} from '../data/raids.js';
 import {createWorld} from '../local/index.js';
 import {Navigation} from '../local/index.js';
 import {step} from '../local/index.js';
@@ -346,6 +348,13 @@ function spawnFoe(w) {
     const P = heart != null ? cellMid(w, heart) : group.length ? {x: group.reduce((s, g) => s + g.x, 0) / group.length, y: group.reduce((s, g) => s + g.y, 0) / group.length} : null;
     for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'hold'; sq.post = P; } }
     C.alarm ??= w.tick;   // (the caravan came to storm it: up and at them)
+  }
+  // an ambush lies in wait, creeping up (agents/squad.js lurkPlan, SQUAD.lurk); a big band come to fight forms a line first (linePlan,
+  // SQUAD.line) — plan claude/combat-plan.md Бой-4
+  for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
+    const sq = w.squads?.[id]; if (!sq || sq.kind !== 'living') continue;
+    if (S.kind === 'ambush') { sq.lurk = {until: w.tick + SQUAD_RULES.lurk.wait}; for (const g of group) if (g.squad === id) g.sneaking = true; }   // (hidden from the first: seen only close)
+    else if (S.kind !== 'guard' && sq.goal !== 'scout' && sq.size >= SQUAD_RULES.line.least && (['kill', 'slaughter'].includes(sq.goal) || RAID_BANDS.get(sq.band)?.ranks)) sq.line = {until: w.tick + SQUAD_RULES.line.wait};   // (a band with ranks keeps order: data/raids.js)
   }
   // the beasts of a lair stormed hold it to the last as well (agents/behaviours/maul.js defendLair: no fear, no flight — a dragon
   // does not fly off from its hoard, Г6); a grave's guard with a miniboss may be driven off

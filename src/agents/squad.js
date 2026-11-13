@@ -261,6 +261,8 @@ export function planFor(w, a, sq, radius) {
   const close = nearestHostile(w, a, 2.5);
   const role = a.sqRole;
   if (sq.goal === 'hold') return holdPlan(w, a, sq, radius, attacker);   // (the guards of a place stormed: every role holds it)
+  if (sq.lurk) { const l = lurkPlan(w, a, sq, attacker); if (l) return l; }
+  if (sq.line && !sq.line.on) { const l = linePlan(w, a, sq, attacker); if (l) return l; }
   if (role === 'flank') { const f = flankPlan(w, a, sq, radius, attacker); if (f) return f; }
   if (role === 'looter') {
     // grab and run: a looter answers only someone already on it, and slips past the rest
@@ -289,6 +291,39 @@ export function planFor(w, a, sq, radius) {
   // nobody to fight: a band that came for someone (or to cover the torches) waits at the camp
   if (sq.goal === 'kill' || sq.goal === 'burn') return a.task?.id === 'haunt' ? a.task : {id: 'haunt'};
   return null;
+}
+
+// an ambush (SQUAD.lurk): creep up unseen to within striking reach of the nearest of the caravan's people; the band strikes
+// when enough of it is there, or it is seen (the camp's alarm), or a blow falls, or the wait is over
+function lurkPlan(w, a, sq, attacker) {
+  const L = SQUAD.lurk;
+  if (attacker || w.campaign?.alarm || w.tick >= sq.lurk.until) { sq.lurk = null; return null; }
+  const prey = colonists(w).filter(o => !o.dead && !o.downed && !o.captive);
+  if (!prey.length) { sq.lurk = null; return null; }
+  const near = ms => ms.filter(m => prey.some(p => dist(m, p) <= L.strike + 1)).length;
+  const ms = membersOf(w, sq);
+  if (near(ms) >= Math.ceil(ms.length * L.ready)) { sq.lurk = null; log(w, `${Label(sq)}: засада — бьют разом.`, 'danger', 'notice'); return null; }
+  const p = prey.reduce((b, o) => (dist(a, o) < dist(a, b) ? o : b));
+  a.sneaking = true;
+  const d = dist(a, p), k = Math.max(0, (d - L.strike) / Math.max(1e-6, d));
+  return {id: 'creep', x: a.x + (p.x - a.x) * k, y: a.y + (p.y - a.y) * k};
+}
+// a line (SQUAD.line): to one's spot in a line across the way, short of the foe; on together once it stands
+function linePlan(w, a, sq, attacker) {
+  const L = SQUAD.line, ms = membersOf(w, sq);
+  if (attacker || ms.some(m => m.task?.id === 'fight') || w.tick >= sq.line.until) { sq.line.on = true; return null; }
+  if (!sq.line.spots) {
+    const foes = colonists(w).filter(o => !o.dead && !o.downed && !o.captive);
+    if (!foes.length) { sq.line.on = true; return null; }
+    const E = mean(foes), O = mean(ms), D = Math.hypot(E.x - O.x, E.y - O.y) || 1, ux = (E.x - O.x) / D, uy = (E.y - O.y) / D;
+    if (D <= L.form) { sq.line.on = true; return null; }
+    const cx = E.x - ux * L.form, cy = E.y - uy * L.form;
+    sq.line.spots = Object.fromEntries(ms.map((m, k) => { const off = (k - (ms.length - 1) / 2) * L.space; return [m.id, {x: cx - uy * off, y: cy + ux * off}]; }));
+  }
+  const at = id => { const s = sq.line.spots[id], m = ms.find(o => o.id === id); return s && m && Math.hypot(s.x - m.x, s.y - m.y) <= SQUAD.hold.slack; };
+  if (ms.filter(m => at(m.id)).length >= Math.ceil(ms.length * L.ready)) { sq.line.on = true; log(w, `${Label(sq)}: встали стеной и идут разом.`, 'danger', 'notice'); return null; }
+  const s = sq.line.spots[a.id]; if (!s) return null;
+  return a.task?.id === 'holdPost' && a.task.x === s.x && a.task.y === s.y ? a.task : {id: 'holdPost', x: s.x, y: s.y};
 }
 
 // a flanker (SQUAD.flank): to a point aside the foe's line, on its weaker side (agents/influence.js), then the nearest foe — from

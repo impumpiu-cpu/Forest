@@ -90,5 +90,22 @@ const play = (w, each) => { for (let g = 0; g < 4800 && !campDone(w); g++) { ste
   ok(flankers > 0 && turned > 0, 'большая банда заходит с фланга: обходчики дошли и ударили', `обходчиков ${flankers}, дошли ${turned > 0 ? 'да' : 'нет'}`);
 }
 
+// ── an ambush (Бой-4): the band creeps up unseen, then strikes; a band with ranks forms a line, then comes on together
+{
+  const run = (kind, how, r) => {
+    const a = loadAtlas(JSON.parse(frozen)), K = newCampaign(a, cap.town, {mode: 'local'});
+    const w = openCamp(campSetup(a, K, {kind: how, foe: {kind, strength: companyStrength(a, K) / (CAMP.foe.unit * r)}, dayIn: K.dayIn}));
+    const got = {creep: 0, lurk: false, struck: false, line: false, spots: false, on: false};
+    play(w, w => {
+      for (const o of w.agents) if (o.task?.id === 'creep' && o.sneaking) got.creep++;
+      for (const q of Object.values(w.squads || {})) { if (q.lurk) got.lurk = true; else if (got.lurk) got.struck = true; if (q.line) { got.line = true; if (q.line.spots) got.spots = true; if (q.line.on) got.on = true; } }
+    });
+    return got;
+  };
+  const amb = run('raiders', 'ambush', 0.8), line = run('army', 'night', 0.5);
+  ok(amb.lurk && amb.creep > 0 && amb.struck, 'засада: подкрадываются скрытно, потом бьют', JSON.stringify(amb));
+  ok(line.line && line.spots && line.on, 'войско встаёт стеной и идёт разом', JSON.stringify(line));
+}
+
 if (fails) { console.log(`\nscene-check: FAIL ×${fails}`); process.exit(1); }
 console.log('\nscene-check: ok');
