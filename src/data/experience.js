@@ -26,6 +26,7 @@ ACTS.registerAll([
   {id: 'find',    ground: true, label: 'находка', xp: 10},
   {id: 'clue',    ground: true, label: 'подсказка', xp: 20},
   {id: 'crown',   ground: true, label: 'корона найдена', xp: 100},
+  {id: 'train',   ground: true, label: 'учёба у тренера', xp: 0, note: 'гильдия: тренировочный зал (data/rooms.js HOUSE.train) — опыт за сезон учёбы'},
   {id: 'quest',   ground: true, label: 'поручение исполнено', xp: 0, note: 'гильдия: за поручение мира, сданное в столице, — каждому вернувшемуся XP.quest по тиру (не × XP.field)'},
   {id: 'town',    ground: true, label: 'новый город', xp: 2},
   // ── the acts of a fight

@@ -11,6 +11,7 @@
 // Chance: the guild's own stream (campaign/guild.js gdraw) is handed in; nothing here draws of its own.
 import {CONTRACT, CONTRACTS, CHAINS} from '../data/contracts.js';
 import {GUILD} from '../data/guild.js';
+import {roomBy} from './house.js';
 import {ERRANDS} from '../data/errands.js';
 import {LAIRS} from '../data/lairs.js';
 import {QUEST} from '../data/quest.js';
@@ -93,7 +94,7 @@ export function campGuard(a, camp, spec) {
 function post(a, G, def, {tmpl, chain = null, side = false, strong = 1}, r) {
   const t = a.towns.find(x => x.id === G.town); if (!t) return null;
   const tier = def.tier, iss = issuerFor(a, G, tier), C = contractsOf(a);
-  const known = def.camp ? !def.camp.clue : !(ERRANDS.get(def.errand)?.clueAt?.length);
+  const known = def.camp ? !def.camp.clue || !!roomBy(G, 'maps', 'known') : !(ERRANDS.get(def.errand)?.clueAt?.length);   // (the maps room's last level: the camps' places known)
   let target = null, at = null, s = 0, days = null, where = '', facts = [], goal = '';
   if (def.errand) {
     const E = ERRANDS.get(def.errand), {mask} = reachable(a, stub(t)), busy = new Set(C.records.filter(c => c.state === 'open' || c.state === 'accepted').map(c => c.target?.lair));
@@ -134,17 +135,6 @@ export function stepContracts(a, G, io) {
     else if (!liveTarget(a, rec)) close(a, G, rec, 'цель уничтожена другими', io);
     else if (G.day >= rec.until) close(a, G, rec, 'срок предложения вышел', io);
   }
-  const most = tierOf(G);   // (the world gives a guild the tiers its level is trusted with)
-  for (let tier = 1; tier <= most && tier < CONTRACT.board.open.length; tier++) {
-    const rows = CONTRACTS.filter(x => x.tier === tier), open = () => C.records.filter(c => !c.chain && c.state === 'open' && c.tier === tier).length;
-    for (let k = 0; k < rows.length * 2 && open() < CONTRACT.board.open[tier]; k++) {
-      if (!first && io.r() >= CONTRACT.board.post) break;
-      const def = rows[Math.floor(io.r() * rows.length)];
-      if (C.records.some(c => c.tmpl === def.id && c.state === 'open')) continue;
-      const rec = post(a, G, def, {tmpl: def.id}, io.r);
-      if (rec && !first) io.tell(`На доске новый договор: ${rec.label} (${tierWord(tier)}; платит ${issuerName(a, rec.issuer)} — ${rec.escrow} зол.).`, 'contract');
-    }
-  }
   for (const H of CHAINS.all()) {
     if (levelOf(G) < H.level || C.chains.some(c => c.chain === H.id && c.guild === G.id)) continue;
     const ch = {id: C.nextId++, chain: H.id, guild: G.id, step: H.start, flags: {}, state: 'on', steps: []};
@@ -152,6 +142,17 @@ export function stepContracts(a, G, io) {
     if (!rec) continue;   // (no place for it in this world yet: the next season)
     C.chains.push(ch); ch.steps.push(rec.uid);
     io.tell(`Новая история: «${H.label}». ${H.about}`, 'chain');
+  }
+  // the one-offs: the board's slots (its room's level: data/rooms.js) filled from the tiers the guild is trusted with, the
+  // stories' steps among them; a season posts what is missing, each with the chance `post` (the first season: all)
+  const most = tierOf(G), slots = roomBy(G, 'board', 'slots') ?? 4, open = () => C.records.filter(c => c.state === 'open' && !c.side).length;
+  for (let k = 0; most > 0 && k < slots * 3 && open() < slots; k++) {
+    if (!first && io.r() >= CONTRACT.board.post) break;
+    const tier = 1 + Math.floor(io.r() * most), rows = CONTRACTS.filter(x => x.tier === tier); if (!rows.length) continue;
+    const def = rows[Math.floor(io.r() * rows.length)];
+    if (C.records.some(c => c.tmpl === def.id && c.state === 'open')) continue;
+    const rec = post(a, G, def, {tmpl: def.id}, io.r);
+    if (rec && !first) io.tell(`На доске новый договор: ${rec.label} (${tierWord(tier)}; платит ${issuerName(a, rec.issuer)} — ${rec.escrow} зол.).`, 'contract');
   }
   G.contractsSeeded = true;
 }
@@ -185,7 +186,7 @@ export function takeContract(a, G, uid, n) {
   if (!rec || rec.state !== 'open') throw new Error('Этого договора на доске больше нет.');
   if (!liveTarget(a, rec)) throw new Error('Цели договора больше нет.');
   rec.state = 'accepted'; rec.by = n; rec.takenAt = G.day;
-  rec.completeBy = G.day + CONTRACT.time.base[rec.tier] + Math.round(CONTRACT.time.road * 2 * (rec.days || 0));
+  rec.completeBy = G.day + Math.round((CONTRACT.time.base[rec.tier] + CONTRACT.time.road * 2 * (rec.days || 0)) * (rec.known ? 1 : roomBy(G, 'maps', 'time') ?? 1));   // (the maps room: more time where the goal is sought by its traces)
   return rec;
 }
 export const contractWhy = (a, uid) => { const rec = contractOf(a, uid); return !rec || rec.state !== 'open' ? 'этого договора на доске больше нет' : !liveTarget(a, rec) ? 'цели договора больше нет' : null; };
@@ -271,7 +272,7 @@ export function contractQuest(a, K, rnd, rec, G) {
     const camp = campOf(a, rec.target.camp); if (!camp?.alive) return null;
     const {mask, cells} = reachable(a, K), spec = def.camp;
     const goal = {kind: camp.lair && LAIRS.get(camp.lair)?.undead || camp.band === 'undead' ? 'dread' : 'lair', at: camp.i, i: camp.i, label: camp.label, camp: camp.id};
-    const clues = spec.clue ? layClues(a, K, rnd, places(a, K, mask), cells, goal, CONTRACT.clueAt) : [];
+    const clues = spec.clue && !rec.known ? layClues(a, K, rnd, places(a, K, mask), cells, goal, CONTRACT.clueAt) : [];
     const [name, acc, g] = spec.trophy;
     Q = {name, acc, g, how: 'lair', lair: null, camp: camp.id, leader: null, pursuit: false, story: rec.story,
       crown: {...goal, guard: campGuard(a, camp, spec), area: null, exact: !clues.length, seen: false, state: 'lost', carrier: null},

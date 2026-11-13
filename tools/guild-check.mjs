@@ -4,7 +4,7 @@
 //   node tools/guild-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost} from '../src/campaign/index.js';
+import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost, houseOf, partyMost} from '../src/campaign/index.js';
 import {XP} from '../src/data/experience.js';
 import {ERRANDS} from '../src/data/errands.js';
 import {GUILD} from '../src/data/guild.js';
@@ -31,7 +31,7 @@ function guildHash(G) {
 // the people up to an errand's rank (GUILD.rank): grown on paper, as the deeds in town would grow them
 const ranked = (G, ids, errand) => { for (const id of ids) G.members.find(m => m.id === id).level = rankOf(errand); };
 // (a guild of the highest level: the world gives it every tier — data/guild.js GUILD.level; the levels — contract-check)
-const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = GUILD.level.need.at(-1); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G]; };
+const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = GUILD.level.need.at(-1); Object.assign(houseOf(G), {planning: 3, board: 3, barracks: 4}); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G]; };
 
 // ── the founding and the door
 {
@@ -106,7 +106,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
   ranked(G, ids, first.tier);
   const B = guildBoard(a, ids), card = B.errands.find(e => e.ok && e.id === first.id) || B.errands.find(e => e.ok);
   ok(!!card, 'доросли — поручение открыто', `${card?.id}, ур. ${rankOf(first.tier)}`);
-  ok(!!throws(() => launch(a, {contract: card.contract, ids: membersOf(G).map(m => m.id)})), `больше ${GUILD.party.max} — отказ`);
+  houseOf(G).planning = 2;   // (the planning room of the 2nd level: six at most)
+  ok(!!throws(() => launch(a, {contract: card.contract, ids: membersOf(G).map(m => m.id)})), `больше ${partyMost(G)} — отказ (комната планирования)`);
+  houseOf(G).planning = 3;
   const g0 = G.gold, K = launch(a, {contract: card.contract, ids, mode: 'auto'});
   ok(K === a.campaign && K.members.every(m => G.members.includes(m)), 'в отряде — те же люди, что в гильдии (не копии)');
   ok(K.social === G.social && K.seen === G.seen, 'связи и знание мира — гильдии');

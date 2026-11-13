@@ -27,8 +27,10 @@ import {opinion} from '../data/relations.js';
 import {TRAITS} from '../data/traits.js';
 import {XP} from '../data/experience.js';
 import {DAY} from '../core/time.js';
+import {HOUSE} from '../data/rooms.js';
 import {stepContracts, contractCards, contractOf, contractWhy, takeContract, settleContract, campsOf, fameBy, levelOf, tierOf, levelNext, abortWhy, abortContract} from './contracts.js';
 import {giveUp} from './errands.js';
+import {houseOf, houseSeason, finishBuilding, roomBy, grieve, working, roomLevel} from './house.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -53,7 +55,11 @@ export function pay(G, gold, why) {
 
 // the members by state
 export const membersOf = (G, state = null) => G.members.filter(m => m.alive && m.guild && (state == null ? !['dead', 'left'].includes(m.guild.state) : m.guild.state === state));
-export const atHouse = G => membersOf(G, 'ready');
+// (at the house: free, at a post, a trainee, a patient — campaign/house.js)
+export const atHouse = G => G.members.filter(m => m.alive && ['ready', 'post', 'training', 'treat'].includes(m.guild?.state));
+// the most in one party (the planning room: data/rooms.js) and in the guild (the barracks)
+export const partyMost = G => roomBy(G, 'planning', 'party') || GUILD.party.max;
+export const rosterMost = G => roomBy(G, 'barracks', 'roster') || GUILD.roster;
 export const healing = m => (m.hp ?? 1) < GUILD.home.ready;
 // a member's years now (world years)
 export const ageOf = (a, m) => (m.born == null ? null : Math.max(0, year(a) - m.born));
@@ -73,6 +79,7 @@ export function foundGuild(a, townId, {name = null} = {}) {
     social: {version: 1, relations: {}, why: {}, facts: [], commitments: [], applied: {}, faded: {}}, seen: new Uint8Array(a.n), log: [], ledger: [], rng: {},
   };
   pay(G, GUILD.start.gold, 'грамота державы на основание гильдии');
+  houseOf(G);
   G.candidates = rollRecruits(a, G, GUILD.start.candidates);
   acquaint(G, G.candidates);
   tell(a, G, `В ${townLabel(t, 3)} ${t.name} основана гильдия приключенцев «${G.name}». В казне ${G.gold} зол.; к дверям пришли ${G.candidates.length} ${plural(G.candidates.length, 'человек', 'человека', 'человек')}.`, 'start', true);
@@ -130,12 +137,14 @@ export function stepGuild(a) {
   const K = expedition(a);
   if (K) { upgradeMembers(K); K.track = []; K.seasonFrom = K.day; K.daily = [dayShot(K, K.day - 1)]; }
   const spring = a.hist.season === 0;
-  wages(a, G);
+  const paid = wages(a, G);
+  houseSeason(a, G, paid, {pay, tell: (text, kind) => tell(a, G, text, kind), award: (m, xp) => award(homeK(a, G), m, 'train', 1, {xp}), level: () => levelEvening(a, homeK(a, G), text => tell(a, G, text, 'level'))});
   leaveCold(a, G);
   stepHistory(a, () => {
     if (K && !K.closed) { caravanDay(a, K, K.day); if (K.phase === 'home' || ended(K)) closeExpedition(a, G, K); }
     homeDay(a, G);
   });
+  finishBuilding(a, G, text => tell(a, G, text, 'house'));
   if (spring) ageGuild(a, G);
   offerChores(a, G);
   contracts(a, G);
@@ -145,20 +154,22 @@ export function stepGuild(a) {
 // a day at the house: the hurt mend, the deeds in town come back
 function homeDay(a, G) {
   G.day++;
-  for (const m of atHouse(G)) if ((m.hp ?? 1) < 1) m.hp = Math.min(1, (m.hp ?? 1) + GUILD.home.heal);
+  const heal = GUILD.home.heal * (working(G, 'healer') ? 1 + HOUSE.heal.home * roomLevel(G, 'healer') : 1);   // (the healer's room: data/rooms.js)
+  for (const m of atHouse(G)) if ((m.hp ?? 1) < 1) m.hp = Math.min(1, (m.hp ?? 1) + heal);
   for (const c of [...G.chores]) if (G.day >= c.until) settleChore(a, G, c);
 }
 // a season's pay (at its first day, before the season runs): each living member's wage from the treasury, by his level;
 // one unpaid GUILD.wage.leave seasons running leaves the guild
 function wages(a, G) {
-  const W = GUILD.wage;
+  const W = GUILD.wage; let paid = 0;
   for (const m of membersOf(G)) {
     const w = Math.round((W.base + W.perLevel * ((m.level || 1) - 1)) * 10) / 10;
-    if (G.gold >= w) { pay(G, -w, `жалованье: ${m.name}`); m.unpaid = 0; m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.paid); continue; }
+    if (G.gold >= w) { pay(G, -w, `жалованье: ${m.name}`); paid += w; m.unpaid = 0; m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.paid); continue; }
     m.unpaid = (m.unpaid || 0) + 1;
     if (m.unpaid >= W.leave && m.guild.state === 'ready') { m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'не платили жалованья'}; tell(a, G, `${m.name} ушёл из гильдии: жалованья не видел ${m.unpaid} ${plural(m.unpaid, 'сезон', 'сезона', 'сезонов')}.`, 'people'); }
     else tell(a, G, `${m.name} не получил жалованья: казна пуста.`, 'people');
   }
+  return paid;
 }
 // devotion (GUILD.devotion): one who has none written yet has the start's
 export const devotionOf = m => m.devotion ?? GUILD.devotion.start;
@@ -183,6 +194,7 @@ function fall(a, G, m, why) {
   m.alive = false; m.hp = 0; m.died = {day: G.day, year: year(a), why}; m.guild.state = 'dead';
   for (const c of G.chores) c.ids = c.ids.filter(id => id !== m.id);
   tell(a, G, `${m.name} ${m.gender === 'f' ? 'умерла' : 'умер'}: ${why}.`, 'death', true);
+  grieve(G, m, (x, y) => bondOf(G, x, y), text => tell(a, G, text, 'house'));
 }
 
 // the world's contracts on the guild's board (campaign/contracts.js): a season's posting, offers run out, stories go on
@@ -282,7 +294,8 @@ export function rankWhy(ms, what) {
 export const namedMost = size => Math.max(1, Math.floor(size * GUILD.muster.named));
 const braveryOf = m => 1 + (m.local?.traits || []).reduce((s, t) => s + (TRAITS.has(t) ? TRAITS.get(t).mods?.bravery || 0 : 0), 0);
 const likes = (G, x, y) => opinion({...x, species: x.race}, {...y, species: y.race}) + bondOf(G, x.id, y.id);
-export function muster(a, {errand = null, contract = null, size = GUILD.party.max, named = []} = {}) {
+export function muster(a, {errand = null, contract = null, size = null, named = []} = {}) {
+  size ??= partyMost(a.guild);
   const G = a.guild, M = GUILD.muster, rec = contract ? contractOf(a, contract) : null, need = rec ? rankOf(rec.tier) : errand ? rankOf(errand) : 0;
   errand = errand || contract;
   const going = named.map(id => G.members.find(m => m.id === id)).filter(Boolean);
@@ -310,7 +323,9 @@ export function muster(a, {errand = null, contract = null, size = GUILD.party.ma
   for (const x of left) { const v = weigh(x); answers.push({id: x.m.id, go: false, why: going.length >= size && v.w > M.line ? 'отряд уже набран' : v.why}); }
   return {ids: going.map(m => m.id), answers};
 }
-export function musterWhy(a, {size = GUILD.party.max, named = []} = {}) {
+export function musterWhy(a, {size = null, named = []} = {}) {
+  size ??= partyMost(a.guild);
+  if (size > partyMost(a.guild)) return `комната планирования отправляет не больше ${partyMost(a.guild)}`;
   if (!named.length) return 'назначьте хотя бы одного: он поведёт, остальные решат сами';
   if (named.length > namedMost(size)) return `назначить можно не больше ${namedMost(size)} из ${size}: остальные решают сами`;
   return null;
@@ -322,7 +337,7 @@ export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null, cont
   const G = a.guild;
   if (G?.phase !== 'open') return 'гильдия закрыта';
   if (expedition(a)) return 'отряд уже в пути';
-  if (ids.length < GUILD.party.min || ids.length > GUILD.party.max) return `в отряде ${GUILD.party.min}–${GUILD.party.max} человек`;
+  if (ids.length < GUILD.party.min || ids.length > partyMost(G)) return `в отряде ${GUILD.party.min}–${partyMost(G)} человек (комната планирования)`;
   if (ids.some(id => G.members.find(m => m.id === id)?.guild?.state !== 'ready')) return 'не все свободны';
   if (G.gold < purse) return `в казне нет ${purse} зол. на дорогу`;
   if (contract) { const why = contractWhy(a, contract); if (why) return why; return rankWhy(ids.map(id => G.members.find(m => m.id === id)), contractOf(a, contract).tier); }
@@ -331,7 +346,7 @@ export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null, cont
 }
 //   contract — the uid of a contract of the board (campaign/contracts.js); errand — an errand of the capital's (data/errands.js:
 //              the checks of before the contracts)
-export function launch(a, {contract = null, errand = null, targetId = null, ids = null, named = null, size = GUILD.party.max, purse = GUILD.purse, mode = 'local'} = {}) {
+export function launch(a, {contract = null, errand = null, targetId = null, ids = null, named = null, size = null, purse = GUILD.purse, mode = 'local'} = {}) {
   // the named and the volunteers (muster); `ids` — a party set by hand (the checks, the quick probes)
   let M = null;
   if (!ids) { const w = musterWhy(a, {size, named: named || []}); if (w) throw new Error(w[0].toUpperCase() + w.slice(1) + '.'); M = muster(a, {errand, contract, size, named}); ids = M.ids; }
@@ -348,7 +363,8 @@ export function launch(a, {contract = null, errand = null, targetId = null, ids 
     tell(a, G, `${m.name} идёт против воли (${x.why.replace('назначен против воли: ', '')}).`, 'people');
   }
   pay(G, -purse, `в дорогу отряду: ${questWord(K)}`);
-  const food = Math.round(K.food * GUILD.food * 10) / 10;
+  const food = Math.round(K.food * GUILD.food * (roomBy(G, 'pantry', 'food') ?? 1) * 10) / 10;   // (the pantry: data/rooms.js)
+  const pots = roomBy(G, 'healer', 'potions') || 0; if (pots) for (const m of ms) m.potions = Math.max(m.potions || 0, pots);   // (the healer's potions for the road)
   if (G.gold >= food) pay(G, -food, 'еда в дорогу'); else { K.food = Math.floor(K.food * G.gold / Math.max(1e-6, food)); pay(G, -G.gold, 'еда в дорогу: на что хватило'); }
   for (const m of ms) m.guild = {state: 'expedition', since: G.day, expedition: K.expedition};
   tell(a, G, `Отряд гильдии ушёл: ${names(G, ids)} — ${questWord(K)}.`, 'start');
@@ -364,10 +380,12 @@ export function closeExpedition(a, G, K) {
   for (const m of mine) m.guild = {state: 'ready', since: G.day, from: 'expedition'};
   // the errand's experience (data/experience.js XP.quest, by its tier): whole when handed in, a little when back with nothing
   const done = K.done?.at(-1), tier = done?.tier ?? K.quest?.tier ?? ERRANDS.get(K.quest?.errand)?.tier ?? 0, H = homeK(a, G);
-  const qx = (XP.quest[Math.min(XP.quest.length - 1, tier)] || 0) * (done && !done.failed ? 1 : XP.questFail);
+  // (the planning room's trade: fewer hands — more experience each, HOUSE.xpRef / the party's size within HOUSE.xpSpan)
+  const went = K.members.filter(m => m.guild).length || 1, each = Math.min(HOUSE.xpSpan[1], Math.max(HOUSE.xpSpan[0], HOUSE.xpRef / went));
+  const qx = (XP.quest[Math.min(XP.quest.length - 1, tier)] || 0) * (done && !done.failed ? 1 : XP.questFail) * each;
   if (qx > 0) for (const m of mine) award(H, m, 'quest', 1, {xp: qx});
-  for (const m of fell) if (m.guild.state !== 'dead') m.guild = {...m.guild, state: 'dead'};
-  const room = Math.max(0, GUILD.roster - membersOf(G).length), stay = back.filter(m => !m.guild && !m.captive && !m.contract && !m.former && m.loyalty != null).slice(0, room);
+  for (const m of fell) { if (m.guild.state !== 'dead') m.guild = {...m.guild, state: 'dead'}; grieve(G, m, (x, y) => bondOf(G, x, y), text => tell(a, G, text, 'house')); }
+  const room = Math.max(0, rosterMost(G) - membersOf(G).length), stay = back.filter(m => !m.guild && !m.captive && !m.contract && !m.former && m.loyalty != null).slice(0, room);
   for (const m of stay) { m.guild = {state: 'ready', since: G.day}; m.core = true; delete m.loyalty; G.members.push(m); }
   G.nextMember = Math.max(G.nextMember, K.nextMember || 0);
   pay(G, K.gold, K.done?.at(-1)?.failed ? 'вернулись ни с чем: остаток кошеля' : `сдано поручение: ${questWord(K)} (с остатком кошеля)`);

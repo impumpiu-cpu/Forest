@@ -5,7 +5,8 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {ROOMS} from '../data/rooms.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
 import {raceLabel} from '../view/local.js';
@@ -16,12 +17,29 @@ import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
 
-const TABS = [['people', 'Люди'], ['board', 'Доска'], ['log', 'Летопись']];
-const STATE = {ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл'};
+const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом'], ['fallen', 'Павшие'], ['log', 'Летопись']];
+const STATE = {ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря'};
 const LOG_LINES = 80;   // the guild's chronicle in its tab: the last lines
 
 const TIER_WORD = ['', 'I', 'II', 'III', 'IV', 'V'];
 const SORT_WORDS = [['tier', 'по тиру'], ['pay', 'по плате'], ['margin', 'по запасу дней'], ['road', 'по дороге'], ['left', 'по сроку предложения']];
+// what a room does now, in a line (data/rooms.js `by`)
+function roomFx(G, id) {
+  const L = roomLevel(G, id); if (!L) return '';
+  const v = k => roomBy(G, id, k), pc = x => `${Math.round(x * 100)} %`;
+  switch (id) {
+    case 'board': return `объявлений на доске: ${v('slots')}`;
+    case 'planning': return `в отряде — до ${v('party')}`;
+    case 'barracks': return `мест в гильдии: ${v('roster')}`;
+    case 'tavern': return working(G, id) ? `возвращается ${pc(v('back'))} жалованья; доход с гостей — ${v('income')} зол. × Харизма управляющего / 5` : '';
+    case 'training': return working(G, id) ? `мест: ${v('slots')}; учит до ${1 + L}-го уровня` : '';
+    case 'healer': return working(G, id) ? `мест: ${v('slots')}; зелий в дорогу: ${v('potions')}; дома раны заживают быстрее` : '';
+    case 'pantry': return `еда в дорогу: ${pc(v('food'))} цены`;
+    case 'maps': return `срок договоров «по следам»: ×${String(v('time')).replace('.', ',')}${v('known') ? '; места лагерей известны' : ''}`;
+    case 'chapel': return `горе от гибели товарища: −${pc(v('grief'))}`;
+    default: return '';
+  }
+}
 export class GuildView extends CampaignView {
   build() {
     super.build();
@@ -30,11 +48,15 @@ export class GuildView extends CampaignView {
     $('guildBody').addEventListener('change', e => {
       const box = e.target.closest('input[data-mid]'); if (box) { box.checked ? this.gpick.add(+box.dataset.mid) : this.gpick.delete(+box.dataset.mid); this.renderGuild(); return; }
       const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.renderGuild(); return; }
+      const ps = e.target.closest('select[data-post]'); if (ps) { this.houseDo(() => setRoomPost(this.atlas, ps.dataset.post, ps.value ? +ps.value : null, () => {})); return; }
+      const rs = e.target.closest('select[data-room]'); if (rs && rs.value) { this.houseDo(() => sendToRoom(this.atlas, rs.dataset.room, +rs.value, () => {})); return; }
       const so = e.target.closest('select[data-gsort]'); if (so) { this.gsort = so.value; this.renderGuild(); return; }
       const sz = e.target.closest('select[data-gsize]'); if (sz) { this.gsize = +sz.value; this.renderGuild(); return; }
       const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.renderGuild(); this.lookAtCard(r.value); }
     });
     $('guildBody').addEventListener('click', e => {
+      const bd = e.target.closest('button[data-build]'); if (bd) { this.houseDo(() => buildRoom(this.atlas, bd.dataset.build, {pay: (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); }, tell: text => this.G.log.push({day: this.G.day, year: this.atlas.hist.year, season: this.atlas.hist.season, text, kind: 'house'})})); return; }
+      const fr = e.target.closest('button[data-free]'); if (fr) { this.houseDo(() => takeBack(this.G, +fr.dataset.free)); return; }
       const b = e.target.closest('button[data-act]'); if (!b) return;
       if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
     });
@@ -191,12 +213,12 @@ export class GuildView extends CampaignView {
       `<dt>Отряд</dt><dd>${K ? `в пути ${K.day} ${plural(K.day, 'день', 'дня', 'дней')}: ${esc(questWord(K))}` : 'дома'}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
     for (const id of [...this.gpick]) if (!ms.some(m => m.id === id && m.guild.state === 'ready')) this.gpick.delete(id);
-    $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.logHtml();
+    $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
   }
   // one member: a tick to pick (at the house only), name, role, level, years, health, what he is doing, wage
   memberRow(m, pickable = true) {
     const a = this.atlas, G = this.G, st = m.guild.state, free = st === 'ready', K = expedition(a) || {members: [m], day: 0};
-    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : STATE[st] || st;
+    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : st === 'post' ? `на посту: ${ROOMS.get(m.guild.post)?.post?.label || ''}` : STATE[st] || st;
     const lv = m.level || 1, nx = toNext(K, m, K.day);
     return `<label class="gm${free ? '' : ' busy'}${m.alive ? '' : ' dead'}">${pickable ? `<input type="checkbox" data-mid="${m.id}"${this.gpick.has(m.id) ? ' checked' : ''}${free ? '' : ' disabled'}>` : ''}` +
       `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
@@ -209,10 +231,38 @@ export class GuildView extends CampaignView {
     return `<p class="note">Отметьте, кого послать: на дело в городе или в поход — на «Доске». Раненые лечатся дома сами; жалованье — каждый сезон из казны.</p>` +
       `<div class="savelist guild-people">${live.map(m => this.memberRow(m)).join('')}</div>` +
       (this.gpick.size ? `<div class="row"><small>Выбрано: ${this.gpick.size}</small><button type="button" class="quiet mini" data-act="none">снять</button></div>` : '') +
-      (gone.length ? `<details class="obs-lib"><summary>Ушедшие и павшие (${gone.length})</summary><div class="savelist guild-people">${gone.map(m => this.memberRow(m, false)).join('')}</div></details>` : '');
+      (gone.filter(m => m.guild?.state === 'left').length ? `<details class="obs-lib"><summary>Ушедшие (${gone.filter(m => m.guild?.state === 'left').length})</summary><div class="savelist guild-people">${gone.filter(m => m.guild?.state === 'left').map(m => this.memberRow(m, false)).join('')}</div></details>` : '');
+  }
+  // ── the house (campaign/house.js; data/rooms.js): each room — its level, what it does now, its next level's cost, its post
+  houseHtml() {
+    const a = this.atlas, G = this.G, ready = membersOf(G, 'ready'), B = G.building;
+    const rows = ROOMS.all().filter(R => R.id !== 'fallen').map(R => {
+      const L = roomLevel(G, R.id), max = R.cost.length, cost = nextCost(G, R.id), why = buildWhy(a, R.id), staff = staffOf(G, R.id), idle = L > 0 && R.post && !staff;
+      const fx = roomFx(G, R.id);
+      const post = R.post && L > 0 ? `<div class="row"><small>${esc(R.post.label)}${R.post.level ? ` (ур. ${R.post.level}+)` : R.post.letter ? ` (${R.post.letter} ${R.post.least}+)` : ''}: <select data-post="${R.id}"><option value="">— никого —</option>${[...(staff ? [staff] : []), ...ready].map(m => `<option value="${m.id}"${m === staff ? ' selected' : ''}${m !== staff && postWhy(G, R.id, m) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1} · ${letters(m)}</option>`).join('')}</select></small></div>` : '';
+      const kind = R.id === 'training' ? 'training' : R.id === 'healer' ? 'treat' : null, inside = kind ? G.members.filter(m => m.alive && m.guild?.state === kind) : [];
+      const room = kind && working(G, R.id) ? `<div class="row"><small>${kind === 'training' ? 'Учатся' : 'Лечатся'}: ${inside.map(m => `${esc(m.name)} <button type="button" class="quiet mini" data-free="${m.id}">отпустить</button>`).join(', ') || 'никого'}` +
+        ` · <select data-room="${kind}"><option value="">${kind === 'training' ? 'отдать в учёбу…' : 'к лекарю…'}</option>${ready.map(m => `<option value="${m.id}"${(kind === 'training' ? trainWhy(G, m) : treatWhy(G, m)) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1}</option>`).join('')}</select></small></div>` : '';
+      return `<div class="sv${L ? '' : ' off'}"><span class="t"><b>${esc(R.label)}</b> · ${L ? `${L}-й уровень${max > 1 ? ` из ${max}` : ''}` : 'не построено'}${idle ? ` · <b>стоит: нужен ${esc(R.post.label)}</b>` : ''}` +
+        `<br><small>${esc(R.about)}</small>${fx ? `<br><small class="fact">${esc(fx)}</small>` : ''}</span>${post}${room}` +
+        `<div class="row actions">${cost != null ? `<button type="button" class="mini" data-build="${R.id}"${why ? ' disabled' : ''}>${L ? 'Улучшить' : 'Построить'} — ${cost} зол.</button>` : ''}<small>${why && cost != null ? esc(why) : ''}</small></div></div>`;
+    });
+    return `<p class="note">Строится одна комната за раз, готова к новому сезону.${B ? ` Сейчас: <b>${esc(ROOMS.get(B.room).label)}</b>, ${B.level}-й уровень.` : ''} Содержание дома — каждый сезон вместе с жалованьем.</p>` +
+      `<div class="savelist errands">${rows.join('')}</div>`;
+  }
+  // ── the fallen (the board that is always there): who, when, how, what they had done
+  fallenHtml() {
+    const G = this.G, dead = G.members.filter(m => !m.alive || m.guild?.state === 'dead').sort((p, q) => (q.died?.year ?? 0) - (p.died?.year ?? 0));
+    if (!dead.length) return '<p class="note">Доска павших пуста. Пусть так и остаётся.</p>';
+    return `<div class="savelist guild-people">${dead.map(m => {
+      const went = G.expeditions.filter(x => x.went.includes(m.id)).length;
+      return `<div class="gm dead"><span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${m.level || 1} · ${esc(raceLabel(SPECIES.get(m.race)))}` +
+        `<br><small>${m.died ? `${m.died.year}-й год: ${esc(m.died.why || 'пал')}` : 'пал'} · походов ${went}${m.maims ? ` · увечий ${m.maims}` : ''}</small></span></div>`;
+    }).join('')}</div>`;
   }
   boardHtml() {
     const a = this.atlas, G = this.G, ids = [...this.gpick], B = guildBoard(a, ids, this.gsort), K = expedition(a);
+    this.gsize = Math.min(this.gsize, partyMost(G));   // (the planning room: data/rooms.js)
     if (this.offerUid && !B.chores.some(o => o.uid === this.offerUid)) this.offerUid = null;
     const picked = ids.length ? ids.map(id => G.members.find(m => m.id === id)?.name).join(', ') : 'никто — отметьте людей в «Людях» или здесь';
     const chores = B.chores.map(o => `<label class="sv${o.uid === this.offerUid ? ' cur' : ''}${o.why ? ' off' : ''}"><input type="radio" name="gchore" value="${esc(o.uid)}"${o.uid === this.offerUid ? ' checked' : ''}>` +
@@ -224,7 +274,7 @@ export class GuildView extends CampaignView {
     // the muster (campaign/guild.js): the picked are the named; the others answer for themselves — shown before the gate
     const contract = B.errands.find(e => e.id === this.gerrand)?.contract || null, M = contract && ids.length ? muster(a, {contract, size: this.gsize, named: ids}) : null;
     const why = musterWhy(a, {size: this.gsize, named: ids}) || launchWhy(a, {ids: M ? M.ids : ids, contract});
-    const sizes = Array.from({length: GUILD.party.max - GUILD.party.min + 1}, (_, k) => GUILD.party.min + k).map(n => `<option value="${n}"${n === this.gsize ? ' selected' : ''}>${n}</option>`).join('');
+    const sizes = Array.from({length: partyMost(G) - GUILD.party.min + 1}, (_, k) => GUILD.party.min + k).map(n => `<option value="${n}"${n === this.gsize ? ' selected' : ''}>${n}</option>`).join('');
     const answers = M ? `<div class="guild-muster">${M.answers.map(x => { const m = G.members.find(y => y.id === x.id); return `<div class="${x.go ? 'go' : 'no'}">${x.go ? '✓' : '✗'} <b>${esc(m.name)}</b> <small>ур. ${m.level || 1} · ${esc(x.why)}</small></div>`; }).join('')}</div>` : '';
     return `<div class="row"><small>Отмечены (на дело в городе — все они; в поход — назначенные): <b>${esc(picked)}</b></small></div>` +
       `<div class="savelist guild-pick">${membersOf(G, 'ready').map(m => this.memberRow(m)).join('')}</div>` +
@@ -241,6 +291,11 @@ export class GuildView extends CampaignView {
   logHtml() {
     const G = this.G;
     return `<div class="guild-log">${G.log.slice(-LOG_LINES).reverse().map(l => `<div class="lv-${l.kind === 'death' ? 'top' : l.kind === 'choreBad' ? 'mid' : 'low'}"><small>${l.year}-й год, ${SEASONS.all()[l.season]?.label || ''}</small> ${esc(l.text)}</div>`).join('')}</div>`;
+  }
+  // a deed of the house (build, a post, a trainee, a patient): its error to the note; the panel and the save after it
+  houseDo(f) {
+    try { f(); $('guildNote').textContent = ''; } catch (e) { $('guildNote').textContent = e.message; }
+    this.renderGuild(); this.autosave?.(true);
   }
   doChore() {
     const a = this.atlas, ids = [...this.gpick];
