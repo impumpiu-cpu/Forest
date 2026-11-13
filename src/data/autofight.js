@@ -16,7 +16,8 @@
 //            falling with them, the costs never rising (the tool smooths them so). `npm run autofight:calibrate` rewrites it.
 export const AUTOFIGHT = {
   doubt: 1, sure: 1, extra: 1.2, below: 1,   // (2 worlds × 4 capitals, a whole campaign each, against the map: the crown home 25 % / 25 %, fights won 83 % / 81 %, dead of eight 5.6 / 4.8)
-  least: {member: 0.05, beast: 0.1},   // the least share of health a member, a beast is rated at (as the map sets them: campaign/camp.js openCamp)
+  least: {member: 0.05, beast: 0.1},
+  mean: 0.5,   // (the guess beside a fight on the map: tools/autofight-shadow.mjs) — the draw the foe's weight is read at   // the least share of health a member, a beast is rated at (as the map sets them: campaign/camp.js openCamp)
   // ── the table (written by tools/autofight-calibrate.mjs --write; one line per kind of foe)
   table: {
     'ambush:bat': {r: [1.928, 1.948, 1.967, 1.987, 2.007, 2.319, 3.487], win: [0.933, 0.933, 0.933, 0.933, 0.933, 0.933, 0.933], dead: [0, 0, 0, 0, 0, 0, 0], maim: [0, 0, 0, 0, 0, 0, 0], hp: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001], pot: [0, 0, 0, 0, 0, 0, 0]},

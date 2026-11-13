@@ -339,7 +339,7 @@ function readRow(R, x) {
 }
 // what the quick fight would read for this fight (no draw of the game's: the foe at its mean weight) — for the comparison
 export function autoGuess(a, K, d, how) {
-  const {row, how: measured} = autoRow(d, how), w = [0.5];
+  const {row, how: measured} = autoRow(d, how), w = [AUTOFIGHT.mean];
   const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
   const P = companyStrength(a, K) * caught, E = foeFielded(d, how, foeBudget(() => w[0], d, how)), ratio = P / Math.max(1e-6, E);
   const o = readRow(row, ratio / AUTOFIGHT.doubt);
