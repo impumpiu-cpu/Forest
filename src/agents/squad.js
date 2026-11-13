@@ -203,7 +203,7 @@ export function stepSquads(w) {
     // (the mindless dead never break; one by one the living still may)
     const broken = brokenShare(ms), leaderDown = !ms.some(m => m.id === sq.leader), B = MORALE.squad;
     sq.morale = +(1 - broken).toFixed(3);
-    if (sq.kind !== 'mindless' && (broken >= B.broken || (leaderDown && broken >= B.leaderless))) {
+    if (sq.kind !== 'mindless' && (broken >= B.broken || (leaderDown && (broken >= B.leaderless || sq.fallen / sq.size >= B.leaderLost)))) {
       const why = sq.fallen / sq.size >= 0.4 ? `потери (${sq.fallen} из ${sq.size} пали)` : leaderDown ? 'пал вожак' : 'дрогнули';
       setState(w, sq, 'retreat', why);
       continue;

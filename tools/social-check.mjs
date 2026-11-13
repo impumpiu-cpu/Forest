@@ -518,7 +518,7 @@ check('когда ядра не осталось, остальные отпущ�
   check('под тревогой друг бросается к упавшему другу — вариант сильнее строя', !!rescue && rescue[1] > offers[0][1], offers.map(o => `${o[0].id} ${o[1].toFixed(2)}`).join(', '));
   const cOffers = warband.want(w, c1) || [];
   check('чужой упавшему — без этого варианта', !cOffers.some(o => o[0].id === 'aid' && o[0].who === b1.id));
-  c1.hp = c1.maxHp ? c1.maxHp * 0.4 : c1.hp * 0.4; c1.mods = {...c1.mods, bravery: 0.6};   // (hurt, but not past BOARD.hurt: those keep out anyway)
+  c1.hp = c1.maxHp ? c1.maxHp * 0.4 : c1.hp * 0.4; c1.mods = {...c1.mods, bravery: 0.6}; c1.morale = {v: 20, state: 'breaking', since: w.tick};   // (hurt, but not past BOARD.hurt: those keep out anyway; its morale breaking: agents/morale.js)
   check('тяжело раненый робкий может дрогнуть и отойти к огню', (warband.want(w, c1) || []).some(o => o[0].id === 'runHome'));
   // the fallen and the ones who cannot stand it (D4.7): a helper not merciful enough goes with less of a will, a hater not at all
   {

@@ -149,6 +149,8 @@ export function stepMorale(w) {
   }
 }
 
+// in a fight: a foe within one's view (out of it the old rules hold: a beast badly hurt leaves the woods, a raider goes home)
+export const inFight = (w, a) => nearAgents(w, a.x, a.y, MORALE.view).some(o => !o.dead && !o.downed && !o.gone && !o.captive && isHostile(a, o));
 // a band's word on its members' morale (agents/squad.js): broken — this share of them breaking or fleeing
 export function brokenShare(ms) {
   if (!ms.length) return 0;

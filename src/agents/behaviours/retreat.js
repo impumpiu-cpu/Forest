@@ -8,7 +8,7 @@ import {holdsGround} from '../auras.js';
 import {RAID} from '../../data/behaviour.js';
 import {marksOf} from '../../data/conditions.js';
 import {isMindless} from '../../data/species.js';
-import {hasMorale} from '../morale.js';   // (one with a morale breaks by it, not at a share of its health: agents/behaviours/rout.js)
+import {hasMorale, inFight} from '../morale.js';   // (one with a morale breaks by it, not at a share of its health: agents/behaviours/rout.js)
 
 // how long a beast fights on once nobody of its band is left to follow (a trained one: its mark's `stay`)
 const stayOf = a => Math.max(0, ...marksOf(a).map(r => r.stay || 0));
@@ -30,7 +30,7 @@ export const retreat = {
     if (a.task?.id === 'leave') return [[a.task, RAID.want.leave, () => 'уходит']];
     if (a.lost) return [[{id: 'leave'}, RAID.want.leave, () => 'некому вести']];
     if (sp.sun && 1 - night > RAID.sunLeaves) return [[{id: 'leave'}, RAID.want.leave, () => 'солнце встало']];
-    if (!isMindless(sp) && !hasMorale(a) && a.hp < RAID.hurtBelow * maxHp(a) && !holdsGround(w, a)) return [[{id: 'leave'}, RAID.want.leave, () => 'тяжело ранен']];   // (a boss's aura: agents/auras.js)
+    if (!isMindless(sp) && (!hasMorale(a) || !inFight(w, a)) && a.hp < RAID.hurtBelow * maxHp(a) && !holdsGround(w, a)) return [[{id: 'leave'}, RAID.want.leave, () => 'тяжело ранен']];   // (a boss's aura: agents/auras.js)
     return null;
   },
 };

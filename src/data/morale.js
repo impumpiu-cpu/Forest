@@ -26,7 +26,7 @@
 //             band's leader `leader`, a boss `boss` (OpenXcom's sergeant 10 % … commander 50 %)
 //   home    — + resolve to one holding its own home (a lair stormed, a caravan's camp attacked)
 //   squad   — a band (agents/squad.js) breaks when `broken` of its members are breaking or fleeing, or `leaderless` of them
-//             once its leader fell
+//             once its leader fell — or with its leader fallen and `leaderLost` of its number
 //   resolve — one's resolve 0…100: its species' (`species`; else its kind's `kind`), + `bravery` × (its bravery − 1)
 //             (agents/agent.js own bravery, traits, traumas, potions), + `level` a level past the first (capped `levelCap`)
 //   temper  — how a species takes a fight, beside its resolve: × the points of each kind of event (`fell`, `wound`, `odds`,
@@ -51,7 +51,7 @@ export const MORALE = {
   drift: 0.2,
   officer: {near: 8, officer: 0.25, leader: 0.4, boss: 0.5},
   home: 10,
-  squad: {broken: 0.5, leaderless: 0.3},
+  squad: {broken: 0.5, leaderless: 0.3, leaderLost: 0.5},
   resolve: {bravery: 40, level: 1.5, levelCap: 15,
     kind: {race: 45, beast: 35, monster: 60, spirit: 60, demon: 75},
     species: {

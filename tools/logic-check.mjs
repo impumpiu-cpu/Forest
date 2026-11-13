@@ -87,6 +87,8 @@ import {FREEDOM} from '../src/data/captives.js';
 import {captivePrice, lawOf, SLAVE} from '../src/data/slavery.js';
 import {sellCaptives, buyCaptive, forSale} from '../src/settlement/slavery.js';
 import {tradeCaptives} from '../src/campaign/slavery.js';
+import {MORALE} from '../src/data/morale.js';
+for (const s of MORALE.ladder) { s.fight = 1; s.guard = 1; }   // (the weapons' and the armour's arithmetic, apart from one's morale: agents/morale.js)
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {

@@ -1,7 +1,7 @@
 // Fighting: melee blows, shots from bows and slings, armour and shields.
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
-import {moraleWound, moraleFell, moraleBlow, moraleGuard, fleeing} from './morale.js';
+import {moraleWound, moraleBlow, moraleGuard, fleeing} from './morale.js';
 import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
@@ -187,7 +187,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)
   if (t.hp <= 0 && breakToWar(w, by, t)) return dmg;   // the greenskins' pits: a beaten beast broken to war (settlement/warbeasts.js)
-  if (t.hp <= 0) { lethal(w, t, 'ран', by); if (t.dead || t.downed) moraleFell(w, t, by); } else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
+  if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }
 

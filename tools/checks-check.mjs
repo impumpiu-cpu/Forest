@@ -17,6 +17,8 @@ import {FINDS} from '../src/data/campaign.js';
 import {SPECIES} from '../src/data/species.js';
 import {mulberry} from '../src/core/rng.js';
 import * as E from '../src/data/schema/edits.js';
+import {MORALE} from '../src/data/morale.js';
+for (const s of MORALE.ladder) { s.fight = 1; s.guard = 1; }   // (the weapons' and the armour's arithmetic, apart from one's morale: agents/morale.js)
 
 const bad = [];
 const expect = (ok, what) => { if (!ok) bad.push(what); };
