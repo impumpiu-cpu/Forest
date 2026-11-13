@@ -57,6 +57,10 @@ export const WAYS = {
   former: ['downed', 'fleeFire', 'rout', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
 };
 
+// the map of influence (agents/influence.js; plan claude/combat-plan.md Бой-3, Wesnoth's power projection): each fighter's
+// strength spread over the cells about it, to nothing at `r`; laid anew every `every` ticks while a fight is on
+export const INFLUENCE = {r: 8, every: 20, mid: 0.5};
+
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
   view: 14,          // colony fighters this close to a member count against the band
@@ -74,7 +78,12 @@ export const SQUAD = {
   // the guards of a place stormed (goal `hold`, campaign/camp.js; plan claude/combat-plan.md Бой-2): they keep within `r` cells of
   // their post (a lair's heart), go for a foe who comes within `r` + `chase` of it, and no further; `slack` — how far from its
   // spot one stands at ease; `ring` — the spots spread about the post this far
-  hold: {r: 7, chase: 5, slack: 1.5, ring: 3, turn: 2.399963},   // (`turn`: the angle between two guards' spots — the golden one, so they spread)
+  hold: {r: 7, chase: 5, slack: 1.5, ring: 3, turn: 2.399963},
+  // a flank (plan claude/combat-plan.md Бой-3): a living band of at least `least` that has met the foe sends `share` of its front
+  // round the side of the foe's line where the foe is weakest (agents/influence.js) — `side` cells aside its middle, `deep`
+  // past it; there (within `near`), or struck on the way, it turns on the nearest foe; its blows from the side and behind
+  // land harder as any (data/balance/combat.js COMBAT.flank, back)
+  flank: {least: 4, share: 0.34, side: 6, deep: 2, near: 2, answer: 2.5},   // (`answer`: a foe this close on the way is answered)   // (`turn`: the angle between two guards' spots — the golden one, so they spread)
   looters: 0.4,      // share of a looting band sent to the stores
   campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat

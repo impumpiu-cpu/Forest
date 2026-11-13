@@ -32,6 +32,8 @@ import {roleTactic, bandSide, holdFoe, fightTask} from './tactics.js';
 import {RANK_RULES} from '../data/ranks.js';
 import {hasMark} from '../data/conditions.js';
 import {brokenShare} from './morale.js';
+import {influenceAt, enemySideOf} from './influence.js';
+import {isHostile} from '../data/factions.js';
 import {MORALE} from '../data/morale.js';
 
 export {SQUAD};   // (data/behaviour.js)
@@ -43,7 +45,7 @@ export const GOALS = {
   slaughter: {label: 'истребление', aim: 'идут на всё живое', done: 'уходят'},
   hold:      {label: 'оборона', aim: 'держат своё логово', done: 'уходят'},
 };
-export const ROLES = {front: 'передний боец', shooter: 'стрелок', looter: 'грабитель', torch: 'поджигатель', rear: 'прикрывает отход',
+export const ROLES = {flank: 'заходит с фланга', front: 'передний боец', shooter: 'стрелок', looter: 'грабитель', torch: 'поджигатель', rear: 'прикрывает отход',
   beast: 'боевой зверь', scout: 'разведчик', leader: 'вожак'};
 
 const table = w => w.squads || (w.squads = {});
@@ -209,6 +211,12 @@ export function stepSquads(w) {
       setState(w, sq, 'retreat', why);
       continue;
     }
+    // a flank: once it has met the foe, a living band big enough sends a third of its front round the foe's weak side
+    if (!sq.flanked && sq.kind === 'living' && sq.goal !== 'hold' && ms.length >= SQUAD.flank.least && ms.some(m => m.task?.id === 'fight')) {
+      sq.flanked = w.tick;
+      const fronts = ms.filter(m => m.sqRole === 'front' && m.task?.id !== 'fight');
+      for (const m of fronts.slice(0, Math.floor(ms.length * SQUAD.flank.share))) { m.sqRole = 'flank'; m.flankTo = null; }
+    }
     // the goal
     const g = sq.goal;
     if (g === 'loot') {
@@ -253,6 +261,7 @@ export function planFor(w, a, sq, radius) {
   const close = nearestHostile(w, a, 2.5);
   const role = a.sqRole;
   if (sq.goal === 'hold') return holdPlan(w, a, sq, radius, attacker);   // (the guards of a place stormed: every role holds it)
+  if (role === 'flank') { const f = flankPlan(w, a, sq, radius, attacker); if (f) return f; }
   if (role === 'looter') {
     // grab and run: a looter answers only someone already on it, and slips past the rest
     if (a.looted) return {id: 'leave'};
@@ -282,6 +291,26 @@ export function planFor(w, a, sq, radius) {
   return null;
 }
 
+// a flanker (SQUAD.flank): to a point aside the foe's line, on its weaker side (agents/influence.js), then the nearest foe — from
+// the side. Struck on the way, it answers; there, it is a front fighter again
+function flankPlan(w, a, sq, radius, attacker) {
+  const F = SQUAD.flank;
+  if (attacker && dist(a, attacker) < F.answer) { a.sqRole = 'front'; return fight(w, a, holdFoe(w, a, attacker)); }
+  if (!a.flankTo) {
+    const foes = w.agents.filter(o => !o.dead && !o.downed && !o.gone && !o.captive && isHostile(a, o) && dist(a, o) < radius * 2);
+    const own = membersOf(w, sq).filter(m => m !== a && m.sqRole !== 'flank');
+    if (!foes.length || !own.length) { a.sqRole = 'front'; return null; }
+    const E = mean(foes), O = mean(own), L = Math.hypot(E.x - O.x, E.y - O.y) || 1, ux = (E.x - O.x) / L, uy = (E.y - O.y) / L;
+    const pts = [1, -1].map(k => ({x: E.x - uy * k * F.side + ux * F.deep, y: E.y + ux * k * F.side + uy * F.deep})).filter(p => p.x >= 0 && p.y >= 0 && p.x < w.w && p.y < w.h);
+    if (!pts.length) { a.sqRole = 'front'; return null; }
+    const side = enemySideOf(a);
+    a.flankTo = pts.sort((p, q) => influenceAt(w, side, p.x, p.y) - influenceAt(w, side, q.x, q.y))[0];
+  }
+  if (Math.hypot(a.flankTo.x - a.x, a.flankTo.y - a.y) <= F.near) { a.sqRole = 'front'; return null; }
+  return a.task?.id === 'flankMove' ? a.task : {id: 'flankMove', x: a.flankTo.x, y: a.flankTo.y};
+}
+const mean = xs => ({x: xs.reduce((s, o) => s + o.x, 0) / xs.length, y: xs.reduce((s, o) => s + o.y, 0) / xs.length});
+
 // the guards of a place stormed (goal `hold`; SQUAD.hold): each its spot about the post; a foe who comes within reach of the
 // post is met — by the fighting role's own way (a shooter keeps its distance), never chased far; nobody near — back to the spot.
 // No looting, no captives led away: it is their home they hold (plan claude/combat-plan.md Бой-2)
@@ -299,7 +328,7 @@ function holdPlan(w, a, sq, radius, attacker) {
 
 // a member's title in the fight: what it is, its fighting role, its task in the band — «гоблин-стрелок-грабитель»;
 // the task is left out where it only repeats the role (a shooter shooting, a front fighter in front)
-const TASK_WORD = {looter: 'грабитель', torch: 'поджигатель', rear: 'замыкающий', scout: 'разведчик', leader: 'вожак'};
+const TASK_WORD = {flank: 'обходит', looter: 'грабитель', torch: 'поджигатель', rear: 'замыкающий', scout: 'разведчик', leader: 'вожак'};
 export function fighterLabel(w, a, base) {
   const sq = squadOf(w, a);
   if (a.warBeast) return base;

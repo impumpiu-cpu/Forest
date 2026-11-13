@@ -30,6 +30,10 @@ export function raidTasks() {
       if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.hold.slack) { recover(a); return; }
       if (approach(w, a, t.x, t.y) === null) { t.x = a.x; t.y = a.y; }   // (no way there: here is its spot)
     }},
+    // a flanker on its way round the foe's line (agents/squad.js flankPlan): walks there
+    {id: 'flankMove', label: () => 'заходит с фланга', step(w, a, t) {
+      if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.flank.near || approach(w, a, t.x, t.y) === null) done(w, a);
+    }},
     // leaving the map for good: raiders with their loot, and any beast that wanders off (agents/behaviours/leave.js)
     {id: 'leave', label: () => 'уходит', step(w, a, t) {
       recover(a);

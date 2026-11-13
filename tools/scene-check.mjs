@@ -9,6 +9,7 @@ import {capitals, newCampaign} from '../src/campaign/index.js';
 import {campSetup, openCamp, stepCamp, campDone, campOutcome, companyStrength} from '../src/campaign/camp.js';
 import {lairGuard} from '../src/campaign/land.js';
 import {planFor} from '../src/agents/squad.js';
+import {influenceAt} from '../src/agents/influence.js';
 import {CAMP} from '../src/data/camp.js';
 import {SQUAD, TACTICS} from '../src/data/behaviour.js';
 
@@ -67,6 +68,26 @@ const play = (w, each) => { for (let g = 0; g < 4800 && !campDone(w); g++) { ste
     for (const n of aim.values()) { samples++; if (n > TACTICS.focus.most + 1) over++; }
   });
   ok(samples === 0 || over / samples < 0.2, 'отстрел: на одну цель редко больше двух стрелков', `замеров ${samples}, сверх меры ${over}`);
+}
+
+// ── the map of influence (Бой-3): ours strong by our own, the foe's by its; a big band sends a third of its front round the flank
+{
+  let flankers = 0, turned = 0, inf = null;
+  for (let i = 0; i < 3 && !turned; i++) {
+    const a = loadAtlas(JSON.parse(frozen)), K = newCampaign(a, capitals(base)[i % capitals(base).length].town, {mode: 'local'});
+    const w = openCamp(campSetup(a, K, {kind: 'night', foe: {kind: 'raiders', strength: companyStrength(a, K) / (CAMP.foe.unit * 0.4)}, dayIn: K.dayIn}));
+    const seen = new Set();
+    play(w, w => {
+      if (!inf && w.influence && w.campaign.spawned) {
+        const us = w.agents.find(o => o.faction === 'colony' && !o.dead), them = w.campaign.foeObjs.find(o => !o.dead);
+        if (us && them) inf = {usAtUs: influenceAt(w, 'colony', us.x, us.y), themAtUs: influenceAt(w, 'foe', us.x, us.y), themAtThem: influenceAt(w, 'foe', them.x, them.y)};
+      }
+      for (const o of w.agents) { if (o.sqRole === 'flank') seen.add(o.id); else if (seen.has(o.id) && o.flankTo && !o.dead) turned++; }
+    });
+    flankers += seen.size;
+  }
+  ok(inf && inf.usAtUs > 0 && inf.themAtThem > 0, 'карта влияния: у своих — своя сила, у врага — его', JSON.stringify(inf && Object.fromEntries(Object.entries(inf).map(([k, v]) => [k, Math.round(v)]))));
+  ok(flankers > 0 && turned > 0, 'большая банда заходит с фланга: обходчики дошли и ударили', `обходчиков ${flankers}, дошли ${turned > 0 ? 'да' : 'нет'}`);
 }
 
 if (fails) { console.log(`\nscene-check: FAIL ×${fails}`); process.exit(1); }
