@@ -32,7 +32,7 @@ import {campOf} from './baggage.js';
 import {POTION} from '../data/potions.js';
 import {raidThreat} from '../local/index.js';
 import {recordOf} from '../local/index.js';
-import {walkable} from '../local/index.js';
+import {walkable, cellMid} from '../local/index.js';
 import {FAR} from '../local/index.js';
 import {cellPlan} from '../seam/index.js';
 import {mulberry, seedNumber} from '../core/rng.js';
@@ -343,7 +343,7 @@ function spawnFoe(w) {
   // the guards of a place stormed (campaign/quest.js) hold it (goal `hold`, agents/squad.js holdPlan): about its heart, or where
   // they stand; their morale their own (agents/morale.js: their home steadies them) — they break as anyone, they do not loot
   if (S.kind === 'guard') {
-    const P = heart != null ? {x: (heart % w.w) + 0.5, y: ((heart / w.w) | 0) + 0.5} : group.length ? {x: group.reduce((s, g) => s + g.x, 0) / group.length, y: group.reduce((s, g) => s + g.y, 0) / group.length} : null;
+    const P = heart != null ? cellMid(w, heart) : group.length ? {x: group.reduce((s, g) => s + g.x, 0) / group.length, y: group.reduce((s, g) => s + g.y, 0) / group.length} : null;
     for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'hold'; sq.post = P; } }
     C.alarm ??= w.tick;   // (the caravan came to storm it: up and at them)
   }

@@ -91,7 +91,15 @@ export function roleTactic(w, a, side, radius) {
     const press = pressing(w, a, foes);
     if (mind !== 'mindless' && a.gear?.rangedReady && press) return kite(w, a, press);   // a blade coming at it: step back and shoot again
     if (mind === 'sentient' && a.gear?.rangedReady) {
-      const pick = foes.find(o => dist(a, o) <= (a.gear.ranged.range || 0) && (o.gear?.ranged || hpShare(o) < T.wounded));
+      // the shots spread over the foes (TACTICS.focus): the nearer, the softer, the less aimed at by our shooters already
+      const F = T.focus, range = a.gear.ranged.range || 0, ours = side.all ? side.all().filter(s => s !== a && shoots(s) && fighting(s)) : [];
+      let pick = null, best = Infinity;
+      for (const o of foes) {
+        const d = dist(a, o); if (d > range) continue;
+        const n = ours.filter(s => s.task.target === o).length;
+        const score = d / Math.max(1, range) - (o.gear?.ranged || hpShare(o) < T.wounded ? F.soft : 0) + n * F.crowd + (n >= F.most ? F.over : 0);
+        if (score < best) { best = score; pick = o; }
+      }
       if (pick) return fightTask(w, a, pick);
     }
     return null;

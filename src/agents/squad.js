@@ -293,8 +293,8 @@ function holdPlan(w, a, sq, radius, attacker) {
   if (t && (t.id !== 'fight' || nearPost(t.target))) return t.id === 'fight' ? fight(w, a, holdFoe(w, a, t.target)) : t;
   const e = nearestHostile(w, a, radius);
   if (e && nearPost(e)) return fight(w, a, holdFoe(w, a, e));
-  const ang = (a.id * 2.399963) % (2 * Math.PI), x = P.x + Math.cos(ang) * H.ring, y = P.y + Math.sin(ang) * H.ring;
-  return a.task?.id === 'holdPost' && Math.hypot(a.task.x - x, a.task.y - y) < 0.5 ? a.task : {id: 'holdPost', x, y};
+  const ang = (a.id * H.turn) % (2 * Math.PI), x = P.x + Math.cos(ang) * H.ring, y = P.y + Math.sin(ang) * H.ring;
+  return a.task?.id === 'holdPost' && Math.hypot(a.task.x - x, a.task.y - y) < H.slack ? a.task : {id: 'holdPost', x, y};
 }
 
 // a member's title in the fight: what it is, its fighting role, its task in the band — «гоблин-стрелок-грабитель»;

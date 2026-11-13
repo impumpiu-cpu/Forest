@@ -74,7 +74,7 @@ export const SQUAD = {
   // the guards of a place stormed (goal `hold`, campaign/camp.js; plan claude/combat-plan.md Бой-2): they keep within `r` cells of
   // their post (a lair's heart), go for a foe who comes within `r` + `chase` of it, and no further; `slack` — how far from its
   // spot one stands at ease; `ring` — the spots spread about the post this far
-  hold: {r: 7, chase: 5, slack: 1.5, ring: 3},
+  hold: {r: 7, chase: 5, slack: 1.5, ring: 3, turn: 2.399963},   // (`turn`: the angle between two guards' spots — the golden one, so they spread)
   looters: 0.4,      // share of a looting band sent to the stores
   campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
@@ -90,7 +90,10 @@ export const SQUAD = {
 //   mend        — the healer: goes to a fallen one of its band within `near`, works `ticks` on it; a sentient one gives
 //                 a potion to one below `potionBelow` of its health (`potionTicks` to give it); gives it up after `chase`
 //                 ticks; the one it dressed stands up with `standUp` of its health and fights on
-export const TACTICS = {kite: 2.5, kiteFor: 30, kiteRest: 60, kiteOut: 1.6, kiteStep: 2, mendReach: 1.3, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
+// `focus` (plan claude/combat-plan.md Бой-2 «отстрел», the donor 0 A.D. Petra: no more than two on one foe): a shooter picks among
+// the foes in its range the nearest, a soft one (a shooter, the wounded) the sooner (`focus.soft`), one already aimed at by
+// `focus.most` of its side's shooters the later (`focus.crowd` each, more past the most)
+export const TACTICS = {focus: {most: 2, crowd: 0.3, over: 2, soft: 0.5}, kite: 2.5, kiteFor: 30, kiteRest: 60, kiteOut: 1.6, kiteStep: 2, mendReach: 1.3, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
 
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this

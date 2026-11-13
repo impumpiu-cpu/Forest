@@ -48,7 +48,7 @@ export {addWork, freeCell, handsOf, spotNear, stepWorks, tetherAt, workDone, wor
 export {mindOf} from '../settlement/campMind.js';
 export {newGame, step} from '../sim.js';
 export {createWorld} from '../world/generate.js';
-export {DX, DY, cellOf, walkable} from '../world/grid.js';
+export {DX, DY, cellOf, walkable, cellMid} from '../world/grid.js';
 export {airTemp, tempAt} from '../world/heat.js';
 export {oreOf} from '../world/ores.js';
 export {faunaLevel} from '../world/region.js';
