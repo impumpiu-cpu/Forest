@@ -179,8 +179,9 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
     for (const x of K.members) x.dies = a.hist.year;
     const out = !!expedition(a), n0 = G.expeditions.length;
     stepGuild(a);   // (the spring: age comes at its end — on the road, or at the house if they came home within the season)
+    if (expedition(a) && K.members.every(x => !x.alive || !x.guild)) stepGuild(a);   // (dead at the season's end on the road: the party is closed with the next)
     if (!out || G.expeditions.at(-1)?.how !== 'не вернулся' && G.expeditions.length > n0) ok(K.members.every(x => !x.alive), 'старость: отряд вернулся до весны — умерли дома', G.expeditions.at(-1)?.how);
-    else ok(K.members.every(x => !x.alive || !x.guild) && G.expeditions.at(-1)?.how === 'не вернулся' && G.phase === 'open', 'старость в пути: отряд не вернулся, гильдия жива', `${G.expeditions.at(-1)?.how}, дома ${membersOf(G).length}`);
+    else ok(K.members.every(x => !x.alive || !x.guild) && G.expeditions.at(-1)?.how === 'не вернулся' && G.phase === 'open', 'старость в пути: отряд не вернулся, гильдия жива', `${G.expeditions.at(-1)?.how}, дома ${membersOf(G).length}; в пути: ${!!expedition(a)}, ${K.phase}, ${K.members.map(x => `${x.alive ? "+" : "-"}${x.guild ? "г" : ""}`).join("")}`);
   }
   for (const x of membersOf(G)) x.dies = a.hist.year + 1;
   for (let k = 0; k < 8 && G.phase === 'open'; k++) stepGuild(a);

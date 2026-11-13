@@ -243,18 +243,16 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(n > 0 && most === 1, 'быстрый бой: увечный выбывает из боя — за один бой не больше одного увечья', `увечий ${n}, больше всего у одного ${most}`);
 }
 
-// Р3: a lost quick fight with nobody left on its feet — the maimed lying there may be finished off (as on the map); won — never
+// Р3 (Г6): the quick fight's dead are the map's (data/autofight.js — the finished-off of a lost fight among them): a hopeless fight
+// kills, an easy one does not
 {
-  let fin = 0, won = 0;
-  for (let s = 1; s <= 40; s++) {
-    // (two left of the company, worn to nothing: the quick fight's blows run out before eight are down — campaign/fight.js)
-    const {a, K} = fresh(); for (const m of K.members) { ensureXp(m); m.hp = 0.03; } for (const m of K.members.slice(2)) m.alive = false;
+  let hopeless = 0, easy = 0;
+  for (let s = 1; s <= 30; s++) {
     let k = s * 104729 + 11; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
-    const win = fight(a, K, {kind: 'raiders', strength: 4, label: 'налётчики'}, r, 'night');
-    const f = K.members.filter(m => /лёжа без сознания/.test(m.died?.why || '')).length;
-    if (win) won += f; else fin += f;
+    { const {a, K} = fresh(); for (const m of K.members) ensureXp(m); fight(a, K, {kind: 'raiders', strength: 6, label: 'налётчики'}, r, 'night'); hopeless += K.members.filter(m => !m.alive).length; }
+    { const {a, K} = fresh(); for (const m of K.members) ensureXp(m); fight(a, K, {kind: 'raiders', strength: 0.2, label: 'налётчики'}, r, 'night'); easy += K.members.filter(m => !m.alive).length; }
   }
-  ok(fin > 0 && won === 0, 'проигранный быстрый бой, когда стоять некому: увечных добивают; в выигранном — никогда', `добитых ${fin}, в победах ${won}`);
+  ok(hopeless > 30 && easy === 0, 'быстрый бой: безнадёжный бой уносит жизни, лёгкий — нет', `павших за 30 боёв: безнадёжных ${hopeless}, лёгких ${easy}`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

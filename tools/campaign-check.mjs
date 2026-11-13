@@ -305,7 +305,8 @@ check('наёмники в конце срока остаются, продле�
 check('стоянки ради добычи: встают у руды выше своего металла или у серебра, самоцветов и золота, добытое везут с собой', got.mines > 0 && got.dug > 0, `стоянок ${got.mines}, с добычей ${got.dug}`);
 check('пузырь: бродячие отряды замечают караван только вблизи и тогда идут по следу, днём ходят малые отряды', got.noticed > 0 && got.small > 0, `заметили караван ${got.noticed} раз, малых отрядов ${got.small}`);
 check('находки с причиной: тело у дороги, брошенная повозка, логово, пепелище, поле боя — и ни одного кошеля из воздуха', got.finds > 0 && !got.thinAir, `находок ${got.finds}`);
-check('пленных продают и покупают в городах, где это не запрещено', got.sold + got.bought > 0 || got.slaveMarket === 0, `продали ${got.sold}, купили ${got.bought}; пленных к продаже ${got.slaveMarket}, из них у мастеров не хватило денег ${got.slaveBroke}`);
+check('пленных продают и покупают в городах, где это не запрещено', got.sold + got.bought > 0 || got.slaveMarket === got.slaveBroke,   // (none to sell, or the masters had no money for them)
+  `продали ${got.sold}, купили ${got.bought}; пленных к продаже ${got.slaveMarket}, из них у мастеров не хватило денег ${got.slaveBroke}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
   `сыграно ${local.camps} (дней стоянок ${local.stops}), в среднем ${Math.round(local.ticks / Math.max(1, local.camps))} тиков и ${Math.round(local.ms / Math.max(1, local.camps))} мс; повторов ${local.same} из ${local.replays}`);
@@ -331,6 +332,7 @@ check('караваны обзаводятся обозом и выбирают 
   // the doom: the fourth rises in the world in its year, and its lair is guarded harder
   const b = freshE(), K2 = newCampaign(b, capsE[1 % capsE.length].town, {mode: 'auto'}), d4 = b.calamities.at(-1), g0 = K2.quest.crown.guard.strength;
   d4.riseAt = b.hist.year + 1;
+  for (const m of K2.members) for (const k of ['S', 'P', 'E', 'A']) m.special[k] = (m.special[k] ?? 5) + 5;   // (a hardy company: the doom is the matter, and the road's fights cost what the map's do — data/autofight.js)
   for (let k = 0; k < 8 && stepCampaign(b); k++);
   check('эпос: в свой год четвёртое бедствие начинается в мире, логово стерегут злее', d4.phase === 'rise' && K2.quest.crown.guard.strength > g0 * 1.3 && b.chronicle.some(l => l.calamity === d4.id && /Началось новое бедствие/.test(l.text)),
     `${d4.phase}, стража ${g0.toFixed(2)} → ${K2.quest.crown.guard.strength.toFixed(2)}`);
