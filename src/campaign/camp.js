@@ -108,6 +108,40 @@ export function campSetup(a, K, ev) {
   };
 }
 
+// ── the company's strength with no map (the quick fight: campaign/fight.js autoFight; data/camp.js CAMP.auto): each member made
+// on a scratch world as openCamp makes it — its letters, skills, perks, marks, wounds, health and gear — and rated as the map
+// rates it (agents/strength.js, at its present health); the war beasts and the golems at theirs. Nothing of the game is drawn.
+export function companyStrength(a, K) {
+  const w = {rngs: {birth: mulberry(seedNumber(`${K.seed}:might`))}, agents: [], nextId: 1, nameIdx: 0, tick: 0};
+  let sum = 0;
+  for (const m of K.members) {
+    if (!m.alive || m.captive) continue;
+    const ag = createAgent(w, m.race, 'raiders', 0, 0);   // (a scratch world keeps no chronicle: the side is only a word here)
+    ag.special = {...m.special};
+    const L = m.local;
+    if (L?.skill) ag.skill = {...L.skill};
+    else for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) ag.skill[id] = Math.max(ag.skill[id] || 0, v);
+    const ws = woundsOut(K, m), es = effectsOut(K, m);
+    if (es.length) ag.effects = es.map(e => ({id: e.id, until: e.ticks}));
+    if (ws.length) ag.wounds = ws.map(x => ({id: x.id, until: x.ticks}));
+    if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];
+    if (m.maims) ag.maims = m.maims;
+    if (m.perks?.length) { ag.perks = m.perks.map(p => ({id: p.id, rank: p.rank})); ag.kinHere = K.members.filter(x => x.alive && !x.captive && x.race === m.race).length; }
+    refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
+    const hands = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => gearDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
+    dress(ag, [...hands, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
+    sum += sideStrength([ag], {now: true});
+    w.agents = [];
+  }
+  for (const b of K.beasts) {
+    if (!(b.hp > 0)) continue;
+    const sp = b.species || BEASTS[b.kind]?.species || b.kind;
+    if (b.kind !== 'war' && !BEASTS[b.kind]?.golem) continue;   // (the herd's beasts keep out of a fight)
+    if (SPECIES.has(sp)) sum += expectedStrength(sp, {key: 'company'}) * Math.max(0.1, Math.min(1, b.hp));
+  }
+  return sum;
+}
+
 // the hours of a camp: when it begins, when the foe comes, when it ends at the latest (ticks)
 // (in the camp's own ticks: its sun is slower than a settlement's, CAMP.clock — core/time.js dayScale)
 function hours(S, r) {
