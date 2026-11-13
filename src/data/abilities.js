@@ -16,6 +16,7 @@ export const ABILITY = {
   slack: 18, out: 1.5,
   pace: 1.35,
   aim: 0.85,
+  straight: 25,   // a run «straight on» bends no more than this many degrees a step (the perk «Таран и пикирование»)
   shift: {ways: 8, by: 1.6, ticks: 14, far: 2},
   there: 0.25,   // (close enough to the spot stepped to)
   dodged: 0.5,
@@ -25,4 +26,11 @@ export const ABILITY = {
 // flight (the perk «Полёт», agents/abilities.js stepFlight):
 //   hitUp — a blade reaches one high in the air only from this far (a spear's 1.85: yes; a sword's 1.25: no)
 //   land  — it comes down for a foe within its reach + this
-export const FLIGHT = {hitUp: 1.8, land: 0.3};
+export const FLIGHT = {hitUp: 1.8, land: 0.3, grounded: 0.35};   // grounded — a burrower badly hurt goes under (× its health)
+
+// holding (the perks «Захват», «Сдавливание», «Проглатывание»; agents/abilities.js):
+//   size  — a body's size for a grip where its species gives none (look.size): a person, a big one (`big`)
+//   help  — each of the held one's own within `r` cells, standing, adds `per` to its pull
+export const GRIP = {size: {person: 0.5, big: 0.8}, help: {r: 1.6, per: 4}};
+// under the ground (the perk «Рытьё»): what ground is too hard for the first rank (data/terrain.js codes by name)
+export const BURROW = {hard: ['ROAD', 'FORD', 'FLAGS', 'SCORCH', 'RUBBLE']};

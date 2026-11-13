@@ -46,7 +46,7 @@ export const BESTIARY = [
   beast({id: 'varg', catchable: true, cr: 0.5, kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
     habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
-    look: {shape: 'wolf', size: 0.74, color: '#4b4b55'},
+    look: {shape: 'wolf', size: 0.74, color: '#4b4b55'}, perks: [{id: 'charge', rank: 1}],   // (runs one down and knocks it over)
     yields: {meat: 3, hide: 3, bone: 2}, tameWith: ['orc', 'goblin'],
     killMessage: name => `Варги разорвали поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['deer', 'goat', 'boar', 'hare', 'elk'], weakPrey: ['mule'], boldPeople: 0.35, groupFear: 4, meal: 2, bigMeal: 4})}),
@@ -103,7 +103,7 @@ export const BESTIARY = [
   beast({id: 'toad', kind: 'beast', label: 'гигантская жаба', labelAcc: 'гигантскую жабу', plural: 'гигантские жабы', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025,
     arrive: {group: [1, 2], every: [2, 3], chance: 0.6, cap: 3, first: 2},
     habitat: {swamp: 'common', jungle: 'usual', water: 'rare'},
-    look: {shape: 'toad', size: 0.55, color: '#6b7a3a'},
+    look: {shape: 'toad', size: 0.55, color: '#6b7a3a'}, perks: [{id: 'grab', rank: 1}, {id: 'swallow', rank: 1}],   // (the tongue takes hold; a small one it swallows)
     yields: {meat: 2, slime: 1}, trophies: [{res: 'slime', n: 1, chance: 0.3}],
     killMessage: name => `Жаба утянула поселенца в трясину: <b>${name}</b>.`,
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8})}),
@@ -113,7 +113,7 @@ export const BESTIARY = [
   beast({id: 'griffin', catchable: true, cr: 2, kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.86, color: '#b88a44'}, perks: [{id: 'flight', rank: 2}],
+    look: {shape: 'bird', size: 0.86, color: '#b88a44'}, perks: [{id: 'flight', rank: 2}, {id: 'charge', rank: 2}, {id: 'grab', rank: 1}],   // (it dives; it seizes)
     yields: {meat: 4, feathers: 3, bone: 2}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
     killMessage: name => `Грифон унёс поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
@@ -297,7 +297,7 @@ export const BESTIARY = [
   beast({id: 'crocodile', kind: 'beast', label: 'крокодил', labelAcc: 'крокодила', plural: 'крокодилы', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 2], every: [4, 6], chance: 0.4, cap: 2, first: 3, message: 'у воды залёг крокодил. К берегу — с оглядкой'},
     habitat: {swamp: 'common', jungle: 'usual', water: 'usual', savanna: 'rare'},
-    look: {shape: 'lizard', size: 1.0, color: '#4a5e36'},
+    look: {shape: 'lizard', size: 1.0, color: '#4a5e36'}, perks: [{id: 'grab', rank: 2}],   // (jaws that hold and drag)
     yields: {meat: 8, hide: 5, bone: 3}, trophies: [{res: 'scales', n: 2, chance: 0.2}],
     killMessage: name => `Крокодил утащил поселенца в воду: <b>${name}</b>.`,
     grazes: {terrain: ['water', 'grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 1.3, charge: 1.6, chargeHit: 2.0, chargeFrom: 1.5, grudge: 200, giveUp: 10, fleeBelow: 0.15})}),

@@ -12,7 +12,7 @@
 //      once in `calm` ticks for each); the ground in it catches where there is something to burn (`kindle`).
 //   A wind-up is broken by a stun: ABILITY.interrupt ticks before the next try.
 //   a.act = {id, rank, x, y, dir, at} — the wind-up under way; a.actReady = {id: tick} — when each is ready again (plain data)
-import {ABILITY, FLIGHT} from '../data/abilities.js';
+import {ABILITY, FLIGHT, GRIP, BURROW} from '../data/abilities.js';
 import {PERKS, perksOf, perkProfile, heldOf} from '../data/perks.js';
 import {SPECIES, isMindless} from '../data/species.js';
 import {isHostile} from '../data/factions.js';
@@ -30,6 +30,7 @@ import {moraleShock, moraleWound, fleeing} from './morale.js';
 import {maxHp} from './agent.js';
 import {heatTo} from '../world/heat.js';
 import {cellMid, cellOf, walkable} from '../world/grid.js';
+import {T} from '../data/terrain.js';
 import {handItems, def} from './equipment.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
@@ -66,7 +67,7 @@ export function inShape(w, row, ox, oy, dir, x, y) {
   return lineOfFire(w, ox, oy, x, y);   // (a wall, a rock shuts it off)
 }
 const caught = (w, a, row, ox, oy, dir) => nearAgents(w, ox, oy, row.length + ABILITY.edge + 1)
-  .filter(o => o !== a && !o.dead && !o.downed && !o.gone && inShape(w, row, ox, oy, dir, o.x, o.y));
+  .filter(o => o !== a && !o.dead && !o.downed && !o.gone && !o.under && !o.swallowed && inShape(w, row, ox, oy, dir, o.x, o.y));
 // a foe: of a side at war with its own, or one fighting it or its side, or of the side it hunts (a beast's prey's kin: a
 // dragon at war with nobody, mauling one of the caravan)
 const foeOf = (a, o) => !ours(a, o) && o.faction !== a.faction && (isHostile(a, o) || aggressor(a, o) || o.task?.target === a ||
@@ -131,6 +132,10 @@ function sidestep(w, a, row) {
 // ── each tick, before one's brain (sim.js): → true while it winds up an act (it does nothing else) or steps out of one
 export function stepAct(w, a) {
   if (a.flightRow !== null) stepFlight(w, a);   // (one that cannot fly is marked so on its first tick: flightRow null)
+  if (a.chargeRow !== null) stepRun(w, a);
+  if (a.held && stepHeld(w, a)) return true;
+  if (a.holding != null && !a.act && stepHolding(w, a)) return true;
+  if (a.burrowRow !== null && !a.act && stepBurrow(w, a)) return true;
   let now = false;   // (stepped aside for a clear cone and there: look at once)
   if (a.dodge) {
     const there = Math.hypot(a.dodge.x - a.x, a.dodge.y - a.y) <= ABILITY.there;
@@ -160,13 +165,13 @@ export function stepAct(w, a) {
 
 function begin(w, a, act, dir, tid = null) {
   const {row} = act;
-  a.act = {id: act.id, rank: act.rank, x: a.x, y: a.y, dir, at: w.tick + row.prep, ...(tid != null ? {tid} : {})};
+  a.act = {id: act.id, rank: act.rank, x: a.x, y: a.y, dir, at: w.tick + row.prep, ...(tid != null ? {tid} : {}), ...(act.sub ? {sub: act.sub} : {})};
   if (tid != null) return;   // (one target: a quick throw, no shape to step out of)
   w.fx.push({kind: 'cone', x1: a.x, y1: a.y, dir, angle: row.shape === 'aura' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: row.prep, T: row.prep, prep: true, x2: a.x, y2: a.y});
   if (row.fear) return;   // (a roar is heard, not stepped out of)
   // whoever sees it coming and stands in it steps out: past the rim, or out past its end
   for (const o of caught(w, a, row, a.x, a.y, dir)) {
-    if (isMindless(SPECIES.get(o.species)) || o.captive || o.sleeping || !canSee(w, o, a)) continue;
+    if (isMindless(SPECIES.get(o.species)) || o.captive || o.sleeping || o.held || (!a.act.sub && !canSee(w, o, a))) continue;   // (the ground heaving is seen by all near)
     const dx = o.x - a.x, dy = o.y - a.y, d = Math.hypot(dx, dy);
     let x, y;
     if (row.shape === 'aura' || row.shape === 'rear' || d < ABILITY.eps) { const k = (row.length + ABILITY.edge + ABILITY.out) / Math.max(d, ABILITY.eps); x = a.x + dx * k; y = a.y + dy * k; }
@@ -188,8 +193,10 @@ function harmTo(w, o, type) {
 }
 
 function release(w, a) {
-  const {id, rank, x, y, dir, tid} = a.act, P = PERKS.get(id), g = perksOf(a).find(p => p.id === id), row = perkProfile(id, g?.rank || rank, g?.own);
-  a.act = null; (a.actReady ||= {})[id] = w.tick + row.wait;
+  const {id, rank, x, y, dir, tid, sub} = a.act, P = PERKS.get(id), g = perksOf(a).find(p => p.id === id), whole = perkProfile(id, g?.rank || rank, g?.own);
+  const row = sub ? whole[sub] : whole;   // (a part of a rank's row: the burrower's bursting out)
+  a.act = null; (a.actReady ||= {})[id] = w.tick + (row.wait || 0);
+  if (id === 'burrow') { a.under = false; a.surfaced = w.tick; }
   let targets;
   if (tid != null) {   // one target: still there, in range, in sight
     const t = liveById(w, tid), R = row.range + ABILITY.edge + 1;
@@ -242,6 +249,7 @@ function strike(w, a, o, row) {
     }
     if (row.web && !sp.mechanism) o.webbed = {slow: Math.min(row.web.slow, o.webbed && o.webbed.until > w.tick ? o.webbed.slow : 1), until: Math.max(w.tick + row.web.ticks, o.webbed?.until || 0)};
     if (row.knock && !sp.mechanism) o.stunned = {until: Math.max(o.stunned?.until || 0, w.tick + row.knock)};
+    if (row.grab && o.hp > 0) grip(w, a, o, row.grab);
   }
   if (o.hp <= 0) lethal(w, o, row.type === 'fire' ? 'огня' : row.venom && !row.dmg ? 'яда' : 'ран', a);
   return true;
@@ -267,4 +275,89 @@ export function stepBurning(w, a, inWater) {
   if (w.tick >= a.burning.until || inWater) { a.burning = null; return; }
   a.hp -= a.burning.dmg;
   if (a.hp <= 0) lethal(w, a, 'огня', null);
+}
+
+// ── holding (the perks «Захват», «Сдавливание», «Проглатывание»): a.holding — the id of the one it holds; o.held = {by, power,
+// every, next}; o.swallowed — inside it (unseen, out of reach, its pull against the swallow's own hold)
+export const sizeOf = sp => sp.look?.size ?? (sp.big ? GRIP.size.big : GRIP.size.person);
+function grip(w, a, o, G) {
+  if (a.holding != null || o.held || o.dead || o.downed || sizeOf(SPECIES.get(o.species)) > G.size) return;
+  a.holding = o.id; o.held = {by: a.id, power: G.hold, every: G.every, next: w.tick + G.every, since: w.tick};
+  o.path = null; o.dodge = null;
+  if (o.faction === 'colony' && o.name) log(w, `<b>${esc(o.name)}</b> в хватке: ${esc(SPECIES.get(a.species).label)}.`, 'danger');
+}
+export function letGo(w, a, o) {
+  if (a) a.holding = null;
+  if (!o) return;
+  if (o.swallowed && a) { o.x = a.x; o.y = a.y; }   // (out of it, where it lies)
+  o.held = null; o.swallowed = false;
+}
+const holdRow = (a, id) => (a[`${id}Row`] !== undefined ? a[`${id}Row`] : (a[`${id}Row`] = heldOf(a, id)));
+// the held: it pulls every `every` ticks (its max(S, A), its own close by pulling too); inside — it is carried, digested
+function stepHeld(w, o) {
+  const h = liveById(w, o.held.by);
+  if (!h || h.dead || h.downed || h.gone || h.holding !== o.id || (h.stunned && w.tick < h.stunned.until) || fleeing(h)) { letGo(w, h, o); return false; }
+  if (o.dead) { letGo(w, h, o); return false; }
+  if (o.swallowed) { o.x = h.x; o.y = h.y; const S = holdRow(h, 'swallow'); if (S) { o.hp -= S.digest; if (o.hp <= 0) lethal(w, o, 'ран', h); } }
+  if (w.tick >= o.held.next && !o.downed) {
+    o.held.next = w.tick + o.held.every;
+    const help = o.swallowed ? 0 : nearAgents(w, o.x, o.y, GRIP.help.r).filter(x => x !== o && !x.dead && !x.downed && !x.held && ours(o, x)).length;
+    const pull = Math.max(o.special?.S ?? 5, o.special?.A ?? 5) + help * GRIP.help.per;
+    const power = o.swallowed ? holdRow(h, 'swallow')?.hold ?? o.held.power : o.held.power;
+    if (w.rngs.combat() < pull / (pull + power)) { letGo(w, h, o); if (o.faction === 'colony' && o.name) log(w, `<b>${esc(o.name)}</b> вырвался${help ? ' — помогли свои' : ''}.`, 'notice'); return false; }
+  }
+  return !!o.swallowed;   // (inside it does nothing else; held, it may still strike at the holder: agents/combat.js)
+}
+// the holder: it holds and does nothing else — it squeezes (constrict), it swallows one small enough after a while
+function stepHolding(w, a) {
+  const o = liveById(w, a.holding);
+  if (!o || o.dead || o.gone || o.held?.by !== a.id || fleeing(a)) { letGo(w, a, o); return false; }
+  if (Math.hypot(o.x - a.x, o.y - a.y) > ABILITY.edge + 2 && !o.swallowed) { letGo(w, a, o); return false; }
+  const C = holdRow(a, 'constrict');
+  if (C && (w.tick - o.held.since) % C.every === C.every - 1) { o.hp -= C.dmg; o.flash = 4; moraleWound(w, o, C.dmg); if (o.hp <= 0) lethal(w, o, 'ран', a); }
+  const S = holdRow(a, 'swallow');
+  if (S && !o.swallowed && w.tick - o.held.since >= S.after && sizeOf(SPECIES.get(o.species)) <= S.size) {
+    o.swallowed = true; o.held.next = w.tick + o.held.every;
+    if (o.faction === 'colony' && o.name) log(w, `<b>${esc(o.name)}</b> проглочен: ${esc(SPECIES.get(a.species).label)}. Бейте тварь — пока не поздно.`, 'danger');
+  }
+  a.task = {id: 'maul', target: o};
+  return true;
+}
+
+// ── a run at it (the perk «Таран и пикирование»): how far it has come straight on (a.run), read at its next blow (agents/combat.js)
+function stepRun(w, a) {
+  const R = holdRow(a, 'charge'); if (!R) return;
+  const r = (a.run ||= {x: a.x, y: a.y, len: 0, dir: null});
+  const dx = a.x - r.x, dy = a.y - r.y, d = Math.hypot(dx, dy);
+  if (d > ABILITY.eps) {
+    const dir = Math.atan2(dy, dx);
+    r.len = r.dir != null && Math.abs(angDiff(dir, r.dir)) <= ABILITY.straight * RAD ? r.len + d : d;
+    r.dir = dir;
+  } else if (!a.task?.target) r.len = 0;
+  r.x = a.x; r.y = a.y;
+  if (a.fly?.landed === w.tick) r.len = Infinity;   // (come down from the air on it: a dive)
+}
+
+// ── under the ground (the perk «Рытьё»): it starts under where the ground is soft; it feels a foe within `sense`, comes under
+// it, heaves the ground (`prep`: plain to see — one may step off) and bursts out; `stay` ticks above, then down again
+const soft = (w, a, B, i) => walkable(w, i) && w.grid.terr[i] !== T.WATER && (!B.soft || !BURROW.hard.some(k => T[k] === w.grid.terr[i]));
+export const burrowOf = a => holdRow(a, 'burrow');
+function stepBurrow(w, a) {
+  const B = burrowOf(a); if (!B) return false;
+  if (a.dead || a.downed || a.captive) { a.under = false; return false; }
+  if (a.under === undefined) a.under = soft(w, a, B, cellOf(w, a));
+  const near = (r, pred) => { let best = null, bd = r; for (const o of nearAgents(w, a.x, a.y, r)) { if (o === a || o.dead || o.downed || o.under || o.swallowed || !pred(o)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d <= bd) { bd = d; best = o; } } return best; };
+  const prey = o => o.faction !== a.faction && !ours(a, o) && (foeOf(a, o) || o.faction === 'colony' || isHostile(a, o));
+  if (a.under) {
+    const t = near(B.sense, prey);
+    if (!t) return true;   // (lies still under the ground, waiting)
+    if (Math.hypot(t.x - a.x, t.y - a.y) <= B.strike) { a.task = {id: 'maul', target: t}; begin(w, a, {id: 'burrow', rank: perksOf(a).find(p => p.id === 'burrow')?.rank || 1, row: {...B.emerge, prep: B.prep}, sub: 'emerge'}, 0); return true; }
+    const dx = t.x - a.x, dy = t.y - a.y, d = Math.hypot(dx, dy), k = Math.min(1, B.dig / d), nx = a.x + dx * k, ny = a.y + dy * k;
+    const j = Math.min(w.h - 1, Math.max(0, ny | 0)) * w.w + Math.min(w.w - 1, Math.max(0, nx | 0));
+    if (soft(w, a, B, j)) { a.x = nx; a.y = ny; }   // (the hard ground stops it: it waits at its edge)
+    return true;
+  }
+  // above: down again once its time up here is over and no foe stands close — or it is badly hurt
+  if (w.tick - (a.surfaced ?? -Infinity) >= B.stay && soft(w, a, B, cellOf(w, a)) && (!near(B.strike + 1, prey) || a.hp / maxHp(a) < FLIGHT.grounded)) { a.under = true; a.task = null; }
+  return false;
 }

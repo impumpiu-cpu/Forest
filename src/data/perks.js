@@ -171,6 +171,38 @@ PERKS.registerAll([
       {shape: 'shot', range: 4, venom: {dmg: 0.0007, ticks: 180}, prep: 12, wait: 120, dodge: 12, shield: true},
       {shape: 'shot', range: 5, venom: {dmg: 0.001, ticks: 220}, prep: 12, wait: 120, dodge: 14, shield: true},
     ]},
+  // ── holding (agents/abilities.js): `grab` — a hit takes hold of one no bigger than `size` (a body's: data/abilities.js GRIP);
+  // it holds while it can: each `every` ticks the held one breaks free at its max(S, A) (+ GRIP.help for each of its own close
+  // by, pulling) against `hold`; the holder does nothing else, the held one strikes only at the holder. Its death, a stun,
+  // its flight free the held
+  {id: 'grab', label: 'Захват', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'хватает и держит одного не крупнее size (человек — 0,62, огр — 0,86): пока держит — больше ничего; вырваться — Сила или Ловкость против хватки, свои рядом помогают',
+    rank: [
+      {shape: 'touch', range: 1.4, type: 'pierce', dmg: 0.06, grab: {hold: 6, size: 0.65, every: 24}, prep: 4, wait: 60, dodge: 10},
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.1, grab: {hold: 10, size: 0.9, every: 24}, prep: 5, wait: 60, dodge: 12},
+      {shape: 'touch', range: 2, type: 'pierce', dmg: 0.14, grab: {hold: 14, size: 1.1, every: 24}, prep: 6, wait: 60, dodge: 14},
+    ]},
+  {id: 'constrict', label: 'Сдавливание', kind: 'врождённые', how: 'hold', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'держа — душит: здоровье каждые every тиков, мимо брони',
+    rank: [{dmg: 0.08, every: 30}, {dmg: 0.12, every: 30}, {dmg: 0.18, every: 30}]},
+  {id: 'swallow', label: 'Проглатывание', kind: 'врождённые', how: 'hold', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'держа малого `after` тиков — глотает: внутри его переваривает, вырваться труднее; смерть носителя освобождает',
+    rank: [{size: 0.5, after: 40, digest: 0.002, hold: 12}, {size: 0.65, after: 40, digest: 0.003, hold: 14}, {size: 0.9, after: 50, digest: 0.004, hold: 16}]},
+  // a run at it (the perk «Таран и пикирование», agents/combat.js): a blow after `from` cells straight at the foe — or the first
+  // after coming down from the air — × `mul`, and the struck is knocked down `knock` ticks
+  {id: 'charge', label: 'Таран и пикирование', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'удар с разбега (или с неба) сильнее и сбивает с ног',
+    rank: [{from: 3, mul: 1.15, knock: 10}, {from: 3, mul: 1.3, knock: 14}, {from: 3, mul: 1.45, knock: 18}]},
+  // under the ground (agents/abilities.js): unseen and out of reach, it goes `dig` cells a tick (I — soft ground only: not a
+  // road, not a ford, not a stone floor); a foe within `sense` it feels through the ground and comes under; within `strike`
+  // the ground heaves (`prep` ticks — plain to see, one may step off) and it bursts out (`emerge`: its own shape and harm);
+  // `stay` ticks above before it goes down again
+  {id: 'burrow', label: 'Рытьё', kind: 'врождённые', how: 'move', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'ходит под землёй, чует шаги, выныривает под ногами',
+    rank: [
+      {dig: 0.08, soft: true, sense: 10, strike: 1.4, prep: 16, stay: 120, emerge: {shape: 'aura', length: 1.2, type: 'pierce', dmg: 0.22, knock: 12, dodge: 10}},
+      {dig: 0.1, soft: false, sense: 12, strike: 1.4, prep: 14, stay: 100, emerge: {shape: 'aura', length: 1.4, type: 'pierce', dmg: 0.3, knock: 14, dodge: 12}},
+    ]},
   // ── moving (agents/abilities.js stepFlight; agents/movement.js): in the air one goes straight over water, walls and
   // thickets (never through rock) at `air` cells a tick; `high` — out of a short blade's reach (FLIGHT.hitUp) while it is
   // up: it comes down to strike and stays `ground` ticks (the answer's window), then rises and keeps up `rise` ticks before

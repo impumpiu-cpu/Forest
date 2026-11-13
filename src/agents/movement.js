@@ -19,6 +19,7 @@ export const thornedBy = (w, a) => !!w.mods?.add?.thorns && a.faction !== 'colon
 export function speedOf(w, a) {
   const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
   const daze = a.stunned && w.tick < a.stunned.until ? CONDITIONS.get('stunned').slow : 1;   // stunned (data/conditions.js)
+  if (a.held && !a.swallowed) return 0;   // in a grip: it does not move (agents/abilities.js)
   if (a.aloft && a.flightRow) return a.flightRow.air * web * daze;   // in the air: its wings' pace, the ground does not slow it (agents/abilities.js)
   const d = BY_CODE[w.grid.terr[cellOf(w, a)]];
   // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)

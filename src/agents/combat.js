@@ -58,7 +58,7 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 // how close one who creeps is seen (COMBAT.sneak): heavier armour is heard further
 export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
 export function canSee(w, a, t) {
-  if (t.hiddenUntil > w.tick) return false;
+  if (t.hiddenUntil > w.tick || t.under || t.swallowed) return false;   // (under the ground, inside a beast: agents/abilities.js)
   if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;   // the fallen and the bound creep no more
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
@@ -270,6 +270,8 @@ export function attack(w, a, t) {
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // high in the air (a perk «Полёт», agents/abilities.js): a short blade does not reach it, and it strikes only once down
   if ((t.aloft && t.flightRow?.high && reachOf(a) < FLIGHT.hitUp) || (a.aloft && a.flightRow?.high)) return false;
+  // held, one strikes only at the holder; the holder holds and strikes nothing else (agents/abilities.js)
+  if ((a.held && t.id !== a.held.by) || a.swallowed || (a.holding != null && a.holding !== t.id)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
   if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
@@ -286,7 +288,11 @@ export function attack(w, a, t) {
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
   const stance = stanceOf(w, a, t);   // read before the blow: a hurt target knows of it after
+  // a run at it, or come down on it from the air (a perk «Таран и пикирование»): the blow harder, the struck knocked down
+  const R = a.chargeRow, run = R && a.run?.len >= R.from ? R : null; if (a.run) a.run.len = 0;
+  if (run) full *= run.mul;
   damage(w, a, t, moraleBlow(a) * full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
+  if (run && !t.dead && !t.downed && !SPECIES.get(t.species).mechanism) t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + run.knock)};
   // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
   // the target's dodge, block and armour as any
   const off = g.offhand;
