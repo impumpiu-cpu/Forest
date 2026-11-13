@@ -19,6 +19,9 @@
 //   summon — below
 //   fame   — the guild's fame (its level: data/guild.js GUILD.level): + `won[tier]` when paid; when not: − `won[tier]` × `lost`
 //            (failed, the party lost or beaten back, or let go in the last `late` of its time), × `abort` (let go before it)
+//   partial — not handed in, but the goal's guard was broken in part (the author's word 13.11: a failure, but not so dire): the
+//            share of the guard destroyed (its strength now against its full, campaign/quest.js bleedGuard), at least `least` —
+//            paid that share of the reserve less `cut` of it (the rest back to the issuer), the fame lost × (1 − the share)
 //   retreat — storms of the goal beaten back before a guild's party gives up and comes home with nothing (the author's word 13.11)
 export const CONTRACT = {
   board: {open: [0, 3, 2, 2, 1, 1], post: 0.5},
@@ -29,6 +32,7 @@ export const CONTRACT = {
   camp: {days: [null, [12, 30], [18, 40], [25, 55], [35, 70], [45, 90]], s: [0, 0.55, 0.9, 1.3, 1.8, 2.5]},
   fame: {won: [0, 4, 8, 14, 22, 34], lost: 1.5, abort: 0.25, late: 0.2},
   retreat: 2,
+  partial: {least: 0.15, cut: 0.3},
   summon: 0.3,
   clueAt: [0.5],   // a camp found by its traces: its one clue at this share of the way (data/quest.js clueAt)   // a camp of a rite (`summon`): the share of its guard that are the dead it raised (data/camp.js `with`)
 };

@@ -79,6 +79,21 @@ const strong = G => { for (const m of G.members) m.level = 20; };
   ok(r1(f0 - G.fame) === r1(CONTRACT.fame.won[rec.tier] * CONTRACT.fame.lost), 'провал стоит славы: больше, чем давал успех', `${f0} → ${G.fame}`);
 }
 
+// ── done in part: the guard broken by a share — paid that share less the cut, the fame lost the less; still a failure
+{
+  const [a, G] = opened(), rec = contractsOf(a).records.find(c => c.state === 'open' && !c.chain), esc = rec.escrow, f0 = G.fame;
+  takeContract(a, G, rec.uid, 1);
+  const P = CONTRACT.partial, part = 0.6, g0 = G.gold;
+  settleContract(a, G, {contract: rec.uid, quest: {crown: {guard: {full: 10, strength: 10 * (1 - part)}}}, done: [{contract: rec.uid, failed: true}]}, io(a, G));
+  const paid = r1(G.gold - g0), want = Math.floor(esc * part * (1 - P.cut));
+  ok(paid === want && rec.state === 'closed' && rec.why.includes('отчасти'), 'стража сломлена на 60 % — плата за долю, меньше на срез; договор всё же провален', `${paid} из ${esc} (ждали ${want}); ${rec.why}`);
+  ok(r1(f0 - G.fame) === r1(CONTRACT.fame.won[rec.tier] * CONTRACT.fame.lost * (1 - part)), 'славы потеряно меньше, чем за полный провал', `−${r1(f0 - G.fame)}`);
+  const [b, H] = opened(), r2 = contractsOf(b).records.find(c => c.state === 'open' && !c.chain), h0 = H.gold;
+  takeContract(b, H, r2.uid, 1);
+  settleContract(b, H, {contract: r2.uid, quest: {crown: {guard: {full: 10, strength: 9.5}}}, done: [{contract: r2.uid, failed: true}]}, io(b, H));
+  ok(H.gold === h0 && !r2.why.includes('отчасти'), 'почти ничего не сделано — платы нет');
+}
+
 // ── the guild's level is its fame: level 0 — the deeds in town only; deeds done well — fame; a level reached — its tier given
 {
   const [a, G] = opened(0), C = contractsOf(a);

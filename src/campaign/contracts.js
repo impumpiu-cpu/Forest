@@ -225,9 +225,17 @@ export function settleContract(a, G, K, io) {
   const w = done?.why, external = w === 'цель уничтожена другими';
   const span = Math.max(1, (rec.completeBy ?? G.day) - (rec.takenAt ?? G.day)), early = rec.abortedAt != null && (rec.abortedAt - (rec.takenAt ?? 0)) < (1 - CONTRACT.fame.late) * span;
   const why = external ? w : rec.abortedAt != null ? (early ? 'гильдия отказалась' : 'гильдия отказалась в последний срок') : w === 'отступили' ? 'отряду не хватило сил' : done?.failed ? 'срок вышел' : 'отряд не вернулся';
-  if (!external) fameBy(G, -CONTRACT.fame.won[rec.tier] * (early ? CONTRACT.fame.abort : CONTRACT.fame.lost), io.tell);
-  close(a, G, rec, why, io);
-  return {paid: 0, why};
+  // done in part (CONTRACT.partial): the guard of the goal broken by this share — paid for it, less a cut; the fame lost the less
+  const g = K.quest?.crown?.guard, part = external || !g?.full ? 0 : Math.max(0, Math.min(1, 1 - g.strength / g.full)), P = CONTRACT.partial;
+  const share = part >= P.least ? part : 0;
+  if (share) {
+    const gold = Math.floor(rec.escrow * share * (1 - P.cut));
+    if (gold > 0) { io.pay(G, gold, `плата по договору, исполненному отчасти (${Math.round(share * 100)} %): ${rec.label}`); rec.escrow -= gold; rec.paid = gold; }
+    io.tell(`Договор «${rec.label}» исполнен лишь отчасти: стража сломлена на ${Math.round(share * 100)} %. Заказчик платит ${gold} зол. — меньше доли.`, 'contract');
+  }
+  if (!external) fameBy(G, -CONTRACT.fame.won[rec.tier] * (early ? CONTRACT.fame.abort : CONTRACT.fame.lost) * (1 - share), io.tell);
+  close(a, G, rec, share ? `${why}; исполнен отчасти` : why, io);
+  return {paid: rec.paid || 0, why, part: share};
 }
 
 // a story's next step (CHAINS): the flags of the step closed, then `next` by how it went (or `unless`), or its end
