@@ -281,12 +281,20 @@ export function foeWeight(r, F, kind) {
   return Math.max(B.floor, base + (2 * r() - 1) * B.sway);
 }
 export const foeBudget = (r, F, kind, unit = CAMP.foe.unit) => unit * foeStrength(F) * foeWeight(r, F, kind);
-// the foe as the quick fight weighs it (campaign/fight.js autoFight; data/autofight.js): its strength × `unit`, a named one × its
-// weight over a force's — the same the table of the map's outcomes was measured by (the sway and the chance meeting's lightness are
-// in the table: the map's fights had them)
-export function foeNominal(F) {
-  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.person ? B.leader : B.mini) / B.force : 1;
-  return B.unit * foeStrength(F) * named;
+// the foe as the map would field it, with no map (the quick fight: campaign/fight.js autoFight; data/autofight.js — its table is
+// measured by what the map fielded): the budget bought, a pack of beasts in heads of its kind rounded up — never more than the
+// map's `most` (`mostGuard` at a place stormed), a lone beast (a dragon) alone; a band — its budget; a second kind beside
+// (`with`) — its share, the same way
+export function foeFielded(F, kind, budget) {
+  const most = kind === 'guard' ? CAMP.foe.mostGuard : CAMP.foe.most;
+  const pack = (beast, b, first) => {
+    if (!beast || !MIGRATIONS.has(beast)) return b;
+    const per = expectedStrength(MIGRATIONS.get(beast).species, {key: 'wild'});
+    const n = first && F.one ? 1 : Math.min(most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / per)));
+    return n * per;
+  };
+  const map = CAMP_FOES[F.kind] || {}, W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);
+  return pack(F.beast || map.beast, main, true) + (W ? pack(W.beast, budget - main, false) : 0);
 }
 
 function spawnFoe(w) {

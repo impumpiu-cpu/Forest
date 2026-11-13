@@ -22,7 +22,7 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
-import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget, foeNominal, companyStrength} from './camp.js';
+import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget, foeFielded, companyStrength} from './camp.js';
 import {AUTOFIGHT} from '../data/autofight.js';
 import {takeOnce, takeBonds, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
@@ -63,7 +63,9 @@ export function fight(a, K, d, r, how = 'night') {
   // who the fallen fell to, for the balance (campaign-balance): a grave's guards, the lair's, the hunt
   K.fightSrc = d.boss?.mustDie ? 'lair' : d.boss ? 'grave' : d.pursuit || null;
   const before = alive(K).map(m => [m.id, m.hp]);
+  const shadow = K.shadow && K.mode !== 'auto' ? autoGuess(a, K, d, how) : null;   // (tools/autofight-calibrate.mjs --campaigns: the quick fight's word beside the map's)
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
+  if (shadow) K.shadow.push({...shadow, won: !!win, fell: K.members.filter(m => before.some(([id]) => id === m.id) && !m.alive).length, n: before.length, theirs: K.lastCamp?.foes?.might ?? null});
   delete K.fightSrc;
   const camp = K.lastCamp;
   recordFight(a, K, d, how, win, before);
@@ -335,12 +337,20 @@ function readRow(R, x) {
   if (x < R.r[0]) o.win *= (x / R.r[0]) ** AUTOFIGHT.below;
   return o;
 }
+// what the quick fight would read for this fight (no draw of the game's: the foe at its mean weight) — for the comparison
+export function autoGuess(a, K, d, how) {
+  const {row, how: measured} = autoRow(d, how), w = [0.5];
+  const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
+  const P = companyStrength(a, K) * caught, E = foeFielded(d, how, foeBudget(() => w[0], d, how)), ratio = P / Math.max(1e-6, E);
+  const o = readRow(row, ratio / AUTOFIGHT.doubt);
+  return {key: autoKey(d, how), P, E, ratio, win: o.win ** AUTOFIGHT.sure, dead: o.dead * AUTOFIGHT.extra, maim: o.maim * AUTOFIGHT.extra};
+}
 function autoFight(a, K, d, r, how) {
   const F = CAMPAIGN.fight, A = AUTOFIGHT, foe = FOES[d.kind];
   const {row, how: measured} = autoRow(d, how);
   // caught on the march when the table knows this foe only at night: the surprise the map would play (not caught napping — no)
   const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
-  const P = companyStrength(a, K) * caught, E = foeBudget(r, d, how), ratio = P / Math.max(1e-6, foeNominal(d));   // (E — the record's: what the map would buy)
+  const P = companyStrength(a, K) * caught, E = foeFielded(d, how, foeBudget(r, d, how)), ratio = P / Math.max(1e-6, E);
   const o = readRow(row, ratio / A.doubt), win = r() < o.win ** A.sure;
   K.lastAuto = {E: Math.round(E), P: Math.round(P), heads: Math.max(1, Math.ceil(E / CAMP.foe.unit * CAMP.foe.quickUnit * CAMP.quickHeads)), weight: Math.round(E / Math.max(1e-6, P) * 100) / 100};   // for the fight's record (the map's units)
   const ms0 = alive(K).filter(m => !m.captive), n = ms0.length, hit = [], out = new Set();
