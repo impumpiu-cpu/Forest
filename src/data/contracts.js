@@ -19,6 +19,9 @@
 //   summon — below
 //   fame   — the guild's fame (its level: data/guild.js GUILD.level): + `won[tier]` when paid; when not: − `won[tier]` × `lost`
 //            (failed, the party lost or beaten back, or let go in the last `late` of its time), × `abort` (let go before it)
+//   capture — the guild's own errands to catch a beast for its cages (no issuer, no pay): one for each species marked
+//            `catchable` (data/bestiary.js; the tables' «Ловится гильдией»), made by campaign/contracts.js captureDefs — its
+//            tier by the species' `cr` (a D&D challenge rating) against `cr`
 //   partial — not handed in, but the goal's guard was broken in part (the author's word 13.11: a failure, but not so dire): the
 //            share of the guard destroyed (its strength now against its full, campaign/quest.js bleedGuard), at least `least` —
 //            paid that share of the reserve less `cut` of it (the rest back to the issuer), the fame lost × (1 − the share)
@@ -33,6 +36,7 @@ export const CONTRACT = {
   fame: {won: [0, 4, 8, 14, 22, 34], lost: 1.5, abort: 0.25, late: 0.2},
   retreat: 2,
   partial: {least: 0.15, cut: 0.3},
+  capture: {cr: [1, 2, 4, 7]},   // the guild's own catches (campaign/contracts.js captureDefs): a beast's tier by its D&D challenge rating — up to cr[k] — tier k + 1, above the last — V
   summon: 0.3,
   clueAt: [0.5],   // a camp found by its traces: its one clue at this share of the way (data/quest.js clueAt)   // a camp of a rite (`summon`): the share of its guard that are the dead it raised (data/camp.js `with`)
 };
@@ -44,8 +48,6 @@ export const CONTRACT = {
 //   camp   — a temporary lair put up for it: `band` (a band of people: bandits, cultists, undead) or `lair` (a kind of lair of
 //            data/lairs.js: its folk, its danger); `name` — what it is called, `boss` — who leads it (name, species, letters
 //            grown); `clue` — its place is found by the traces (else known); `trophy` — [nominative, accusative, gender]
-//   capture — the guild's own errand (`own`: no issuer, no pay) to catch a lair's beast for its cages: the lair (`lairs`, as an
-//            errand picks one), the beast it yields (`species`), the trophy; posted while the cages have room
 //   story  — the line of the need, {town} — the issuer's town, {where} — where the camp is
 import {Registry} from '../core/registry.js';
 
@@ -71,14 +73,6 @@ CONTRACTS.registerAll([
   {id: 'wyvernNest', tier: 4, label: 'Гнездо виверн', about: 'Пара виверн свила гнездо на скалах и таскает скот, а теперь и пастухов.',
     camp: {lair: 'wyvern', name: 'гнездо виверн', clue: true, trophy: ['Жало виверны', 'Жало виверны', 'n']},
     story: 'Виверны гнездятся {where}; пастухи {town} не выгоняют стада.'},
-  // the guild's own (no one pays: `own`): a beast of a lair caught for the cages (campaign/cages.js) — its lair stormed, the
-  // beast taken alive; posted only while the cages have room
-  {id: 'catchVarg', tier: 1, own: true, label: 'Поймать варга', about: 'Варг для клеток гильдии: взять логово и увести одного живым.',
-    capture: {lairs: ['varg'], species: 'varg', trophy: ['Пойманный варг', 'Пойманного варга', 'm']}},
-  {id: 'catchGriffin', tier: 3, own: true, label: 'Поймать грифона', about: 'Грифон для клеток гильдии: на рынке их не бывает — только из гнезда.',
-    capture: {lairs: ['griffin'], species: 'griffin', trophy: ['Пойманный грифон', 'Пойманного грифона', 'm']}},
-  {id: 'catchWyvern', tier: 4, own: true, label: 'Поймать виверну', about: 'Виверна для клеток гильдии. Ядовитая, злая и дорогая — если удастся.',
-    capture: {lairs: ['wyvern'], species: 'wyvern', trophy: ['Пойманная виверна', 'Пойманную виверну', 'f']}},
   {id: 'dragon', tier: 5, label: 'Убить дракона', about: 'Дракон в своём логове. Сперва узнать, где оно, потом выстоять против него.', errand: 'dragon'},
 ]);
 

@@ -15,6 +15,8 @@ import {roomBy} from './house.js';
 import {cagesOf, cageRoom, cage, beastLabel} from './cages.js';
 import {ERRANDS} from '../data/errands.js';
 import {LAIRS} from '../data/lairs.js';
+import {SPECIES} from '../data/species.js';
+import {MIGRATIONS} from '../data/migrations.js';
 import {QUEST} from '../data/quest.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {CAMP} from '../data/camp.js';
@@ -79,14 +81,14 @@ function placeCamp(a, G, tier, spec, s, r) {
   if (!pool.length) pool = at.filter(c => c.d <= hi).sort((p, q) => q.d - p.d).slice(0, 8);   // (a small world: the farthest it has)
   if (!pool.length) return null;
   const {i, d} = pool[Math.floor(r() * pool.length)], C = contractsOf(a);
-  const camp = {id: C.nextId++, contract: null, kind: spec.lair ? 'lair' : spec.band, lair: spec.lair || null, band: spec.band || null,
+  const camp = {id: C.nextId++, contract: null, kind: spec.lair ? 'lair' : spec.beast ? 'beasts' : spec.band, lair: spec.lair || null, band: spec.band || null, beast: spec.beast || null,
     label: `${spec.name} — ${wherePhrase(a, i)}`, name: spec.name, i, x: i % a.w + 0.5, y: ((i / a.w) | 0) + 0.5, s: Math.round(s * 100) / 100, alive: true, days: Math.max(1, Math.round(d))};
   C.camps.push(camp);
   return camp;
 }
 // the guard of a camp on the local map: the folk of its kind of lair, or a band; its leader; the dead it raised
 export function campGuard(a, camp, spec) {
-  const g = camp.lair ? {...lairGuard(a, camp.lair, camp.i, camp.s)} : {kind: camp.band, band: camp.band, strength: camp.s, ...(camp.band === 'cultists' ? {pool: cultPool(a, camp.i)} : {})};
+  const g = camp.lair ? {...lairGuard(a, camp.lair, camp.i, camp.s)} : camp.beast ? {kind: 'beasts', strength: camp.s, beast: camp.beast} : {kind: camp.band, band: camp.band, strength: camp.s, ...(camp.band === 'cultists' ? {pool: cultPool(a, camp.i)} : {})};
   g.label = camp.label;
   if (spec.boss) g.boss = {name: spec.boss.name, g: 'm', species: spec.boss.species, add: {...spec.boss.add}, mustDie: true};
   if (spec.summon) g.with = {band: 'undead', label: 'поднятые мертвецы', share: CONTRACT.summon, summoned: true};
@@ -99,7 +101,7 @@ function post(a, G, def, {tmpl, chain = null, side = false, strong = 1}, r) {
   const tier = def.tier, iss = issuerFor(a, G, tier), C = contractsOf(a);
   const known = def.camp ? !def.camp.clue || !!roomBy(G, 'maps', 'known') : !(errandOfDef(def)?.clueAt?.length);   // (the maps room's last level: the camps' places known)
   let target = null, at = null, s = 0, days = null, where = '', facts = [], goal = '';
-  if (def.errand || def.capture) {
+  if (def.errand || def.capture?.lairs) {
     const E = errandOfDef(def), {mask} = reachable(a, stub(t)), busy = new Set(C.records.filter(c => c.state === 'open' || c.state === 'accepted').map(c => c.target?.lair));
     const T = lairTargets(a, stub(t), E, mask).find(x => !busy.has(x.l.id)); if (!T) return null;
     target = {lair: T.l.id}; s = garrison(T.l, E.guard) * strong; at = known ? {x: T.l.x, y: T.l.y} : null;
@@ -123,8 +125,23 @@ function post(a, G, def, {tmpl, chain = null, side = false, strong = 1}, r) {
   return rec;
 }
 // the errand row a contract of a lair goes by: its errand's (data/errands.js), or — a capture — the lair it is caught from
-const errandOfDef = def => (def.errand ? ERRANDS.get(def.errand) : def.capture ? {id: def.id, lairs: def.capture.lairs, at: [0, 1], pick: 'near', clueAt: [], guard: 1, trophy: def.capture.trophy, pursuit: false} : null);
+const errandOfDef = def => (def.errand ? ERRANDS.get(def.errand) : def.capture?.lairs ? {id: def.id, lairs: def.capture.lairs, at: [0, 1], pick: 'near', clueAt: [], guard: 1, trophy: def.capture.trophy, pursuit: false} : null);
+// the guild's own catches (data/contracts.js CONTRACT.capture; the author's word 13.11): one for each species marked `catchable`
+// in the tables (data/bestiary.js), from a lair of its kind (data/lairs.js) — a species with no lair, from a den of its own
+// put up for the errand (a camp of beasts); its tier by its D&D challenge rating. Made anew from the tables each time: a beast
+// marked or unmarked in the editor is in the errands or out of them at once
+export function captureDefs() {
+  return SPECIES.filter(s => s.catchable && (LAIRS.all().some(x => x.species === s.id) || MIGRATIONS.has(s.id))).map(s => {   // (no lair and no way onto a map: none)
+    const L = LAIRS.all().find(x => x.species === s.id), k = CONTRACT.capture.cr.findIndex(x => (s.cr ?? 1) <= x), tier = k < 0 ? 5 : k + 1;
+    const name = `${s.label[0].toUpperCase()}${s.label.slice(1)} для клеток`, acc = `${(s.labelAcc || s.label)} для клеток`;
+    return {id: `catch:${s.id}`, tier, own: true, label: `Поймать ${s.labelAcc || s.label}`, about: `${s.label[0].toUpperCase()}${s.label.slice(1)} для клеток гильдии: на рынке не купить — только поймать живым.`,
+      capture: {lairs: L ? [L.id] : null, species: s.id, trophy: [name, acc, 'm']},
+      ...(L ? {} : {camp: {beast: s.id, name: `логово: ${s.label}`, trophy: [name, acc, 'm']}})};
+  });
+}
+const captureDef = tmpl => captureDefs().find(d => d.id === tmpl) || null;
 const defOf = rec => {
+  if (!rec.chain && rec.tmpl.startsWith('catch:')) return captureDef(rec.tmpl);
   if (!rec.chain) return CONTRACTS.get(rec.tmpl);
   const [chain, step] = rec.tmpl.split(':'), H = CHAINS.get(chain);
   return rec.side ? H.sides[step] : H.steps[step];
@@ -156,10 +173,10 @@ export function stepContracts(a, G, io) {
     if (!first && io.r() >= CONTRACT.board.post) break;
     // (the merchant at his post: one contract on the board a tier above the guild's — data/rooms.js)
     const up = roomBy(G, 'merchant', 'on') && most < 5 && !C.records.some(c => c.state === 'open' && c.tier > most);
-    const tier = up ? most + 1 : 1 + Math.floor(io.r() * most), rows = CONTRACTS.filter(x => x.tier === tier); if (!rows.length) continue;
+    const tier = up ? most + 1 : 1 + Math.floor(io.r() * most), rows = [...CONTRACTS.filter(x => x.tier === tier), ...captureDefs().filter(x => x.tier === tier)]; if (!rows.length) continue;
     const def = rows[Math.floor(io.r() * rows.length)];
     if (C.records.some(c => c.tmpl === def.id && c.state === 'open')) continue;
-    if (def.capture && (cagesOf(G).beasts.length >= cageRoom(G) || C.records.some(c => c.state === 'open' && CONTRACTS.has(c.tmpl) && CONTRACTS.get(c.tmpl).capture))) continue;   // (a capture: while the cages have room, one at a time)
+    if (def.capture && (cagesOf(G).beasts.length >= cageRoom(G) || C.records.some(c => c.state === 'open' && c.tmpl.startsWith('catch:')))) continue;   // (a capture: while the cages have room, one at a time)
     const rec = post(a, G, def, {tmpl: def.id}, io.r);
     if (rec && !first) io.tell(`На доске новый договор: ${rec.label} (${tierWord(tier)}; платит ${issuerName(a, rec.issuer)} — ${rec.escrow} зол.).`, 'contract');
   }
@@ -226,7 +243,7 @@ export function settleContract(a, G, K, io) {
     rec.paid = rec.escrow; rec.escrow = 0;
     if (!holder(a, rec.issuer)) io.tell(`${issuerName(a, rec.issuer) === 'никто' ? 'Заказчика больше нет' : 'Заказчик пал'}, но резерв был отложен: плата — из него.`, 'contract');
     fameBy(G, CONTRACT.fame.won[rec.tier], io.tell);
-    const cap = !rec.chain && CONTRACTS.has(rec.tmpl) ? CONTRACTS.get(rec.tmpl).capture : null;
+    const cap = !rec.chain ? defOf(rec)?.capture : null;
     if (cap) { if (cagesOf(G).beasts.length < cageRoom(G)) { cage(G, cap.species); io.tell(`В клетках гильдии — ${beastLabel(cap.species)}: пойман живым.`, 'house'); } else io.tell(`${beastLabel(cap.species)} пойман, но клетки полны — пришлось отпустить.`, 'house'); }
     if (rec.target.camp != null) { const c = campOf(a, rec.target.camp); if (c) c.alive = false; }
     if (rec.chain) chainOn(a, G, rec, true, io);
@@ -276,7 +293,7 @@ function chainOn(a, G, rec, won, io) {
 export function contractQuest(a, K, rnd, rec, G) {
   const def = defOf(rec);
   let Q;
-  if (def.errand || def.capture) {
+  if (def.errand || def.capture?.lairs) {
     Q = lairErrand(a, K, rnd, errandOfDef(def), rec.target.lair);
     if (!Q) return null;
   } else {

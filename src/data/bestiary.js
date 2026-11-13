@@ -42,7 +42,7 @@ const beast = b => ({needs: [], mind: 'beast', relativeStats: true, heatHarm: 60
 export const BESTIARY = [
   // ── beasts
   // Wargs: great wolves, half-witted; orcs and goblins ride them into raids (data/raids.js)
-  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  beast({id: 'varg', catchable: true, cr: 0.5, kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
     habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
     look: {shape: 'wolf', size: 0.74, color: '#4b4b55'},
@@ -109,7 +109,7 @@ export const BESTIARY = [
 
   // ── monsters of the heights and the deep
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
-  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  beast({id: 'griffin', catchable: true, cr: 2, kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#b88a44'},
@@ -117,8 +117,18 @@ export const BESTIARY = [
     killMessage: name => `Грифон унёс поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
+  // Manticore: a lion's body, a bat's wings, a tail of spikes; lairs in the crags and the dry hills (D&D: CR 3 — between the
+  // griffin and the wyvern). Caught by a guild for its cages (`catchable`), never sold
+  beast({id: 'manticore', kind: 'monster', label: 'мантикора', labelAcc: 'мантикору', plural: 'мантикоры', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, catchable: true, cr: 3,
+    arrive: {group: [1, 1], every: [6, 9], chance: 0.35, cap: 1, first: 6, message: 'на холмах видели мантикору. Хвост у неё — колючий'},
+    habitat: {highlands: 'usual', foothills: 'rare', desert: 'rare', steppe: 'rare'},
+    look: {shape: 'lion', size: 0.9, color: '#a0563a'},
+    yields: {meat: 4, hide: 2, bone: 2}, trophies: [{res: 'hide', n: 1, chance: 0.3}],
+    killMessage: name => `Мантикора пронзила поселенца шипами хвоста: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'horse'], weakBelow: 0.6, sight: 28, sprint: 1.4, boldPeople: 0.55, groupFear: 3, meal: 2.5, bigMeal: 4})}),
+
   // Wyvern: dragon-kin without a mind; its sting poisons
-  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  beast({id: 'wyvern', catchable: true, cr: 6, kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 6, message: 'с гор спустилась виверна. Её жало ядовито'},
     habitat: {highlands: 'usual', volcano: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, venom: {dmg: 0.0009, ticks: 240},

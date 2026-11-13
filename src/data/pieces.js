@@ -259,7 +259,7 @@ export const SCENE_OF = {
   undead: 'necropolis', wights: 'necropolis', ghouls: 'necropolis', necromancer: 'necropolis', vampire: 'necropolis',
   tribe: 'warcamp', raiders: 'warcamp', bandits: 'warcamp', army: 'warcamp', goblins: 'warcamp', gnolls: 'warcamp', ogres: 'warcamp',
   trolls: 'warcamp', swamptrolls: 'warcamp', icetrolls: 'warcamp', giants: 'warcamp', orcs: 'warcamp',
-  beasts: 'den', wolves: 'den', lair: 'den', varg: 'den', griffin: 'den', wyvern: 'den', drake: 'den', dragon: 'den', stoneworm: 'den', bat: 'den',
+  beasts: 'den', wolves: 'den', lair: 'den', varg: 'den', griffin: 'den', manticore: 'den', wyvern: 'den', drake: 'den', dragon: 'den', stoneworm: 'den', bat: 'den',
   spider: 'nest',
   cultists: 'keep', rift: 'rift', demon: 'rift',
 };

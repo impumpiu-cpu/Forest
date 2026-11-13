@@ -41,6 +41,8 @@ export const LAIRS = new Registry('lair');
 LAIRS.registerAll([
   {id: 'griffin', danger: 1.4, gen: 'грифонов', species: 'griffin', flies: true, from: 'из гнезда', label: 'гнездо грифонов', g: 'n', color: [214, 170, 90], radius: 9, ground: 'heights', density: 25, max: 8, breed: 0.12, rivals: ['wyvern', 'drake'],
     nouns: [['гнездо', 'n'], ['утёс', 'm'], ['скала', 'f'], ['кручи', 'pl']]},
+  {id: 'manticore', danger: 1.5, gen: 'мантикоры', species: 'manticore', flies: true, from: 'из логова', label: 'логово мантикоры', g: 'n', color: [170, 90, 60], radius: 9, ground: 'heights', density: 22, max: 6, breed: 0.1, rivals: ['griffin', 'wyvern'],
+    nouns: [['логово', 'n'], ['холм', 'm'], ['утёс', 'm'], ['пещера', 'f']]},
   {id: 'wyvern', danger: 1.6, gen: 'виверны', species: 'wyvern', flies: true, from: 'из логова', label: 'логово виверны', g: 'n', color: [120, 150, 90], radius: 10, ground: 'heights', density: 18, max: 6, breed: 0.08, rivals: ['griffin', 'drake'],
     nouns: [['логово', 'n'], ['ущелье', 'n'], ['гора', 'f'], ['пик', 'm']]},
   {id: 'drake', danger: 2, gen: 'дрейка', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],

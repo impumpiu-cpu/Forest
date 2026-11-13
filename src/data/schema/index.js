@@ -213,7 +213,7 @@ export const TABLES = [
       col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,
-      col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
+      col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'), col('catchable', 'Ловится гильдией', 'bool', {note: 'гильдия может поймать его для клеток: свои дела «Поймать…» (campaign/contracts.js); тир — по опасности (ПО)'}), col('cr', 'Опасность (ПО D&D)', 'num', {min: 0, nullable: true, note: 'показатель опасности по таблицам D&D — мерка относительной силы; тир поимки гильдией (data/contracts.js CONTRACT.capture)'}),
     ]},
   // the behaviours a species row may list (agents/behaviours/): code, shown for reference
   {id: 'behaviours', label: 'Поведения', group: 'Существа', key: 'id', computed: true, rows: () => BEHAVIOURS.all(),

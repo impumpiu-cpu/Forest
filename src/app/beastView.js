@@ -28,7 +28,7 @@ const kindOrder = () => Object.keys(KINDS).filter(k => k !== 'race');
 const SECTIONS = [
   {id: 'name', label: 'Имя и облик', table: 'creatures', keys: ['label', 'labelAcc', 'plural', 'legend', 'kind', 'mind', 'look.shape', 'look.size', 'look.color', 'look.skin']},
   {id: 'tags', label: 'Теги', table: 'creatures', tags: true},
-  {id: 'body', label: 'Тело (data/balance/creatures.js)', table: 'creatures', keys: ['special', 'hp', 'speed', 'attack.power', 'attack.cooldown', 'attack.type', 'ks', 'weakTo']},
+  {id: 'body', label: 'Тело (data/balance/creatures.js)', table: 'creatures', keys: ['special', 'hp', 'speed', 'attack.power', 'attack.cooldown', 'attack.type', 'ks', 'weakTo', 'cr']},
   {id: 'where', label: 'Где живёт', table: 'creatures', keys: ['habitat']},
   {id: 'ways', label: 'Поведение', table: 'creatures', keys: ['behaviours', 'heart'], lists: true},
   {id: 'mores', label: 'Нравы на карте мира (логово, главарь)', table: 'creatures', keys: ['deeds.lair'], lists: true},

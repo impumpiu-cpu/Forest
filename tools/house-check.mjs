@@ -8,7 +8,7 @@ import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, partyMost, rosterMost, houseOf, roomLevel, roomBy, working, staffOf,
   buildWhy, buildRoom, setRoomPost, postWhy, sendToRoom, trainWhy, armoryOf, racks, stalls, shopOf, buyPrice, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, keepHome, beastLabel, parties} from '../src/campaign/index.js';
 import {campSetup, runCamp, campOutcome} from '../src/campaign/camp.js';
-import {settleContract} from '../src/campaign/contracts.js';
+import {settleContract, captureDefs} from '../src/campaign/contracts.js';
 import {CONTRACTS} from '../src/data/contracts.js';
 import {gearDef, gearToken, gearSpec} from '../src/local/index.js';
 import {contractsOf as cof} from '../src/campaign/contracts.js';
@@ -241,11 +241,13 @@ const ledgerHas = (G, s) => G.ledger.some(l => l.why.startsWith(s));
   let n = 0; while (n < 30 && parties(a).length) { stepGuild(a); n++; }
   ok(cagesOf(G).beasts.length >= 1 && !K.beasts.some(b => b.kind === 'war'), 'вернувшиеся звери — снова в клетках', `${cagesOf(G).beasts.length} в клетках`);
   // a capture of the guild's own: a lair's beast — into the cages, or let go if they are full
-  const def = CONTRACTS.get('catchGriffin'), rec = {uid: 'cX', tmpl: 'catchGriffin', tier: def.tier, state: 'accepted', issuer: {kind: 'guild', id: G.id}, escrow: 0, target: {lair: -1}, label: def.label, takenAt: G.day, completeBy: G.day + 100};
+  const def = captureDefs().find(d => d.id === 'catch:griffin'), rec = {uid: 'cX', tmpl: 'catch:griffin', tier: def.tier, state: 'accepted', issuer: {kind: 'guild', id: G.id}, escrow: 0, target: {lair: -1}, label: def.label, takenAt: G.day, completeBy: G.day + 100};
   a.contracts.records.push(rec);
   cagesOf(G).beasts = cagesOf(G).beasts.slice(0, 1);
   settleContract(a, G, {contract: 'cX', done: [{contract: 'cX'}]}, {r: Math.random, tell: () => {}, pay: I.pay});
   ok(cagesOf(G).beasts.some(b => b.species === 'griffin'), 'пойман грифон — в клетках');
+  const D = Object.fromEntries(captureDefs().map(d => [d.capture.species, d.tier]));
+  ok(D.varg === 1 && D.griffin === 2 && D.manticore === 3 && D.wyvern === 4 && !D.wolf, 'поимка — по флагу «ловится гильдией», тир — по опасности D&D: варг I, грифон II, мантикора III, виверна IV', JSON.stringify(D));
 }
 
 // ── a war beast on the local map: at the company's side, it comes back (or not) by the fight

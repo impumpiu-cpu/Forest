@@ -10,7 +10,7 @@
 import {Registry} from '../core/registry.js';
 
 export const BODY_PLANS = {humanoid: 'двуногий', beast: 'зверь', winged: 'крылатый'};
-export const WINGED = ['griffin', 'wyvern', 'dragon', 'drake', 'bat'];
+export const WINGED = ['griffin', 'manticore', 'wyvern', 'dragon', 'drake', 'bat'];
 
 export const HIT_LOCATIONS = new Registry('hitLocation');
 

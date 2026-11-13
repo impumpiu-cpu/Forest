@@ -101,4 +101,4 @@ export function makeName(species, rng, {gender = 'm', nick = 'never', used = nul
 }
 
 // «with the griffins» — the instrumental plural of a lair's owners for the chronicle (atlas/lairs.js); the rest — the plural
-export const PLURAL_INSTR = {griffin: 'грифонами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};
+export const PLURAL_INSTR = {griffin: 'грифонами', manticore: 'мантикорами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};
