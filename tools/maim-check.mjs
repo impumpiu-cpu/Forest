@@ -163,9 +163,9 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   let won = 0, lost = 0, bad = 0, n = 0, deadWon = 0, deadLost = 0;
   for (let s = 0; s < 40 && (won < 2 || lost < 2); s++) {
     const {a, K} = fresh();
-    for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.02; }
+    for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.3; }
     let k = s * 7919 + 1; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
-    const win = fight(a, K, {kind: 'raiders', strength: 1.5, label: 'налётчики'}, r, 'night'); n++;
+    const win = fight(a, K, {kind: 'raiders', strength: 1.2, label: 'налётчики'}, r, 'night'); n++;
     const dead = K.members.filter(m => !m.alive).length;
     if (win) { won++; deadWon += dead; } else { lost++; deadLost += dead; }
     bad += K.members.filter(m => m.alive && (m.acts?.clean || 0) > 0).length;

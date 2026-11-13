@@ -89,14 +89,30 @@ else {
 
 // ── the table of the map's outcomes (data/autofight.js): by kind of foe, by the ratio asked; each point at the mean ratio the map
 // actually stood at; the wins never falling as the ratio rises, the costs never rising; `else` — the worse half of the kinds
+// the share won, as low as the fights seen let it be (Wilson's bound, one sigma): a point of a few fights won all is not sure
+function wilsonLow(k, n, z = 1) { if (!n) return 0; const p = k / n, d = 1 + z * z / n; return Math.max(0, (p + z * z / (2 * n) - z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d); }
 export function fitTable(rows) {
   const r3 = x => Math.round(x * 1000) / 1000;
   const point = rs => {
     const m = rs.map(r => r.local), mean = f => m.reduce((s, x) => s + f(x), 0) / m.length;
-    return {x: Math.exp(mean(x => Math.log(Math.max(1e-3, x.ours / Math.max(1e-6, x.theirs))))), win: mean(x => +x.won), dead: mean(x => x.fell / x.n), maim: mean(x => x.maims / x.n), hp: mean(x => x.hpLost / x.n), pot: mean(x => Math.max(0, x.used) / x.n)};
+    return {x: Math.exp(mean(x => Math.log(Math.max(1e-3, x.ours / Math.max(1e-6, x.theirs))))), won: m.filter(x => x.won).length, seen: m.length, dead: mean(x => x.fell / x.n), maim: mean(x => x.maims / x.n), hp: mean(x => x.hpLost / x.n), pot: mean(x => Math.max(0, x.used) / x.n)};
   };
   const smooth = ps => {
     ps.sort((p, q) => p.x - q.x);
+    // the share won, read as low as the fights seen let it be: the points pooled where the wins would fall as the ratio rises
+    // (they cannot: one block), and where they stand the same (a run won all is surer than each point of it); each block's share
+    // at its Wilson bound
+    if (ps[0].win == null) {
+      let blocks = ps.map((p, i) => ({k: p.won, n: p.seen, from: i, to: i}));
+      for (let again = true; again;) {
+        again = false;
+        for (let i = 0; i + 1 < blocks.length; i++) {
+          const A = blocks[i], B = blocks[i + 1];
+          if (A.k / A.n >= B.k / B.n) { blocks.splice(i, 2, {k: A.k + B.k, n: A.n + B.n, from: A.from, to: B.to}); again = true; break; }
+        }
+      }
+      for (const b of blocks) for (let i = b.from; i <= b.to; i++) ps[i].win = wilsonLow(b.k, b.n);
+    }
     for (let i = 1; i < ps.length; i++) { ps[i].win = Math.max(ps[i].win, ps[i - 1].win); if (ps[i].x <= ps[i - 1].x) ps[i].x = ps[i - 1].x * 1.01; }
     for (let i = ps.length - 2; i >= 0; i--) for (const k of ['dead', 'maim', 'hp', 'pot']) ps[i][k] = Math.max(ps[i][k], ps[i + 1][k]);
     return {r: ps.map(p => r3(p.x)), win: ps.map(p => r3(p.win)), dead: ps.map(p => r3(p.dead)), maim: ps.map(p => r3(p.maim)), hp: ps.map(p => r3(p.hp)), pot: ps.map(p => r3(p.pot))};

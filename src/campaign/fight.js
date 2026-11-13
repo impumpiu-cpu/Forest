@@ -341,7 +341,7 @@ function autoFight(a, K, d, r, how) {
   // caught on the march when the table knows this foe only at night: the surprise the map would play (not caught napping — no)
   const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
   const P = companyStrength(a, K) * caught, E = foeBudget(r, d, how), ratio = P / Math.max(1e-6, E);
-  const o = readRow(row, ratio / A.doubt), win = r() < o.win;
+  const o = readRow(row, ratio / A.doubt), win = r() < o.win ** A.sure;
   K.lastAuto = {E: Math.round(E), P: Math.round(P), heads: Math.max(1, Math.ceil(E / CAMP.foe.unit * CAMP.foe.quickUnit * CAMP.quickHeads)), weight: Math.round(E / Math.max(1e-6, P) * 100) / 100};   // for the fight's record (the map's units)
   const ms0 = alive(K).filter(m => !m.captive), n = ms0.length, hit = [], out = new Set();
   const standing = () => alive(K).filter(m => !m.captive && !out.has(m.id));

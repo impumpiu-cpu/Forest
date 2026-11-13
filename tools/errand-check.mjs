@@ -53,8 +53,12 @@ for (const e of list.filter(e => e.ok)) {
 {
   const first = list.find(e => e.ok && e.tier === 1)?.id || 'crown', second = list.find(e => e.ok && e.tier === 2)?.id || first;
   const [a, K] = start(first, {chapters: true});
+  // (a lair's guard made light, the company hardy: the chapters are the matter here, not whether eight fresh ones take a lair — the quick fight costs
+  // what the map does: data/autofight.js)
+  if (K.quest?.crown?.guard) K.quest.crown.guard.strength = 0.3;
+  for (const m of K.members) for (const k of ['S', 'P', 'E', 'A']) m.special[k] = (m.special[k] ?? 5) + 5;   // (and the company made hardy: the road's fights cost what the map's do)
   walk(a, K);
-  ok(K.phase === 'home' && K.done?.length === 1 && K.done[0].errand === first, `главы: поручение «${first}» сдано, караван ждёт в столице`, `день ${K.day}, казна ${K.gold}`);
+  ok(K.phase === 'home' && K.done?.length === 1 && K.done[0].errand === first, `главы: поручение «${first}» сдано, караван ждёт в столице`, `${K.phase}, день ${K.day}, казна ${K.gold}, живых ${K.members.filter(m => m.alive).length}, бои ${(K.fights || []).map(f => `${f.how}:${f.kind}:${f.won ? "+" : "-"}:${f.fell.length}:${Math.round(f.ours)}/${Math.round(f.theirs)}`).join(" ")}`);
   const step0 = a.hist.step, day0 = K.day;
   stepCampaign(a); stepCampaign(a);
   ok(a.hist.step === step0 && K.day === day0, 'пока караван ждёт, мир стоит');
