@@ -15,7 +15,7 @@
 //   table  — {key: {r: [ratios], win, dead, maim, hp, pot}} — per one who stood in it; the ratios rising, the wins never
 //            falling with them, the costs never rising (the tool smooths them so). `npm run autofight:calibrate` rewrites it.
 export const AUTOFIGHT = {
-  doubt: 1, sure: 1, extra: 1.2, below: 1,   // (measured again with morale and the scenes, Бой-1…5; 2 worlds × 4 capitals, a whole campaign each, quick / map: the crown home 38 % / 13 %, fights won 71 % / 71 %, dead of eight 6.4 / 5.4 — 8 campaigns a side, the crown's gap within the noise)
+  doubt: 1, sure: 1, extra: 1.2, below: 1,   // (measured again with the acts of a fight and the new bestiary, З-6; 2 worlds × 4 capitals, a whole campaign each, quick / map: the crown home 38 % / 38 %, fights won 73 % / 75 %, dead of eight 6.3 / 6.1)
   least: {member: 0.05, beast: 0.1},
   mean: 0.5,   // (the guess beside a fight on the map: tools/autofight-shadow.mjs) — the draw the foe's weight is read at   // the least share of health a member, a beast is rated at (as the map sets them: campaign/camp.js openCamp)
   // ── the table (written by tools/autofight-calibrate.mjs --write; one line per kind of foe)
