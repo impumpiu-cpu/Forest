@@ -22,7 +22,7 @@ export const summoned = {
       const task = a.task?.id === 'fight' && a.task.target === foe ? a.task : {id: 'fight', target: foe};
       return [[task, SUMMON.want.fight, () => `бьётся на стороне призвавшего: ${foe.name}`]];
     }
-    if (w.tick - S.last > SUMMON.quiet) return [[a.task?.id === 'leave' ? a.task : {id: 'leave'}, SUMMON.want.leave, () => 'бой кончился: уходит в лес']];
+    if (!S.keep && w.tick - S.last > SUMMON.quiet) return [[a.task?.id === 'leave' ? a.task : {id: 'leave'}, SUMMON.want.leave, () => 'бой кончился: уходит в лес']];
     return null;
   },
 };

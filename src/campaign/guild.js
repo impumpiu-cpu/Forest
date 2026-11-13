@@ -32,6 +32,7 @@ import {stepContracts, contractCards, contractOf, contractWhy, takeContract, set
 import {giveUp} from './errands.js';
 import {houseOf, houseSeason, finishBuilding, roomBy, grieve, working, roomLevel} from './house.js';
 import {outfit, bringHome} from './armory.js';
+import {beastsOut, beastsHome} from './cages.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -410,6 +411,7 @@ export function launch(a, {contract = null, errand = null, targetId = null, ids 
   const K = newExpedition(a, G, ms, {errand, targetId, purse, mode, contract: rec});
   // several out at once: the first watched (its camps on the local map), the rest reckoned unseen till watched (watchParty)
   K.watchMode = mode; (G.live ||= []).push(K);
+  const wb = beastsOut(G, K); if (wb) tell(a, G, `С отрядом идут боевые звери: ${wb}.`, 'house');   // (the cages: campaign/cages.js)
   if (!(a.campaign && !a.campaign.closed && a.campaign.guild === G.id)) a.campaign = K; else K.mode = 'auto';
   // sent against his will (GUILD.devotion): less devoted, and a bad mood on the road
   const D = GUILD.devotion;
@@ -447,6 +449,7 @@ export function closeExpedition(a, G, K) {
   pay(G, K.gold, K.done?.at(-1)?.failed ? 'вернулись ни с чем: остаток кошеля' : `сдано поручение: ${questWord(K)} (с остатком кошеля)`);
   K.gold = 0;
   // the spoils onto the armory's racks and the beasts into the stable while there is room; the rest sold (campaign/armory.js)
+  beastsHome(G, K);   // (the war beasts back to their cages, before the stable takes the rest)
   const home = bringHome(a, G, K, pay);
   if (home.kept) tell(a, G, `В оружейную легли трофеи: ${home.kept}.`, 'house');
   G.store = {beasts: home.beasts, vehicles: K.vehicles, cargo: K.cargo, buildings: K.buildings, nextBeast: K.nextBeast};

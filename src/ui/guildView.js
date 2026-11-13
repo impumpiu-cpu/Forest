@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
@@ -61,6 +61,8 @@ export class GuildView extends CampaignView {
       const pay = (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); };
       const ar = e.target.closest('button[data-arm]');
       if (ar) { const id = +ar.dataset.id, G = this.G; this.houseDo(() => ar.dataset.arm === 'lock' ? lockItem(G, id, !armoryOf(G).items.find(x => x.id === id)?.locked) : ar.dataset.arm === 'sell' ? sellItem(this.atlas, G, id, pay) : ar.dataset.arm === 'forge' ? forgeItem(G, id, pay) : buyItem(this.atlas, G, ar.dataset.token, pay)); return; }
+      const cg = e.target.closest('button[data-cage]'); if (cg) { const id = +cg.dataset.id, G = this.G; this.houseDo(() => (cg.dataset.cage === 'home' ? keepHome(G, id, !cagesOf(G).beasts.find(x => x.id === id)?.home) : releaseBeast(G, id))); return; }
+      const wr = e.target.closest('button[data-war]'); if (wr) { this.houseDo(() => buyWarBeast(this.atlas, this.G, wr.dataset.war, pay)); return; }
       const bs = e.target.closest('button[data-beast]'); if (bs) { this.houseDo(() => buyBeast(this.atlas, this.G, bs.dataset.beast, pay)); return; }
       const hr = e.target.closest('button[data-hire]'); if (hr) { this.houseDo(() => takeRecruit(this.atlas, +hr.dataset.hire)); return; }
       const wt = e.target.closest('button[data-watch]'); if (wt) { this.houseDo(() => watchParty(this.atlas, +wt.dataset.watch)); this.draw?.(); return; }
@@ -253,7 +255,7 @@ export class GuildView extends CampaignView {
       const kind = R.id === 'training' ? 'training' : R.id === 'healer' ? 'treat' : null, inside = kind ? G.members.filter(m => m.alive && m.guild?.state === kind) : [];
       const room = kind && working(G, R.id) ? `<div class="row"><small>${kind === 'training' ? 'Учатся' : 'Лечатся'}: ${inside.map(m => `${esc(m.name)} <button type="button" class="quiet mini" data-free="${m.id}">отпустить</button>`).join(', ') || 'никого'}` +
         ` · <select data-room="${kind}"><option value="">${kind === 'training' ? 'отдать в учёбу…' : 'к лекарю…'}</option>${ready.map(m => `<option value="${m.id}"${(kind === 'training' ? trainWhy(G, m) : treatWhy(G, m)) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1}</option>`).join('')}</select></small></div>` : '';
-      const extra = R.id === 'armory' && L ? this.armoryHtml() : R.id === 'stable' && L ? this.stableHtml() : '';
+      const extra = R.id === 'armory' && L ? this.armoryHtml() : R.id === 'stable' && L ? this.stableHtml() : R.id === 'cages' && L ? this.cagesHtml() : '';
       return `<div class="sv${L ? '' : ' off'}"><span class="t"><b>${esc(R.label)}</b> · ${L ? `${L}-й уровень${max > 1 ? ` из ${max}` : ''}` : 'не построено'}${idle ? ` · <b>стоит: нужен ${esc(R.post.label)}</b>` : ''}` +
         `<br><small>${esc(R.about)}</small>${fx ? `<br><small class="fact">${esc(fx)}</small>` : ''}</span>${post}${room}${extra}` +
         `<div class="row actions">${cost != null ? `<button type="button" class="mini" data-build="${R.id}"${why ? ' disabled' : ''}>${L ? 'Улучшить' : 'Построить'} — ${cost} зол.</button>` : ''}<small>${why && cost != null ? esc(why) : ''}</small></div></div>`;
@@ -293,6 +295,14 @@ export class GuildView extends CampaignView {
     const a = this.atlas, G = this.G, shop = shopOf(a, G), have = G.store?.beasts || [];
     return `<div class="row"><small>В конюшне: ${have.map(b => esc(BEAST_WORD[b.kind] || b.kind)).join(', ') || 'никого'} (${have.length} из ${stalls(G)})</small></div>` +
       (shop.beasts.length ? `<div class="row">${shop.beasts.map(o => `<button type="button" class="quiet mini" data-beast="${esc(o.kind)}"${have.length >= stalls(G) || G.gold < o.price ? ' disabled' : ''}>${esc(o.label)} — ${o.price}</button>`).join('')}</div>` : '<small>В городе зверей не продают.</small>');
+  }
+  // the war beasts (campaign/cages.js): who is in the cages, who goes with the next party; the town's beasts of prey
+  cagesHtml() {
+    const a = this.atlas, G = this.G, C = cagesOf(G), mk = beastMarket(a, G);
+    const rows = C.beasts.map(b => `<div class="row"><small>${esc(beastLabel(b.species))} · здоровье ${Math.round(b.hp * 100)} %${b.home ? ' · <b>остаётся дома</b>' : ' · пойдёт с отрядом'}</small>` +
+      `<button type="button" class="quiet mini" data-cage="home" data-id="${b.id}">${b.home ? 'брать в поход' : 'оставить дома'}</button><button type="button" class="quiet mini" data-cage="free" data-id="${b.id}">отпустить</button></div>`).join('');
+    return `<div class="row"><small>В клетках: ${C.beasts.length} из ${cageRoom(G)}. Грифона, виверну, варга — только поймать (договор «Поймать…» на доске).</small></div>${rows}` +
+      (mk.length ? `<div class="row">${mk.map(o => `<button type="button" class="quiet mini" data-war="${esc(o.species)}"${buyWarWhy(a, G, o.species) ? ' disabled' : ''}>${esc(o.label)} — ${o.price}</button>`).join('')}</div>` : '<small>Здешних хищников в городе не продают.</small>');
   }
   // ── the fallen (the board that is always there): who, when, how, what they had done
   fallenHtml() {

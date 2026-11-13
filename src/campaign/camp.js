@@ -89,7 +89,7 @@ export function campSetup(a, K, ev) {
       maims: m.maims || 0, perks: m.perks?.length ? m.perks.map(p => ({id: p.id, rank: p.rank})) : null})),   // (Ver_E: the maims borne and the perks learned — read by openCamp)
     bonds: bondsAmong(K, alive(K).map(m => m.id)),   // what the members present feel for each other (campaign/social.js), by member id
     promises: escortsDue(K, new Set(alive(K).filter(m => !m.captive).map(m => m.id))),   // the escorts promised for today, kept on the map (campaign/duty.js)
-    beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
+    beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp, ...(b.species ? {species: b.species} : {})})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     // the camp's chores (campaign/works.js): the day at this place (a stop's second day stands set up), the stakes the wheels
     // carry, those cut here the day before (campaign/fight.js K.campHere), an axe among the tools to cut more
@@ -190,7 +190,13 @@ export function openCamp(S) {
   // the beasts by the camp
   S.beasts.forEach((b, k) => {
     const [x, y] = ring(k + 0.5, Math.max(3, S.beasts.length), 4);
-    const sp = BEASTS[b.kind].species || b.kind;
+    const sp = b.species || BEASTS[b.kind].species || b.kind;
+    // a war beast of the guild's cages (campaign/cages.js): tame, at the company's side, it fights their foes and stays by them
+    if (b.kind === 'war') {
+      const side = [...w.campaign.people.values()][0]?.faction, ag = createAgent(w, sp, !side || side === 'colony' ? 'allies' : side, x, y);   // (as a caller's beasts: agents/summon.js)
+      ag.brain = 'summoned'; ag.summoned = {by: null, last: w.tick, keep: true}; ag.warBeast = true; ag.beast = b.id; w.campaign.herd.set(b.id, ag);
+      ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp)); return;
+    }
     // a golem stands guard over the camp (agents/golem.js), it is no tame beast
     if (BEASTS[b.kind].golem) { const ag = makeGolem(w, SPECIES.get(sp).metal, x, y, {x: w.camp?.x ?? x, y: w.camp?.y ?? y}); ag.beast = b.id; w.campaign.herd.set(b.id, ag); ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp)); return; }
     const ag = createAgent(w, sp, 'herd', x, y);
@@ -451,7 +457,7 @@ function outcomeOf(w) {
     const ag = C.herd.get(b.id);
     if (!ag) return {id: b.id, alive: false, stolen: false};
     if (ag.stolen) return {id: b.id, alive: false, stolen: true};
-    if (ag.dead || (!ag.tame && !SPECIES.get(ag.species).mechanism) || ag.gone || ag.hp / maxHp(ag) <= CAMP.beastGone) return {id: b.id, alive: false, stolen: false, bolted: !ag.dead};
+    if (ag.dead || (!ag.tame && !ag.warBeast && !SPECIES.get(ag.species).mechanism) || ag.gone || ag.hp / maxHp(ag) <= CAMP.beastGone) return {id: b.id, alive: false, stolen: false, bolted: !ag.dead};
     return {id: b.id, alive: true, hp: Math.min(1, ag.hp / maxHp(ag))};
   });
   // the stores: food back as rations, goods as they are (with what the dead foes and the hunt gave)

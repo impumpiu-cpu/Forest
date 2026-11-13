@@ -6,7 +6,10 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, partyMost, rosterMost, houseOf, roomLevel, roomBy, working, staffOf,
-  buildWhy, buildRoom, setRoomPost, postWhy, sendToRoom, trainWhy, armoryOf, racks, stalls, shopOf, buyPrice, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from '../src/campaign/index.js';
+  buildWhy, buildRoom, setRoomPost, postWhy, sendToRoom, trainWhy, armoryOf, racks, stalls, shopOf, buyPrice, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, keepHome, beastLabel, parties} from '../src/campaign/index.js';
+import {campSetup, runCamp, campOutcome} from '../src/campaign/camp.js';
+import {settleContract} from '../src/campaign/contracts.js';
+import {CONTRACTS} from '../src/data/contracts.js';
 import {gearDef, gearToken, gearSpec} from '../src/local/index.js';
 import {contractsOf as cof} from '../src/campaign/contracts.js';
 import {contractsOf, contractOf, takeContract} from '../src/campaign/contracts.js';
@@ -216,6 +219,45 @@ const ledgerHas = (G, s) => G.ledger.some(l => l.why.startsWith(s));
     const K = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: [membersOf(G, 'ready')[0].id], mode: 'auto'});
     ok(K.beasts.length === 1 && !G.store.beasts.length, 'зверь ушёл с отрядом');
   } else ok(true, 'в городе зверей не продают — не проверить на этом сиде');
+}
+
+// ── the cages: the town's beasts of prey with no lair; full — no more; with a party and back; a lair's beast only caught
+{
+  const [a, G] = opened(); rich(G);
+  const I = io(G);
+  buildRoom(a, 'cages', I); stepGuild(a);
+  ok(cageRoom(G) === 2, 'клетки 1-го уровня — 2 зверя');
+  const mk = beastMarket(a, G);
+  ok(mk.every(o => !['griffin', 'wyvern', 'dragon', 'drake', 'varg', 'spider', 'bat'].includes(o.species)), 'на рынке — только здешние хищники без логова', mk.map(o => `${o.label} ${o.price} (${o.thick})`).join('; ') || 'никого');
+  const sp = mk[0]?.species || 'wolf';
+  if (!mk.length) { cagesOf(G).beasts.push({id: 99, species: 'wolf', hp: 1}); ok(true, 'на рынке никого — волк в клетку вручную'); }
+  else { buyWarBeast(a, G, sp, I.pay); ok(cagesOf(G).beasts.length === 1, `куплен: ${beastLabel(sp)}`); }
+  const second = cagesOf(G).beasts.length < 2 ? (cagesOf(G).beasts.push({id: 98, species: sp, hp: 1}), true) : true;
+  ok(!!buyWarWhy(a, G, sp), 'клетки полны — не купить', buyWarWhy(a, G, sp));
+  keepHome(G, cagesOf(G).beasts[1].id, true);
+  for (const x of G.members) x.level = 20;
+  const K = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: [membersOf(G, 'ready')[0].id], mode: 'auto'});
+  ok(K.beasts.filter(b => b.kind === 'war').length === 1 && cagesOf(G).beasts.length === 1, 'один зверь ушёл с отрядом, второй оставлен дома');
+  let n = 0; while (n < 30 && parties(a).length) { stepGuild(a); n++; }
+  ok(cagesOf(G).beasts.length >= 1 && !K.beasts.some(b => b.kind === 'war'), 'вернувшиеся звери — снова в клетках', `${cagesOf(G).beasts.length} в клетках`);
+  // a capture of the guild's own: a lair's beast — into the cages, or let go if they are full
+  const def = CONTRACTS.get('catchGriffin'), rec = {uid: 'cX', tmpl: 'catchGriffin', tier: def.tier, state: 'accepted', issuer: {kind: 'guild', id: G.id}, escrow: 0, target: {lair: -1}, label: def.label, takenAt: G.day, completeBy: G.day + 100};
+  a.contracts.records.push(rec);
+  cagesOf(G).beasts = cagesOf(G).beasts.slice(0, 1);
+  settleContract(a, G, {contract: 'cX', done: [{contract: 'cX'}]}, {r: Math.random, tell: () => {}, pay: I.pay});
+  ok(cagesOf(G).beasts.some(b => b.species === 'griffin'), 'пойман грифон — в клетках');
+}
+
+// ── a war beast on the local map: at the company's side, it comes back (or not) by the fight
+{
+  const [a, G] = opened();
+  for (const x of G.members) x.level = 20;
+  cagesOf(G); houseOf(G).cages = 1; cagesOf(G).beasts.push({id: 1, species: 'wolf', hp: 1});
+  const K = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: membersOf(G, 'ready').slice(0, 2).map(m => m.id), mode: 'local'});
+  K.day = 5;
+  const o = campOutcome(runCamp(campSetup(a, K, {kind: 'guard', foe: {kind: 'bandits', band: 'bandits', strength: 0.3, label: 'проба'}})));
+  const wb = o.beasts.find(b => K.beasts.find(x => x.id === b.id)?.kind === 'war');
+  ok(!!wb, 'боевой волк вышел на локальную карту и вернулся в итог боя', JSON.stringify(wb));
 }
 
 // ── saved and loaded: the same house

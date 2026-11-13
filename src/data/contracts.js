@@ -44,6 +44,8 @@ export const CONTRACT = {
 //   camp   — a temporary lair put up for it: `band` (a band of people: bandits, cultists, undead) or `lair` (a kind of lair of
 //            data/lairs.js: its folk, its danger); `name` — what it is called, `boss` — who leads it (name, species, letters
 //            grown); `clue` — its place is found by the traces (else known); `trophy` — [nominative, accusative, gender]
+//   capture — the guild's own errand (`own`: no issuer, no pay) to catch a lair's beast for its cages: the lair (`lairs`, as an
+//            errand picks one), the beast it yields (`species`), the trophy; posted while the cages have room
 //   story  — the line of the need, {town} — the issuer's town, {where} — where the camp is
 import {Registry} from '../core/registry.js';
 
@@ -69,6 +71,14 @@ CONTRACTS.registerAll([
   {id: 'wyvernNest', tier: 4, label: 'Гнездо виверн', about: 'Пара виверн свила гнездо на скалах и таскает скот, а теперь и пастухов.',
     camp: {lair: 'wyvern', name: 'гнездо виверн', clue: true, trophy: ['Жало виверны', 'Жало виверны', 'n']},
     story: 'Виверны гнездятся {where}; пастухи {town} не выгоняют стада.'},
+  // the guild's own (no one pays: `own`): a beast of a lair caught for the cages (campaign/cages.js) — its lair stormed, the
+  // beast taken alive; posted only while the cages have room
+  {id: 'catchVarg', tier: 1, own: true, label: 'Поймать варга', about: 'Варг для клеток гильдии: взять логово и увести одного живым.',
+    capture: {lairs: ['varg'], species: 'varg', trophy: ['Пойманный варг', 'Пойманного варга', 'm']}},
+  {id: 'catchGriffin', tier: 3, own: true, label: 'Поймать грифона', about: 'Грифон для клеток гильдии: на рынке их не бывает — только из гнезда.',
+    capture: {lairs: ['griffin'], species: 'griffin', trophy: ['Пойманный грифон', 'Пойманного грифона', 'm']}},
+  {id: 'catchWyvern', tier: 4, own: true, label: 'Поймать виверну', about: 'Виверна для клеток гильдии. Ядовитая, злая и дорогая — если удастся.',
+    capture: {lairs: ['wyvern'], species: 'wyvern', trophy: ['Пойманная виверна', 'Пойманную виверну', 'f']}},
   {id: 'dragon', tier: 5, label: 'Убить дракона', about: 'Дракон в своём логове. Сперва узнать, где оно, потом выстоять против него.', errand: 'dragon'},
 ]);
 

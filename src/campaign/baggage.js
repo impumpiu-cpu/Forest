@@ -109,7 +109,7 @@ export function overflow(K) {
 // ── pace: × on a walking human of average Agility, as slow as the slowest who walks
 // the pace kept by health (data/campaign.js CAMPAIGN.hurtPace)
 const hurtPace = (P, hp) => P.base + P.hurt * clamp(hp / P.at, 0, 1);
-const beastPace = b => (SPECIES.get(b.kind).speed / humanSpeed()) * hurtPace(CAMPAIGN.hurtPace.beast, b.hp);
+const beastPace = b => (SPECIES.get(b.species || b.kind).speed / humanSpeed()) * hurtPace(CAMPAIGN.hurtPace.beast, b.hp);
 // (a maim that slows it — a shattered leg — slows it on the road too: data/conditions.js `speed`; a trauma's limp, as before, not)
 const lame = m => (m.wounds || []).reduce((v, x) => v * (WOUNDS.has(x.id) && WOUNDS.get(x.id).maim ? WOUNDS.get(x.id).mods?.speed ?? 1 : 1), 1);
 const footPace = m => (SPECIES.get(m.race).speed / humanSpeed()) * EFFECTS.speed(m.special || {A: NORM}) * hurtPace(CAMPAIGN.hurtPace.foot, m.hp) * lame(m);

@@ -129,3 +129,4 @@ export {contractsOf, contractOf, contractCards, issuerName} from './contracts.js
 export {houseOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack} from './house.js';
 export {build as buildRoom, setPost as setRoomPost, sendTo as sendToRoom} from './house.js';
 export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from './armory.js';
+export {cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, release as releaseBeast, keepHome, beastLabel, beastStrength} from './cages.js';

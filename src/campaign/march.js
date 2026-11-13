@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {warMight} from './cages.js';
 import {handIn, failErrand, emptyHome} from './ending.js';
 import {WOUNDS} from '../data/wounds.js';
 import {toTown} from '../atlas/index.js';
@@ -131,7 +132,7 @@ const hurtMight = hp => CAMPAIGN.might.hurt[0] + CAMPAIGN.might.hurt[1] * hp;
 // a thing's might as the scouts judge it: what it would bring to a fight (its strength × the foe's unit of might, data/camp.js
 // CAMP.foe quickUnit — the same the fight buys it by: campaign/camp.js foeBudget), against the caravan's own
 export const thingMight = t => CAMP.foe.quickUnit * (t.strength ?? 1);
-export const caravanMight = (K, scarred = false) => alive(K).reduce((s, m) => s + memberMight(m, scarred), 0)
+export const caravanMight = (K, scarred = false) => alive(K).reduce((s, m) => s + memberMight(m, scarred), 0) + warMight(K)   // (the guild's war beasts: campaign/cages.js)
   + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
 export const frosty = (a, K, seasonId) => !!SEASONS.get(seasonId).lean && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
@@ -215,7 +216,7 @@ function campWork(a, K, r) {
   const brewed = brewDay(K, r, wooded);
   if (brewed) { K.stats.brewed = (K.stats.brewed || 0) + brewed; if (!K.brewTold || K.day - K.brewTold > CAMPAIGN.told.again) { K.brewTold = K.day; say(a, K, `В хижине лекаря сварили зелье лечения${brewed > 1 ? ` (${brewed})` : ''}: зелий в поясах ${alive(K).reduce((s, m) => s + (m.potions || 0), 0)}.`, 'build'); } }
   for (const kind of Object.keys(BEASTS)) {
-    if (BEASTS[kind].golem) continue;   // a golem is bought, never tamed
+    if (BEASTS[kind].golem || BEASTS[kind].use === 'war') continue;   // a golem is bought, never tamed; a war beast is the guild's (campaign/cages.js)
     const lvl = faunaLevel({region: reg}, kind), hitch = BEASTS[kind].use === 'ride' ? kitOf(K).tame ?? 1 : 1;   // (the humans' hitching post)
     if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(GETTING.tameCap, lvl) * handler(K) * hitch) gainBeast(a, K, kind, 'Приручили');
   }
@@ -332,7 +333,7 @@ const CAMP_ASK = {
   // to tame the beasts that graze here
   tame: (a, K, x) => {
     if (!thinks(K, x) || !(K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery)) return null;
-    const reg = cellRegion(a, K.i), kind = Object.keys(BEASTS).find(k => !BEASTS[k].golem && lacking(K, k) && faunaLevel({region: reg}, k) >= GETTING.tameLand);
+    const reg = cellRegion(a, K.i), kind = Object.keys(BEASTS).find(k => !BEASTS[k].golem && BEASTS[k].use !== 'war' && lacking(K, k) && faunaLevel({region: reg}, k) >= GETTING.tameLand);
     return kind ? {cmd: 'tame', why: 'tame:' + kind} : null;
   },
   // fed, whole and in a quiet place: an ore worth stopping for here (data/campaign.js MINE)
