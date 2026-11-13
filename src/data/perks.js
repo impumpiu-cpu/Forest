@@ -171,6 +171,26 @@ PERKS.registerAll([
       {shape: 'shot', range: 4, venom: {dmg: 0.0007, ticks: 180}, prep: 12, wait: 120, dodge: 12, shield: true},
       {shape: 'shot', range: 5, venom: {dmg: 0.001, ticks: 220}, prep: 12, wait: 120, dodge: 14, shield: true},
     ]},
+  {id: 'acidJet', label: 'Кислотная струя', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'струя кислоты линией: жжёт мимо брони и портит вещи; не яд — противоядие её не берёт',
+    rank: [
+      {shape: 'line', width: 1, length: 4, type: 'acid', dmg: 0.15, corrode: {wear: 1}, prep: 18, wait: 150, dodge: 10},
+      {shape: 'line', width: 1, length: 5, type: 'acid', dmg: 0.3, corrode: {wear: 2}, prep: 18, wait: 150, dodge: 12},
+      {shape: 'line', width: 1, length: 6, type: 'acid', dmg: 0.45, corrode: {wear: 3}, prep: 20, wait: 150, dodge: 14},
+    ]},
+  {id: 'rust', label: 'Ржа', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'касание усиками: железо на теле и в руках ржавеет — изнашивается на wear за касание; ржи на бой — ammo',
+    rank: [
+      {shape: 'touch', range: 1.4, corrode: {wear: 2, iron: true}, ammo: 6, prep: 4, wait: 60, dodge: 10},
+      {shape: 'touch', range: 1.5, corrode: {wear: 4, iron: true}, ammo: 8, prep: 4, wait: 60, dodge: 12},
+      {shape: 'touch', range: 1.6, corrode: {wear: 6, iron: true}, ammo: 10, prep: 4, wait: 60, dodge: 14},
+    ]},
+  {id: 'numbing', label: 'Сковывающий яд', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'щупальца сковывают: оглушён numbFor тиков, потом numb тиков к нему стоек (не паралич на минуты)',
+    rank: [
+      {shape: 'touch', range: 1.5, type: 'pierce', dmg: 0.04, numbFor: 24, numb: 100, prep: 4, wait: 80, dodge: 10},
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.06, numbFor: 30, numb: 100, prep: 4, wait: 80, dodge: 12},
+    ]},
   // ── holding (agents/abilities.js): `grab` — a hit takes hold of one no bigger than `size` (a body's: data/abilities.js GRIP);
   // it holds while it can: each `every` ticks the held one breaks free at its max(S, A) (+ GRIP.help for each of its own close
   // by, pulling) against `hold`; the holder does nothing else, the held one strikes only at the holder. Its death, a stun,

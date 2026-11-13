@@ -31,7 +31,8 @@ import {maxHp} from './agent.js';
 import {heatTo} from '../world/heat.js';
 import {cellMid, cellOf, walkable} from '../world/grid.js';
 import {T} from '../data/terrain.js';
-import {handItems, def} from './equipment.js';
+import {handItems, def, wear} from './equipment.js';
+import {MATERIALS} from '../data/balance/materials.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 
@@ -60,7 +61,10 @@ const angDiff = (x, y) => { let d = x - y; while (d > Math.PI) d -= 2 * Math.PI;
 export function inShape(w, row, ox, oy, dir, x, y) {
   const dx = x - ox, dy = y - oy, d = Math.hypot(dx, dy);
   if (d > row.length + ABILITY.edge) return false;
-  if (row.shape !== 'aura' && d > ABILITY.eps) {
+  if (row.shape === 'line') {   // a jet: along it up to its length, no wider than `width`
+    const along = dx * Math.cos(dir) + dy * Math.sin(dir), across = Math.abs(-dx * Math.sin(dir) + dy * Math.cos(dir));
+    if (along < 0 || across > row.width / 2) return false;
+  } else if (row.shape !== 'aura' && d > ABILITY.eps) {
     const face = row.shape === 'rear' ? dir + Math.PI : dir;
     if (Math.abs(angDiff(Math.atan2(dy, dx), face)) > row.angle * RAD / 2) return false;
   }
@@ -152,7 +156,7 @@ export function stepAct(w, a) {
     if ((a.actReady?.[act.id] ?? 0) > w.tick) continue;
     const aim = aimOf(w, a, act);
     if (!aim) {   // a cone with its own in the way: one with a mind steps aside to a clear one
-      if (act.row.shape !== 'cone' || isMindless(SPECIES.get(a.species)) || SPECIES.get(a.species).mind === 'beast') continue;
+      if ((act.row.shape !== 'cone' && act.row.shape !== 'line') || isMindless(SPECIES.get(a.species)) || SPECIES.get(a.species).mind === 'beast') continue;
       const to = sidestep(w, a, act.row);
       if (to) { a.dodge = {x: to.x, y: to.y, until: w.tick + ABILITY.shift.ticks, aim: true}; return true; }
       continue;
@@ -189,6 +193,7 @@ function begin(w, a, act, dir, tid = null) {
 function harmTo(w, o, type) {
   const sp = SPECIES.get(o.species);
   if (type === 'fire') return resistTo(sp, 'fire') * (o.effects ? effectResist(w, o, 'fire') : 1) * (heldOf(o, 'fireproof')?.fire ?? 1);
+  if (type === 'acid') return resistTo(sp, 'acid');   // (an acid eats past the armour — and the armour with it: `corrode`)
   return resistOf(sp, type, true) * (1 - (o.gear ? armorAgainst(o.gear, type) : 0));
 }
 
@@ -250,7 +255,11 @@ function strike(w, a, o, row) {
     if (row.web && !sp.mechanism) o.webbed = {slow: Math.min(row.web.slow, o.webbed && o.webbed.until > w.tick ? o.webbed.slow : 1), until: Math.max(w.tick + row.web.ticks, o.webbed?.until || 0)};
     if (row.knock && !sp.mechanism) o.stunned = {until: Math.max(o.stunned?.until || 0, w.tick + row.knock)};
     if (row.grab && o.hp > 0) grip(w, a, o, row.grab);
+    // a numbing touch (a carrion crawler's): stunned, but not again until `numb` ticks have passed
+    if (row.numb && !sp.mechanism && !(o.numbFree > w.tick)) { o.stunned = {until: Math.max(o.stunned?.until || 0, w.tick + row.numbFor)}; o.numbFree = w.tick + row.numb; }
   }
+  // an acid, a rust: it eats its things — the iron only, for a rust (a few wears a touch, not the thing at once)
+  if (row.corrode && o.equip) for (const it of [...new Set(Object.values(o.equip).filter(Boolean))]) if (!row.corrode.iron || MATERIALS[def(it).material]?.flags?.iron) wear(w, o, it, row.corrode.wear);
   if (o.hp <= 0) lethal(w, o, row.type === 'fire' ? 'огня' : row.venom && !row.dmg ? 'яда' : 'ран', a);
   return true;
 }
@@ -262,7 +271,11 @@ export const flightOf = a => (a.flightRow !== undefined ? a.flightRow : (a.fligh
 export function stepFlight(w, a) {
   const F = flightOf(a); if (!F) return;
   if (a.downed || a.dead || a.captive || a.hp / maxHp(a) < F.grounded) { a.aloft = false; return; }
-  const t = a.task?.target, near = !!t && !t.dead && !t.downed && Math.hypot(t.x - a.x, t.y - a.y) <= reachOf(a) + FLIGHT.land;
+  // near: its foe within its reach — its own target, or one fighting it (a flier set upon comes down to fight: no endless
+  // safety up in the air)
+  const R = reachOf(a) + FLIGHT.land, t = a.task?.target;
+  const near = (!!t && !t.dead && !t.downed && Math.hypot(t.x - a.x, t.y - a.y) <= R) ||
+    nearAgents(w, a.x, a.y, R).some(o => o !== a && !o.dead && !o.downed && o.task?.target === a && Math.hypot(o.x - a.x, o.y - a.y) <= R);
   const fly = (a.fly ||= {});
   if (a.aloft) {
     if (near && w.tick >= (fly.rise || 0) && walkable(w, cellOf(w, a))) { a.aloft = false; fly.landed = w.tick; }
