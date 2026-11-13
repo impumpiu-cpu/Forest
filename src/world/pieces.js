@@ -188,7 +188,7 @@ function layScene(t, P, id) {
   let rec = place(t, P, heart, 'heart', at, R.heartKeep);
   // a cramped map: anywhere far enough from the camp
   if (!rec) rec = place(t, P, heart, 'heart', anywhere(t, r), R.heartKeep);
-  P.scene = {id, label: S.label, anchor: rec?.anchor ?? null};
+  P.scene = {id, label: S.label, anchor: rec?.anchor ?? null, dark: !!S.dark};   // (dark: under the ground — core/time.js nightness)
   // the wood thinned from its fringes (the cells of the highest tree noise go first)
   if (S.clear > 0 && t.treeNoise) {
     const wood = []; for (let i = 0; i < t.w * t.h; i++) if (t.terr[i] === T.FOREST && !P.mine[i]) wood.push(i);

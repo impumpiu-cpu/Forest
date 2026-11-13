@@ -32,6 +32,7 @@ export function clockStr(t, w) {
 // and autumn), the longest day at the summer solstice, the longest night at the winter one — a cold
 // land's winter is a long night, when the undead are abroad and the fire is the only warmth
 export function nightness(w, t = w.tick) {
+  if (w.scene?.dark) return 1;   // under the ground (world/pieces.js: a vault) the night never ends
   const day = daylight(w, t), h = hourOf(t, w), rise = 12 - day / 2, set = 12 + day / 2;
   const sun = h >= rise && h <= set ? Math.sin(Math.PI * (h - rise) / day) : -Math.sin(Math.PI * ((h - set + 24) % 24) / (24 - day));
   return clamp((0.2 - sun) * 2.2, 0, 1);

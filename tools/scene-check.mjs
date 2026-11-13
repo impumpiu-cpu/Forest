@@ -10,6 +10,7 @@ import {campSetup, openCamp, stepCamp, campDone, campOutcome, companyStrength} f
 import {lairGuard} from '../src/campaign/land.js';
 import {planFor} from '../src/agents/squad.js';
 import {influenceAt} from '../src/agents/influence.js';
+import {nightness} from '../src/core/time.js';
 import {CAMP} from '../src/data/camp.js';
 import {SQUAD, TACTICS} from '../src/data/behaviour.js';
 
@@ -105,6 +106,17 @@ const play = (w, each) => { for (let g = 0; g < 4800 && !campDone(w); g++) { ste
   const amb = run('raiders', 'ambush', 0.8), line = run('army', 'night', 0.5);
   ok(amb.lurk && amb.creep > 0 && amb.struck, 'засада: подкрадываются скрытно, потом бьют', JSON.stringify(amb));
   ok(line.line && line.spots && line.on, 'войско встаёт стеной и идёт разом', JSON.stringify(line));
+}
+
+// ── a vault (Бой-5): the lair of those who shun the sun is stormed under the ground — night all day; they fight, not leave
+{
+  const w = storm('vampire', 0.5);
+  if (!w) ok(true, 'на этом сиде нет логова вампиров — не проверить');
+  else {
+    ok(w.scene?.id === 'vault' && nightness(w) === 1, 'логово вампиров — подземелье: там всегда ночь', `${w.scene?.id}, ночь ${nightness(w)}`);
+    let sun = 0; const o = play(w, w => { for (const f of w.campaign.foeObjs) if (f.task?.id === 'leave' && f.why?.why === 'солнце встало') sun++; });
+    ok(sun === 0 && o.foes.killed + o.foes.left > o.foes.fled, 'под землёй упыри не уходят от солнца — дерутся', JSON.stringify(o.foes).slice(0, 110));
+  }
 }
 
 if (fails) { console.log(`\nscene-check: FAIL ×${fails}`); process.exit(1); }

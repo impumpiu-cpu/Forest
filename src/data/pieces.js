@@ -164,6 +164,17 @@ export const PIECES = [
            ' ,#___o___#, ',
            ' ,####_####, ',
            '  ,+,,,,,+,  ']},
+  // the heart of a vault (Бой-5): an undercroft, its vaulting on columns; the masters of the place at its middle
+  {id: 'undercroft', label: 'подземный зал', layer: 'heart', decay: 0.08, cache: 1, finds: 'hoard',
+    mask: [' ,,,,,,,,,,,,, ',
+           ',_____________,',
+           ',_o___o___o___,',
+           ',_____________,',
+           ',_o___o_A_o___,',
+           ',_____________,',
+           ',_o___o_$_o___,',
+           ',_____________,',
+           ' ,,,,,,,,,,,,, ']},
   {id: 'stockade', label: 'острог', layer: 'heart', decay: 0.1, cache: 1, finds: 'hoard',
     mask: [' ,,,,,,,,,,,,, ',
            ',||||||,||||||,',
@@ -214,6 +225,10 @@ export const PIECES = [
     mask: ['+,+,+',
            ',,,,,',
            '+,+,+']},
+  // the pillars of a vault (Бой-5): wide enough a hall that a dozen of them hold it up
+  {id: 'pillar', label: 'колонна', layer: 'scene', size: 'small', decay: 0.1,
+    mask: ['oo',
+           'oo']},
   {id: 'brokenColumns', label: 'обломки колонн', layer: 'scene', size: 'small', decay: 0.35,
     mask: ['o,: ',
            ',:,o',
@@ -247,6 +262,10 @@ export const PIECES = [
 // [piece id, how many]); `clear` — the share of the wood cut down (an old fight, a place people kept). The side of the
 // foe picks the scene (campaign/land.js sides: the foe's kind, its lair's kind)
 export const SCENES = {
+  // a vault (plan claude/combat-plan.md Бой-5, the author's word 13.11): those who shun the sun keep under the ground — the
+  // storm is fought in its dark (`dark`: night all day, agents of the sun neither wither nor leave; one without a torch sees
+  // little), the wood gone, a dozen pillars
+  vault:      {label: 'подземелье', heart: 'undercroft', clear: 1, dark: true, scatter: [['pillar', 10], ['rubbleHeap', 3], ['bonesField', 2]]},
   necropolis: {label: 'погост', heart: 'crypt', clear: 0.5, scatter: [['gravesRow', 7], ['brokenColumns', 5], ['bonesField', 3]]},
   warcamp:    {label: 'острог', heart: 'stockade', clear: 0.45, scatter: [['barricadeLine', 5], ['barricadeCorner', 4], ['bonesField', 2], ['windfall', 2]]},
   den:        {label: 'логово', heart: 'beastDen', clear: 0.2, scatter: [['bonesField', 6], ['windfall', 4], ['boulders', 3]]},
@@ -256,7 +275,7 @@ export const SCENES = {
 };
 // which scene, by the foe: its kind (data/campaign.js FOES) or its lair's kind (data/lairs.js), the beast or band it brings
 export const SCENE_OF = {
-  undead: 'necropolis', wights: 'necropolis', ghouls: 'necropolis', necromancer: 'necropolis', vampire: 'necropolis',
+  undead: 'necropolis', wights: 'necropolis', ghouls: 'vault', necromancer: 'necropolis', vampire: 'vault', upyrs: 'vault',
   tribe: 'warcamp', raiders: 'warcamp', bandits: 'warcamp', army: 'warcamp', goblins: 'warcamp', gnolls: 'warcamp', ogres: 'warcamp',
   trolls: 'warcamp', swamptrolls: 'warcamp', icetrolls: 'warcamp', giants: 'warcamp', orcs: 'warcamp',
   beasts: 'den', wolves: 'den', lair: 'den', varg: 'den', griffin: 'den', manticore: 'den', wyvern: 'den', drake: 'den', dragon: 'den', stoneworm: 'den', bat: 'den',
