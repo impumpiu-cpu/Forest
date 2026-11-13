@@ -1,5 +1,5 @@
 // The menu (forest.html, Forest.bat), docs/GAME.md «Главное меню»: Продолжить (the last game, if any: ui/autosave.js) ·
-// Новая игра — Гильдия (the game: ui/guildView.js) or Быстрая кампания (the old walk of one caravan, a testing ground);
+// Новая игра — Гильдия (the game: ui/guildView.js) or Поход (the old walk of one caravan, a testing ground);
 // Модификации — Создать землю · Заселение мира · Конструктор существ · Таблицы; Настройки; Об игре.
 // A shell over the core: every screen is a module of src/app/ or src/ui/, shown in turn; the screens with a running
 // clock (the world settled, the campaign) share the observer's layout (docs/GAME.md «Наблюдатель»). docs/GAME.md.
@@ -158,7 +158,7 @@ $('quickGo').addEventListener('click', () => {
 let quickMode = 'guild';
 function newGame(mode) {
   quickMode = mode;
-  $('quickTitle').textContent = mode === 'guild' ? 'Новая гильдия' : 'Быстрая кампания';
+  $('quickTitle').textContent = mode === 'guild' ? 'Новая гильдия' : 'Новый поход';
   show('quick');
 }
 $('launchGuild').addEventListener('click', () => newGame('guild'));
