@@ -10,7 +10,7 @@
 //   special, hp, speed, attack — in data/balance/creatures.js; `relativeStats` (set for all of them): the row is the typical animal
 //   venom       — {dmg, ticks}: a bite poisons, the victim loses dmg health a tick for `ticks`
 //   web         — {slow, ticks}: a bite tangles, the victim moves at `slow` speed for `ticks`
-//   breath      — chance per blow to set the victim's ground on fire (agents/combat.js)
+//   perks       — what it is born with, of the book of perks (data/perks.js): [{id, rank, own?}] — a breath, a tail, scales
 //   nocturnal   — comes and hunts by night, leaves the map by day
 //   hibernates  — leaves for its den when winter comes and does not come back till spring
 //   resident    — nechist (the spirits): lives here, comes back `respawn` days after it was killed;
@@ -142,17 +142,19 @@ export const BESTIARY = [
   // habitat only says where its lair may be: the dragon is a lair, not a field of beasts
   beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.dragon]}, heatHarm: 800,
     fearHeat: 800, habitat: {volcano: 'rare'},
-    look: {shape: 'bird', size: 1.4, color: '#8a2418'}, breath: 0.5,
+    look: {shape: 'bird', size: 1.4, color: '#8a2418'},
+    // (the expert's card, 13.11: a breath of the fifth rank, a tail behind it, a roar; scales and the fire's answer)
+    perks: [{id: 'fireBreath', rank: 5}, {id: 'tailSweep', rank: 2}, {id: 'roar', rank: 3}, {id: 'scales', rank: 3}, {id: 'fireproof', rank: 3}],
     yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],
     killMessage: name => `Дракон сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
 
-  // Drake: a young dragon with no mind yet; its breath sets the grass on fire
+  // Drake: the dragon's beast-kin, no mind; its breath (third rank) sets the grass on fire
   beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, breath: 0.25,
+    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, perks: [{id: 'fireBreath', rank: 3}, {id: 'scales', rank: 2}, {id: 'fireproof', rank: 2}],
     yields: {meat: 6, scales: 4, gland: 1}, trophies: [{res: 'scales', n: 2, chance: 0.25, tier: 2}, {res: 'gland', n: 1, chance: 0.2, tier: 3}],
     killMessage: name => `Дрейк сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),

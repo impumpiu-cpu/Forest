@@ -111,6 +111,39 @@ PERKS.registerAll([
   {id: 'bloodDrink', label: 'Пьёт кровь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
     about: 'лечится долей урона прошедшего рукопашного удара',
     rank: [{share: 0.25}, {share: 0.5}, {share: 0.75}]},
+  // ── the acts (agents/abilities.js): a rank is a whole act — its shape (cone: `angle`° and `length` cells from the body's
+  // edge; rear: a sector behind; aura: a ring of `length` about it), what it does (dmg — health lost at once, by `type`;
+  // burn — {dmg, ticks} it keeps burning; kindle — the ground in it catches where there is something to burn; knock — stunned
+  // ticks; fear — morale points, felt once in `calm` ticks), `prep` — ticks of a plain wind-up (its direction fixed: one
+  // who steps out takes nothing), `wait` — ticks after it, `dodge` — one still inside dodges at A / (A + dodge): half the
+  // harm, no burning. Walls and rock shut it off. It strikes whoever stands in it, its own side too (its AI aims past them)
+  {id: 'fireBreath', label: 'Огнедышащий', kind: 'врождённые', how: 'act', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'выдох огня конусом; ранг — своя длина, урон, подготовка и пауза; со II ранга — горение, с III — поджигает землю',
+    rank: [
+      {shape: 'cone', angle: 45, length: 3, type: 'fire', dmg: 0.18, prep: 12, wait: 100, dodge: 12, burn: null, kindle: false},
+      {shape: 'cone', angle: 60, length: 5, type: 'fire', dmg: 0.3, prep: 16, wait: 130, dodge: 14, burn: {dmg: 0.001, ticks: 60}, kindle: false},
+      {shape: 'cone', angle: 60, length: 7, type: 'fire', dmg: 0.48, prep: 20, wait: 170, dodge: 16, burn: {dmg: 0.0015, ticks: 80}, kindle: true},
+      {shape: 'cone', angle: 60, length: 9, type: 'fire', dmg: 0.72, prep: 25, wait: 220, dodge: 18, burn: {dmg: 0.002, ticks: 100}, kindle: true},
+      {shape: 'cone', angle: 60, length: 11, type: 'fire', dmg: 1, prep: 30, wait: 280, dodge: 20, burn: {dmg: 0.0025, ticks: 120}, kindle: true},
+    ]},
+  {id: 'tailSweep', label: 'Удар хвостом', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'хвостом по тем, кто зашёл за спину: сбивает с ног',
+    rank: [
+      {shape: 'rear', angle: 120, length: 1.5, type: 'blunt', dmg: 0.12, knock: 12, prep: 6, wait: 80, dodge: 10},
+      {shape: 'rear', angle: 120, length: 2, type: 'blunt', dmg: 0.2, knock: 16, prep: 6, wait: 80, dodge: 12},
+      {shape: 'rear', angle: 140, length: 2.5, type: 'blunt', dmg: 0.3, knock: 20, prep: 8, wait: 80, dodge: 14},
+    ]},
+  {id: 'roar', label: 'Устрашение', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'рёв: мораль врагов вокруг падает — раз при встрече и после тяжёлой раны, не чаще раза в calm тиков на каждого',
+    rank: [
+      {shape: 'aura', length: 4, fear: 15, calm: 200, prep: 8, wait: 240, again: 0.25},
+      {shape: 'aura', length: 7, fear: 25, calm: 200, prep: 10, wait: 260, again: 0.25},
+      {shape: 'aura', length: 10, fear: 35, calm: 200, prep: 12, wait: 280, again: 0.25},
+    ]},
+  // ── a body's guard: × the harm by kind (the natural armour stands in the place of a `resist` of the same kinds, never on top)
+  {id: 'scales', label: 'Чешуя и панцирь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'колющий и рубящий удар слабее, дробящий — чуть слабее',
+    rank: [{pierce: 0.9, slash: 0.9, blunt: 0.95}, {pierce: 0.8, slash: 0.8, blunt: 0.9}, {pierce: 0.7, slash: 0.7, blunt: 0.85}]},
   {id: 'fireproof', label: 'Огнестойкость', kind: 'врождённые', how: 'fight', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
     about: 'огонь × fire; heat — жар земли не берёт вовсе (мастер горна)',
     rank: [{fire: 0.75}, {fire: 0.4}, {fire: 0.1}]},

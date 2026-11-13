@@ -17,6 +17,8 @@ import {quaff, drinkFor, stepPotionEffects} from './potions.js';
 import {thornedBy} from './movement.js';
 import {THORNS} from '../data/buildings.js';
 import {heldOf} from '../data/perks.js';
+import {stepBurning} from './abilities.js';
+import {T} from '../data/terrain.js';
 const fireproofOf = a => heldOf(a, 'fireproof');
 
 // Lasting effects on any creature, whatever its brain: venom from a bite (agents/combat.js) hurts every
@@ -30,6 +32,7 @@ export function stepEffects(w, a) {
     else a.poison = null;
   }
   if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+  if (a.burning) stepBurning(w, a, w.grid.terr[cellOf(w, a)] === T.WATER);   // on fire (a breath: agents/abilities.js); water puts it out
   // a bleeding cut (a weapon with `bleed`, data/conditions.js): it hurts every tick until it stops
   if (a.bleeding) {
     // a cut that bleeds out is a wound like a blow's: luck may turn it into a fall (agents/wounds.js lethal)

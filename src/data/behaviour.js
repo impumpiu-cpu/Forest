@@ -353,9 +353,10 @@ export const TORCH = {casual: 0.06, clear: 3};
 // the cold × the season's dress, a lost share of speed × `bodySpeed`. On the back: a quiver for the bow in hand
 // `quiver`, a basket `carryBase` + carry × `carry` × liking for gathering, a spare weapon `spareWeapon`; a second
 // one-hander adds `second`. The colonist swaps only for a loadout better by `swap`.
+// `act` — worth of a thing in hand its role's act needs (the forge-master's coal: «Огнедышащий I», data/roles.js `hold`)
 export const GEAR = {
   brave: [0.5, 0.5], blowTicks: 12, melee: 0.6, meleeBase: 0.15, silverHere: 1.6, silverMet: 0.35,
-  ranged: 0.55, rangedBase: 0.1, noAmmo: 0.3, block: 1.6, tool: 1.4, backTool: 1.3, handSpeed: 2,
+  ranged: 0.55, rangedBase: 0.1, act: 1.5, noAmmo: 0.3, block: 1.6, tool: 1.4, backTool: 1.3, handSpeed: 2,
   armorBrave: [0.6, 0.4], armor: 2, warmth: 0.8, bodySpeed: 2, quiver: 3, carryBase: 0.25, carry: 0.15, spareWeapon: 0.05,
   second: 0.05, swap: 0.12,
 };

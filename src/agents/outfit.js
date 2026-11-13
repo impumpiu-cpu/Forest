@@ -1,5 +1,6 @@
 // The colonists' choice of what to wear from the colony's gear store (world.armory): the worth of a piece to this
 // colonist, the best loadout, the swap at the camp (weights: data/behaviour.js GEAR).
+import {roleRow} from '../data/roles.js';
 import {jobAccess} from './skills.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {hourOf} from '../core/time.js';
@@ -41,6 +42,8 @@ function value(a, d, w) {
     if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= GEAR.noAmmo;
   }
   if (d.block) v += d.block * GEAR.block * brave;
+  const R = roleRow({fightRole: a.fightPref || a.fightRole});   // its role's act asks this in hand (the forge-master's coal)
+  if (R?.perks?.some(g => g.hold && g.hold === d.form)) v += GEAR.act;
   for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * GEAR.tool * (a.prefs[job] ?? 1) * toolUse(a, job);
   if (d.speed && d.slot === 'hand') v += (d.speed - 1) * GEAR.handSpeed;
   return v;

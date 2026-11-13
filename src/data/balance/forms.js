@@ -66,11 +66,11 @@ export const FORMS = {
   torch:    {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', melee: {dmg: 0.5, cd: 12},
     ranged: {dmg: 0, range: 5, cd: 20, ammo: null, type: 'blunt'}, qualities: {thrown: 1, burn: 0.3}, dur: 20, quality: false,
     parts: {material: 1, fiber: 1}, work: 120, ids: {wood: 'torch'}, names: {wood: ['Факел', 'факел']}, name: m => ['Факел', 'факел'], glyph: 'club'},
-  // the forge-master's fire (data/roles.js forgemaster, the dwarves): a mouthful of lamp oil blown across a coal held in
-  // tongs — no magic, a smith's trick. Thrown at a javelin's reach, it sets the struck one and the ground under it alight
-  // (quality `burn`); three breaths, then a long wait. No town sells it and no outpost makes it
-  spitfire: {slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', ranged: {dmg: 1.2, range: 5, cd: 70, ammo: null, type: 'blunt'},
-    qualities: {thrown: 3, burn: 1}, dur: 40, quality: false, tradeOnly: true, sold: false,
+  // the forge-master's fire (data/roles.js forgemaster, the dwarves): a coal held in tongs and a mouthful of lamp oil blown
+  // across it — no magic, a smith's trick: the breath is the perk «Огнедышащий I» (agents/abilities.js), only with this in
+  // hand; the tongs strike as a torch does. No town sells it and no outpost makes it
+  spitfire: {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', melee: {dmg: 0.5, cd: 12},
+    qualities: {burn: 0.3}, dur: 40, quality: false, tradeOnly: true, sold: false,
     parts: {material: 1, coal: 2}, work: 300, ids: {wood: 'spitfire'}, names: {wood: ['Горновой огонь', 'огонь горна']}, name: () => ['Горновой огонь', 'огонь горна'], glyph: 'club'},
   shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, cover: 0.5, dur: 35,
     parts: {material: 3, hide: 2}, work: 700, ids: {wood: 'shield'}, names: {wood: ['Щит из жердей и шкуры', 'щит']}, name: m => [`${cap(m.adj.m)} щит`, `${m.short} щит`], glyph: 'shield'},

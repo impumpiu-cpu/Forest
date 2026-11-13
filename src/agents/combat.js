@@ -100,7 +100,12 @@ export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
 // A parrying weapon in hand (quality `parry`) adds to the block against blows, never past CAPS.block
 export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.max(against(g.block, g.blockVs, type), Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry)) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
-export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
+// natural armour (a perk «Чешуя и панцирь», data/perks.js) stands in the place of the body's own answer to that kind, never on top
+export const resistOf = (sp, type, melee) => {
+  const sc = innateOf(sp, 'scales')?.[type];
+  const by = sc ?? sp.resist?.[type] ?? 1;
+  return by * (sp.resist?.[melee ? 'melee' : 'ranged'] ?? 1);
+};
 
 // Apply a hit: a shield may stop a blow or a shot (a parry only a blow), armour absorbs part of the rest.
 // Inside the settlement zone colonists fight harder and a palisade shields them.
@@ -170,7 +175,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const bsp = SPECIES.get(by.species);
   const drink = melee && innateOf(bsp, 'bloodDrink');
   if (drink && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * drink.share);
-  // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
+  // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js); a breath is an act of its own (agents/abilities.js)
   const venom = melee && innateOf(bsp, 'venom');   // (the book of perks: «Ядовитый укус», its rank's profile or the species' own numbers)
   if (venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
@@ -181,7 +186,6 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // burning throw that struck home (the forge-master's fire: data/balance/forms.js spitfire)
   const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
-  if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp > 0 && hpShare(t) < MIND.woundedBelow) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
   const rb = bsp.remembers, rt = tsp.remembers;
@@ -207,17 +211,6 @@ const silverFactor = (t, item, by = null) => {
 export function kindle(w, i) {
   if (w.grid.terr[i] === T.WATER || w.grid.terr[i] === T.ROCK) return;   // nothing there to catch
   const K = KINDLE.torch; w.grid.fire[i] = Math.max(w.grid.fire[i], K.fire); heatTo(w, i, K.heat); w.grid.fuel[i] = Math.max(w.grid.fuel[i], K.fuel);
-  w.nav.dirty('fire');
-}
-
-// a drake's breath: the ground under the victim catches fire (only where there is something to burn)
-function scorch(w, t) {
-  const cx = t.x | 0, cy = t.y | 0;
-  for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
-    if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
-    const i = y * w.w + x;
-    const B = KINDLE.breath; if (w.grid.fuel[i] > B.fuel) { w.grid.fire[i] = Math.max(w.grid.fire[i], B.fire); heatTo(w, i, B.heat); }
-  }
   w.nav.dirty('fire');
 }
 

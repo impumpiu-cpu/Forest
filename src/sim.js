@@ -1,4 +1,5 @@
 // One simulation tick, in a fixed order: fields → weather → navigation → agents → settlement.
+import {stepAct} from './agents/abilities.js';
 import {stepMorale} from './agents/morale.js';
 import {stepInfluence} from './agents/influence.js';
 import {createWorld} from './world/generate.js';
@@ -96,7 +97,7 @@ export function step(w) {
   const t2 = performance.now();
   for (const a of w.agents) {
     if (!a.dead) stepEffects(w, a);
-    if (!a.dead) BRAINS.get(a.brain).step(w, a);
+    if (!a.dead && !stepAct(w, a)) BRAINS.get(a.brain).step(w, a);   // (a breath wound up, a step out of one: agents/abilities.js)
     noteAttacker(w, a);   // who attacks whom (agents/lookup.js) follows the step that may have changed it
     if (a.flash) a.flash--;
   }

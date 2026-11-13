@@ -232,6 +232,7 @@ export class Renderer {
   drawShots(w) {
     const ctx = this.ctx, S = this.S;
     for (const f of w.fx) {
+      if (f.kind === 'cone') { this.drawCone(f); continue; }
       const k = f.t / 8, x2 = f.x2 * S, y2 = f.y2 * S, x1 = f.x1 * S, y1 = f.y1 * S;
       const hx = x1 + (x2 - x1) * (1 - k), hy = y1 + (y2 - y1) * (1 - k);
       ctx.strokeStyle = f.kind === 'arrow' ? `rgba(240,225,180,${k})` : `rgba(200,195,180,${k})`;
@@ -240,6 +241,18 @@ export class Renderer {
       else { ctx.arc(hx, hy, Math.max(1.2, S * 0.18), 0, Math.PI * 2); }
       ctx.stroke();
     }
+  }
+
+  // an act's shape (agents/abilities.js): the wind-up a pale rim that fills as it nears, the release a flash that fades
+  drawCone(f) {
+    const ctx = this.ctx, S = this.S, k = f.t / f.T, r = f.length * S, x = f.x1 * S, y = f.y1 * S;
+    const face = f.rear ? f.dir + Math.PI : f.dir, half = f.angle >= 360 ? Math.PI : f.angle * Math.PI / 360;
+    ctx.beginPath();
+    if (half >= Math.PI) ctx.arc(x, y, r, 0, Math.PI * 2);
+    else { ctx.moveTo(x, y); ctx.arc(x, y, r, face - half, face + half); ctx.closePath(); }
+    const hue = f.type === 'fire' || f.prep ? '255,140,40' : f.type === 'fear' ? '200,170,255' : '230,220,200';
+    if (f.prep) { ctx.fillStyle = `rgba(${hue},${0.08 + 0.22 * (1 - k)})`; ctx.fill(); ctx.strokeStyle = `rgba(${hue},0.7)`; ctx.lineWidth = 1; ctx.stroke(); }
+    else { ctx.fillStyle = `rgba(${hue},${0.55 * k})`; ctx.fill(); }
   }
 
   drawRain(w, Wpx, Hpx) {
