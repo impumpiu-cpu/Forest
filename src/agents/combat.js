@@ -37,7 +37,7 @@ import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
-import {perkMulA, perkOf} from '../data/perks.js';
+import {perkMulA, perkOf, innateOf} from '../data/perks.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -168,12 +168,15 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   moraleWound(w, t, dmg);
   // creatures that drink blood heal by what they draw
   const bsp = SPECIES.get(by.species);
-  if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
+  const drink = melee && innateOf(bsp, 'bloodDrink');
+  if (drink && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * drink.share);
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
-  if (melee && bsp.venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
+  const venom = melee && innateOf(bsp, 'venom');   // (the book of perks: «Ядовитый укус», its rank's profile or the species' own numbers)
+  if (venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
   if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead || !!tsp.mechanism);
-  if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
+  const web = melee && innateOf(bsp, 'web');
+  if (web) t.webbed = {slow: web.slow, until: w.tick + web.ticks};
   // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall; so does a
   // burning throw that struck home (the forge-master's fire: data/balance/forms.js spitfire)
   const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;

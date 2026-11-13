@@ -9,7 +9,7 @@
 //   aura  — on the local map, from those around (here: a goblin among its own, campaign/camp.js)
 //
 // A requirement (req), all of which must hold:
-//   level — the level it may be taken from (each further rank: + RANK_LEVEL)
+//   level — the level it may be taken from
 //   race, group, role — the member's race; its role's group (data/roles.js); its fighting role (or a hired one)
 //   notRole — not for these roles (a perk that is a role's own knack: the summoner has the call already)
 //   hand — something of these forms in its hands (data/items.js `form`)
@@ -22,18 +22,25 @@
 //   scar, since — a wound it bears, and the deeds done after it (the answers to a wound)
 // grant — letters it raises at once, inside the race's limits (Luck); cure — a wound it takes off
 // pull — what in its character draws it to this perk: {leans: {id: w}, values: [ids], traits: [ids]} (PERK_PICK)
-// ranks — how many times it may be taken (default 1)
+// rank — each rank written out whole (the author's word 13.11: a rank is its own row, never «× the rank»): what that rank
+//         asks (its own `req`), what it does (its own `fight`, `camp`, `mods`, or a profile's numbers — a reach, a shape, a
+//         wait); a row's keys stand over the perk's own, an empty row is the perk as written. Its number of rows is its ranks
+//         (default 1). The numbers may lean on the holder's letters, never on the rank
 import {Registry} from '../core/registry.js';
+import {SPECIES} from './species.js';
+import {roleRow} from './roles.js';
 
 export const PERKS = new Registry('perk');
 PERKS.registerAll([
   // ── for anyone
   {id: 'secondWind', label: 'Второе дыхание', kind: 'общие', how: 'camp', about: 'в дозоре устаёт на четверть меньше',
     req: {level: 2, any: [['watch', 5]]}, camp: {watchTired: 0.75}, pull: {leans: {persist: 1}, traits: ['diligent', 'hardy']}},
-  {id: 'strongBack', label: 'Крепкая спина', kind: 'общие', how: 'camp', ranks: 2, about: 'несёт на четверть больше (за ранг)',
-    req: {level: 2, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.25}, pull: {values: ['work', 'strength'], traits: ['diligent']}},
-  {id: 'fieldDressing', label: 'Полевая перевязь', kind: 'общие', how: 'fight', ranks: 2, about: 'вытащенный им с того света встаёт крепче: здоровье после перевязки +10% (за ранг)',
-    req: {level: 2, any: [['dress', 1], ['tend', 3], ['work:medicine', 10]]}, fight: {dressHp: 0.1}, pull: {values: ['family', 'faith'], leans: {social: 1}}},
+  {id: 'strongBack', label: 'Крепкая спина', kind: 'общие', how: 'camp', about: 'несёт больше: I — на четверть, II — вполовину',
+    req: {level: 2, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.25}, pull: {values: ['work', 'strength'], traits: ['diligent']},
+    rank: [{}, {req: {level: 5, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.5}}]},
+  {id: 'fieldDressing', label: 'Полевая перевязь', kind: 'общие', how: 'fight', about: 'вытащенный им с того света встаёт крепче: здоровье после перевязки I — +10%, II — +20%',
+    req: {level: 2, any: [['dress', 1], ['tend', 3], ['work:medicine', 10]]}, fight: {dressHp: 0.1}, pull: {values: ['family', 'faith'], leans: {social: 1}},
+    rank: [{}, {req: {level: 5, any: [['dress', 2], ['tend', 6], ['work:medicine', 20]]}, fight: {dressHp: 0.2}}]},
   {id: 'relief', label: 'Сменщик', kind: 'общие', how: 'camp', about: 'охотнее соглашается отстоять дозор за уставшего',
     req: {level: 2, any: [['swap', 1]]}, camp: {swapYes: 0.3}, pull: {leans: {social: 1}, values: ['family']}},
   {id: 'pathfinder', label: 'Следопыт', kind: 'общие', how: 'camp', about: 'видит путь дальше: туман над картой поднимается шире, погоню замечают раньше',
@@ -42,8 +49,9 @@ PERKS.registerAll([
     req: {level: 6, any: [['fight', 6]]}, mods: {bravery: 0.2}, pull: {leans: {persist: 1}, values: ['strength'], traits: ['brave']}},
   {id: 'kinAmong', label: 'Свой среди чужих', kind: 'общие', how: 'camp', about: 'связи с иноплеменниками отряда крепнут в полтора раза быстрее',
     req: {level: 3, any: [['beside', 3]]}, camp: {bondOther: 1.5}, pull: {leans: {social: 1, curious: 0.5}}},
-  {id: 'haggler', label: 'Торгаш', kind: 'общие', how: 'camp', ranks: 2, about: 'цены в городе на десятую лучше (за ранг) — продаёт дороже, покупает дешевле',
-    req: {level: 3, stat: {C: 5}, any: [['trade', 3]]}, camp: {trade: 0.1}, pull: {values: ['gold'], leans: {social: 0.5}}},
+  {id: 'haggler', label: 'Торгаш', kind: 'общие', how: 'camp', about: 'цены в городе лучше — продаёт дороже, покупает дешевле: I — на десятую, II — на пятую',
+    req: {level: 3, stat: {C: 5}, any: [['trade', 3]]}, camp: {trade: 0.1}, pull: {values: ['gold'], leans: {social: 0.5}},
+    rank: [{}, {req: {level: 6, stat: {C: 5}, any: [['trade', 6]]}, camp: {trade: 0.2}}]},
   // ── the line
   {id: 'shoulder', label: 'Плечом к плечу', kind: 'линия', how: 'fight', about: 'щитом закрывает соседей от стрел в полтора раза чаще',
     req: {level: 2, hand: ['shield'], any: [['shield', 3], ['fight:линия', 3]]}, fight: {cover: 1.5}, pull: {values: ['family', 'faith'], leans: {social: 1}}},
@@ -90,22 +98,95 @@ PERKS.registerAll([
     req: {level: 3, race: ['gnoll']}, camp: {evade: 0.15}, pull: {values: ['nature', 'strength']}},
 ]);
 
-// each further rank of a perk asks this many more levels (as the book of rules: +3 a rank)
-export const RANK_LEVEL = 3;
+// ── what a creature is born with, or given by its role (plan claude/bestiary-plan.md З-1, the expert's note 13.11): the same
+// book as the learned ones, one id and one effect for all — whoever holds it. Each rank its own profile (`rank`: [I, II, …]),
+// not × the rank; a grant may carry its own numbers (`own`: a species' venom as it was). Never chosen at a level (learn: false)
+PERKS.registerAll([
+  {id: 'venom', label: 'Ядовитый укус', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'прошедший рукопашный удар травит: hp за тик × тиков (агенты/combat.js); нежить и механизмы не травятся',
+    rank: [{dmg: 0.0004, ticks: 150}, {dmg: 0.0007, ticks: 180}, {dmg: 0.001, ticks: 220}, {dmg: 0.0015, ticks: 240}, {dmg: 0.002, ticks: 280}]},
+  {id: 'web', label: 'Паутина', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'прошедший укус опутывает: шаг × slow на ticks тиков',
+    rank: [{slow: 0.75, ticks: 80}, {slow: 0.6, ticks: 100}, {slow: 0.45, ticks: 120}, {slow: 0.3, ticks: 140}, {slow: 0.2, ticks: 160}]},
+  {id: 'bloodDrink', label: 'Пьёт кровь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'лечится долей урона прошедшего рукопашного удара',
+    rank: [{share: 0.25}, {share: 0.5}, {share: 0.75}]},
+  {id: 'fireproof', label: 'Огнестойкость', kind: 'врождённые', how: 'fight', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'огонь × fire; heat — жар земли не берёт вовсе (мастер горна)',
+    rank: [{fire: 0.75}, {fire: 0.4}, {fire: 0.1}]},
+]);
+
+// ── who may hold a perk (the table «Перки», the expert's: a pawn and a monster are an editor's columns, not kinds of body —
+// a gnoll may be of the guild or the foe; the rule is by species, mind and body):
+//   yes   — may (by its requirement)        cond  — on a condition (a race, a role, a body)
+//   grant — only given (by species, role, item; never chosen at a level)     no — never
+// from — where it comes from: learned (chosen at a level), species, role, item; learn — chosen at a level at all
+export const PERK_WHO = {yes: 'можно', cond: 'условно', grant: 'только выдача', no: 'нельзя'};
+export const PERK_FROM = {learned: 'за уровень', species: 'вид', role: 'роль', item: 'вещь'};
+export function perkAccess(P) {
+  const from = P.from || ['learned'], learn = P.learn ?? from.includes('learned');
+  const R = P.req || {}, cond = !!(R.race || R.role || R.group || R.hand || R.scar);
+  const pawn = P.who?.pawn ?? (learn ? (cond ? 'cond' : 'yes') : 'grant');
+  // a camp's knack is a caravan's day: no monster has one; an answer to a wound is the caravan's own
+  const monster = P.who?.monster ?? (P.how === 'camp' || P.answer || P.how === 'grant' ? 'no' : 'cond');
+  return {pawn, monster, learn, from};
+}
+// a rank's profile: a grant's own numbers, else the perk's row for that rank (the last one past the end)
+export function perkProfile(id, rank = 1, own = null) {
+  if (own) return own;
+  const P = PERKS.has(id) ? PERKS.get(id) : null; if (!P?.rank) return null;
+  return P.rank[Math.max(0, Math.min(P.rank.length, rank) - 1)];
+}
+export const perkRanks = P => P.rank?.length ?? 1;
+// a rank of a perk, whole: its row over the perk's own keys
+export function rowOf(P, rank = 1) {
+  const r = P?.rank?.[Math.max(0, Math.min(P.rank.length, rank || 1) - 1)];
+  return r ? {...P, ...r} : P;
+}
+
+// what a species is born with: its `perks` ([{id, rank, own?}]) and, read as grants, the old fields (venom, web, drinks —
+// the numbers kept as they were: `own`)
+export function speciesGrants(sp) {
+  if (!sp) return [];
+  const out = (sp.perks || []).map(g => ({...g, from: 'species'}));
+  const legacy = (id, own) => { if (own && !out.some(g => g.id === id)) out.push({id, rank: 1, own, from: 'species'}); };
+  legacy('venom', sp.venom); legacy('web', sp.web); legacy('bloodDrink', sp.drinks ? {share: sp.drinks} : null);
+  return out;
+}
+// a species' innate profile of a perk, or null (combat, the rating: a venomous bite, a web, blood drunk)
+export function innateOf(sp, id) {
+  const g = speciesGrants(sp).find(x => x.id === id);
+  return g ? perkProfile(id, g.rank, g.own) : null;
+}
+
 // the pull of one's character (campaign/perks.js pickPerk): weight = base + Σ lean × w + value + trait
 export const PERK_PICK = {base: 1, value: 1, trait: 1};
 
-// ── a creature's perks on the local map (a.perks: [{id, rank}], given by campaign/camp.js from its member)
-// the sum of a fight effect over its perks, × rank (for a factor: `mul`); 0 / 1 — none
+// ── a creature's perks on the local map: learned (a.perks: [{id, rank}], given by campaign/camp.js from its member), its
+// species' and its role's grants (data/roles.js `perks`) — one list, the same id at the highest rank
+export function perksOf(a) {
+  const sp = SPECIES.has(a?.species ?? a?.race) ? SPECIES.get(a.species ?? a.race) : null, role = roleRow(a);
+  const out = (a?.perks || []).slice();
+  const add = g => { const i = out.findIndex(p => p.id === g.id); if (i < 0) out.push(g); else if ((g.rank || 1) > (out[i].rank || 1)) out[i] = g; };
+  for (const g of speciesGrants(sp)) add(g);
+  for (const g of role?.perks || []) add({...g, from: 'role'});
+  return out;
+}
+// the profile of a perk one holds (any source), or null: {…rank's numbers}
+export function heldOf(a, id) {
+  const g = perksOf(a).find(p => p.id === id);
+  return g ? perkProfile(id, g.rank || 1, g.own) : null;
+}
+// the sum of a fight effect over its learned perks, each at its rank's row (for a factor: `mul`); 0 / 1 — none
 export function perkOf(a, key) {
   let v = 0;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P?.fight?.[key]; if (typeof x === 'number') v += x * (p.rank || 1); }
+  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P && rowOf(P, p.rank).fight?.[key]; if (typeof x === 'number') v += x; }
   return v;
 }
 export const hasPerkA = (a, id) => !!a?.perks?.some(p => p.id === id);
 // a factor of a fight effect (cover 1.5): the product over its perks; blows by type: {blunt: 1.15}
 export function perkMulA(a, key, sub = null) {
   let v = 1;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P?.fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x ** (p.rank || 1); }
+  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P && rowOf(P, p.rank).fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x; }
   return v;
 }

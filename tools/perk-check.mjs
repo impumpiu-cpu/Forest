@@ -1,6 +1,6 @@
 // Perks (plan claude/xp-plan.md, Ver_E Э3; data/perks.js, campaign/perks.js; docs/CAMPAIGN.md «Перки»).
 //   every perk of the catalogue is reachable by a deed both modes see (the expert's Р1: the mode must not shut a perk);
-//   none is offered without its deed, its race, its hands, its letters, its level; a rank asks RANK_LEVEL more;
+//   none is offered without its deed, its race, its hands, its letters, its level; a rank asks what its own row asks;
 //   the gob with a shield earns «Плечом к плечу» by its deeds, not by Strength;
 //   the pick is the member's own (its character), from the campaign's own stream: the same seed — the same perk;
 //   each way a perk works reaches what it should: the body (refreshBody, on top of a trait), the fight (cover, blows, the
@@ -10,7 +10,7 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
-import {PERKS, RANK_LEVEL, perkOf, perkMulA} from '../src/data/perks.js';
+import {PERKS, rowOf, perkOf, perkMulA, perkAccess} from '../src/data/perks.js';
 import {meets, offered, pickPerk, perkVal, perkMul, companyVal, companyMul, pullOf} from '../src/campaign/perks.js';
 import {levelEvening, need, ensureXp} from '../src/campaign/experience.js';
 import {capacity} from '../src/campaign/baggage.js';
@@ -68,8 +68,8 @@ function bothModes(P) {
 // ── every perk is reachable by deeds both modes see
 {
   const bad = [];
-  for (const P of PERKS.all()) { const m = bothModes(P); if (!m || !meets(m, P)) bad.push(P.id); }
-  ok(!bad.length, `каждый перк каталога (${PERKS.all().length}) открывается делом, которое видят оба режима`, bad.join(', ') || 'все');
+  for (const P of PERKS.all().filter(P => perkAccess(P).learn)) { const m = bothModes(P); if (!m || !meets(m, P)) bad.push(P.id); }
+  ok(!bad.length, `каждый перк каталога за уровень (${PERKS.all().filter(P => perkAccess(P).learn).length}) открывается делом, которое видят оба режима`, bad.join(', ') || 'все');
 }
 
 // ── nothing without its deed, race, hands, letters, level
@@ -81,7 +81,7 @@ function bothModes(P) {
   ok(!meets(who({special: {S: 6}, hand: ['maul'], acts: {killBlow: 3}}), P('breaker')) && meets(who({special: {S: 7}, hand: ['maul'], acts: {killBlow: 3}}), P('breaker')), 'проламыватель — единственный, кому нужна Сила 7');
   ok(!meets(who({level: 1, acts: {watch: 9}}), P('secondWind')), 'до уровня перка нет');
   const h = who({special: {C: 6}, acts: {trade: 3}, level: 4}), hp = P('haggler');
-  ok(meets(h, hp, 1) && !meets(h, hp, 2), 'второй ранг требует больше уровня и больше дел', `уровень ${hp.req.level + RANK_LEVEL} и ${hp.req.any[0][1] * 2} сделок`);
+  ok(meets(h, hp, 1) && !meets(h, hp, 2), 'второй ранг требует больше уровня и больше дел', `уровень ${rowOf(hp, 2).req.level} и ${rowOf(hp, 2).req.any[0][1]} сделок`);
   ok(!meets(who({race: 'orc', fight: 'firespitter', hand: ['bow'], acts: {hit: 30}}), P('steadyShot')), 'мастеру горна «Выждать выстрел» не предлагается');
 }
 
@@ -97,7 +97,7 @@ function bothModes(P) {
   const r1 = run();
   ok(r1 === run() && r1.split(',').filter(Boolean).length >= 4, 'тот же сид — те же перки в том же порядке', r1);
   const m = who({acts: {watch: 9}, level: 30}); m.perks = [];
-  const got = []; for (let k = 0; k < PERKS.all().length + 3; k++) { const p = pickPerk(K, m); if (p) got.push(p.id); }
+  const got = []; for (let k = 0; k < PERKS.all().filter(P => perkAccess(P).learn).length + 3; k++) { const p = pickPerk(K, m); if (p) got.push(p.id); }
   ok(got.filter(x => x === 'secondWind').length === 1 && !offered(m).length, 'перк берут один раз (ранги — до последнего); каталог кончился — перка нет', got.join(','));
   const brave = who(); brave.local.traits = ['brave']; brave.local.leans = {persist: 1};
   ok(pullOf(brave, PERKS.get('oldWolf')) > pullOf(who(), PERKS.get('oldWolf')), 'характер тянет: смелого и настойчивого — к «Старому волку»');

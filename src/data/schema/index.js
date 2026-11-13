@@ -134,7 +134,7 @@ import {EPILOGUE} from '../epilogue.js';
 import {FOLK_RAIDS} from '../seam.js';
 import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
 import {ACTS, XP} from '../experience.js';
-import {PERKS} from '../perks.js';
+import {PERKS, PERK_WHO, PERK_FROM, perkAccess, speciesGrants, perkRanks} from '../perks.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -583,6 +583,16 @@ TABLES.push(
   autoTable({id: 'acts', label: 'Дела и опыт', group: 'Караван', note: 'За что участник похода получает опыт (data/experience.js ACTS): основа (ground) — всем, кто был, без буквы; дела — тому, кто сделал, с буквой SPECIAL (stat; skill — буква навыка, role — буквы роли), которую растит вечер нового уровня (campaign/experience.js).', rows: () => ACTS.all()}),
   autoTable({id: 'errands', label: 'Поручения', group: 'Караван', note: 'Что столица поручает каравану (data/errands.js; docs/CAMPAIGN.md «Поручения»): tier — ступень I–V; how — crown (корона истории мира), epic (бедствие эпохи), lair (логово мира: lairs — какие виды, captives — где держат пленных, leader — с живым главарём); at — дальность в долях диагонали мира; clueAt — следы на пути (пусто — место известно); guard — × гарнизона логова (его сила в мире × опасность вида — ступень поручения, не расстояние); trophy — что несут в столицу; pursuit — погоня; years — срок; gold — плата столицы.', rows: () => ERRANDS.all()}),
   autoTable({id: 'perks', label: 'Перки', group: 'Караван', note: 'Приёмы, что участник похода берёт с уровнем (data/perks.js): req — что нужно (уровень, раса, роль, вещь в руках, буквы, дела any — хоть одно из, работа work), how — как работает (mods — тело, fight — бой, camp — день похода, aura — от своих рядом), pull — что в характере тянет к нему (campaign/perks.js).', rows: () => PERKS.all()}),
+  // the book of perks, by who may hold them (plan claude/bestiary-plan.md З-1): the classes of later are built of it
+  {id: 'perkAccess', label: 'Перки: кому можно', group: 'Существа', key: 'id',
+    note: 'Единый справочник перков (data/perks.js): и те, что берут за уровень, и врождённые, и выданные ролью. Пешка и монстр — колонки, а не виды тела: можно, условно (раса, роль, тело), только выдача (вид, роль, вещь — не выбирается за уровень), нельзя. Ранги — число профилей (у врождённых свой профиль на каждый ранг). У кого — какие виды и роли его несут и с каким рангом.',
+    rows: () => PERKS.all().map(P => { const A = perkAccess(P); return {id: P.id, label: P.label, kind: P.kind, pawn: A.pawn, monster: A.monster, learn: A.learn, from: A.from.map(f => PERK_FROM[f] || f).join(', '), ranks: perkRanks(P),
+      holders: [...SPECIES.all().flatMap(sp => speciesGrants(sp).filter(g => g.id === P.id).map(g => `${sp.label}${g.own ? '' : ` ${'I II III IV V'.split(' ')[(g.rank || 1) - 1]}`}`)),
+        ...COMBAT_ROLES.all().flatMap(R => (R.perks || []).filter(g => g.id === P.id).map(() => `роль: ${R.label}`))].join(', ')}; }),
+    target: (r, c) => (c.key === 'pawn' || c.key === 'monster' ? [(PERKS.get(r.id).who ||= {}), c.key] : null),
+    columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Перк', 'text', {edit: false}), col('kind', 'Группа', 'text', {edit: false}),
+      col('pawn', 'Пешке', 'enum', {values: PERK_WHO}), col('monster', 'Монстру', 'enum', {values: PERK_WHO}),
+      col('learn', 'За уровень', 'bool', {edit: false}), col('from', 'Откуда', 'text', {edit: false}), col('ranks', 'Рангов', 'int', {edit: false}), col('holders', 'У кого', 'text', {edit: false})]},
   {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × (L − 1) × (L + lead) до потолка cap, доля бывшего в бою без своих дел (merit.present), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
   fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},

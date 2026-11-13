@@ -13,6 +13,7 @@ import {COMBAT} from '../data/balance/combat.js';
 import {CRIT} from '../data/wounds.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
 import {STATS} from '../data/special.js';
+import {innateOf} from '../data/perks.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
@@ -33,7 +34,7 @@ export function strengthParts(a, {now = false} = {}) {
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
-  if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
+  const venom = innateOf(sp, 'venom'); if (venom) melee += venom.dmg * Math.min(1, venom.ticks / cd);
   // a sly weapon (quality `backstab`): the share of blows from the flank strikes deeper (COMBAT.flank)
   const sly = q => 1 + COMBAT.flank.share * (COMBAT.flank.dmg - 1) * traitOf(q, 'backstab');
   melee *= sly(g.melee.q) * pierceGain(g.melee.q);
@@ -57,7 +58,7 @@ export function strengthParts(a, {now = false} = {}) {
   staying /= mean(k => resistOf(sp, k, true));
   staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
   if (fearsSilver(sp)) staying /= COMBAT.silver.plain;   // against plain weapons
-  if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
+  const drink = innateOf(sp, 'bloodDrink'); if (drink) staying /= 1 - drink.share * STRENGTH.drinksWeight;
   return {offence, staying, raw: offence * staying};
 }
 

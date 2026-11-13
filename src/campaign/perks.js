@@ -4,7 +4,7 @@
 // rank; one is taken — by its own character, from its own stream of the campaign's lots (`perks`), never by the player.
 // The hooks of the campaign's day read a member's perk (perkRank, perkVal) or the company's best (companyVal); the local map
 // reads them from the agent (data/perks.js perkOf: campaign/camp.js gives the agent its member's perks).
-import {PERKS, RANK_LEVEL, PERK_PICK} from '../data/perks.js';
+import {PERKS, PERK_PICK, perkAccess, perkRanks, rowOf} from '../data/perks.js';
 import {COMBAT_ROLES} from '../data/roles.js';
 import {gearDef} from '../local/index.js';
 import {draw} from './start.js';
@@ -16,16 +16,16 @@ const groupOfM = m => (m.fight && COMBAT_ROLES.has(m.fight) ? COMBAT_ROLES.get(m
 
 // the rank of a perk a member has taken (0 — none)
 export const perkRank = (m, id) => m?.perks?.find(p => p.id === id)?.rank || 0;
-// a camp effect of a member: Σ over its perks of `camp[key]` × rank (a multiplier's excess: 0.25 × 2 ranks → 0.5)
+// a camp effect of a member: Σ over its perks of its rank's `camp[key]` (each rank written out: data/perks.js `rank`)
 export function perkVal(m, key) {
   let v = 0;
-  for (const p of m?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; if (P?.camp?.[key] != null) v += (typeof P.camp[key] === 'number' ? P.camp[key] : 1) * (p.rank || 1); }
+  for (const p of m?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const c = P && rowOf(P, p.rank).camp; if (c?.[key] != null) v += typeof c[key] === 'number' ? c[key] : 1; }
   return v;
 }
 // the multiplier form of an effect given as a factor (watchTired 0.75): the factor of its rank (0.75 per rank)
 export function perkMul(m, key) {
   let v = 1;
-  for (const p of m?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; if (P?.camp?.[key] != null) v *= P.camp[key] ** (p.rank || 1); }
+  for (const p of m?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const c = P && rowOf(P, p.rank).camp; if (c?.[key] != null) v *= c[key]; }
   return v;
 }
 // the company's best of an effect among the free living (one haggler bargains for all)
@@ -39,8 +39,8 @@ function count(m, key) {
 }
 // does the member meet the perk's requirement for rank `rank`? → the reason (the deed or 'level'), or null
 export function meets(m, P, rank = 1) {
-  const R = P.req || {};
-  if ((m.level || 1) < (R.level || 1) + (rank - 1) * RANK_LEVEL) return null;
+  const R = rowOf(P, rank).req || {};   // (a rank asks what its own row asks: data/perks.js `rank`)
+  if ((m.level || 1) < (R.level || 1)) return null;
   if (R.race && !R.race.includes(m.race)) return null;
   if (R.group && !R.group.includes(groupOfM(m))) return null;
   if (R.role && !R.role.includes(m.fight) && !R.role.includes(m.role)) return null;
@@ -56,15 +56,16 @@ export function meets(m, P, rank = 1) {
   if (P.grant && Object.entries(P.grant).every(([st, v]) => (m.special?.[st] ?? 0) + v > (SPECIES.get(m.race).special?.[st]?.[1] ?? Infinity))) return null;   // (a letter at its race's limit: nothing to grant)
   let why = 'level';
   if (R.work) { const w = Object.entries(R.work).find(([sk, v]) => (m.workBy?.[sk] || 0) >= v); if (!w) return null; why = `work:${w[0]}`; }
-  if (R.any) { const a = R.any.find(([k, n]) => count(m, k) >= n * rank); if (!a) return null; why = a[0]; }
+  if (R.any) { const a = R.any.find(([k, n]) => count(m, k) >= n); if (!a) return null; why = a[0]; }
   return why;
 }
 // what a member may take now: [{P, rank, why}]
 export function offered(m) {
   const out = [];
   for (const P of PERKS.all()) {
+    const A = perkAccess(P); if (!A.learn || A.pawn === 'no' || A.pawn === 'grant') continue;   // (a perk given, never chosen: a bite's venom, a role's fireproof)
     const rank = perkRank(m, P.id) + 1;
-    if (rank > (P.ranks || 1)) continue;
+    if (rank > perkRanks(P)) continue;
     const why = meets(m, P, rank);
     if (why) out.push({P, rank, why});
   }
