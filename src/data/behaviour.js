@@ -12,7 +12,7 @@ export const WAYS = {
   // a hunter of the pack: holds a stormed lair to the last; fire, a crowd and the settlement zone drive it off;
   // wounded (or a night hunter at dawn) it leaves; eats its kill, chases game, goes for a lone person,
   // gets its breath back, moves on when the land is empty, else roams — hungry, on the scent of prey
-  predator: ['defendLair', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
+  predator: ['defendLair', 'rout', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
   // a big grazer that stands its ground (a mule, a boar, a bear, an elk): fire sends it off; whoever comes at it is
   // kicked, whoever shot it is charged, a bold bull stands up for its herd; a pack mule walks behind its trader (`mule`);
   // it sniffs the herder's hay, else leaves, sleeps, grazes; one of a herd (an elk) also draws off from what comes
@@ -34,7 +34,7 @@ export const WAYS = {
   // ── people: a role is a list (agents/brains/index.js; the people's bodies: agents/people.js)
   // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
   // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
-  raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
+  raider: ['downed', 'fleeFire', 'rout', 'retreat', 'capture', 'raid'],
   // a forest beast called into a fight (agents/summon.js): it goes for the caller's foes, then back to the wood
   summoned: ['fleeFire', 'summoned'],
   // a golem of our side (agents/golem.js): no fire drives it (tag «Механизм»); it guards its post
@@ -49,12 +49,12 @@ export const WAYS = {
   // utility AI — every behaviour offers with its weight: the body, the work, the council, the trade, the healer, a prayer,
   // low spirits, a nechist's spell, a fire at the camp, the board's cries and alarms, the night watch, going along,
   // helping, binding a fallen foe, learning beside a master, idling; at the caravan's camp — its evening chores (campwork)
-  colonist: ['downed', 'fleeFire', 'warband', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
+  colonist: ['downed', 'fleeFire', 'rout', 'warband', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
   // a captive: the body, the camp's work, out of harm's way at the fire — no council, no flag, no watch, no trade, no
   // healer, no going along; kept inside the zone (keepIn)
   captive: ['downed', 'fleeFire', 'defend', 'keepIn', 'needs', 'campwork', 'work', 'idle', 'sulk', 'spellbound', 'pray', 'douse', 'muster', 'reserve', 'assist'],
   // a former slave: everything a free colonist may, but no flag, watch, council or trade
-  former: ['downed', 'fleeFire', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
+  former: ['downed', 'fleeFire', 'rout', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
 };
 
 export const SQUAD = {

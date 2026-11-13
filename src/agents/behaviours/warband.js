@@ -56,6 +56,6 @@ function asOne(w, a) {
     }
     if (best) out.push([a.task?.id === 'aid' && a.task.who === best.id ? a.task : {id: 'aid', who: best.id, fallen: true}, B.want + bs, () => `бросился к упавшему другу: ${best.name}`]);
   }
-  if (hpShare(a) < F.hp && (a.mods?.bravery ?? 1) < F.bravery) out.push([a.task?.id === 'runHome' ? a.task : {id: 'runHome'}, B.want + F.over, () => 'дрогнул: ранен и страшно — назад, к огню']);
+  if (hpShare(a) < F.hp && a.morale?.state === 'breaking') out.push([a.task?.id === 'runHome' ? a.task : {id: 'runHome'}, B.want + F.over, () => 'дрогнул: ранен и страшно — назад, к огню']);
   return out;
 }

@@ -65,6 +65,7 @@ import {SEAM, FLORA, OUTLAWS} from '../seam.js';
 import {SHAPE} from '../atlas.js';
 import {EROSION, RIVERS} from '../hydrology.js';
 import {CAMPAIGN as CAMP_RULES, GAME, MINE, NIGHT} from '../campaign.js';
+import {MORALE} from '../morale.js';
 import {QUEST} from '../quest.js';
 import {ERRANDS} from '../errands.js';
 import {MARKET, VISIT, LOYALTY, CONTRACT, COMPANIONS, FREED, HIRES, SMITH, EARN} from '../market.js';
@@ -553,6 +554,9 @@ TABLES.push(
   {id: 'landRules', label: 'Создание земли', group: 'Мир', note: 'Пределы руки на экране «Создать землю» (data/atlas.js SHAPE), эрозия и реки генератора (data/hydrology.js).',
     ...grp({shape: SHAPE, erosion: EROSION, rivers: RIVERS})},
   objectTable({id: 'soilsAuto', label: 'Почвы', group: 'Мир', note: 'Почвы карты мира (data/soils.js).', obj: () => Object.fromEntries(SOILS.all().map(x => [x.id, x]))}),
+  // Бой
+  {id: 'moraleRules', label: 'Мораль', group: 'Существа', note: 'Личная мораль в бою (data/morale.js MORALE; agents/morale.js): лестница состояний (уверен, стоек, колеблется, ломается, бежит) с числом 0…100 под ней; события (павшие, раны, убитые враги), перевес и окружение, офицеры, Решимость видов и их характер.',
+    ...grp({morale: MORALE})},
   // Поход
   {id: 'campaignRules', label: 'Правила похода', group: 'Караван', note: 'Поход каравана (data/campaign.js CAMPAIGN, GAME, MINE), ночные опасности (NIGHT), квест (data/quest.js QUEST).',
     ...grp({campaign: CAMP_RULES, game: GAME, mine: MINE, night: NIGHT, quest: QUEST})},

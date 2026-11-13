@@ -1,6 +1,7 @@
 // Fighting: melee blows, shots from bows and slings, armour and shields.
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
+import {moraleWound, moraleFell, moraleBlow, moraleGuard, fleeing} from './morale.js';
 import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
@@ -162,7 +163,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
+  dmg *= moraleGuard(t);   // a shaken one guards itself worse (agents/morale.js)
   t.hp -= dmg;
+  moraleWound(w, t, dmg);
   // creatures that drink blood heal by what they draw
   const bsp = SPECIES.get(by.species);
   if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
@@ -184,7 +187,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)
   if (t.hp <= 0 && breakToWar(w, by, t)) return dmg;   // the greenskins' pits: a beaten beast broken to war (settlement/warbeasts.js)
-  if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
+  if (t.hp <= 0) { lethal(w, t, 'ран', by); if (t.dead || t.downed) moraleFell(w, t, by); } else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }
 
@@ -265,7 +268,7 @@ export function stanceOf(w, a, t) {
 // × the blow from there: the stance's own, its share over 1 × (1 + the weapon's `backstab`)
 export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance === 'back' ? COMBAT.back.dmg : COMBAT.flank.dmg) - 1) * (1 + traitOf(q, 'backstab')));
 export function attack(w, a, t) {
-  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
+  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a) || fleeing(a)) return false;   // (one who flees strikes nothing: agents/morale.js)
   const BLOW = COMBAT.blow;   // (read at the blow: an edit of the table reaches it)
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
@@ -284,12 +287,12 @@ export function attack(w, a, t) {
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
   const stance = stanceOf(w, a, t);   // read before the blow: a hurt target knows of it after
-  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
+  damage(w, a, t, moraleBlow(a) * full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
   // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
   // the target's dodge, block and armour as any
   const off = g.offhand;
   if (off && !t.dead && !t.downed) {
-    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
+    damage(w, a, t, moraleBlow(a) * (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
     wear(w, a, off.item);
   }
   // a rider's mount bites at its rider's blow (agents/mount.js)
@@ -319,7 +322,7 @@ function coverFor(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a) || fleeing(a)) return null;
   const SHOT = COMBAT.shot, HIT = COMBAT.hit;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
@@ -352,7 +355,7 @@ export function shoot(w, a, t) {
   if (ground > 0 && deg !== 'critSuccess' && w.rngs.combat() < ground) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
+  const res = damage(w, a, t, moraleBlow(a) * (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
   const out = t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
   if (out !== 'miss' && (isHostile(a, t) || aggressor(a, t))) noteAct(a, 'hit');   // a shot that landed on a foe: an act (agents/acts.js)
   return out;

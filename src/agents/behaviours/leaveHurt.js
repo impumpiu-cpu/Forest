@@ -7,13 +7,14 @@ import {log} from '../../core/log.js';
 import {packOf} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
 import {SPECIES} from '../../data/species.js';
+import {hasMorale} from '../morale.js';
 
 export const leaveHurt = {
   want(w, a, {sp, night}) {
     const going = a.task?.id === 'leave';
     if (sp.nocturnal && night < PROWL.dawn) return [[{id: 'leave', pace: PROWL.leavePace}, PROWL.want.leave, () => 'рассвело: ночному охотнику пора']];
     if (going) return [[a.task, PROWL.want.leave, () => 'уходит']];
-    if (a.hp < maxHp(a) * PROWL.hurtBelow && !holdsGround(w, a)) {   // (a boss's aura: agents/auras.js)
+    if (!hasMorale(a) && a.hp < maxHp(a) * PROWL.hurtBelow && !holdsGround(w, a)) {   // (one with a morale breaks by it: agents/behaviours/rout.js)   // (a boss's aura: agents/auras.js)
       return [[{id: 'leave', pace: PROWL.leavePace, hurt: true}, PROWL.want.leave, () => 'тяжело ранен']];
     }
     return null;

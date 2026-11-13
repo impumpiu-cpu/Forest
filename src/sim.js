@@ -1,4 +1,5 @@
 // One simulation tick, in a fixed order: fields → weather → navigation → agents → settlement.
+import {stepMorale} from './agents/morale.js';
 import {createWorld} from './world/generate.js';
 import {stepFields} from './world/fields.js';
 import {stepWeather} from './world/weather.js';
@@ -100,6 +101,7 @@ export function step(w) {
   }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
   stepSquads(w);
+  stepMorale(w);   // one's morale in a fight (agents/morale.js)
   stepHunts(w);
   stepCarcasses(w);
   separate(w);

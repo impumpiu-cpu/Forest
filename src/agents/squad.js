@@ -31,6 +31,8 @@ import {COMBAT_ROLES, LINKS} from '../data/roles.js';
 import {roleTactic, bandSide, holdFoe, fightTask} from './tactics.js';
 import {RANK_RULES} from '../data/ranks.js';
 import {hasMark} from '../data/conditions.js';
+import {brokenShare} from './morale.js';
+import {MORALE} from '../data/morale.js';
 
 export {SQUAD};   // (data/behaviour.js)
 export const GOALS = {
@@ -197,11 +199,12 @@ export function stepSquads(w) {
     const ms = membersOf(w, sq);
     if (!ms.length) { finish(w, sq); continue; }
     if (sq.state !== 'march') continue;
-    sq.morale = +moraleOf(w, sq, ms).toFixed(3);
-    const nerve = SQUAD.nerve[sq.kind] + (RAID_BANDS.get(sq.band).nerve || 0);
-    if (sq.morale < nerve) {
-      const leaderDown = !ms.some(m => m.id === sq.leader);
-      const why = sq.fallen / sq.size >= 0.4 ? `потери (${sq.fallen} из ${sq.size} пали)` : leaderDown ? 'пал вожак' : 'защитников больше';
+    // the band's morale is its members' (agents/morale.js): it breaks when enough of them break, or fewer once its leader fell
+    // (the mindless dead never break; one by one the living still may)
+    const broken = brokenShare(ms), leaderDown = !ms.some(m => m.id === sq.leader), B = MORALE.squad;
+    sq.morale = +(1 - broken).toFixed(3);
+    if (sq.kind !== 'mindless' && (broken >= B.broken || (leaderDown && broken >= B.leaderless))) {
+      const why = sq.fallen / sq.size >= 0.4 ? `потери (${sq.fallen} из ${sq.size} пали)` : leaderDown ? 'пал вожак' : 'дрогнули';
       setState(w, sq, 'retreat', why);
       continue;
     }
