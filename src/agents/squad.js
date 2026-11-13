@@ -41,6 +41,7 @@ export const GOALS = {
   burn:      {label: 'поджог', aim: 'несут факелы: хотят поджечь постройки', done: 'огонь пущен, уходят'},
   scout:     {label: 'разведка', aim: 'высматривают лагерь: это разведчики', done: 'лагерь осмотрен, уходят'},
   slaughter: {label: 'истребление', aim: 'идут на всё живое', done: 'уходят'},
+  hold:      {label: 'оборона', aim: 'держат своё логово', done: 'уходят'},
 };
 export const ROLES = {front: 'передний боец', shooter: 'стрелок', looter: 'грабитель', torch: 'поджигатель', rear: 'прикрывает отход',
   beast: 'боевой зверь', scout: 'разведчик', leader: 'вожак'};
@@ -251,6 +252,7 @@ export function planFor(w, a, sq, radius) {
   const attacker = firstAttacker(w, a, o => o.faction === 'colony' && o.task.id === 'fight');
   const close = nearestHostile(w, a, 2.5);
   const role = a.sqRole;
+  if (sq.goal === 'hold') return holdPlan(w, a, sq, radius, attacker);   // (the guards of a place stormed: every role holds it)
   if (role === 'looter') {
     // grab and run: a looter answers only someone already on it, and slips past the rest
     if (a.looted) return {id: 'leave'};
@@ -278,6 +280,21 @@ export function planFor(w, a, sq, radius) {
   // nobody to fight: a band that came for someone (or to cover the torches) waits at the camp
   if (sq.goal === 'kill' || sq.goal === 'burn') return a.task?.id === 'haunt' ? a.task : {id: 'haunt'};
   return null;
+}
+
+// the guards of a place stormed (goal `hold`; SQUAD.hold): each its spot about the post; a foe who comes within reach of the
+// post is met — by the fighting role's own way (a shooter keeps its distance), never chased far; nobody near — back to the spot.
+// No looting, no captives led away: it is their home they hold (plan claude/combat-plan.md Бой-2)
+function holdPlan(w, a, sq, radius, attacker) {
+  const H = SQUAD.hold, P = sq.post || {x: a.x, y: a.y}, reach = H.r + H.chase;
+  const nearPost = o => !!o && Math.hypot(o.x - P.x, o.y - P.y) <= reach;
+  if (attacker && nearPost(a)) return fight(w, a, holdFoe(w, a, attacker));
+  const t = roleTactic(w, a, bandSide(w, sq), radius);
+  if (t && (t.id !== 'fight' || nearPost(t.target))) return t.id === 'fight' ? fight(w, a, holdFoe(w, a, t.target)) : t;
+  const e = nearestHostile(w, a, radius);
+  if (e && nearPost(e)) return fight(w, a, holdFoe(w, a, e));
+  const ang = (a.id * 2.399963) % (2 * Math.PI), x = P.x + Math.cos(ang) * H.ring, y = P.y + Math.sin(ang) * H.ring;
+  return a.task?.id === 'holdPost' && Math.hypot(a.task.x - x, a.task.y - y) < 0.5 ? a.task : {id: 'holdPost', x, y};
 }
 
 // a member's title in the fight: what it is, its fighting role, its task in the band — «гоблин-стрелок-грабитель»;

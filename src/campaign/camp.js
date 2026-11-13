@@ -340,9 +340,12 @@ function spawnFoe(w) {
     group = part({beast, band}, main, true);
     if (W) group = group.concat(part(W, budget - main, false));
   }
-  // the guards of a place stormed (campaign/quest.js) defend it to the last: their band does not break and flee
-  if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
-    const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
+  // the guards of a place stormed (campaign/quest.js) hold it (goal `hold`, agents/squad.js holdPlan): about its heart, or where
+  // they stand; their morale their own (agents/morale.js: their home steadies them) — they break as anyone, they do not loot
+  if (S.kind === 'guard') {
+    const P = heart != null ? {x: (heart % w.w) + 0.5, y: ((heart / w.w) | 0) + 0.5} : group.length ? {x: group.reduce((s, g) => s + g.x, 0) / group.length, y: group.reduce((s, g) => s + g.y, 0) / group.length} : null;
+    for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'hold'; sq.post = P; } }
+    C.alarm ??= w.tick;   // (the caravan came to storm it: up and at them)
   }
   // the beasts of a lair stormed hold it to the last as well (agents/behaviours/maul.js defendLair: no fear, no flight — a dragon
   // does not fly off from its hoard, Г6); a grave's guard with a miniboss may be driven off
@@ -357,7 +360,7 @@ function spawnFoe(w) {
     // the boss's aura (agents/auras.js): its side stands while it stands; its band's leader is an officer who holds to the end
     b.auras = [...(b.auras || []), 'lead'];
     for (const g of group) if (g !== b) g.side = b.id;   // its side: those who came with it, and only they
-    for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) sq.goal = 'slaughter'; }
+    if (S.kind !== 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) sq.goal = 'slaughter'; }
   }
   // ranks (agents/ranks.js, data/ranks.js): each band big enough splits into links under officers, its leader first;
   // under a boss the leader is an officer whatever the size. Officers are worth more than the budget bought: the

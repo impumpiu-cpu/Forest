@@ -25,6 +25,11 @@ export function raidTasks() {
       if (took > 0) a.loot = got;   // carried off on its back: whoever brings it down takes it back
       w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
     }},
+    // a guard at its spot by the post of a place stormed (agents/squad.js holdPlan): walks there and stands
+    {id: 'holdPost', label: () => 'держит логово', step(w, a, t) {
+      if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.hold.slack) { recover(a); return; }
+      if (approach(w, a, t.x, t.y) === null) { t.x = a.x; t.y = a.y; }   // (no way there: here is its spot)
+    }},
     // leaving the map for good: raiders with their loot, and any beast that wanders off (agents/behaviours/leave.js)
     {id: 'leave', label: () => 'уходит', step(w, a, t) {
       recover(a);

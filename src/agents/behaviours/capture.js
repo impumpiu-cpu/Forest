@@ -44,6 +44,7 @@ function take(w, a, f) {
 export const capture = {
   want(w, a, {sp}) {
     if (isMindless(sp) || a.warBeast || a.leads || hpShare(a) < RAID.capture.hp) return null;
+    if (a.squad != null && w.squads?.[a.squad]?.goal === 'hold') return null;   // (the guards of their own home lead nobody off it: agents/squad.js holdPlan)
     if (a.band && RAID_BANDS.has(a.band) && RAID_BANDS.get(a.band).noCaptives) return null;   // (the dwarves take no captives: data/raids.js)
     const cur = a.task?.id === 'capture' ? a.task : null;
     const f = (cur && liveById(w, cur.who)) || fallenNear(w, a);

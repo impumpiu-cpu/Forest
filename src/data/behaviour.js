@@ -71,6 +71,10 @@ export const SQUAD = {
   burnNear: 1.6,     // a torch is put to a wall from this close
   burnFor: 60,       // after the fire is lit, the band lingers this long and goes
   rearHold: 150,     // the rear guard holds pursuers off this long
+  // the guards of a place stormed (goal `hold`, campaign/camp.js; plan claude/combat-plan.md Бой-2): they keep within `r` cells of
+  // their post (a lair's heart), go for a foe who comes within `r` + `chase` of it, and no further; `slack` — how far from its
+  // spot one stands at ease; `ring` — the spots spread about the post this far
+  hold: {r: 7, chase: 5, slack: 1.5, ring: 3},
   looters: 0.4,      // share of a looting band sent to the stores
   campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
