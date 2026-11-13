@@ -86,7 +86,7 @@ const near = (o, x, y) => { o.x = x; o.y = y; };
     campOutcome(w);
     return {foe: seen.foe.size, ours: seen.ours.size};
   };
-  const strong = [0, 1, 2].map(i => run(2, i)), weak = [0, 1, 2].map(i => run(0.5, i));
+  const strong = [0, 1, 2, 3, 4, 5].map(i => run(2, i)), weak = [0, 1, 2, 3, 4, 5].map(i => run(0.5, i));   // (six camps: three swing on the fauna about)
   const sum = (xs, k) => xs.reduce((s, x) => s + x[k], 0);
   ok(sum(strong, 'foe') > sum(strong, 'ours') && sum(weak, 'ours') > sum(strong, 'ours'), 'ночной налёт: слабая банда бежит, сильная ломает наших', `мы сильнее: бежало врагов ${sum(strong, 'foe')}, наших ${sum(strong, 'ours')}; враг сильнее: наших ${sum(weak, 'ours')}`);
 }

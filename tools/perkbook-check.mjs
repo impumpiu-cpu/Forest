@@ -26,8 +26,9 @@ const ok = (c, what, more = '') => { console.log(`${c ? 'ok  ' : 'FAIL'} ${what}
 // ── the old fields keep their numbers, read through the book
 {
   const same = (id, field, perk, f) => { const sp = SPECIES.get(id), p = innateOf(sp, perk); return !!p && JSON.stringify(f(p)) === JSON.stringify(sp[field]); };
-  ok(same('scorpion', 'venom', 'venom', p => p) && !innateOf(SPECIES.get('wyvern'), 'venom') && speciesGrants(SPECIES.get('wyvern')).some(g => g.id === 'sting'),
-    'яд скорпиона — прежние числа (выдача с own); у виверны травит жало, не укус', JSON.stringify(innateOf(SPECIES.get('scorpion'), 'venom')));
+  const old = {id: 'probe', venom: {dmg: 0.0005, ticks: 150}};   // (a species of the old fields: none is left in the book, the reading stays)
+  ok(JSON.stringify(innateOf(old, 'venom')) === JSON.stringify(old.venom) && !innateOf(SPECIES.get('wyvern'), 'venom') && speciesGrants(SPECIES.get('wyvern')).some(g => g.id === 'sting') && speciesGrants(SPECIES.get('scorpion')).some(g => g.id === 'sting'),
+    'старое поле venom читается как выдача с прежними числами; у виверны и скорпиона травит жало, не укус', JSON.stringify(innateOf(old, 'venom')));
   ok(same('vampire', 'drinks', 'bloodDrink', p => p.share), 'вампир пьёт кровь той же долей', JSON.stringify(innateOf(SPECIES.get('vampire'), 'bloodDrink')));
   ok(!innateOf(SPECIES.get('human'), 'venom') && !innateOf(SPECIES.get('wolf'), 'web'), 'у человека нет яда, у волка паутины');
 }
