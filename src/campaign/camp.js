@@ -18,6 +18,7 @@ import {RANK_RULES} from '../data/ranks.js';
 import {memberStrength} from '../local/index.js';
 import {spawnGroup} from '../local/index.js';
 import {MIGRATIONS} from '../data/migrations.js';
+import {AUTOFIGHT} from '../data/autofight.js';
 import {createAgent, maxHp} from '../local/index.js';
 import {refreshBody} from '../local/index.js';
 import {attackerOf, sneakSeen, darkness} from '../local/index.js';
@@ -127,7 +128,7 @@ export function companyStrength(a, K) {
     if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];
     if (m.maims) ag.maims = m.maims;
     if (m.perks?.length) { ag.perks = m.perks.map(p => ({id: p.id, rank: p.rank})); ag.kinHere = K.members.filter(x => x.alive && !x.captive && x.race === m.race).length; }
-    refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
+    refreshBody(ag); ag.hp = maxHp(ag) * Math.max(AUTOFIGHT.least.member, Math.min(1, m.hp));
     const hands = (m.wounds || []).some(x => x.id === 'lostArm') ? m.gear.hand.filter(id => gearDef(id)?.form !== 'shield').slice(0, 1) : m.gear.hand;
     dress(ag, [...hands, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     sum += sideStrength([ag], {now: true});
@@ -137,7 +138,7 @@ export function companyStrength(a, K) {
     if (!(b.hp > 0)) continue;
     const sp = b.species || BEASTS[b.kind]?.species || b.kind;
     if (b.kind !== 'war' && !BEASTS[b.kind]?.golem) continue;   // (the herd's beasts keep out of a fight)
-    if (SPECIES.has(sp)) sum += expectedStrength(sp, {key: 'company'}) * Math.max(0.1, Math.min(1, b.hp));
+    if (SPECIES.has(sp)) sum += expectedStrength(sp, {key: 'company'}) * Math.max(AUTOFIGHT.least.beast, Math.min(1, b.hp));
   }
   return sum;
 }

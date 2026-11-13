@@ -40,6 +40,7 @@
     "arena:weapons": "node tools/arena.mjs --part weapons",
     "arena:races": "node tools/arena.mjs --part races",
     "arena:monsters": "node tools/arena.mjs --part monsters",
+    "autofight:calibrate": "node tools/autofight-calibrate.mjs --seeds 777,790,803 --caps 2 --levels 1,8 --ratios 0.3,0.5,0.7,1,1.4,2,3 --write",
     "arena:calibrate": "node tools/arena.mjs --part races,monsters --write",
     "balance:standard": "node tools/balance.mjs --seeds 10 --days 30 --vary raids=off,rare,often --set predators=many",
     "determinism": "node tools/determinism.mjs",
