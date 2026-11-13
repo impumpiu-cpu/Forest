@@ -244,15 +244,15 @@ export class GuildView extends CampaignView {
       `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
       `<span class="hp"><i class="${(m.hp ?? 1) < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp ?? 1) * 100)}%"></i></span>` +
       (nx != null ? `<span class="xp" title="опыт до ${lv + 1}-го уровня: ${Math.round(nx * 100)}%"><i style="width:${Math.round(nx * 100)}%"></i></span>` : '') +
-      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}</span>${pickable ? this.restButtons(m) : ''}</label>`;
+      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}${pickable ? this.restButtons(m) : ''}</span></label>`;
   }
   // rest and retirement (campaign/retire.js): one at the house — to rest, back to the ranks, let go with honour or without
   restButtons(m) {
     const G = this.G, st = m.guild.state; if (!['ready', 'post', 'retired'].includes(st)) return '';
     const b = (kind, label, why, title = '') => `<button type="button" class="quiet mini" data-rest="${kind}" data-id="${m.id}"${why ? ` disabled title="${esc(why)}"` : title ? ` title="${esc(title)}"` : ''}>${label}</button>`;
     const asks = m.asks ? `<small><b>просится на покой</b> (${esc(m.asks.why)})</small> ` : '';
-    return `<div class="row actions">${asks}${m.retired ? b('back', 'в строй', unretireWhy(G, m)) : b('rest', 'на покой', retireWhy(G, m), 'живёт при гильдии, в походы не ходит, может занять пост; жалованье — половина')}` +
-      b('honour', `в отставку — ${giftOf(m)} зол.`, dismissWhy(G, m, true), 'уходит из гильдии с прощальным даром') + b('fire', 'уволить', dismissWhy(G, m, false), 'уходит без дара; друзья в гильдии обидятся') + '</div>';
+    return `<span class="gm-rest">${asks}${m.retired ? b('back', 'в строй', unretireWhy(G, m)) : b('rest', 'на покой', retireWhy(G, m), 'живёт при гильдии, в походы не ходит, может занять пост; жалованье — половина')}` +
+      b('honour', `в отставку — ${giftOf(m)} зол.`, dismissWhy(G, m, true), 'уходит из гильдии с прощальным даром') + b('fire', 'уволить', dismissWhy(G, m, false), 'уходит без дара; друзья в гильдии обидятся') + '</span>';
   }
   peopleHtml() {
     const G = this.G, live = membersOf(G), gone = G.members.filter(m => !live.includes(m));

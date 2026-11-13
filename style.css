@@ -371,6 +371,7 @@ dd.q4{color:#c58cff;font-weight:600}
 .guild-panel h4.menu-group{margin:6px 0 2px}
 .guild-panel .savelist{max-height:none}
 .guild-people,.guild-pick{display:flex;flex-direction:column;gap:4px}
+.guild-people .gm-rest { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
 .guild-parties{display:flex;flex-direction:column;gap:2px;margin:4px 0}
 .guild-pick{max-height:220px;overflow:auto}
 .gm{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:13px;cursor:pointer}
