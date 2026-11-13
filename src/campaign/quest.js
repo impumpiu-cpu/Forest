@@ -34,7 +34,8 @@ import {cellDist, weighted} from '../core/util.js';
 import {pointCommands, allowed} from '../data/commands.js';
 import {pickFirst, tracing, noteDecision} from '../core/decide.js';
 import {share} from './experience.js';
-import {errandIntro, errandReady, errandStormed} from './errands.js';
+import {errandIntro, errandReady, errandStormed, giveUp} from './errands.js';
+import {CONTRACT} from '../data/contracts.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -297,13 +298,14 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     // (the company's health: the free only — a captive's wounds hold no storm back, as nowhere else: campaign/captives.js)
     const fs = free(K), hp = fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
+    if (fs.length < QUEST.hands && Q.contract && here === C) { giveUp(a, K, 'отступили', `${here.label[0].toUpperCase()}${here.label.slice(1)}: слишком мало рук для штурма — отряд возвращается в гильдию ни с чем.`, say); return false; }
     if (fs.length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма', a, rnd); return false; }   // too few left: for people first
     // beaten back once, the council does not send the same company against the same guards: it comes back when the odds
     // have grown — the company stronger (QUEST.stronger) over the guards as they stand now (bled by the storm lost, filling
     // back meanwhile) — or, not grown so in time, leaves the place for a while
     mendGuard(K, here);
     const odds = might / Math.max(1e-6, here.guard.strength);
-    if (here.lost && odds < here.lost.odds * QUEST.stronger) {
+    if (here.lost && !(Q.contract && here === C) && odds < here.lost.odds * QUEST.stronger) {   // (a guild's party storms again, CONTRACT.retreat times at most)
       if (K.day - here.lost.day >= QUEST.grow) leaveFor(K, here, say, `сил не прибавилось, а стража не ослабла`, a, rnd);
       return false;
     }
@@ -313,6 +315,8 @@ export function questArrive(a, K, rnd, fight, say, might = 0) {
     if (!win) {
       bleedGuard(K, here);
       Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day, odds: might / Math.max(1e-6, here.guard.strength)};
+      // a guild's party on a contract: beaten back CONTRACT.retreat times — its strength was not enough; home with nothing
+      if (Q.contract && here === C && here.fails >= CONTRACT.retreat) { giveUp(a, K, 'отступили', `${here.label[0].toUpperCase()}${here.label.slice(1)}: штурмов отбито — ${here.fails}. Сил отряда не хватило; он возвращается в гильдию ни с чем.`, say); return true; }
       if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`, a, rnd);   // beaten back again and again: leave it for a while, look elsewhere
       return true;
     }

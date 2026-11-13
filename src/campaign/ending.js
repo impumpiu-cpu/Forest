@@ -98,7 +98,7 @@ export function failErrand(a, K) {
 // home with nothing: the failure told at the capital, no pay; the player's word waits (as after an errand handed in)
 export function emptyHome(a, K, t = homeTown(a, K), ms = K.members.filter(m => m.alive)) {
   const Q = K.quest, E = errandOf(Q);
-  (K.done ||= []).push({errand: Q?.errand || null, contract: Q?.contract || null, tier: Q?.tier || null, label: E?.label || 'поручение', name: Q?.name, goal: Q?.crown?.label || null, from: Q?.from ?? 0, day: K.day, year: a.hist.year, gold: 0, failed: true});
+  (K.done ||= []).push({errand: Q?.errand || null, contract: Q?.contract || null, tier: Q?.tier || null, label: E?.label || 'поручение', name: Q?.name, goal: Q?.crown?.label || null, from: Q?.from ?? 0, day: K.day, year: a.hist.year, gold: 0, failed: true, why: Q?.failed?.why || null});
   say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'} ни с чем: ${ms.length} ${plural(ms.length, 'человек', 'человека', 'человек')}. Поручение провалено — ${(E?.label || 'поручение').toLowerCase()}; столица не платит.`, 'home', true);
   K.phase = 'home';
 }

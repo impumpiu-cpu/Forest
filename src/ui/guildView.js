@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
 import {raceLabel} from '../view/local.js';
@@ -20,20 +20,23 @@ const TABS = [['people', 'Люди'], ['board', 'Доска'], ['log', 'Лето
 const STATE = {ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл'};
 const LOG_LINES = 80;   // the guild's chronicle in its tab: the last lines
 
+const TIER_WORD = ['', 'I', 'II', 'III', 'IV', 'V'];
+const SORT_WORDS = [['tier', 'по тиру'], ['pay', 'по плате'], ['margin', 'по запасу дней'], ['road', 'по дороге'], ['left', 'по сроку предложения']];
 export class GuildView extends CampaignView {
   build() {
     super.build();
-    this.guildOn = false; this.gpick = new Set(); this.gtab = 'people'; this.offerUid = null; this.gerrand = null; this.hirePick = new Set(); this.gsize = GUILD.party.max;
+    this.guildOn = false; this.gpick = new Set(); this.gtab = 'people'; this.offerUid = null; this.gerrand = null; this.hirePick = new Set(); this.gsize = GUILD.party.max; this.gsort = 'tier';
     seg('guildTabs', TABS, this.gtab, v => { this.gtab = v; this.renderGuild(); });
     $('guildBody').addEventListener('change', e => {
       const box = e.target.closest('input[data-mid]'); if (box) { box.checked ? this.gpick.add(+box.dataset.mid) : this.gpick.delete(+box.dataset.mid); this.renderGuild(); return; }
       const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.renderGuild(); return; }
+      const so = e.target.closest('select[data-gsort]'); if (so) { this.gsort = so.value; this.renderGuild(); return; }
       const sz = e.target.closest('select[data-gsize]'); if (sz) { this.gsize = +sz.value; this.renderGuild(); return; }
       const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.renderGuild(); this.lookAtCard(r.value); }
     });
     $('guildBody').addEventListener('click', e => {
       const b = e.target.closest('button[data-act]'); if (!b) return;
-      if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
+      if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
     });
     // the board's errands ring their targets on the map, as the capital's board does (ui/campaignView.js drawBoard)
     const box = $('guildBody'), hover = card => { if ((card ?? null) !== this.boardHover) { this.boardHover = card ?? null; this.draw(); } };
@@ -183,7 +186,7 @@ export class GuildView extends CampaignView {
   renderGuild() {
     const a = this.atlas, G = this.G; if (!G || G.phase === 'hire') return;
     const K = expedition(a), ms = membersOf(G);
-    $('guildStatus').innerHTML = `<dt>Казна</dt><dd>${G.gold} зол.</dd><dt>Слава</dt><dd>${G.fame}</dd>` +
+    $('guildStatus').innerHTML = `<dt>Казна</dt><dd>${G.gold} зол.</dd><dt>Уровень</dt><dd>${levelOf(G)} · договоры до тира ${TIER_WORD[tierOf(G)] || '—'}</dd><dt>Слава</dt><dd>${G.fame}${levelNext(G) != null ? ` / ${levelNext(G)}` : ''}</dd>` +
       `<dt>Людей</dt><dd>${ms.length} · дома ${ms.filter(m => m.guild.state === 'ready').length}${ms.some(m => m.guild.state === 'chore') ? ` · на делах ${ms.filter(m => m.guild.state === 'chore').length}` : ''}${K ? ` · в походе ${ms.filter(m => m.guild.state === 'expedition').length}` : ''}</dd>` +
       `<dt>Отряд</dt><dd>${K ? `в пути ${K.day} ${plural(K.day, 'день', 'дня', 'дней')}: ${esc(questWord(K))}` : 'дома'}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
@@ -209,7 +212,7 @@ export class GuildView extends CampaignView {
       (gone.length ? `<details class="obs-lib"><summary>Ушедшие и павшие (${gone.length})</summary><div class="savelist guild-people">${gone.map(m => this.memberRow(m, false)).join('')}</div></details>` : '');
   }
   boardHtml() {
-    const a = this.atlas, G = this.G, ids = [...this.gpick], B = guildBoard(a, ids), K = expedition(a);
+    const a = this.atlas, G = this.G, ids = [...this.gpick], B = guildBoard(a, ids, this.gsort), K = expedition(a);
     if (this.offerUid && !B.chores.some(o => o.uid === this.offerUid)) this.offerUid = null;
     const picked = ids.length ? ids.map(id => G.members.find(m => m.id === id)?.name).join(', ') : 'никто — отметьте людей в «Людях» или здесь';
     const chores = B.chores.map(o => `<label class="sv${o.uid === this.offerUid ? ' cur' : ''}${o.why ? ' off' : ''}"><input type="radio" name="gchore" value="${esc(o.uid)}"${o.uid === this.offerUid ? ' checked' : ''}>` +
@@ -228,7 +231,9 @@ export class GuildView extends CampaignView {
       `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +
       `<div class="row actions"><button type="button" data-act="chore"${choreOk ? '' : ' disabled'}>Послать на дело</button><small>${offer ? (offer.why ? esc(offer.why) : `отчёт — через ${offer.days[0] === offer.days[1] ? offer.days[0] : `${offer.days[0]}–${offer.days[1]}`} дн.`) : 'выберите дело'}</small></div>` +
       `<h4 class="menu-group">Договоры</h4>` +
-      (K ? `<p class="note">Отряд в пути: ${esc(questWord(K))}. Второй отряд — позже (Г3).</p>` :
+      (K ? `<p class="note">Отряд в пути: ${esc(questWord(K))}. Второй отряд — позже (Г3).</p>` +
+          (abortWhy(a, G, K) ? '' : `<div class="row actions"><button type="button" data-act="recall">Отозвать отряд</button><small>договор будет брошен: сразу — малая потеря славы, в последнюю пятую часть срока — как провал</small></div>`) :
+        (B.errands.length ? `<div class="row"><small>Порядок: <select data-gsort>${SORT_WORDS.map(([k, w]) => `<option value="${k}"${k === this.gsort ? ' selected' : ''}>${w}</option>`).join('')}</select></small></div>` : `<p class="note">Договоров нет: гильдии ${levelOf(G)}-го уровня мир доверяет только дела в городе. Слава — за сделанные дела.</p>`) +
         `<div class="savelist errands">${errandCards(B.errands, this.gerrand, 'gerrand')}</div>` +
         `<div class="row"><small>Отряд: <select data-gsize>${sizes}</select> чел.; назначить — до ${namedMost(this.gsize)} (отмеченные выше), остальные решают сами</small></div>` + answers +
         `<div class="row actions"><button type="button" data-act="launch" class="primary"${why || !this.gerrand ? ' disabled' : ''}>Отправить отряд</button><small>${why ? esc(why) : (M ? `идут ${M.ids.length} из ${this.gsize}; в дорогу — ${GUILD.purse} зол. из казны и еда` : 'выберите поручение')}</small></div>`);

@@ -368,6 +368,7 @@ function evening(a, K) {
   if (K.quest && K.phase !== 'empty') {
     const {r, done} = draw(K, 'quest'), tell = (text, kind, world, who) => say(a, K, text, kind, world, who);
     const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => { const won = fight(a, K, d, r, 'guard'); if (d.person != null) worldOutcome(a, K, d, won); return won; }, tell, caravanMight(K));   // (a lair's ruler at the head of its guard: its fate in the storm is its fate — worldOutcome)
+    if (K.phase === 'empty') { done(); K.goal = K.home; K.path = null; return; }   // (given up at the place: a guild's party beaten back, its target gone — campaign/errands.js giveUp)
     const any = K.members.some(m => m.alive && isCore(m));
     if (any && K.phase === 'back' && K.i === K.home && K.quest.crown.state === 'carried') { done(); homecoming(a, K, ms); return; }
     const g = any ? questTarget(a, K, r, tell) : null;

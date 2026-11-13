@@ -10,6 +10,7 @@
 //   camp   — {id, contract, kind, lair | band, label, i, x, y, s, alive}
 // Chance: the guild's own stream (campaign/guild.js gdraw) is handed in; nothing here draws of its own.
 import {CONTRACT, CONTRACTS, CHAINS} from '../data/contracts.js';
+import {GUILD} from '../data/guild.js';
 import {ERRANDS} from '../data/errands.js';
 import {LAIRS} from '../data/lairs.js';
 import {QUEST} from '../data/quest.js';
@@ -129,10 +130,12 @@ export function stepContracts(a, G, io) {
   const C = contractsOf(a), first = !G.contractsSeeded;
   for (const rec of C.records) {
     if (rec.state !== 'open') continue;
-    if (!liveTarget(a, rec)) close(a, G, rec, 'цель уничтожена другими', io);
+    if (!holder(a, rec.issuer)) { rec.escrow = 0; close(a, G, rec, 'заказчик пал — резерв пропал с его казной', io); }
+    else if (!liveTarget(a, rec)) close(a, G, rec, 'цель уничтожена другими', io);
     else if (G.day >= rec.until) close(a, G, rec, 'срок предложения вышел', io);
   }
-  for (let tier = 1; tier < CONTRACT.board.open.length; tier++) {
+  const most = tierOf(G);   // (the world gives a guild the tiers its level is trusted with)
+  for (let tier = 1; tier <= most && tier < CONTRACT.board.open.length; tier++) {
     const rows = CONTRACTS.filter(x => x.tier === tier), open = () => C.records.filter(c => !c.chain && c.state === 'open' && c.tier === tier).length;
     for (let k = 0; k < rows.length * 2 && open() < CONTRACT.board.open[tier]; k++) {
       if (!first && io.r() >= CONTRACT.board.post) break;
@@ -143,7 +146,7 @@ export function stepContracts(a, G, io) {
     }
   }
   for (const H of CHAINS.all()) {
-    if ((G.fame || 0) < H.fame || C.chains.some(c => c.chain === H.id && c.guild === G.id)) continue;
+    if (levelOf(G) < H.level || C.chains.some(c => c.chain === H.id && c.guild === G.id)) continue;
     const ch = {id: C.nextId++, chain: H.id, guild: G.id, step: H.start, flags: {}, state: 'on', steps: []};
     const rec = post(a, G, H.steps[H.start], {tmpl: `${H.id}:${H.start}`, chain: ch.id}, io.r);
     if (!rec) continue;   // (no place for it in this world yet: the next season)
@@ -151,6 +154,19 @@ export function stepContracts(a, G, io) {
     io.tell(`Новая история: «${H.label}». ${H.about}`, 'chain');
   }
   G.contractsSeeded = true;
+}
+// ── the guild's level (GUILD.level; the author's word 13.11): its fame as experience — the level reached, the highest tier the
+// world trusts it with; fame lost, the level lost with it
+export function levelOf(G) { const N = GUILD.level.need; let L = 0; while (L + 1 < N.length && (G.fame || 0) >= N[L + 1]) L++; return L; }
+export const tierOf = G => GUILD.level.tier[levelOf(G)];
+export const levelNext = G => GUILD.level.need[levelOf(G) + 1] ?? null;
+// fame moved, the level told when it moved with it
+export function fameBy(G, d, tell) {
+  const L0 = levelOf(G);
+  G.fame = Math.max(0, Math.round(((G.fame || 0) + d) * 10) / 10);
+  const L = levelOf(G);
+  if (L > L0) tell(`Гильдия выросла до ${L}-го уровня${tierOf(G) > GUILD.level.tier[L0] ? `: теперь ей доверяют договоры тира ${['', 'I', 'II', 'III', 'IV', 'V'][tierOf(G)]}` : ''}.`, 'level');
+  else if (L < L0) tell(`Слава гильдии упала: она снова ${L}-го уровня${tierOf(G) < GUILD.level.tier[L0] ? ` — договоров тира ${['', 'I', 'II', 'III', 'IV', 'V'][GUILD.level.tier[L0]]} ей больше не дают` : ''}.`, 'level');
 }
 const tierWord = t => `тир ${['', 'I', 'II', 'III', 'IV', 'V'][t]}`;
 
@@ -168,12 +184,27 @@ export function takeContract(a, G, uid, n) {
   const rec = contractOf(a, uid);
   if (!rec || rec.state !== 'open') throw new Error('Этого договора на доске больше нет.');
   if (!liveTarget(a, rec)) throw new Error('Цели договора больше нет.');
-  rec.state = 'accepted'; rec.by = n;
+  rec.state = 'accepted'; rec.by = n; rec.takenAt = G.day;
   rec.completeBy = G.day + CONTRACT.time.base[rec.tier] + Math.round(CONTRACT.time.road * 2 * (rec.days || 0));
   return rec;
 }
 export const contractWhy = (a, uid) => { const rec = contractOf(a, uid); return !rec || rec.state !== 'open' ? 'этого договора на доске больше нет' : !liveTarget(a, rec) ? 'цели договора больше нет' : null; };
 
+// the guild calls its party back (campaign/guild.js recall): the contract let go — early it costs a little fame, in the last
+// CONTRACT.fame.late of its time much; the party walks home with nothing
+export function abortWhy(a, G, K) {
+  const rec = K && contractOf(a, K.contract);
+  return !rec || rec.state !== 'accepted' ? 'отряд не на договоре' : K.phase !== 'out' ? 'отряд уже идёт домой' : null;
+}
+export function abortContract(a, G, K, giveUp, say) {
+  const rec = contractOf(a, K.contract), why = abortWhy(a, G, K); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  rec.abortedAt = G.day;
+  const late = (G.day - (rec.takenAt ?? 0)) >= (1 - CONTRACT.fame.late) * Math.max(1, rec.completeBy - (rec.takenAt ?? 0));
+  giveUp(a, K, 'отозван', `Гильдия отозвала отряд: договор «${rec.label}» брошен${late ? ' в последний срок' : ''}. Отряд возвращается ни с чем.`, (t, k, w) => say(a, K, t, k, w));
+  return late;
+}
+// the time a contract leaves beyond the road there and back (its deadline from the day taken: CONTRACT.time)
+export const marginOf = rec => CONTRACT.time.base[rec.tier] + Math.round(CONTRACT.time.road * 2 * (rec.days || 0)) - 2 * (rec.days || 0);
 // the expedition of a contract home (campaign/guild.js closeExpedition): handed in — the reserve is the guild's pay; failed or
 // the party lost — the reserve goes back and the guild's name suffers. → {paid, why}
 export function settleContract(a, G, K, io) {
@@ -183,13 +214,18 @@ export function settleContract(a, G, K, io) {
     rec.state = 'paid';
     if (rec.escrow > 0) io.pay(G, rec.escrow, `плата по договору: ${rec.label} (${issuerName(a, rec.issuer)})`);
     rec.paid = rec.escrow; rec.escrow = 0;
-    G.fame = (G.fame || 0) + rec.tier;
+    if (!holder(a, rec.issuer)) io.tell(`${issuerName(a, rec.issuer) === 'никто' ? 'Заказчика больше нет' : 'Заказчик пал'}, но резерв был отложен: плата — из него.`, 'contract');
+    fameBy(G, CONTRACT.fame.won[rec.tier], io.tell);
     if (rec.target.camp != null) { const c = campOf(a, rec.target.camp); if (c) c.alive = false; }
     if (rec.chain) chainOn(a, G, rec, true, io);
     return {paid: rec.paid};
   }
-  const why = done?.failed ? 'срок вышел' : 'отряд не вернулся';
-  G.fame = Math.max(0, (G.fame || 0) - CONTRACT.fame.lost);
+  // not handed in: by why (the target gone by another hand — no blame; let go early — a little; failed, beaten back, the party
+  // lost, let go at the last — much: CONTRACT.fame)
+  const w = done?.why, external = w === 'цель уничтожена другими';
+  const span = Math.max(1, (rec.completeBy ?? G.day) - (rec.takenAt ?? G.day)), early = rec.abortedAt != null && (rec.abortedAt - (rec.takenAt ?? 0)) < (1 - CONTRACT.fame.late) * span;
+  const why = external ? w : rec.abortedAt != null ? (early ? 'гильдия отказалась' : 'гильдия отказалась в последний срок') : w === 'отступили' ? 'отряду не хватило сил' : done?.failed ? 'срок вышел' : 'отряд не вернулся';
+  if (!external) fameBy(G, -CONTRACT.fame.won[rec.tier] * (early ? CONTRACT.fame.abort : CONTRACT.fame.lost), io.tell);
   close(a, G, rec, why, io);
   return {paid: 0, why};
 }
@@ -243,18 +279,27 @@ export function contractQuest(a, K, rnd, rec, G) {
 
 // ── the board: the contracts open to the guild, as the cards of the errands' board (ui/campaignView.js errandCards)
 //   ms — those picked (the risk against them), none — a fresh eight
-export function contractCards(a, G, ms = []) {
+export function contractCards(a, G, ms = [], sort = 'tier') {
   const C = a.contracts; if (!C) return [];
   const might = ms.length ? caravanMight({members: ms, beasts: G.store?.beasts || [], vehicles: []}) : CAMP.foe.quickUnit;
   return C.records.filter(c => c.state === 'open').map(c => {
     const ch = c.chain ? C.chains.find(x => x.id === c.chain) : null, H = ch && CHAINS.get(ch.chain);
     const facts = [...(H ? [`История «${H.label}»${c.side ? ' — побочное' : `, шаг ${ch.steps.filter(u => !contractOf(a, u)?.side).indexOf(c.uid) + 1}`}`] : []),
       `Платит ${issuerName(a, c.issuer)}: ${c.escrow ? `${c.escrow} зол. отложено` : 'казна пуста — за честь'}`,
-      `Предложение — ещё ${Math.max(0, c.until - G.day)} дн.; срок исполнения — ${CONTRACT.time.base[c.tier] + Math.round(CONTRACT.time.road * 2 * (c.days || 0))} дн. с принятия`,
+      `Предложение — ещё ${Math.max(0, c.until - G.day)} дн.; срок — ${CONTRACT.time.base[c.tier] + Math.round(CONTRACT.time.road * 2 * (c.days || 0))} дн. с принятия, запас сверх дороги ≈ ${marginOf(c)} дн.`,
       ...(c.facts || [])];
     return {id: c.uid, contract: c.uid, errand: null, targetId: null, tier: c.tier, label: c.label, about: c.story || c.about, years: null, gold: c.escrow,
-      ok: true, why: '', goal: c.goal, known: c.known, at: c.at, guard: c.s, risk: riskWord(c.s, might), facts, days: c.days, chain: !!c.chain};
-  }).sort((p, q) => p.tier - q.tier || (q.chain - p.chain) || p.id.localeCompare(q.id));
+      ok: true, why: '', goal: c.goal, known: c.known, at: c.at, guard: c.s, risk: riskWord(c.s, might), facts, days: c.days, chain: !!c.chain,
+      margin: marginOf(c), left: Math.max(0, c.until - G.day)};
+  }).sort(SORTS[sort] || SORTS.tier);
 }
+// the board's orders (ui/guildView.js): by tier, by pay, by the time to spare, by the road, by the offer running out
+export const SORTS = {
+  tier: (p, q) => p.tier - q.tier || (q.chain - p.chain) || p.id.localeCompare(q.id),
+  pay: (p, q) => q.gold - p.gold || p.tier - q.tier,
+  margin: (p, q) => q.margin - p.margin || p.tier - q.tier,
+  road: (p, q) => (p.days ?? 0) - (q.days ?? 0) || p.tier - q.tier,
+  left: (p, q) => p.left - q.left || p.tier - q.tier,
+};
 // the camps standing (the guild's map draws them)
 export const campsOf = a => (a.contracts?.camps || []).filter(c => c.alive);

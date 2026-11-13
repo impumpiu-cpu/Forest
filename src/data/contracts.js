@@ -17,7 +17,9 @@
 //   camp   — a temporary lair: `days[tier]` [least, most] of the walk from the guild's town (the author's word: tier I — about a
 //            month there and a month back), its guard `s[tier]` (× data/camp.js CAMP.foe.unit, a fresh eight)
 //   summon — below
-//   fame   — the guild's fame: + the tier when paid; − `lost` when failed or the party is lost; − `abort` when let go
+//   fame   — the guild's fame (its level: data/guild.js GUILD.level): + `won[tier]` when paid; when not: − `won[tier]` × `lost`
+//            (failed, the party lost or beaten back, or let go in the last `late` of its time), × `abort` (let go before it)
+//   retreat — storms of the goal beaten back before a guild's party gives up and comes home with nothing (the author's word 13.11)
 export const CONTRACT = {
   board: {open: [0, 3, 2, 2, 1, 1], post: 0.5},
   offer: [60, 150],
@@ -25,7 +27,8 @@ export const CONTRACT = {
   issuer: {town: 2},
   time: {base: [0, 30, 60, 120, 240, 360], road: 1.5},
   camp: {days: [null, [12, 30], [18, 40], [25, 55], [35, 70], [45, 90]], s: [0, 0.55, 0.9, 1.3, 1.8, 2.5]},
-  fame: {lost: 1, abort: 0.5},
+  fame: {won: [0, 4, 8, 14, 22, 34], lost: 1.5, abort: 0.25, late: 0.2},
+  retreat: 2,
   summon: 0.3,
   clueAt: [0.5],   // a camp found by its traces: its one clue at this share of the way (data/quest.js clueAt)   // a camp of a rite (`summon`): the share of its guard that are the dead it raised (data/camp.js `with`)
 };
@@ -66,8 +69,9 @@ CONTRACTS.registerAll([
 ]);
 
 // CHAINS — the stories (the author's word 13.11: four or five missions in a row, their ends by the side missions and the
-// failures). A chain is offered once to a guild whose fame has reached `fame`; its steps are contracts of the same shape as
-// above (camp or errand), each posted when the one before it is closed, by `next`:
+// failures). A chain is offered once to a guild whose level has reached `level`; its steps are contracts of the same shape as
+// above (camp or errand), each posted when the one before it is closed, by `next` (`level` — the guild's level it opens at:
+// data/guild.js GUILD.level):
 //   next   — {won, lost}: the step that follows when it was handed in, when it failed (or the party was lost); none — the end
 //   flag   — set on the chain when the step is handed in (`won`) or failed (`lost`): the later steps read them
 //   side   — a contract posted beside this step (its own card, its own pay): handed in, it sets its flag
@@ -76,7 +80,7 @@ CONTRACTS.registerAll([
 //   ends   — the chain's last line by how it ended: {won, lost} (or by a flag: `won.flag`)
 export const CHAINS = new Registry('chain');
 CHAINS.registerAll([
-  {id: 'blackbeard', label: 'Рубака Чернобород', fame: 0, about: 'Разбойничий атаман собирает людей по лесам. Найти его — и снять голову.', start: 'scouts',
+  {id: 'blackbeard', label: 'Рубака Чернобород', level: 1, about: 'Разбойничий атаман собирает людей по лесам. Найти его — и снять голову.', start: 'scouts',
     steps: {
       scouts: {tier: 1, label: 'Разведчики Чернобороды', camp: {band: 'bandits', name: 'стоянка разведчиков', trophy: ['Нож разведчика', 'Нож разведчика', 'm']},
         story: 'Люди Рубаки Чернобороды высматривают обозы {town}; их стоянку видели {where}.', next: {won: 'winter', lost: 'winter'}, flag: {lost: 'warned'}},
@@ -88,7 +92,7 @@ CHAINS.registerAll([
         story: 'Рубака Чернобород засел {where}.', strong: {warned: 1.2, rich: 1.3, poor: 0.85}},
     },
     ends: {won: 'Рубака Чернобород убит; его люди разбрелись по лесам.', lost: 'Рубака Чернобород ушёл — о нём ещё услышат.'}},
-  {id: 'cult', label: 'Культ в слободах', fame: 2, about: 'В слободах пропадают люди. Куда — и кому это нужно?', start: 'traces',
+  {id: 'cult', label: 'Культ в слободах', level: 3, about: 'В слободах пропадают люди. Куда — и кому это нужно?', start: 'traces',
     steps: {
       traces: {tier: 2, label: 'Пропавшие в слободах', camp: {band: 'cultists', name: 'сборище в старой риге', clue: true, trophy: ['Чёрный амулет', 'Чёрный амулет', 'm']},
         story: 'Из слобод {town} пропадают люди; следы ведут куда-то {where}.', next: {won: 'preacher', lost: 'preacher'}, flag: {lost: 'bold'}},
@@ -107,7 +111,7 @@ CHAINS.registerAll([
         story: 'Пропавших держат в погребах {where}. Если их освободить, обряду не хватит крови.', flag: {won: 'freed'}},
     },
     ends: {won: 'Культ разгромлен до обряда: пленники вернулись домой.', 'won.freed': 'Культ разгромлен, пленники дома, обряд не состоялся.', lost: 'Культ ушёл в тень — и ждёт своего часа.'}},
-  {id: 'necro', label: 'Башня некроманта', fame: 5, about: 'На кладбищах поднимаются мертвецы. Кто-то зовёт их — из башни на холмах.', start: 'risen',
+  {id: 'necro', label: 'Башня некроманта', level: 5, about: 'На кладбищах поднимаются мертвецы. Кто-то зовёт их — из башни на холмах.', start: 'risen',
     steps: {
       risen: {tier: 3, label: 'Восставшие на кладбищах', camp: {band: 'undead', name: 'разорённое кладбище', trophy: ['Обломок надгробия', 'Обломок надгробия', 'm']},
         story: 'На кладбищах у {town} поднимаются мертвецы; их больше всего {where}.', next: {won: 'barrow', lost: 'barrow'}, flag: {lost: 'grown'}},

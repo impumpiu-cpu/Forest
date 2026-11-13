@@ -30,7 +30,8 @@ function guildHash(G) {
 }
 // the people up to an errand's rank (GUILD.rank): grown on paper, as the deeds in town would grow them
 const ranked = (G, ids, errand) => { for (const id of ids) G.members.find(m => m.id === id).level = rankOf(errand); };
-const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G]; };
+// (a guild of the highest level: the world gives it every tier — data/guild.js GUILD.level; the levels — contract-check)
+const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = GUILD.level.need.at(-1); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G]; };
 
 // ── the founding and the door
 {

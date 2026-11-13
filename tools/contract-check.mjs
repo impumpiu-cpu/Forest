@@ -5,10 +5,11 @@
 //   node tools/contract-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, muster, devotionOf, newCampaign} from '../src/campaign/index.js';
+import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, muster, devotionOf, newCampaign, takeChore, levelOf, tierOf, recall} from '../src/campaign/index.js';
 import {takeContract, settleContract, contractOf, campOf, contractsOf} from '../src/campaign/contracts.js';
 import {GUILD} from '../src/data/guild.js';
 import {CONTRACT, CHAINS} from '../src/data/contracts.js';
+import {CHORES} from '../src/data/chores.js';
 
 const seed = process.argv[2] || '777';
 let fails = 0;
@@ -21,7 +22,7 @@ const cap = capitals(base)[0];
 const r1 = x => Math.round(x * 10) / 10;
 // all the gold of the world's treasuries and the reserves: posting and refunding move it, never make or lose it
 const purses = a => r1(a.towns.reduce((s, t) => s + (t.gold || 0), 0) + (a.realms || []).reduce((s, r) => s + (r.gold || 0), 0) + (a.contracts?.records || []).reduce((s, c) => s + (c.escrow || 0), 0));
-const opened = () => { const a = fresh(); const before = purses(a); const G = foundGuild(a, cap.town); hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G, before]; };
+const opened = (fame = GUILD.level.need.at(-1)) => { const a = fresh(); const before = purses(a); const G = foundGuild(a, cap.town); G.fame = fame; hire(a, G.candidates.slice(0, GUILD.start.pick).map(m => m.id)); return [a, G, before]; };
 let sd = 7; const lcg = () => ((sd = (sd * 1103515245 + 12345) % 2147483648) / 2147483648);   // (the checks' own chance)
 const io = (a, G) => ({r: lcg, tell: () => {}, pay: (g, gold) => { g.gold = r1(g.gold + gold); }});
 const strong = G => { for (const m of G.members) m.level = 20; };
@@ -71,11 +72,79 @@ const strong = G => { for (const m of G.members) m.level = 20; };
 {
   const [a, G] = opened(), rec = contractsOf(a).records.find(c => c.state === 'open' && !c.chain);
   const h = rec.issuer.kind === 'town' ? a.towns.find(t => t.id === rec.issuer.id) : a.realms.find(r => r.id === rec.issuer.id), hg = h.gold, esc = rec.escrow;
-  G.fame = 3;
+  const f0 = G.fame;
   takeContract(a, G, rec.uid, 1);
   settleContract(a, G, {contract: rec.uid, done: [{contract: rec.uid, failed: true}]}, io(a, G));
   ok(rec.state === 'closed' && rec.why === 'срок вышел' && r1(h.gold) === r1(hg + esc), 'провал — резерв вернулся тому, кто платил', `${hg} + ${esc} → ${h.gold}`);
-  ok(G.fame === 3 - CONTRACT.fame.lost, 'провал стоит славы', String(G.fame));
+  ok(r1(f0 - G.fame) === r1(CONTRACT.fame.won[rec.tier] * CONTRACT.fame.lost), 'провал стоит славы: больше, чем давал успех', `${f0} → ${G.fame}`);
+}
+
+// ── the guild's level is its fame: level 0 — the deeds in town only; deeds done well — fame; a level reached — its tier given
+{
+  const [a, G] = opened(0), C = contractsOf(a);
+  ok(levelOf(G) === 0 && tierOf(G) === 0 && !C.records.length && !C.chains.length, 'гильдия 0-го уровня: только дела в городе, договоров нет');
+  let n = 0;
+  while (levelOf(G) < 1 && n < 40) { for (const o of [...G.offers]) { const free = membersOf(G, 'ready').map(m => m.id); const R = CHORES.get(o.id); if (free.length >= R.hands[0]) try { takeChore(a, o.uid, free.slice(0, R.hands[0])); } catch (e) { /* busy */ } } stepGuild(a); n++; }
+  ok(levelOf(G) >= 1, 'городские дела растят славу до 1-го уровня', `${n} сезонов, слава ${G.fame}`);
+  ok(C.records.some(c => c.state === 'open' && c.tier === 1) && C.records.every(c => c.tier <= tierOf(G)), 'на 1-м уровне — договоры тира I, и не выше', [...new Set(C.records.map(c => c.tier))].join(', '));
+  ok(C.chains.some(c => c.chain === 'blackbeard') && !C.chains.some(c => c.chain === 'cult'), 'история Чернобороды — с 1-го уровня, культ — позже');
+  const [b, H] = opened(GUILD.level.need[5]);
+  ok(levelOf(H) === 5 && tierOf(H) === 3 && contractsOf(b).records.every(c => c.tier <= 3) && contractsOf(b).records.some(c => c.tier === 3), 'на 5-м уровне — до тира III', [...new Set(contractsOf(b).records.map(c => c.tier))].join(', '));
+  H.fame = GUILD.level.need[3] - 1;
+  ok(levelOf(H) === 2 && tierOf(H) === 1, 'слава упала — уровень и тиры вместе с ней');
+}
+
+// ── let go: early — a little fame; in the last fifth of its time — as much as a failure
+{
+  for (const late of [false, true]) {
+    const [a, G] = opened(); strong(G);
+    const card = guildBoard(a, []).errands.find(e => !e.chain);
+    const K = launch(a, {contract: card.contract, named: [membersOf(G)[0].id], size: 4, mode: 'auto'}), rec = contractOf(a, card.contract);
+    if (late) rec.takenAt = G.day - Math.ceil((rec.completeBy - G.day) * 9);   // (as if taken long ago: the last tenth of its time)
+    const f0 = G.fame;
+    recall(a);
+    ok(K.phase === 'empty' && K.quest.failed?.why === 'отозван', `${late ? 'поздний' : 'ранний'} отзыв: отряд идёт домой ни с чем`);
+    let n = 0; while (n < 30 && expedition(a)) { stepGuild(a); n++; }
+    const lost = r1(f0 - G.fame), want = r1(CONTRACT.fame.won[rec.tier] * (late ? CONTRACT.fame.lost : CONTRACT.fame.abort));
+    ok(rec.state === 'closed' && rec.why.startsWith('гильдия отказалась') && lost === want, late ? 'отказ в последний срок — как провал' : 'отказ сразу — малая потеря славы', `${rec.why}: −${lost} (ждали −${want})`);
+  }
+}
+
+// ── beaten back: twice — the party gives up, home with nothing; the contract failed
+{
+  const [a, G] = opened();
+  const card = guildBoard(a, []).errands.find(e => !e.chain && e.known && e.tier === 1) || guildBoard(a, []).errands.find(e => !e.chain && e.known);
+  for (const m of G.members) m.level = 20;
+  const K = launch(a, {contract: card.contract, named: [membersOf(G)[0].id], size: 6, mode: 'auto'});
+  K.quest.crown.guard.strength = 50;   // (a guard no party takes)
+  let n = 0; while (n < 30 && expedition(a)) { stepGuild(a); n++; }
+  const rec = contractOf(a, card.contract);
+  ok(K.quest.failed?.why === 'отступили' && K.quest.crown.fails >= 1 && K.quest.crown.fails <= CONTRACT.retreat || !K.members.some(m => m.alive), 'штурмы отбиты (не больше двух, или рук не осталось) — отряд отступил', `${K.quest.failed?.why}, отбито ${K.quest.crown.fails || 0}`);
+  ok(rec.state === 'closed', 'договор провален', rec.why);
+}
+
+// ── the target laid waste by another hand on the way: void, no pay, no blame; the issuer fallen — the open offer gone with its gold
+{
+  const [a, G] = opened(); strong(G);
+  const card = guildBoard(a, []).errands.find(e => !e.chain && contractOf(a, e.contract).target.lair != null);
+  if (!card) ok(true, 'чужая рука: на доске нет договора на логово мира — не проверить на этом сиде');
+  else {
+    const K = launch(a, {contract: card.contract, named: [membersOf(G)[0].id], size: 4, mode: 'auto'}), rec = contractOf(a, card.contract);
+    const l = a.lairs.find(x => x.id === rec.target.lair); l.alive = false; l.clearedBy = -1;
+    const f0 = G.fame; let n = 0; while (n < 30 && expedition(a)) { stepGuild(a); n++; }
+    ok(rec.state === 'closed' && rec.why === 'цель уничтожена другими' && G.fame >= f0, 'цель разорена чужой рукой — договор пуст, славы не потеряли', `${rec.state} ${rec.why} ${K.quest.failed?.why} ${K.phase} ${K.quest.crown.state} ${n} ${K.day} ${K.log.slice(-3).map(l => l.text).join(' / ')}, слава ${f0} → ${G.fame}`);
+  }
+  const [b, H] = opened(), rec = contractsOf(b).records.find(c => c.state === 'open' && c.issuer.kind === 'town');
+  const t = b.towns.find(x => x.id === rec.issuer.id); t.alive = false;
+  stepGuild(b);
+  ok(rec.state === 'closed' && rec.why.startsWith('заказчик пал') && rec.escrow === 0, 'заказчик пал — предложение снято, резерв пропал с его казной', rec.why);
+}
+
+// ── the board: the time to spare on every card; its orders
+{
+  const [a, G] = opened(), B = guildBoard(a, []), P = guildBoard(a, [], 'pay').errands;
+  ok(B.errands.every(e => Number.isFinite(e.margin) && e.facts.some(f => f.includes('запас'))), 'на карточке — запас дней сверх дороги', B.errands[0]?.facts.find(f => f.includes('запас')));
+  ok(P.every((e, k) => !k || P[k - 1].gold >= e.gold), 'сортировка по плате', P.map(e => e.gold).join(' ≥ '));
 }
 
 // ── the stories: step by step, the flags of failure, the side mission and its end
@@ -92,7 +161,6 @@ const strong = G => { for (const m of G.members) m.level = 20; };
   win(step().uid);
   ok(ch.state === 'won' && ch.steps.length === 4, 'Рубака Чернобород: четыре шага — история окончена', ch.state);
   // the cult: fame opens it; the side mission decides the end
-  G.fame = Math.max(G.fame, CHAINS.get('cult').fame);
   stepGuild(a);
   const cult = C.chains.find(c => c.chain === 'cult');
   ok(!!cult, 'слава выросла — началась история «Культ в слободах»');
@@ -108,7 +176,7 @@ const strong = G => { for (const m of G.members) m.level = 20; };
   ok(cult.state === 'won' && cult.steps.filter(u => !contractOf(a, u).side).length === 4, 'с освобождёнными — культ разбит до прорыва (4 шага + побочное)', cult.state);
   // the same story, the side mission left: the rite won all the same opens the fifth step
   const [b, H] = opened(), Cb = contractsOf(b), Ib = io(b, H), wb = uid => { takeContract(b, H, uid, 1); settleContract(b, H, {contract: uid, done: [{contract: uid}]}, Ib); };
-  H.fame = CHAINS.get('cult').fame; stepGuild(b);
+  stepGuild(b);
   const c2 = Cb.chains.find(c => c.chain === 'cult'), s2 = () => contractOf(b, c2.steps.filter(u => !contractOf(b, u).side).at(-1));
   for (let k = 0; k < 4; k++) wb(s2().uid);
   ok(s2().tmpl === 'cult:breach' && c2.state === 'on', 'без освобождённых — обряд прорвал грань: пятый шаг', s2().label);

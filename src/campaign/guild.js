@@ -19,7 +19,7 @@ import {SPECIES} from '../data/species.js';
 import {COMBAT_ROLES} from '../data/roles.js';
 import {stepHistory, startHistory, lifeOf, townLabel} from '../atlas/index.js';
 import {drawCore, coreMember, newExpedition} from './start.js';
-import {caravanDay, ended, alive, die, dayShot, isCore} from './march.js';
+import {caravanDay, ended, alive, die, dayShot, isCore, say} from './march.js';
 import {upgradeMembers} from './start.js';
 import {award, levelEvening, ensureXp} from './experience.js';
 import {bondBy, bondOf} from './social.js';
@@ -27,7 +27,8 @@ import {opinion} from '../data/relations.js';
 import {TRAITS} from '../data/traits.js';
 import {XP} from '../data/experience.js';
 import {DAY} from '../core/time.js';
-import {stepContracts, contractCards, contractOf, contractWhy, takeContract, settleContract, campsOf} from './contracts.js';
+import {stepContracts, contractCards, contractOf, contractWhy, takeContract, settleContract, campsOf, fameBy, levelOf, tierOf, levelNext, abortWhy, abortContract} from './contracts.js';
+import {giveUp} from './errands.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -242,6 +243,7 @@ function settleChore(a, G, c) {
   const live = ms.filter(x => x.alive), H0 = {members: live, social: G.social};   // a deed done together: closer, or a little sore (GUILD.bond)
   for (const x of live) for (const y of live) if (x !== y) bondBy(H0, x.id, y.id, won ? GUILD.bond.won : GUILD.bond.lost);
   const gold = Math.round(c.pay * (won ? 1 : CHORE.lose));
+  if (won) fameBy(G, GUILD.level.chore, text => tell(a, G, text, 'level'));   // (a deed done well: a little fame — GUILD.level)
   pay(G, gold, `городское дело: ${R.label}`);
   const H = homeK(a, G);
   for (const m of ms.filter(x => x.alive)) award(H, m, 'chore', 1, {xp: R.xp * (won ? 1 : CHORE.lostXp)});
@@ -256,12 +258,12 @@ function homeK(a, G) {
 
 // ── the board: the deeds in town and the world's errands of the guild's capital (campaign/errands.js boardFor — the guard
 // weighed against the people picked, if any)
-export function guildBoard(a, ids = []) {
+export function guildBoard(a, ids = [], sort = 'tier') {
   const G = a.guild, ms = ids.map(id => G.members.find(m => m.id === id)).filter(Boolean);
   const chores = G.offers.map(o => { const R = CHORES.get(o.id); return {...o, label: R.label, text: R.text, hands: R.hands, days: R.days, stat: R.stat, xp: R.xp, why: ms.length ? choreWhy(a, o, ids) : null}; });
   // an errand above the people's rank is greyed with why: those picked, or (none picked) the best of those at the house
   const who = ms.length ? ms : membersOf(G, 'ready');
-  const errands = (expedition(a) ? [] : contractCards(a, G, ms))
+  const errands = (expedition(a) ? [] : contractCards(a, G, ms, sort))
     .map(e => { const why = e.ok ? rankWhy(who, e.tier) : null; return why ? {...e, ok: false, why} : e; });
   return {chores, errands};
 }
@@ -375,7 +377,7 @@ export function closeExpedition(a, G, K) {
   const last = K.done?.at(-1), how = !back.length ? 'не вернулся' : last?.failed ? 'вернулся ни с чем' : 'вернулся с победой';
   if (last && !last.failed) for (const m of mine) m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.back);
   if (K.contract) { const {r, done} = gdraw(G, 'contracts'); settleContract(a, G, K, {r, tell: (text, kind) => tell(a, G, text, kind), pay}); done(); }
-  else if (last && !last.failed) G.fame += last.tier || 1;
+  else if (last && !last.failed) fameBy(G, last.tier || 1, text => tell(a, G, text, 'level'));
   G.expeditions.push({n: K.expedition, errand: K.quest?.errand, contract: K.contract || null, name: K.quest?.name, how, from: K.started, back: {year: year(a), season: a.hist.season}, days: K.day,
     went: K.members.filter(m => m.guild || stay.includes(m)).map(m => m.id), fell: fell.map(m => m.id), joined: stay.map(m => m.id)});
   tell(a, G, `Отряд ${how} (${questWord(K)})${back.length ? `: ${back.filter(m => m.guild).map(m => m.name).join(', ')}` : ''}${fell.length ? `; пали ${fell.map(m => m.name).join(', ')}` : ''}${stay.length ? `; в гильдию вступили ${stay.map(m => m.name).join(', ')}` : ''}. ${K.day} ${plural(K.day, 'день', 'дня', 'дней')} в пути.`, back.length ? 'home' : 'death', true);
@@ -383,4 +385,12 @@ export function closeExpedition(a, G, K) {
 }
 export {GUILD};
 export const isGuildMember = m => !!m?.guild && isCore(m);
-export {campsOf};
+export {campsOf, levelOf, tierOf, levelNext, abortWhy};
+// the guild calls its party back from a contract (campaign/contracts.js abortContract): home with nothing; early — a little
+// fame lost, in the last of its time — much
+export function recall(a) {
+  const G = a.guild, K = expedition(a);
+  const late = abortContract(a, G, K, giveUp, say);
+  tell(a, G, `Отряд отозван с договора${late ? ' в последний срок — это дорого стоит славе гильдии' : ''}: ${questWord(K)}.`, 'contract');
+  return late;
+}

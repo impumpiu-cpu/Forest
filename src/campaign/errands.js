@@ -180,6 +180,10 @@ export function errandReady(a, K, here, say) {
   const Q = K.quest; if (Q?.how !== 'lair' || here !== Q.crown) return true;
   if (Q.camp != null) return true;   // (a contract's camp: it waits for them — campaign/contracts.js)
   const l = (a.lairs || []).find(x => x.id === Q.lair);
+  if (!l?.alive && Q.contract) {   // a contract's lair laid waste by another hand: the contract is void, no pay, no blame
+    giveUp(a, K, 'цель уничтожена другими', `${cap(here.label)}: разорено без них. Договор потерял смысл — отряд возвращается в гильдию.`, say);
+    return false;
+  }
   if (!l?.alive) {
     if (here.guard) { here.guard = null; say(`${cap(here.label)}: разорено без них — ${Q.acc[0].toLowerCase()}${Q.acc.slice(1)} нашли на пепелище.`, 'quest'); }
     return true;
@@ -189,6 +193,14 @@ export function errandReady(a, K, here, say) {
   if (isAt(l.leader, 'lair', l.id)) return true;
   if (!(here.rest > K.day)) { here.rest = K.day + ERRAND.wait; here.restWhy = 'away'; if (!Q.waited) say(`${l.leader.name} не дома — ушёл из логова со своими. Совет решил ждать его возвращения неподалёку.`, 'quest'); Q.waited = true; }
   return false;
+}
+// a guild's party gives its errand up and walks home with nothing (campaign/contracts.js): beaten back (CONTRACT.retreat), called
+// back by the guild, its target gone by another hand — `why` written on the quest, the line told
+export function giveUp(a, K, why, text, say) {
+  const Q = K.quest; Q.failed = {day: K.day, year: a.hist?.year ?? 0, why};
+  K.phase = 'empty'; K.goal = K.home; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0;
+  if (K.bubble) K.bubble.things = K.bubble.things.filter(t => !t.pursuit);
+  say(text, 'end', true);
 }
 // the leader's head not to be had: the lair's banner instead, and half the pay (data/errands.js gold)
 function lesser(Q) { Q.leader = null; Q.name = 'Знамя логова'; Q.acc = 'Знамя логова'; Q.g = 'n'; Q.half = true; }
