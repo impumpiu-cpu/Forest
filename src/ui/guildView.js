@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
@@ -20,7 +20,7 @@ import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
 
 const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом'], ['fallen', 'Павшие'], ['log', 'Летопись']];
-const STATE = {ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря'};
+const STATE = {retired: 'на покое', ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря'};
 const LOG_LINES = 80;   // the guild's chronicle in its tab: the last lines
 
 const TIER_WORD = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -74,6 +74,7 @@ export class GuildView extends CampaignView {
       const hr = e.target.closest('button[data-hire]'); if (hr) { this.houseDo(() => takeRecruit(this.atlas, +hr.dataset.hire)); return; }
       const wt = e.target.closest('button[data-watch]'); if (wt) { this.houseDo(() => watchParty(this.atlas, +wt.dataset.watch)); this.draw?.(); return; }
       const rc = e.target.closest('button[data-recall]'); if (rc) { this.houseDo(() => recall(this.atlas, +rc.dataset.recall)); return; }
+      const rt = e.target.closest('button[data-rest]'); if (rt) { e.preventDefault(); this.houseDo(() => restMember(this.atlas, +rt.dataset.id, rt.dataset.rest)); return; }
       const fr = e.target.closest('button[data-free]'); if (fr) { this.houseDo(() => takeBack(this.G, +fr.dataset.free)); return; }
       const b = e.target.closest('button[data-act]'); if (!b) return;
       if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
@@ -237,13 +238,21 @@ export class GuildView extends CampaignView {
   // one member: a tick to pick (at the house only), name, role, level, years, health, what he is doing, wage
   memberRow(m, pickable = true) {
     const a = this.atlas, G = this.G, st = m.guild.state, free = st === 'ready', K = expedition(a) || {members: [m], day: 0};
-    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : st === 'post' ? `на посту: ${ROOMS.get(m.guild.post)?.post?.label || ''}` : STATE[st] || st;
+    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : st === 'post' ? `на посту: ${ROOMS.get(m.guild.post)?.post?.label || ''}${m.retired ? ' (на покое)' : ''}` : STATE[st] || st;
     const lv = m.level || 1, nx = toNext(K, m, K.day);
     return `<label class="gm${free ? '' : ' busy'}${m.alive ? '' : ' dead'}">${pickable ? `<input type="checkbox" data-mid="${m.id}"${this.gpick.has(m.id) ? ' checked' : ''}${free ? '' : ' disabled'}>` : ''}` +
       `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
       `<span class="hp"><i class="${(m.hp ?? 1) < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp ?? 1) * 100)}%"></i></span>` +
       (nx != null ? `<span class="xp" title="опыт до ${lv + 1}-го уровня: ${Math.round(nx * 100)}%"><i style="width:${Math.round(nx * 100)}%"></i></span>` : '') +
-      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}</span></label>`;
+      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}</span>${pickable ? this.restButtons(m) : ''}</label>`;
+  }
+  // rest and retirement (campaign/retire.js): one at the house — to rest, back to the ranks, let go with honour or without
+  restButtons(m) {
+    const G = this.G, st = m.guild.state; if (!['ready', 'post', 'retired'].includes(st)) return '';
+    const b = (kind, label, why, title = '') => `<button type="button" class="quiet mini" data-rest="${kind}" data-id="${m.id}"${why ? ` disabled title="${esc(why)}"` : title ? ` title="${esc(title)}"` : ''}>${label}</button>`;
+    const asks = m.asks ? `<small><b>просится на покой</b> (${esc(m.asks.why)})</small> ` : '';
+    return `<div class="row actions">${asks}${m.retired ? b('back', 'в строй', unretireWhy(G, m)) : b('rest', 'на покой', retireWhy(G, m), 'живёт при гильдии, в походы не ходит, может занять пост; жалованье — половина')}` +
+      b('honour', `в отставку — ${giftOf(m)} зол.`, dismissWhy(G, m, true), 'уходит из гильдии с прощальным даром') + b('fire', 'уволить', dismissWhy(G, m, false), 'уходит без дара; друзья в гильдии обидятся') + '</div>';
   }
   peopleHtml() {
     const G = this.G, live = membersOf(G), gone = G.members.filter(m => !live.includes(m));
@@ -259,7 +268,7 @@ export class GuildView extends CampaignView {
     const rows = ROOMS.all().filter(R => R.id !== 'fallen').map(R => {
       const L = roomLevel(G, R.id), max = R.cost.length, cost = nextCost(G, R.id), why = buildWhy(a, R.id), staff = staffOf(G, R.id), idle = L > 0 && R.post && !staff;
       const fx = roomFx(G, R.id);
-      const post = R.post && L > 0 ? `<div class="row"><small>${esc(R.post.label)}${R.post.level ? ` (ур. ${R.post.level}+)` : R.post.letter ? ` (${R.post.letter} ${R.post.least}+)` : ''}: <select data-post="${R.id}"><option value="">— никого —</option>${[...(staff ? [staff] : []), ...ready].map(m => `<option value="${m.id}"${m === staff ? ' selected' : ''}${m !== staff && postWhy(G, R.id, m) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1} · ${letters(m)}</option>`).join('')}</select></small></div>` : '';
+      const post = R.post && L > 0 ? `<div class="row"><small>${esc(R.post.label)}${R.post.level ? ` (ур. ${R.post.level}+)` : R.post.letter ? ` (${R.post.letter} ${R.post.least}+)` : ''}: <select data-post="${R.id}"><option value="">— никого —</option>${[...(staff ? [staff] : []), ...ready, ...membersOf(G, 'retired')].map(m => `<option value="${m.id}"${m === staff ? ' selected' : ''}${m !== staff && postWhy(G, R.id, m) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1} · ${letters(m)}</option>`).join('')}</select></small></div>` : '';
       const kind = R.id === 'training' ? 'training' : R.id === 'healer' ? 'treat' : null, inside = kind ? G.members.filter(m => m.alive && m.guild?.state === kind) : [];
       const room = kind && working(G, R.id) ? `<div class="row"><small>${kind === 'training' ? 'Учатся' : 'Лечатся'}: ${inside.map(m => `${esc(m.name)} <button type="button" class="quiet mini" data-free="${m.id}">отпустить</button>`).join(', ') || 'никого'}` +
         ` · <select data-room="${kind}"><option value="">${kind === 'training' ? 'отдать в учёбу…' : 'к лекарю…'}</option>${ready.map(m => `<option value="${m.id}"${(kind === 'training' ? trainWhy(G, m) : treatWhy(G, m)) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1}</option>`).join('')}</select></small></div>` : '';

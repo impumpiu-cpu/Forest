@@ -48,6 +48,11 @@
 //   bond      — a deed done together: the bond between each two of them, + `won` when it went right, `lost` when it went wrong
 //   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
 //               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
+//   retire    — rest and retirement (campaign/retire.js; the author's word 13.11): one who has lived `old` of his years, or bears
+//               `maims` lasting maims, asks a season with a chance `ask` to rest; left unheard — his mood − `refused` each season;
+//               at rest he stays at the house, never in a party, may hold a post (trainer, healer…), paid `pension` × his wage
+//               (a post — the whole wage); granted — his mood + `glad`. Let go with honour — `gift`: base + perLevel × level gold
+//               from the treasury; let go without — his friends at the guild lose `fired` of their devotion
 export const GUILD = {
   start: {gold: 150, candidates: 20, pick: 8},
   party: {min: 1, max: 6},
@@ -65,5 +70,6 @@ export const GUILD = {
   kin: {door: 0.15, person: 0.08, bond: 3, like: 2, grief: 0.15, mood: 0.5, parting: 0.2, couple: {bond: 4, chance: 0.15, town: 0.02}, child: 0.35, fertile: 0.5},
   mood: {friend: 0.15, lost: 0.3, half: 0.15, won: 0.1, fade: 0.7, low: -0.4, leave: 0.6, will: 0.3, parent: 0.2},
   bond: {won: 0.5, lost: -0.2},
+  retire: {old: 0.75, maims: 2, ask: 0.35, refused: 0.15, glad: 0.2, pension: 0.5, gift: {base: 10, perLevel: 4}, fired: 0.1},
   devotion: {start: 0.7, forced: 0.2, paid: 0.02, back: 0.05, leave: 0.2, will: 0.5, mood: -0.15, days: 30},
 };

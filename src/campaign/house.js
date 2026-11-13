@@ -42,7 +42,7 @@ export function postWhy(G, id, m) {
   const P = ROOMS.get(id)?.post; if (!P) return 'здесь не нужен работник';
   if (roomLevel(G, id) < 1) return 'комната ещё не построена';
   if (!m || !m.alive) return 'некого';
-  if (m.guild?.state !== 'ready' && !(m.guild?.state === 'post' && m.guild.post === id)) return `${m.name} сейчас занят`;
+  if (!['ready', 'retired'].includes(m.guild?.state) && !(m.guild?.state === 'post' && m.guild.post === id)) return `${m.name} сейчас занят`;   // (one at rest may hold a post: campaign/retire.js)
   if (P.level && (m.level || 1) < P.level) return `${P.label} — не ниже ${P.level}-го уровня (у ${m.name} ${m.level || 1}-й)`;
   if (P.letter && (m.special?.[P.letter] ?? 5) < P.least) return `${P.label} — ${P.letter} не ниже ${P.least} (у ${m.name} ${m.special?.[P.letter] ?? 5})`;
   return null;
@@ -51,7 +51,7 @@ export function setPost(a, id, memberId, tell) {
   const G = a.guild, R = ROOMS.get(id), was = staffOf(G, id), m = memberId == null ? null : G.members.find(x => x.id === memberId);
   if (m && m === was) return;
   if (m) { const why = postWhy(G, id, m); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.'); }
-  if (was) { was.guild = {state: 'ready', since: G.day}; tell(`${was.name} оставил пост: ${R.post.label} (${R.label}).`, 'house'); }
+  if (was) { was.guild = {state: was.retired ? 'retired' : 'ready', since: G.day}; tell(`${was.name} оставил пост: ${R.post.label} (${R.label}).`, 'house'); }
   if (m) { m.guild = {state: 'post', post: id, since: G.day}; tell(`${m.name} — ${R.post.label} (${R.label}).`, 'house'); }
 }
 

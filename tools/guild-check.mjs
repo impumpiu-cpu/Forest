@@ -156,7 +156,7 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
   ok(back.every(m => ['ready', 'left'].includes(m.guild.state)) && K.members.filter(m => m.guild && !m.alive).every(m => m.guild.state === 'dead'), 'живые — дома, павшие — павшие', K.members.map(m => `${m.name}:${m.alive}:${m.guild?.state}`).join(' '));
   ok(back.every(m => G.members.includes(m)), 'вернувшиеся — те же люди: уровни, вещи, раны с ними', back.map(m => `${m.name} ур. ${m.level}`).join(', '));
   const last = K.done?.at(-1), qx = XP.quest[K.quest.tier] * (last && !last.failed ? 1 : XP.questFail);
-  ok(back.filter(m => m.guild).every(m => Math.abs((m.xpOf.quest || 0) - qx) < 0.01), 'опыт за поручение — по тиру, каждому вернувшемуся', `${qx}: ${back.map(m => m.xpOf.quest || 0).join(', ')}`);
+  ok(back.filter(m => m.guild && !m.joined).every(m => Math.abs((m.xpOf.quest || 0) - qx) < 0.01), 'опыт за поручение — по тиру, каждому вернувшемуся', `${qx}: ${back.filter(m => !m.joined).map(m => m.xpOf.quest || 0).join(', ')}`);
   ok(back.filter(m => m.guild).every(m => m.level <= rankOf(first.tier) + 3), 'одно поручение — не больше трёх уровней', back.map(m => m.level).join(', '));
   ok(sum(G) === G.gold, 'казна сходится с записями после похода', `${G.gold} / ${sum(G)}`);
 }

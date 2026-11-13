@@ -9,8 +9,10 @@
 //   summary…], store: {beasts, vehicles, cargo, buildings, nextBeast}, social (the bonds of all of them: campaign/social.js),
 //   seen (what the guild knows of the world), log: [{day, year, season, text, kind}], ledger: [{day, year, gold, why}], rng}
 // A member is the campaign's own (campaign/start.js makeMember) with m.guild = {state, until, chore, since}:
-//   state — 'ready' (at the house; healing too, if below GUILD.home.ready), 'chore', 'expedition', 'dead', 'left'
+//   state — 'ready' (at the house; healing too, if below GUILD.home.ready), 'chore', 'expedition', 'retired' (at rest: campaign/retire.js), 'dead', 'left'
 // An expedition is a.campaign (campaign/start.js newExpedition): its members are the same objects as the roster's.
+import {clanOf, fullName, givenOf} from '../data/names.js';
+import {restSeason, wageShare, retire, unretire, dismiss} from './retire.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {plural} from '../core/util.js';
 import {GUILD} from '../data/guild.js';
@@ -61,7 +63,7 @@ export function pay(G, gold, why) {
 // the members by state
 export const membersOf = (G, state = null) => G.members.filter(m => m.alive && m.guild && (state == null ? !['dead', 'left'].includes(m.guild.state) : m.guild.state === state));
 // (at the house: free, at a post, a trainee, a patient — campaign/house.js)
-export const atHouse = G => G.members.filter(m => m.alive && ['ready', 'post', 'training', 'treat'].includes(m.guild?.state));
+export const atHouse = G => G.members.filter(m => m.alive && ['ready', 'post', 'training', 'treat', 'retired'].includes(m.guild?.state));
 // the most in one party (the planning room: data/rooms.js) and in the guild (the barracks)
 export const partyMost = G => roomBy(G, 'planning', 'party') || GUILD.party.max;
 export const rosterMost = G => roomBy(G, 'barracks', 'roster') || GUILD.roster;
@@ -107,6 +109,7 @@ function rollRecruits(a, G, n) {
   const {r, done} = gdraw(G, 'recruits'), out = [];
   drawCore(a, H, r, n).forEach((x, k) => {
     const m = coreMember(H, a, r, x, k); if (x.required) m.required = x.required;
+    m.given = givenOf(m); m.clan = clanOf(m.race, r); m.name = fullName(m.given, m.gender, m.clan);   // his people's way of naming (data/names.js CLAN)
     const B = SPECIES.get(m.race).body || {}, grown = B.adult ?? 16, life = lifeOf(m.race, r() * 2);
     const age = Math.round(grown + Math.pow(r(), GUILD.age.skew) * GUILD.age.span * Math.max(0, life - grown));
     m.born = year(a) - age; m.dies = m.born + Math.max(age + 1, Math.round(life * (GUILD.age.dies[0] + (GUILD.age.dies[1] - GUILD.age.dies[0]) * r())));
@@ -165,7 +168,7 @@ function childRecruit(a, G, c, r) {
   const x = drawCore(a, H, r, 1)[0], m = coreMember(H, a, r, {...x, species: c.race}, 0);
   const parents = (c.kin || []).filter(k => k.rel === 'parent').map(k => G.members.find(p => p.id === k.id)).filter(Boolean);
   for (const p of parents.slice(0, 1)) for (const [k, v] of Object.entries(p.special || {})) m.special[k] = Math.round(((m.special[k] ?? 5) + v) / 2);
-  Object.assign(m, {id: c.id, name: c.name, gender: c.gender, born: c.born, kin: c.kin, family: true, guild: {state: 'candidate', since: G.day}});
+  Object.assign(m, {id: c.id, name: c.name, given: c.given, clan: c.clan, gender: c.gender, born: c.born, kin: c.kin, family: true, guild: {state: 'candidate', since: G.day}});
   const B = SPECIES.get(m.race).body || {}, life = lifeOf(m.race, r() * 2);
   m.dies = m.born + Math.round(life * (GUILD.age.dies[0] + (GUILD.age.dies[1] - GUILD.age.dies[0]) * r()));
   ensureXp(m); m.fee = GUILD.recruit.fee.base + GUILD.recruit.fee.perLevel;
@@ -217,6 +220,7 @@ export function stepGuild(a) {
   { const {r, done} = gdraw(G, 'spirits');
     spiritsSeason(a, G, r, {leave: (m, why) => { m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why}; parted(G, m); tell(a, G, `${m.name} ушёл из гильдии: ${why}.`, 'people'); }, tell: text => tell(a, G, text, 'people')});
     familySeason(a, G, r, {bondOf: (x, y) => bondOf(G, x, y), tell: text => tell(a, G, text, 'people'), spring: a.hist.season === 0});
+    restSeason(a, G, r, text => tell(a, G, text, 'people'));
     done(); }
   personsMourned(a, G, text => tell(a, G, text, 'people'));
   stepHistory(a, () => {
@@ -231,6 +235,14 @@ export function stepGuild(a) {
   if (!membersOf(G).length && !parties(a).length) { G.phase = 'over'; tell(a, G, `В гильдии «${G.name}» не осталось никого. Дом заколочен.`, 'end', true); }
   return G.phase === 'open';
 }
+// ── rest and retirement (campaign/retire.js): `kind` — 'rest' (at rest at the house), 'back' (back to the ranks), 'honour' (let go
+// with a gift), 'fire' (let go without)
+export function restMember(a, id, kind) {
+  const G = a.guild, say = text => tell(a, G, text, 'people');
+  if (kind === 'rest') retire(a, id, say);
+  else if (kind === 'back') unretire(a, id, say);
+  else dismiss(a, id, kind === 'honour', {pay, tell: say, bondOf: (x, y) => bondOf(G, x, y)});
+}
 // a day at the house: the hurt mend, the deeds in town come back
 function homeDay(a, G) {
   G.day++;
@@ -243,7 +255,7 @@ function homeDay(a, G) {
 function wages(a, G) {
   const W = GUILD.wage; let paid = 0;
   for (const m of membersOf(G)) {
-    const w = Math.round((W.base + W.perLevel * ((m.level || 1) - 1)) * 10) / 10;
+    const w = Math.round((W.base + W.perLevel * ((m.level || 1) - 1)) * wageShare(m) * 10) / 10;   // (at rest — a pension: campaign/retire.js)
     if (G.gold >= w) { pay(G, -w, `жалованье: ${m.name}`); paid += w; m.unpaid = 0; m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.paid); continue; }
     m.unpaid = (m.unpaid || 0) + 1;
     if (m.unpaid >= W.leave && m.guild.state === 'ready') { m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'не платили жалованья'}; tell(a, G, `${m.name} ушёл из гильдии: жалованья не видел ${m.unpaid} ${plural(m.unpaid, 'сезон', 'сезона', 'сезонов')}.`, 'people'); }

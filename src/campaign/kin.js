@@ -5,7 +5,7 @@
 //   rel: 'sibling' | 'parent' | 'child' | 'spouse' (the word by the other's gender: relWord)
 import {GUILD} from '../data/guild.js';
 import {SPECIES} from '../data/species.js';
-import {makeName} from '../data/names.js';
+import {makeName, clanOfSibling, clanOfChild, fullName, givenOf} from '../data/names.js';
 import {personOf} from '../atlas/index.js';
 
 const K_ = GUILD.kin, M_ = GUILD.mood;
@@ -43,7 +43,7 @@ export function doorKin(a, G, ms, r, bondBy, tell) {
       const sib = pool[Math.floor(r() * pool.length)];
       if (sib) {
         makeKin(G, m, sib, 'sibling', bondBy);
-        const fam = (sib.name.split(' ').slice(1).join(' ')); if (fam && !m.name.includes(' ')) m.name = `${m.name} ${fam}`;
+        m.given = givenOf(m); m.clan = clanOfSibling(m.race, r, sib.clan); m.name = fullName(m.given, m.gender, m.clan);   // the same family, the same father
         if (G.members.includes(sib)) tell(`У дверей гильдии — ${relWord('sibling', m.gender)} ${sib.name}: ${m.name}.`, 'people');
       }
     }
@@ -128,9 +128,11 @@ export function familySeason(a, G, r, {bondOf, tell, spring}) {
     if (age(a, m) > lifeAt(m.race) * K_.fertile) continue;
     const fert = SPECIES.get(m.race)?.body?.fertility ?? 1;
     if (r() >= K_.child * fert) continue;
-    const g = r() * 2 < 1 ? 'f' : 'm', name = makeName(m.race, r, {gender: g, nick: 'never', used: new Set(people(G).map(x => x.name.split(' ')[0]))}) || 'дитя';
-    const fam = m.name.split(' ').slice(1).join(' '), id = G.nextMember = (G.nextMember || 0) + 1;
-    const c = {id, name: fam ? `${name} ${fam}` : name, gender: g, g, race: m.race, born: a.hist?.year ?? 0, grown: false, kin: []};
+    const g = r() * 2 < 1 ? 'f' : 'm', given = makeName(m.race, r, {gender: g, nick: 'never', used: new Set(people(G).map(givenOf))}) || 'дитя';
+    // the name: the father's for a patronymic, the parents' family or house (data/names.js CLAN); one wed in the town — a father of the town
+    const father = m.gender === 'm' ? m : mate?.gender === 'm' ? mate : null, clan = clanOfChild(m.race, r, (father || m).clan, father ? givenOf(father) : null);
+    const id = G.nextMember = (G.nextMember || 0) + 1;
+    const c = {id, given, clan, name: fullName(given, g, clan), gender: g, g, race: m.race, born: a.hist?.year ?? 0, grown: false, kin: []};
     (G.children ||= []).push(c);
     makeKin(G, m, c, 'child');
     if (mate) makeKin(G, mate, c, 'child');

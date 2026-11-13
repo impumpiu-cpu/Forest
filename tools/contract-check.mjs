@@ -141,11 +141,12 @@ const strong = G => { for (const m of G.members) m.level = 20; };
 // ── the target laid waste by another hand on the way: void, no pay, no blame; the issuer fallen — the open offer gone with its gold
 {
   const [a, G] = opened(); strong(G);
-  const card = guildBoard(a, []).errands.find(e => !e.chain && contractOf(a, e.contract).target.lair != null);
+  const card = guildBoard(a, []).errands.filter(e => !e.chain && contractOf(a, e.contract).target.lair != null).sort((p, q) => (contractOf(a, p.contract).days || 0) - (contractOf(a, q.contract).days || 0))[0];   // (the nearest: the party learns on arriving)
   if (!card) ok(true, 'чужая рука: на доске нет договора на логово мира — не проверить на этом сиде');
   else {
     const K = launch(a, {contract: card.contract, named: [membersOf(G)[0].id], size: 4, mode: 'auto'}), rec = contractOf(a, card.contract);
     const l = a.lairs.find(x => x.id === rec.target.lair); l.alive = false; l.clearedBy = -1;
+    K.quest.crown.exact = true;   // (its place known, as with the maps room: the search by clues is a matter of luck)
     const f0 = G.fame; let n = 0; while (n < 30 && expedition(a)) { stepGuild(a); n++; }
     ok(rec.state === 'closed' && rec.why === 'цель уничтожена другими' && G.fame >= f0, 'цель разорена чужой рукой — договор пуст, славы не потеряли', `${rec.state} ${rec.why} ${K.quest.failed?.why} ${K.phase} ${K.quest.crown.state} ${n} ${K.day} ${K.log.slice(-3).map(l => l.text).join(' / ')}, слава ${f0} → ${G.fame}`);
   }

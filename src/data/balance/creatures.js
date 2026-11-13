@@ -87,7 +87,7 @@ export const CREATURES = {
   toad:        {special: around({S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4}), hp: 1, speed: 0.06, attack: {power: 1.2, cooldown: 20}, ks: 0.98},
   griffin:     {special: around({S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5}), hp: 2.4, speed: 0.18, attack: {power: 1.9, cooldown: 13, type: 'slash'}, ks: 0.92},
   manticore:   {special: around({S: 15, P: 12, E: 13, C: 3, I: 6, A: 12, L: 5}), hp: 2.6, speed: 0.16, attack: {power: 2, cooldown: 13, type: 'pierce'}, ks: 0.92},
-  wyvern:      {special: around({S: 15, P: 10, E: 14, C: 2, I: 3, A: 10, L: 4}), hp: 2.8, speed: 0.15, attack: {power: 1.7, cooldown: 14, type: 'slash'}, ks: 0.92},
+  wyvern:      {special: around({S: 18, P: 10, E: 17, C: 2, I: 3, A: 10, L: 4}), hp: 5.2, speed: 0.15, attack: {power: 2.6, cooldown: 14, type: 'pierce'}, ks: 0.92},
   dragon:      {special: around({S: 40, P: 14, E: 36, C: 6, I: 9, A: 10, L: 6}, 2), hp: 12, speed: 0.16, attack: {power: 5, cooldown: 12, type: 'slash'}, ks: 0.94},
   drake:       {special: around({S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5}, 2), hp: 4.5, speed: 0.14, attack: {power: 2.6, cooldown: 15, type: 'slash'}, ks: 0.92},
   spider:      {special: around({S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4}), hp: 1.1, speed: 0.13, attack: {power: 1, cooldown: 12, type: 'pierce'}, ks: 1.03},
