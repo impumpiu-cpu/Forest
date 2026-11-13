@@ -73,7 +73,7 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
 {
   const {K} = fresh(), m = K.members[0], lines = [];
   const id = maimInstead(K, m, () => 0.3, t => lines.push(t));
-  ok(id && m.maims === 1 && m.wounds.some(x => x.id === id && x.day == null) && /увечным: .*увечий: 1 из 3/.test(lines[0]) && K.social.facts.some(f => f.kind === 'maimed' && f.to === m.id), 'быстрый режим: смертельный удар — увечье, строка и факт', lines[0]);
+  ok(id && m.maims === 1 && m.wounds.some(x => x.id === id && x.day == null) && /увечн(?:ым|ой): .*увечий: 1 из 3/.test(lines[0]) && K.social.facts.some(f => f.kind === 'maimed' && f.to === m.id), 'быстрый режим: смертельный удар — увечье, строка и факт', lines[0]);
   m.maims = 3;
   ok(maimInstead(K, m, () => 0.3) === null, 'с тремя увечьями быстрый режим убивает');
   const c = K.members[1]; c.captive = {since: 0};
