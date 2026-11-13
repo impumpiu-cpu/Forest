@@ -5,3 +5,4 @@ export {FATES, HOWS, alive, baggageText, campDone, capacity, capitals, chronicle
 export {houseOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom} from '../campaign/index.js';
 export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from '../campaign/index.js';
 export {cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, beastStrength} from '../campaign/index.js';
+export {kinOf, relWord, moodOf} from '../campaign/index.js';

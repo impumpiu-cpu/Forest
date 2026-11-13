@@ -33,6 +33,18 @@
 //   recruit   — those who come to the guild's door, anew each season (the author's word 13.11): `count` of them; their level is
 //               the guild's (at least the 1st), but `down` of them one lower (not below the 1st) and `up` one higher; taking one
 //               in costs `fee.base` + `fee.perLevel` × his level (his first season's keep and the signing)
+//   kin       — families (campaign/kin.js; plans Г4–Г5, the author's word 13.11): one at the door is a brother or sister of one of
+//               the guild (or of one beside him at the door) with the chance `door`, a kin of a person of the world (a ruler, an
+//               officer of the town) with `person`; kin start with a bond of `bond` each way and draw each other in the muster by
+//               `like`; a kin's death (in the guild or in the world) — devotion − `grief`, mood − `mood`; one leaving — mood −
+//               `parting`. Couples: two of the guild, grown, a bond each way of `couple.bond` or more, wed with `couple.chance` a
+//               season; one alone may wed in the town with `couple.town`. A couple (or one wed in the town) has a child a spring
+//               with `child` × the race's fertility (data/races.js body), while the mother is under `fertile` of her race's life;
+//               grown (the race's adult age), the child comes to the door (`door` of the season's)
+//   mood      — a member's spirits at the guild, −1 … 1 (campaign/kin.js): a friend dead − `friend`, a party lost whole − `lost`,
+//               more than half of it − `half`, a party back with its errand done + `won` (to those at the house and back);
+//               fades × `fade` a season; below `low` — he may leave (× `leave` a season for each step under it, as a
+//               companion of a caravan does); in the muster + `will` × his mood; a parent of a child not grown − `parent`
 //   bond      — a deed done together: the bond between each two of them, + `won` when it went right, `lost` when it went wrong
 //   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
 //               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
@@ -50,6 +62,8 @@ export const GUILD = {
   acquaint: {chance: 0.4, spread: 3.5, good: 0.6, least: 0.25, diff: 0.25},
   level: {need: [0, 8, 20, 40, 65, 95, 135, 185, 245, 320, 400], tier: [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5], chore: 1},
   recruit: {count: 5, up: 0.03, down: 0.35, fee: {base: 10, perLevel: 15}},
+  kin: {door: 0.15, person: 0.08, bond: 3, like: 2, grief: 0.15, mood: 0.5, parting: 0.2, couple: {bond: 4, chance: 0.15, town: 0.02}, child: 0.35, fertile: 0.5},
+  mood: {friend: 0.15, lost: 0.3, half: 0.15, won: 0.1, fade: 0.7, low: -0.4, leave: 0.6, will: 0.3, parent: 0.2},
   bond: {won: 0.5, lost: -0.2},
   devotion: {start: 0.7, forced: 0.2, paid: 0.02, back: 0.05, leave: 0.2, will: 0.5, mood: -0.15, days: 30},
 };

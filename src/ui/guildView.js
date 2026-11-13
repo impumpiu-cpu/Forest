@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
@@ -41,6 +41,13 @@ function roomFx(G, id) {
     case 'chapel': return `горе от гибели товарища: −${pc(v('grief'))}`;
     default: return '';
   }
+}
+// a member's spirits in a word (campaign/kin.js m.mood, −1 … 1)
+const moodWord = v => (v <= -0.6 ? 'тоскует' : v <= -0.25 ? 'не в духе' : v >= 0.3 ? 'в духе' : 'спокоен');
+// a member's kin, in a line under him
+function kinLine(a, G, m) {
+  const ks = kinOf(a, G, m); if (!ks.length) return '';
+  return `<br><small class="fact">${ks.map(k => `${k.word}: ${esc(k.person ? `${k.who.title?.[0] ? `${k.who.title[0]} ` : ''}${k.who.name}` : k.who.name)}${k.who.alive === false ? ' †' : ''}`).join(' · ')}</small>`;
 }
 export class GuildView extends CampaignView {
   build() {
@@ -236,13 +243,14 @@ export class GuildView extends CampaignView {
       `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
       `<span class="hp"><i class="${(m.hp ?? 1) < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp ?? 1) * 100)}%"></i></span>` +
       (nx != null ? `<span class="xp" title="опыт до ${lv + 1}-го уровня: ${Math.round(nx * 100)}%"><i style="width:${Math.round(nx * 100)}%"></i></span>` : '') +
-      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}%</small></span></label>`;
+      `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}</span></label>`;
   }
   peopleHtml() {
     const G = this.G, live = membersOf(G), gone = G.members.filter(m => !live.includes(m));
     return `<p class="note">Отметьте, кого послать: на дело в городе или в поход — на «Доске». Раненые лечатся дома сами; жалованье — каждый сезон из казны.</p>` + this.doorHtml() + `<h4 class="menu-group">Гильдия</h4>` +
       `<div class="savelist guild-people">${live.map(m => this.memberRow(m)).join('')}</div>` +
       (this.gpick.size ? `<div class="row"><small>Выбрано: ${this.gpick.size}</small><button type="button" class="quiet mini" data-act="none">снять</button></div>` : '') +
+      this.familiesHtml() +
       (gone.filter(m => m.guild?.state === 'left').length ? `<details class="obs-lib"><summary>Ушедшие (${gone.filter(m => m.guild?.state === 'left').length})</summary><div class="savelist guild-people">${gone.filter(m => m.guild?.state === 'left').map(m => this.memberRow(m, false)).join('')}</div></details>` : '');
   }
   // ── the house (campaign/house.js; data/rooms.js): each room — its level, what it does now, its next level's cost, its post
@@ -269,6 +277,13 @@ export class GuildView extends CampaignView {
     return `<div class="savelist guild-parties">${out.map(K => `<div class="row"><small>${K === a.campaign ? '👁 ' : ''}<b>Отряд ${K.expedition}</b> · ${K.day} ${plural(K.day, 'день', 'дня', 'дней')} · ${esc(questWord(K))} · ${K.members.filter(m => m.alive).map(m => esc(m.name)).join(', ')}</small>` +
       (K === a.campaign ? '' : `<button type="button" class="quiet mini" data-watch="${K.expedition}">смотреть</button>`) +
       (abortWhy(a, G, K) ? '' : `<button type="button" class="quiet mini" data-recall="${K.expedition}" title="договор будет брошен: сразу — малая потеря славы, в последнюю пятую часть срока — как провал">отозвать</button>`) + '</div>').join('')}</div>`;
+  }
+  // the families (campaign/kin.js): the children of the guild's people, growing in the town
+  familiesHtml() {
+    const a = this.atlas, G = this.G, cs = G.children || [];
+    if (!cs.length) return '';
+    return `<h4 class="menu-group">Дети гильдии</h4><div class="savelist guild-people">${cs.map(c => `<div class="gm"><span class="t"><b>${esc(c.name)}</b> · ${esc(raceLabel(SPECIES.get(c.race)))}, ${Math.max(0, a.hist.year - c.born)} ${plural(Math.max(0, a.hist.year - c.born), 'год', 'года', 'лет')}` +
+      `<br><small>${kinOf(a, G, c).map(k => `${k.word} — ${esc(k.who.name)}`).join(', ')}${c.orphan ? ' · сирота' : ''} · к дверям гильдии — в ${SPECIES.get(c.race)?.body?.adult ?? 16} лет</small></span></div>`).join('')}</div>`;
   }
   // the door: who came this season (anew each season — campaign/guild.js refreshRecruits)
   doorHtml() {

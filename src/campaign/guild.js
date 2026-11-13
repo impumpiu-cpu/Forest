@@ -33,6 +33,9 @@ import {giveUp} from './errands.js';
 import {houseOf, houseSeason, finishBuilding, roomBy, grieve, working, roomLevel} from './house.js';
 import {outfit, bringHome} from './armory.js';
 import {beastsOut, beastsHome} from './cages.js';
+import {moodBy} from './kin.js';
+import {relWord} from './kin.js';
+import {doorKin, kinGrief, personsMourned, parted, partyFelt, spiritsSeason, familyWill, familySeason, grownUp, moodOf, isKin} from './kin.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -149,8 +152,27 @@ export function refreshRecruits(a, G) {
     raiseTo(a, G, m, L);
     m.fee = R.fee.base + R.fee.perLevel * (m.level || 1);
   }
+  // the grown children of the guild's families come to the door (and stay there till taken); the kin among those who came
+  const kids = (G.recruits || []).filter(m => m.family);
+  for (const c of grownUp(a, G)) kids.push(childRecruit(a, G, c, r));
+  doorKin(a, G, ms, r, (x, y, v) => bondBy({members: [...G.members, ...ms], social: G.social}, x, y, v), text => tell(a, G, text, 'people'));
   done();
-  G.recruits = ms;
+  G.recruits = [...kids, ...ms];
+}
+// a child of the guild grown: a recruit of the 1st level, his parents' letters halfway in his own, his name and kin his
+function childRecruit(a, G, c, r) {
+  const H = {seed: G.seed, moreNames: true, members: [...G.members], nextMember: G.nextMember, day: 0, capital: G.town, people: G.people, realm: G.realm};
+  const x = drawCore(a, H, r, 1)[0], m = coreMember(H, a, r, {...x, species: c.race}, 0);
+  const parents = (c.kin || []).filter(k => k.rel === 'parent').map(k => G.members.find(p => p.id === k.id)).filter(Boolean);
+  for (const p of parents.slice(0, 1)) for (const [k, v] of Object.entries(p.special || {})) m.special[k] = Math.round(((m.special[k] ?? 5) + v) / 2);
+  Object.assign(m, {id: c.id, name: c.name, gender: c.gender, born: c.born, kin: c.kin, family: true, guild: {state: 'candidate', since: G.day}});
+  const B = SPECIES.get(m.race).body || {}, life = lifeOf(m.race, r() * 2);
+  m.dies = m.born + Math.round(life * (GUILD.age.dies[0] + (GUILD.age.dies[1] - GUILD.age.dies[0]) * r()));
+  ensureXp(m); m.fee = GUILD.recruit.fee.base + GUILD.recruit.fee.perLevel;
+  G.children = G.children.filter(x => x !== c);
+  for (const p of parents) moodBy(p, GUILD.mood.won);
+  tell(a, G, `${c.name} вырос${c.gender === 'f' ? 'ла' : ''} и пришёл${c.gender === 'f' ? 'ла' : ''} к дверям гильдии — ${parents.map(p => p.name).join(' и ') || 'там, где были родители'}.`, 'people');
+  return m;
 }
 // a recruit grown to his level as the guild's own would be (a level's letter and perk each: campaign/experience.js levelEvening)
 function raiseTo(a, G, m, L) {
@@ -169,7 +191,7 @@ export function recruitWhy(a, id) {
 export function takeRecruit(a, id) {
   const G = a.guild, why = recruitWhy(a, id); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
   const m = G.recruits.find(x => x.id === id);
-  pay(G, -m.fee, `найм: ${m.name}`); delete m.fee;
+  pay(G, -m.fee, `найм: ${m.name}`); delete m.fee; delete m.family;
   m.guild = {state: 'ready', since: G.day}; m.core = true; m.joined = 0; G.members.push(m);
   G.recruits = G.recruits.filter(x => x !== m);
   acquaint(G, membersOf(G).filter(x => x !== m), m);   // (he may know some of them from the town)
@@ -192,6 +214,11 @@ export function stepGuild(a) {
   const paid = wages(a, G);
   houseSeason(a, G, paid, {pay, tell: (text, kind) => tell(a, G, text, kind), award: (m, xp) => award(homeK(a, G), m, 'train', 1, {xp}), level: () => levelEvening(a, homeK(a, G), text => tell(a, G, text, 'level'))});
   leaveCold(a, G);
+  { const {r, done} = gdraw(G, 'spirits');
+    spiritsSeason(a, G, r, {leave: (m, why) => { m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why}; parted(G, m); tell(a, G, `${m.name} ушёл из гильдии: ${why}.`, 'people'); }, tell: text => tell(a, G, text, 'people')});
+    familySeason(a, G, r, {bondOf: (x, y) => bondOf(G, x, y), tell: text => tell(a, G, text, 'people'), spring: a.hist.season === 0});
+    done(); }
+  personsMourned(a, G, text => tell(a, G, text, 'people'));
   stepHistory(a, () => {
     for (const K of out) if (!K.closed) { caravanDay(a, K, K.day); if (K.phase === 'home' || ended(K)) closeExpedition(a, G, K); }
     homeDay(a, G);
@@ -229,7 +256,7 @@ export const devotionOf = m => m.devotion ?? GUILD.devotion.start;
 // one whose devotion is gone leaves (at the house, at a season's start)
 function leaveCold(a, G) {
   for (const m of membersOf(G, 'ready')) if (devotionOf(m) < GUILD.devotion.leave) {
-    m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'разуверился в гильдии'};
+    m.guild.state = 'left'; m.left = {day: G.day, year: year(a), why: 'разуверился в гильдии'}; parted(G, m);
     tell(a, G, `${m.name} ушёл из гильдии: не простил, что его гнали в поход силой.`, 'people');
   }
 }
@@ -248,6 +275,7 @@ function fall(a, G, m, why) {
   for (const c of G.chores) c.ids = c.ids.filter(id => id !== m.id);
   tell(a, G, `${m.name} ${m.gender === 'f' ? 'умерла' : 'умер'}: ${why}.`, 'death', true);
   grieve(G, m, (x, y) => bondOf(G, x, y), text => tell(a, G, text, 'house'));
+  kinGrief(a, G, m, {soft: roomBy(G, 'chapel', 'grief') || 0, bondOf: (x, y) => bondOf(G, x, y), tell: text => tell(a, G, text, 'people')});
 }
 
 // the world's contracts on the guild's board (campaign/contracts.js): a season's posting, offers run out, stories go on
@@ -346,7 +374,7 @@ export function rankWhy(ms, what) {
 // and the same names give the same answer (the draw is seeded by them, nothing is stored), so the board shows what the gate does
 export const namedMost = size => Math.max(1, Math.floor(size * GUILD.muster.named));
 const braveryOf = m => 1 + (m.local?.traits || []).reduce((s, t) => s + (TRAITS.has(t) ? TRAITS.get(t).mods?.bravery || 0 : 0), 0);
-const likes = (G, x, y) => opinion({...x, species: x.race}, {...y, species: y.race}) + bondOf(G, x.id, y.id);
+const likes = (G, x, y) => opinion({...x, species: x.race}, {...y, species: y.race}) + bondOf(G, x.id, y.id) + (isKin(x, y) ? GUILD.kin.like : 0);   // (kin draw each other: GUILD.kin)
 export function muster(a, {errand = null, contract = null, size = null, named = []} = {}) {
   size ??= partyMost(a.guild);
   const G = a.guild, M = GUILD.muster, rec = contract ? contractOf(a, contract) : null, need = rec ? rankOf(rec.tier) : errand ? rankOf(errand) : 0;
@@ -358,10 +386,11 @@ export function muster(a, {errand = null, contract = null, size = null, named = 
   const weigh = ({m, sway}, with_ = going) => {
     const fear = Math.max(0, need - (m.level || 1)) * M.risk, hurt = Math.max(0, GUILD.home.ready - (m.hp ?? 1)) * M.hurt;
     const tired = m.guild?.from === 'expedition' && G.day - (m.guild.since || 0) < M.restDays ? M.rest : 0;
-    let w = M.base + M.brave * (braveryOf(m) - 1) + GUILD.devotion.will * (devotionOf(m) - GUILD.devotion.start) - fear - hurt - tired + sway, foe = null, friend = null;
+    let w = M.base + M.brave * (braveryOf(m) - 1) + GUILD.devotion.will * (devotionOf(m) - GUILD.devotion.start) + familyWill(a, G, m) - fear - hurt - tired + sway, foe = null, friend = null;
     for (const y of with_) { const v = likes(G, m, y); w += M.bond * (v - M.neutral); if (v <= M.foe && (!foe || v < foe.v)) foe = {y, v}; if (v >= M.friend && (!friend || v > friend.v)) friend = {y, v}; }
     const go = !foe && !(hurt > 0) && w > M.line;
-    const why = go ? (friend ? `идёт: в отряде друг — ${friend.y.name}` : fear > 0 ? 'идёт, хоть и боязно' : 'согласен')
+    const kinIn = with_.find(y => isKin(m, y));
+    const why = go ? (kinIn ? `идёт: в отряде ${relWord(m.kin.find(k => k.id === kinIn.id).rel, kinIn.gender)} — ${kinIn.name}` : friend ? `идёт: в отряде друг — ${friend.y.name}` : fear > 0 ? 'идёт, хоть и боязно' : 'согласен')
       : foe ? `не пойдёт: в отряде недруг — ${foe.y.name}` : hurt > 0 ? 'ещё не оправился от ран' : fear > M.base ? 'не по силам: боится' : tired ? 'только с дороги' : 'не хочет';
     return {w: foe || hurt > 0 ? -Infinity : w, why};   // (a foe in the party, or wounds not mended: not of himself — only named)
   };
@@ -442,7 +471,7 @@ export function closeExpedition(a, G, K) {
   const went = K.members.filter(m => m.guild).length || 1, each = Math.min(HOUSE.xpSpan[1], Math.max(HOUSE.xpSpan[0], HOUSE.xpRef / went));
   const qx = (XP.quest[Math.min(XP.quest.length - 1, tier)] || 0) * (done && !done.failed ? 1 : XP.questFail) * each;
   if (qx > 0) for (const m of mine) award(H, m, 'quest', 1, {xp: qx});
-  for (const m of fell) { if (m.guild.state !== 'dead') m.guild = {...m.guild, state: 'dead'}; grieve(G, m, (x, y) => bondOf(G, x, y), text => tell(a, G, text, 'house')); }
+  for (const m of fell) { if (m.guild.state !== 'dead') m.guild = {...m.guild, state: 'dead'}; grieve(G, m, (x, y) => bondOf(G, x, y), text => tell(a, G, text, 'house')); kinGrief(a, G, m, {soft: roomBy(G, 'chapel', 'grief') || 0, bondOf: (x, y) => bondOf(G, x, y), tell: text => tell(a, G, text, 'people')}); }
   const room = Math.max(0, rosterMost(G) - membersOf(G).length), stay = back.filter(m => !m.guild && !m.captive && !m.contract && !m.former && m.loyalty != null).slice(0, room);
   for (const m of stay) { m.guild = {state: 'ready', since: G.day}; m.core = true; delete m.loyalty; G.members.push(m); }
   G.nextMember = Math.max(G.nextMember, K.nextMember || 0);
@@ -456,6 +485,7 @@ export function closeExpedition(a, G, K) {
   const p = (a.parties || []).find(x => x.id === K.party); if (p) p.state = 'gone';
   const last = K.done?.at(-1), how = !back.length ? 'не вернулся' : last?.failed ? 'вернулся ни с чем' : 'вернулся с победой';
   if (last && !last.failed) for (const m of mine) m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.back);
+  partyFelt(G, K.members.filter(m => m.guild).length, fell.length, !!last && !last.failed);   // (the guild's spirits: campaign/kin.js)
   if (K.contract) { const {r, done} = gdraw(G, 'contracts'); settleContract(a, G, K, {r, tell: (text, kind) => tell(a, G, text, kind), pay}); done(); }
   else if (last && !last.failed) fameBy(G, last.tier || 1, text => tell(a, G, text, 'level'));
   G.expeditions.push({n: K.expedition, errand: K.quest?.errand, contract: K.contract || null, name: K.quest?.name, how, from: K.started, back: {year: year(a), season: a.hist.season}, days: K.day,
