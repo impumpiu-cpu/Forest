@@ -38,6 +38,7 @@ import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
 import {perkMulA, perkOf, innateOf} from '../data/perks.js';
+import {FLIGHT} from '../data/abilities.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -267,6 +268,8 @@ export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a) || fleeing(a)) return false;   // (one who flees strikes nothing: agents/morale.js)
   const BLOW = COMBAT.blow;   // (read at the blow: an edit of the table reaches it)
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+  // high in the air (a perk «Полёт», agents/abilities.js): a short blade does not reach it, and it strikes only once down
+  if ((t.aloft && t.flightRow?.high && reachOf(a) < FLIGHT.hitUp) || (a.aloft && a.flightRow?.high)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
   if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not

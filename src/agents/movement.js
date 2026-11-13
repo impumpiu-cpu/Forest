@@ -1,6 +1,6 @@
 // Moving through the world: straight steps, walking down a flow field, escaping heat.
 import {SPECIES, fearHeat, fearsFire} from '../data/species.js';
-import {BY_CODE} from '../data/terrain.js';
+import {BY_CODE, T} from '../data/terrain.js';
 import {NAVMAPS} from '../data/navmaps.js';
 import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
@@ -19,6 +19,7 @@ export const thornedBy = (w, a) => !!w.mods?.add?.thorns && a.faction !== 'colon
 export function speedOf(w, a) {
   const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
   const daze = a.stunned && w.tick < a.stunned.until ? CONDITIONS.get('stunned').slow : 1;   // stunned (data/conditions.js)
+  if (a.aloft && a.flightRow) return a.flightRow.air * web * daze;   // in the air: its wings' pace, the ground does not slow it (agents/abilities.js)
   const d = BY_CODE[w.grid.terr[cellOf(w, a)]];
   // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
   const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
@@ -31,7 +32,8 @@ export function speedOf(w, a) {
 export function moveToward(w, a, tx, ty, mul = 1) {
   const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
   if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
-  const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+  const ok = a.aloft ? (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && w.grid.terr[(y | 0) * w.w + (x | 0)] !== T.ROCK   // (in the air: over water and walls, not through rock)
+    : (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
   // the last short step lands right on the target — only if the target itself is open ground
   if (len <= sp && ok(tx, ty)) { a.x = tx; a.y = ty; return true; }
   const k = Math.min(1, sp / Math.max(len, 1e-9)), nx = a.x + dx * k, ny = a.y + dy * k;
@@ -137,7 +139,7 @@ export function approach(w, a, tx, ty, mul = 1) {
   else g.last = w.tick;
   const where = `к точке (${tx | 0}, ${ty | 0})`;
   a.route = {how: where + ' прямо', t: w.tick};
-  if (clearLine(w, a.x, a.y, tx, ty)) {
+  if (a.aloft || clearLine(w, a.x, a.y, tx, ty)) {   // (one in the air flies straight: agents/abilities.js)
     a.path = null;
     const r = moveToward(w, a, tx, ty, mul);
     if (r !== null) return r;   // walking straight (true once there)

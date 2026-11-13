@@ -140,6 +140,48 @@ PERKS.registerAll([
       {shape: 'aura', length: 7, fear: 25, calm: 200, prep: 10, wait: 260, again: 0.25},
       {shape: 'aura', length: 10, fear: 35, calm: 200, prep: 12, wait: 280, again: 0.25},
     ]},
+  // single-target acts: `shot` — at one foe within `range` cells it sees, the way clear; `touch` — at one within `range` (a
+  // sting from over the head). `venom`, `web` — what a hit leaves (a poison's {dmg, ticks}, a web's {slow, ticks}); `ammo` —
+  // how many a fight (the manticore's spikes); `shield` — a shield's cover may catch it (spit in the face); `high` — may be
+  // loosed from the air (agents/abilities.js: one aloft, out of a short blade's reach)
+  {id: 'spikes', label: 'Шипы', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'мечет шипы хвоста — и с земли, и сверху, пока есть шипы',
+    rank: [
+      {shape: 'shot', range: 5, type: 'pierce', dmg: 0.12, prep: 6, wait: 40, dodge: 10, ammo: 8, high: true},
+      {shape: 'shot', range: 7, type: 'pierce', dmg: 0.18, prep: 6, wait: 32, dodge: 12, ammo: 12, high: true},
+    ]},
+  {id: 'sting', label: 'Ядовитое жало', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'жало через голову: свой удар и своя пауза, яд — свой (укус не травит)',
+    rank: [
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.08, venom: {dmg: 0.0004, ticks: 150}, prep: 4, wait: 70, dodge: 10},
+      {shape: 'touch', range: 1.8, type: 'pierce', dmg: 0.12, venom: {dmg: 0.0007, ticks: 180}, prep: 5, wait: 65, dodge: 12},
+      {shape: 'touch', range: 2, type: 'pierce', dmg: 0.16, venom: {dmg: 0.001, ticks: 220}, prep: 6, wait: 60, dodge: 14},
+    ]},
+  {id: 'webShot', label: 'Выстрел паутиной', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'бросает паутину: опутанный идёт медленно; режут её сами, огонь снимает',
+    rank: [
+      {shape: 'shot', range: 3, web: {slow: 0.75, ticks: 80}, prep: 10, wait: 100, dodge: 10},
+      {shape: 'shot', range: 4, web: {slow: 0.6, ticks: 100}, prep: 10, wait: 90, dodge: 12},
+      {shape: 'shot', range: 5, web: {slow: 0.45, ticks: 120}, prep: 10, wait: 90, dodge: 14},
+    ]},
+  {id: 'venomSpit', label: 'Ядовитый плевок', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'плюёт ядом в лицо; щит, вовремя поднятый, ловит плевок',
+    rank: [
+      {shape: 'shot', range: 3, venom: {dmg: 0.0004, ticks: 150}, prep: 12, wait: 120, dodge: 10, shield: true},
+      {shape: 'shot', range: 4, venom: {dmg: 0.0007, ticks: 180}, prep: 12, wait: 120, dodge: 12, shield: true},
+      {shape: 'shot', range: 5, venom: {dmg: 0.001, ticks: 220}, prep: 12, wait: 120, dodge: 14, shield: true},
+    ]},
+  // ── moving (agents/abilities.js stepFlight; agents/movement.js): in the air one goes straight over water, walls and
+  // thickets (never through rock) at `air` cells a tick; `high` — out of a short blade's reach (FLIGHT.hitUp) while it is
+  // up: it comes down to strike and stays `ground` ticks (the answer's window), then rises and keeps up `rise` ticks before
+  // it may come down again; below `grounded` of its health its wings no longer lift it
+  {id: 'flight', label: 'Полёт', kind: 'врождённые', how: 'move', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'летает: I — низко, над водой и кустами, в досягаемости клинка; II — высоко, садится для удара; III — сильный полёт',
+    rank: [
+      {air: 0.18, high: false, ground: 0, rise: 0, grounded: 0.3},
+      {air: 0.22, high: true, ground: 40, rise: 30, grounded: 0.3},
+      {air: 0.24, high: true, ground: 50, rise: 30, grounded: 0.25},
+    ]},
   // ── a body's guard: × the harm by kind (the natural armour stands in the place of a `resist` of the same kinds, never on top)
   {id: 'scales', label: 'Чешуя и панцирь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
     about: 'колющий и рубящий удар слабее, дробящий — чуть слабее',

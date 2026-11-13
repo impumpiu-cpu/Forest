@@ -26,8 +26,8 @@ const ok = (c, what, more = '') => { console.log(`${c ? 'ok  ' : 'FAIL'} ${what}
 // ── the old fields keep their numbers, read through the book
 {
   const same = (id, field, perk, f) => { const sp = SPECIES.get(id), p = innateOf(sp, perk); return !!p && JSON.stringify(f(p)) === JSON.stringify(sp[field]); };
-  ok(same('wyvern', 'venom', 'venom', p => p) && same('spider', 'venom', 'venom', p => p) && same('spider', 'web', 'web', p => p),
-    'яд виверны и паука, паутина паука — прежние числа (выдача с own)', JSON.stringify(innateOf(SPECIES.get('wyvern'), 'venom')));
+  ok(same('scorpion', 'venom', 'venom', p => p) && !innateOf(SPECIES.get('wyvern'), 'venom') && speciesGrants(SPECIES.get('wyvern')).some(g => g.id === 'sting'),
+    'яд скорпиона — прежние числа (выдача с own); у виверны травит жало, не укус', JSON.stringify(innateOf(SPECIES.get('scorpion'), 'venom')));
   ok(same('vampire', 'drinks', 'bloodDrink', p => p.share), 'вампир пьёт кровь той же долей', JSON.stringify(innateOf(SPECIES.get('vampire'), 'bloodDrink')));
   ok(!innateOf(SPECIES.get('human'), 'venom') && !innateOf(SPECIES.get('wolf'), 'web'), 'у человека нет яда, у волка паутины');
 }
@@ -48,8 +48,8 @@ const ok = (c, what, more = '') => { console.log(`${c ? 'ok  ' : 'FAIL'} ${what}
   const sp = SPECIES.get('dwarf'), a = {...forge, hp: 1}, b = {...plain, hp: 1};
   const hurt = heatHarm(a, sp, sp.heatHarm + 200, 'colonist'), hurt2 = heatHarm(b, sp, sp.heatHarm + 200, 'colonist');
   ok(!hurt && hurt2 && b.hp < 1 && heldOf(forge, 'fireproof')?.heat, 'жар земли мастера горна не берёт (перк роли), молотобойца берёт', `${a.hp} / ${b.hp.toFixed(3)}`);
-  const vg = perksOf({species: 'wyvern'}).find(p => p.id === 'venom');
-  ok(vg?.from === 'species', 'виверна несёт яд как перк вида', JSON.stringify(vg));
+  const vg = perksOf({species: 'spider'}).find(p => p.id === 'venom');
+  ok(vg?.from === 'species' && vg.rank === 1 && !vg.own, 'паук несёт «Ядовитый укус I» как перк вида', JSON.stringify(vg));
 }
 
 // ── a rank is its own row, written out (the author's word 13.11): never × the rank
@@ -65,7 +65,7 @@ const ok = (c, what, more = '') => { console.log(`${c ? 'ok  ' : 'FAIL'} ${what}
 {
   const T = TABLES.find(t => t.id === 'perkAccess'), rows = T?.rows() || [];
   const v = rows.find(r => r.id === 'venom'), f = rows.find(r => r.id === 'fireproof');
-  ok(rows.length === PERKS.all().length && /виверна/.test(v?.holders || '') && /мастер горна/.test(f?.holders || ''), 'таблица «Перки: кому можно» — все перки и у кого они', `${rows.length} строк; яд: ${v?.holders}`);
+  ok(rows.length === PERKS.all().length && /паук/.test(v?.holders || '') && /мастер горна/.test(f?.holders || ''), 'таблица «Перки: кому можно» — все перки и у кого они', `${rows.length} строк; яд: ${v?.holders}`);
 }
 
 if (fails) { console.log(`\nperkbook-check: FAIL ×${fails}`); process.exit(1); }

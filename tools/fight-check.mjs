@@ -2,6 +2,7 @@
 // land. Each rule is checked where the game reads it: a blow through armour, a critical blow, a body's answer to
 // fire, frost, venom and silver, a long or parrying or brittle weapon, a trauma by the place of the last blow, the
 // strength rating. Part of `npm test`; `node tools/fight-check.mjs`.
+import {innateOf} from '../src/data/perks.js';
 import {newGame} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
 import {T} from '../src/data/terrain.js';
@@ -105,7 +106,7 @@ for (const t of WOUNDS.filter(x => x.trauma && x.drawn !== false)) expect(HIT_LO
   E.setCell('damageMatrix', 'human', 'resist.poison', 0);
   v.poison = null; damage(w3, spider, v, 0.01);
   E.resetAll();
-  expect(SPECIES.get('spider').venom ? venom > 0 && v.poison?.dmg === 0 : true, `яд 0 у людей: укус паука всё равно травит (${v.poison?.dmg})`);
+  expect(innateOf(SPECIES.get('spider'), 'venom') ? venom > 0 && v.poison?.dmg === 0 : true, `яд 0 у людей: укус паука всё равно травит (${v.poison?.dmg})`);
 }
 
 // ── long, parrying and brittle weapons

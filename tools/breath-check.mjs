@@ -38,7 +38,7 @@ const field = () => {
   w.campaign.S.kind = 'stop';
   return w;
 };
-const put = (w, sp, fac, x, y) => { const a = createAgent(w, sp, fac, x, y); a.think = 1e9; return a; };
+const put = (w, sp, fac, x, y, fly = false) => { const a = createAgent(w, sp, fac, x, y); a.think = 1e9; if (!fly) a.flightRow = null; return a; };   // (on the ground: flight is its own case)
 const until = (w, a, n = 60) => { for (let k = 0; k < n && a.act; k++) { w.tick++; stepAct(w, a); } };
 
 // ── who holds what: the dragon the fifth rank (eleven cells), the drake the third, the forge-master the first — with the coal

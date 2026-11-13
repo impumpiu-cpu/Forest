@@ -8,8 +8,9 @@
 //   kind        — beast | monster | spirit (data/species.js KINDS): how the world map takes it in
 //   habitat     — {biome: rarity} (data/biomes.js): where it lives and how common it is
 //   special, hp, speed, attack — in data/balance/creatures.js; `relativeStats` (set for all of them): the row is the typical animal
-//   venom       — {dmg, ticks}: a bite poisons, the victim loses dmg health a tick for `ticks`
-//   web         — {slow, ticks}: a bite tangles, the victim moves at `slow` speed for `ticks`
+//   venom       — {dmg, ticks}: a bite poisons, the victim loses dmg health a tick for `ticks` (read as the perk «Ядовитый укус»
+//                 with its own numbers; a new one names the perk's rank in `perks` instead)
+//   web         — {slow, ticks}: a bite tangles (as above: the perk «Паутина»)
 //   perks       — what it is born with, of the book of perks (data/perks.js): [{id, rank, own?}] — a breath, a tail, scales
 //   nocturnal   — comes and hunts by night, leaves the map by day
 //   hibernates  — leaves for its den when winter comes and does not come back till spring
@@ -112,7 +113,7 @@ export const BESTIARY = [
   beast({id: 'griffin', catchable: true, cr: 2, kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.86, color: '#b88a44'},
+    look: {shape: 'bird', size: 0.86, color: '#b88a44'}, perks: [{id: 'flight', rank: 2}],
     yields: {meat: 4, feathers: 3, bone: 2}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
     killMessage: name => `Грифон унёс поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
@@ -122,16 +123,16 @@ export const BESTIARY = [
   beast({id: 'manticore', kind: 'monster', label: 'мантикора', labelAcc: 'мантикору', plural: 'мантикоры', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, catchable: true, cr: 3,
     arrive: {group: [1, 1], every: [6, 9], chance: 0.35, cap: 1, first: 6, message: 'на холмах видели мантикору. Хвост у неё — колючий'},
     habitat: {highlands: 'usual', foothills: 'rare', desert: 'rare', steppe: 'rare'},
-    look: {shape: 'lion', size: 0.9, color: '#a0563a'},
+    look: {shape: 'lion', size: 0.9, color: '#a0563a'}, perks: [{id: 'flight', rank: 2}, {id: 'spikes', rank: 2}],
     yields: {meat: 4, hide: 2, bone: 2}, trophies: [{res: 'hide', n: 1, chance: 0.3}],
     killMessage: name => `Мантикора пронзила поселенца шипами хвоста: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'horse'], weakBelow: 0.6, sight: 28, sprint: 1.4, boldPeople: 0.55, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
-  // Wyvern: dragon-kin without a mind; its sting poisons
+  // Wyvern: dragon-kin without a mind; two legs and wings: it flies, its sting (not its bite) poisons
   beast({id: 'wyvern', catchable: true, cr: 6, kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 6, message: 'с гор спустилась виверна. Её жало ядовито'},
     habitat: {highlands: 'usual', volcano: 'rare'},
-    look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, venom: {dmg: 0.0009, ticks: 240},
+    look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, perks: [{id: 'flight', rank: 2}, {id: 'sting', rank: 3}, {id: 'scales', rank: 2}],   // (the bite bites; the sting poisons)
     yields: {meat: 5, scales: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'scales', n: 1, chance: 0.2}],
     killMessage: name => `Виверна ужалила поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'elk'], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4})}),
@@ -144,7 +145,7 @@ export const BESTIARY = [
     fearHeat: 800, habitat: {volcano: 'rare'},
     look: {shape: 'bird', size: 1.4, color: '#8a2418'},
     // (the expert's card, 13.11: a breath of the fifth rank, a tail behind it, a roar; scales and the fire's answer)
-    perks: [{id: 'fireBreath', rank: 5}, {id: 'tailSweep', rank: 2}, {id: 'roar', rank: 3}, {id: 'scales', rank: 3}, {id: 'fireproof', rank: 3}],
+    perks: [{id: 'fireBreath', rank: 5}, {id: 'flight', rank: 3}, {id: 'tailSweep', rank: 2}, {id: 'roar', rank: 3}, {id: 'scales', rank: 3}, {id: 'fireproof', rank: 3}],
     yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],
     killMessage: name => `Дракон сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
@@ -154,7 +155,7 @@ export const BESTIARY = [
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, perks: [{id: 'fireBreath', rank: 3}, {id: 'scales', rank: 2}, {id: 'fireproof', rank: 2}],
+    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, perks: [{id: 'fireBreath', rank: 3}, {id: 'flight', rank: 2}, {id: 'scales', rank: 2}, {id: 'fireproof', rank: 2}],
     yields: {meat: 6, scales: 4, gland: 1}, trophies: [{res: 'scales', n: 2, chance: 0.25, tier: 2}, {res: 'gland', n: 1, chance: 0.2, tier: 3}],
     killMessage: name => `Дрейк сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),
@@ -164,7 +165,7 @@ export const BESTIARY = [
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: 'в лесу видели гигантских пауков: {n}. Паутина держит крепко'},
     habitat: {underground: 'common', jungle: 'common', forest: 'rare', swamp: 'rare'},
     look: {shape: 'spider', size: 0.62, color: '#3a3530'},
-    web: {slow: 0.35, ticks: 120}, venom: {dmg: 0.0004, ticks: 160},
+    perks: [{id: 'venom', rank: 1}, {id: 'webShot', rank: 2}],   // (a bite that poisons; the web thrown, not bitten in)
     yields: {silk: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'silk', n: 2, chance: 0.3}],
     killMessage: name => `Паук опутал и загрыз поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.5, groupFear: 3, sight: 16})}),
@@ -182,7 +183,7 @@ export const BESTIARY = [
   beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, nocturnal: true,
     arrive: {group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true},
     habitat: {underground: 'common', barrows: 'common', jungle: 'rare', swamp: 'rare'},
-    look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6,
+    look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6, perks: [{id: 'flight', rank: 1}],
     killMessage: name => `Летучие мыши обескровили поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'rat'], boldPeople: 0.4, groupFear: 4, sight: 18, meal: 0.8})}),
 

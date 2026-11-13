@@ -21,3 +21,8 @@ export const ABILITY = {
   dodged: 0.5,
   eps: 1e-6,
 };
+
+// flight (the perk «Полёт», agents/abilities.js stepFlight):
+//   hitUp — a blade reaches one high in the air only from this far (a spear's 1.85: yes; a sword's 1.25: no)
+//   land  — it comes down for a foe within its reach + this
+export const FLIGHT = {hitUp: 1.8, land: 0.3};
