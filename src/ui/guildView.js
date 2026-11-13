@@ -5,11 +5,13 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
+import {BEASTS} from '../data/transport.js';
+const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
-import {raceLabel} from '../view/local.js';
+import {raceLabel, gearDef} from '../view/local.js';
 import {saveWorldToLibrary} from './worlds.js';
 import {rememberRun, forgetRun, saveDue} from './autosave.js';
 import {WATCH} from './campLocal.js';
@@ -56,6 +58,10 @@ export class GuildView extends CampaignView {
     });
     $('guildBody').addEventListener('click', e => {
       const bd = e.target.closest('button[data-build]'); if (bd) { this.houseDo(() => buildRoom(this.atlas, bd.dataset.build, {pay: (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); }, tell: text => this.G.log.push({day: this.G.day, year: this.atlas.hist.year, season: this.atlas.hist.season, text, kind: 'house'})})); return; }
+      const pay = (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); };
+      const ar = e.target.closest('button[data-arm]');
+      if (ar) { const id = +ar.dataset.id, G = this.G; this.houseDo(() => ar.dataset.arm === 'lock' ? lockItem(G, id, !armoryOf(G).items.find(x => x.id === id)?.locked) : ar.dataset.arm === 'sell' ? sellItem(this.atlas, G, id, pay) : ar.dataset.arm === 'forge' ? forgeItem(G, id, pay) : buyItem(this.atlas, G, ar.dataset.token, pay)); return; }
+      const bs = e.target.closest('button[data-beast]'); if (bs) { this.houseDo(() => buyBeast(this.atlas, this.G, bs.dataset.beast, pay)); return; }
       const fr = e.target.closest('button[data-free]'); if (fr) { this.houseDo(() => takeBack(this.G, +fr.dataset.free)); return; }
       const b = e.target.closest('button[data-act]'); if (!b) return;
       if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
@@ -243,12 +249,29 @@ export class GuildView extends CampaignView {
       const kind = R.id === 'training' ? 'training' : R.id === 'healer' ? 'treat' : null, inside = kind ? G.members.filter(m => m.alive && m.guild?.state === kind) : [];
       const room = kind && working(G, R.id) ? `<div class="row"><small>${kind === 'training' ? 'Учатся' : 'Лечатся'}: ${inside.map(m => `${esc(m.name)} <button type="button" class="quiet mini" data-free="${m.id}">отпустить</button>`).join(', ') || 'никого'}` +
         ` · <select data-room="${kind}"><option value="">${kind === 'training' ? 'отдать в учёбу…' : 'к лекарю…'}</option>${ready.map(m => `<option value="${m.id}"${(kind === 'training' ? trainWhy(G, m) : treatWhy(G, m)) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1}</option>`).join('')}</select></small></div>` : '';
+      const extra = R.id === 'armory' && L ? this.armoryHtml() : R.id === 'stable' && L ? this.stableHtml() : '';
       return `<div class="sv${L ? '' : ' off'}"><span class="t"><b>${esc(R.label)}</b> · ${L ? `${L}-й уровень${max > 1 ? ` из ${max}` : ''}` : 'не построено'}${idle ? ` · <b>стоит: нужен ${esc(R.post.label)}</b>` : ''}` +
-        `<br><small>${esc(R.about)}</small>${fx ? `<br><small class="fact">${esc(fx)}</small>` : ''}</span>${post}${room}` +
+        `<br><small>${esc(R.about)}</small>${fx ? `<br><small class="fact">${esc(fx)}</small>` : ''}</span>${post}${room}${extra}` +
         `<div class="row actions">${cost != null ? `<button type="button" class="mini" data-build="${R.id}"${why ? ' disabled' : ''}>${L ? 'Улучшить' : 'Построить'} — ${cost} зол.</button>` : ''}<small>${why && cost != null ? esc(why) : ''}</small></div></div>`;
     });
     return `<p class="note">Строится одна комната за раз, готова к новому сезону.${B ? ` Сейчас: <b>${esc(ROOMS.get(B.room).label)}</b>, ${B.level}-й уровень.` : ''} Содержание дома — каждый сезон вместе с жалованьем.</p>` +
       `<div class="savelist errands">${rows.join('')}</div>`;
+  }
+  // the armory's racks and the town's shop (campaign/armory.js)
+  armoryHtml() {
+    const a = this.atlas, G = this.G, A = armoryOf(G), shop = shopOf(a, G), smith = working(G, 'forge');
+    const rows = A.items.map(it => { const d = gearDef(it.token), fc = smith ? forgeCost(it.token) : null, fw = smith ? forgeWhy(G, it.id) : null;
+      return `<div class="row"><small>${esc(d?.label || it.token)}${it.locked ? ' · <b>заперто</b>' : ''}</small>` +
+        `<button type="button" class="quiet mini" data-arm="lock" data-id="${it.id}">${it.locked ? 'отпереть' : 'запереть'}</button>` +
+        `<button type="button" class="quiet mini" data-arm="sell" data-id="${it.id}">продать — ${sellPrice(G, it.token)}</button>` +
+        (smith && fc != null ? `<button type="button" class="quiet mini" data-arm="forge" data-id="${it.id}"${fw ? ` disabled title="${esc(fw)}"` : ''}>в кузню — ${fc}</button>` : '') + '</div>'; }).join('');
+    return `<details class="obs-lib"><summary>Стойки: ${A.items.length} из ${racks(G)}</summary>${rows || '<small>Пусто: купите в городе или принесите трофеями.</small>'}</details>` +
+      `<details class="obs-lib"><summary>Купить в городе (${shop.items.length})</summary>${shop.items.map(o => `<div class="row"><small>${esc(o.label)}</small><button type="button" class="quiet mini" data-arm="buy" data-token="${esc(o.token)}"${buyWhy(a, G, o.token) ? ' disabled' : ''}>купить — ${o.price}</button></div>`).join('') || '<small>Город оружием не торгует.</small>'}</details>`;
+  }
+  stableHtml() {
+    const a = this.atlas, G = this.G, shop = shopOf(a, G), have = G.store?.beasts || [];
+    return `<div class="row"><small>В конюшне: ${have.map(b => esc(BEAST_WORD[b.kind] || b.kind)).join(', ') || 'никого'} (${have.length} из ${stalls(G)})</small></div>` +
+      (shop.beasts.length ? `<div class="row">${shop.beasts.map(o => `<button type="button" class="quiet mini" data-beast="${esc(o.kind)}"${have.length >= stalls(G) || G.gold < o.price ? ' disabled' : ''}>${esc(o.label)} — ${o.price}</button>`).join('')}</div>` : '<small>В городе зверей не продают.</small>');
   }
   // ── the fallen (the board that is always there): who, when, how, what they had done
   fallenHtml() {

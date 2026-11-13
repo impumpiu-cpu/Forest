@@ -93,7 +93,7 @@ export function houseSeason(a, G, wagesPaid, io) {
   if (upkeep > 0) io.pay(G, -Math.min(upkeep, Math.max(0, G.gold)), 'содержание дома');
   if (working(G, 'tavern')) {
     const back = Math.round(wagesPaid * roomBy(G, 'tavern', 'back') * 10) / 10, C = staffOf(G, 'tavern')?.special?.C ?? 5;
-    const income = Math.round(roomBy(G, 'tavern', 'income') * C / 5 * 10) / 10;
+    const income = Math.round(roomBy(G, 'tavern', 'income') * C / 5 * (working(G, 'merchant') ? HOUSE.armory.tavern : 1) * 10) / 10;   // (the merchant's guests)
     if (back > 0) io.pay(G, back, 'таверна: жалованье пропито у своих');
     if (income > 0) io.pay(G, income, 'таверна: доход с гостей');
   }

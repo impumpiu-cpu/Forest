@@ -6,7 +6,9 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, partyMost, rosterMost, houseOf, roomLevel, roomBy, working, staffOf,
-  buildWhy, buildRoom, setRoomPost, postWhy, sendToRoom, trainWhy} from '../src/campaign/index.js';
+  buildWhy, buildRoom, setRoomPost, postWhy, sendToRoom, trainWhy, armoryOf, racks, stalls, shopOf, buyPrice, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from '../src/campaign/index.js';
+import {gearDef, gearToken, gearSpec} from '../src/local/index.js';
+import {contractsOf as cof} from '../src/campaign/contracts.js';
 import {contractsOf, contractOf, takeContract} from '../src/campaign/contracts.js';
 import {GUILD} from '../src/data/guild.js';
 import {ROOMS, HOUSE} from '../src/data/rooms.js';
@@ -46,7 +48,6 @@ const ledgerHas = (G, s) => G.ledger.some(l => l.why.startsWith(s));
   ok(ledgerHas(G, 'содержание дома'), 'дом стоит денег каждый сезон');
   stepGuild(a);
   ok(contractsOf(a).records.filter(c => c.state === 'open' && !c.side).length <= 6, 'на доске — до 6 объявлений');
-  ok(!!buildWhy(a, 'armory'), 'оружейная — позже (Г3б)', buildWhy(a, 'armory'));
   for (let k = 0; k < 3; k++) { if (!buildWhy(a, 'barracks')) buildRoom(a, 'barracks', I); stepGuild(a); }
   ok(roomLevel(G, 'barracks') === 4 && rosterMost(G) === 20 && !!buildWhy(a, 'barracks'), 'казармы 4-го уровня — 20 человек, выше некуда', buildWhy(a, 'barracks'));
 }
@@ -143,6 +144,78 @@ const ledgerHas = (G, s) => G.ledger.some(l => l.why.startsWith(s));
   while (a.hist.season !== 0) stepGuild(a);
   stepGuild(a);
   ok(!d.alive && f.devotion > 0.8 - HOUSE.grief.loss + 1e-9, 'часовня: гибель друга бьёт по верности слабее', `${f.devotion}`);
+}
+
+// ── the armory: bought in town, on the racks, taken by each before the road, his own left; locked — not taken; sold
+{
+  const [a, G] = opened(); rich(G);
+  const I = io(G), tell = () => {}, t = a.towns.find(x => x.id === G.town);
+  buildRoom(a, 'armory', I); stepGuild(a);
+  ok(racks(G) === 50, 'оружейная 1-го уровня — 50 мест');
+  const shop = shopOf(a, G);
+  ok(shop.items.length > 0, 'в городе гильдии продают оружие и доспехи', shop.items.slice(0, 4).map(o => `${o.label} ${o.price}`).join('; '));
+  const armor = shop.items.filter(o => o.kind === 'body').sort((p, q) => (gearDef(q.token).armor ?? 0) - (gearDef(p.token).armor ?? 0))[0];
+  const mk0 = t.makersGold ?? 0, g0 = G.gold;
+  if (armor) {
+    const it = buyItem(a, G, armor.token, I.pay);
+    ok(G.gold === g0 - armor.price && (t.makersGold ?? 0) > mk0 && armoryOf(G).items.includes(it), 'куплено: из казны гильдии — в казну мастеров города, на стойку', `${armor.label} за ${armor.price}`);
+    const m = membersOf(G, 'ready')[0], own = m.gear.body;
+    m.gear.body = own && (gearDef(own)?.armor ?? 0) < (gearDef(armor.token).armor ?? 0) ? own : null;
+    lockItem(G, it.id, true);
+    for (const x of G.members) x.level = 20;
+    const card = guildBoard(a, []).errands.find(e => e.ok);
+    const K = launch(a, {contract: card.contract, ids: [m.id], mode: 'auto'});
+    ok(m.gear.body !== armor.token, 'запертое — не берут');
+    a.campaign.closed = true; for (const x of K.members) x.guild = {state: 'ready', since: G.day};   // (called back on paper)
+    lockItem(G, it.id, false);
+    const K2 = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: [m.id], mode: 'auto'});
+    ok(m.gear.body === armor.token && (!own || armoryOf(G).items.some(x => x.token === own) || gearDef(own)?.armor >= gearDef(armor.token).armor), 'перед походом взял доспех лучше своего, свой оставил на стойке', `${gearDef(m.gear.body)?.label}`);
+    a.campaign.closed = true; for (const x of K2.members) x.guild = {state: 'ready', since: G.day};
+  } else ok(true, 'доспехов в городе не продают — не проверить на этом сиде');
+  const any = armoryOf(G).items[0];
+  if (any) { const g1 = G.gold, p = sellItem(a, G, any.id, I.pay); ok(!armoryOf(G).items.includes(any) && G.gold === Math.round((g1 + p) * 10) / 10, 'продано из оружейной — в казну', `+${p}`); }
+}
+
+// ── the forge: a smith of Strength 8; a step finer, up to +3; the metals by the forge's level
+{
+  const [a, G] = opened(); rich(G);
+  const I = io(G), tell = () => {};
+  buildRoom(a, 'armory', I); stepGuild(a); buildRoom(a, 'forge', I); stepGuild(a);
+  const smith = membersOf(G, 'ready')[0]; smith.special.S = 6;
+  ok(!!postWhy(G, 'forge', smith), 'кузнец — Сила не ниже 8', postWhy(G, 'forge', smith));
+  smith.special.S = 9; setRoomPost(a, 'forge', smith.id, tell);
+  armoryOf(G).items.push({id: 900, token: 'ironaxe', locked: false}, {id: 901, token: 'steelaxe', locked: false});
+  ok(!!forgeWhy(G, 900) && !!forgeWhy(G, 901), 'кузница 1-го уровня не берёт железо и сталь', forgeWhy(G, 900));
+  houseOf(G).forge = 3;
+  const c = forgeCost('ironaxe'), g0 = G.gold;
+  forgeItem(G, 900, I.pay); forgeItem(G, 900, I.pay); forgeItem(G, 900, I.pay);
+  const it = armoryOf(G).items.find(x => x.id === 900);
+  ok((gearSpec(it.token).q || 0) === 3 && G.gold < g0 - c, 'железный топор — до +3, за деньги', `${it.token}, −${Math.round(g0 - G.gold)}`);
+  ok(!!forgeWhy(G, 900), 'выше +3 — нельзя', forgeWhy(G, 900));
+  armoryOf(G).items.push({id: 902, token: 'mithrilaxe', locked: false});
+  ok(!gearDef('mithrilaxe') || !!forgeWhy(G, 902), 'мифрил — нет', gearDef('mithrilaxe') ? forgeWhy(G, 902) : 'нет такого топора');
+}
+
+// ── the merchant: Charisma 9; cheaper arms; one contract a tier above; the stable and its beasts go with a party
+{
+  const [a, G] = opened(GUILD.level.need[1]); rich(G);
+  const I = io(G), tell = () => {};
+  buildRoom(a, 'armory', I); stepGuild(a); buildRoom(a, 'merchant', I); stepGuild(a);
+  const tok = shopOf(a, G).items[0]?.token, p0 = tok && buyPrice(G, tok);
+  const mer = membersOf(G, 'ready')[0]; mer.special.C = 10; setRoomPost(a, 'merchant', mer.id, tell);
+  ok(!tok || buyPrice(G, tok) < p0, 'торговец на посту — оружие дешевле', tok ? `${p0} → ${buyPrice(G, tok)}` : '');
+  for (let k = 0; k < 6 && !cof(a).records.some(c => c.state === 'open' && c.tier === 2); k++) stepGuild(a);
+  ok(cof(a).records.some(c => c.state === 'open' && c.tier === 2), 'гильдии 1-го уровня торговец достал договор тира II', [...new Set(cof(a).records.filter(c => c.state === 'open').map(c => c.tier))].join(', '));
+  buildRoom(a, 'stable', I); stepGuild(a);
+  const B = shopOf(a, G).beasts;
+  ok(stalls(G) === 4, 'конюшня 1-го уровня — 4 зверя');
+  if (B.length) {
+    buyBeast(a, G, B[0].kind, I.pay);
+    ok(G.store.beasts.length === 1, 'куплен зверь в конюшню', B[0].label);
+    for (const x of G.members) x.level = 20;
+    const K = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: [membersOf(G, 'ready')[0].id], mode: 'auto'});
+    ok(K.beasts.length === 1 && !G.store.beasts.length, 'зверь ушёл с отрядом');
+  } else ok(true, 'в городе зверей не продают — не проверить на этом сиде');
 }
 
 // ── saved and loaded: the same house

@@ -8,7 +8,7 @@ export {createAgent, hpShare, maxHp, personality} from '../agents/agent.js';
 export {wake} from '../agents/attention.js';
 export {CARCASS, ROLE_LABEL, carcassById, huntOf} from '../agents/carcass.js';
 export {attackerOf, darkness, sneakSeen} from '../agents/combat.js';
-export {allItems, def, dress, gearDef, gearText, gearToken, gearType, gearValue, mayTake, newItem} from '../agents/equipment.js';
+export {allItems, def, dress, gearDef, gearText, gearToken, gearType, gearValue, gearSpec, itemPrice, mayTake, newItem} from '../agents/equipment.js';
 export {makeGolem} from '../agents/golem.js';
 export {boldness} from '../agents/hunting.js';
 export {OUTCOMES} from '../agents/lifecycle.js';

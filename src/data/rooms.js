@@ -7,7 +7,6 @@
 //   upkeep — gold a season for each level standing (paid with the wages)
 //   post   — the one it needs at work: {label, test} (test: the letter and the least of it, or a level); none — no post
 //   by     — its effect by level (index 0: none / the start's), read by the systems through campaign/house.js
-//   gate   — the stage it is opened at (later stages: Г3б)
 import {Registry} from '../core/registry.js';
 
 // HOUSE — the rules of the house:
@@ -21,12 +20,19 @@ import {Registry} from '../core/registry.js';
 //             the room's level) at the house; `potions` a departing member takes, by the room's level
 //   tavern  — the share of the wages the guild's people spend at its own tavern (comes back), by its level; its own income a
 //             season, × the manager's Charisma over 5
+//   armory  — the guild's arms and armour (campaign/armory.js): bought in its town at the piece's price × `buy`, sold there at
+//             × `sell` (the town pays out of its makers' purse: atlas/treasury.js); with a merchant at his post × `merchant`
+//             ({buy, sell}); a merchant's guests: the tavern's own income × `tavern`
+//   forge   — a piece of the armory made finer by one step (its price's step × `fee`), up to +`most` (data/quality.js);
+//             the metals of the forge's level (`metal`: the highest tier of data/balance/materials.js it works; mithril — none)
 //   grief   — a member dies: the devotion each who thought well of him loses (his bond above `bond`), × (1 − the chapel's share)
 export const HOUSE = {
   build: 1, upkeep: 1, xpRef: 4, xpSpan: [0.5, 2],
   train: {xp: 30},
   heal: {home: 0.5},
   grief: {loss: 0.1, bond: 1},
+  armory: {buy: 1.25, sell: 0.5, merchant: {buy: 0.85, sell: 1.2}, tavern: 1.5},
+  forge: {fee: 1, most: 3},
 };
 
 export const ROOMS = new Registry('room');
@@ -51,10 +57,10 @@ ROOMS.registerAll([
     by: {grief: [0, 0.5, 1]}},
   {id: 'fallen', label: 'Доска павших', about: 'Имена тех, кто не вернулся. Есть всегда.', start: 1, cost: [0], upkeep: 0, by: {}},
   // ── Г3б: the armory, the merchant's room, the forge, the stable and the kennel
-  {id: 'armory', label: 'Оружейная', about: 'Хранит и выдаёт оружие и доспехи.', start: 0, cost: [150, 300, 500, 800], upkeep: 1, gate: 'Г3б', by: {slots: [0, 50, 100, 150, 200]}},
-  {id: 'merchant', label: 'Комната торговца', about: 'Лучшие цены на оружие и доспехи; таверне — гости; на доске — договор уровнем выше.', start: 0, cost: [200], upkeep: 1, gate: 'Г3б',
-    post: {label: 'торговец', letter: 'C', least: 9}, by: {}},
-  {id: 'forge', label: 'Кузница гильдии', about: 'Улучшает оружие и доспехи из оружейной, до +3: медь, железо, сталь.', start: 0, cost: [250, 450, 700], upkeep: 2, gate: 'Г3б',
-    post: {label: 'кузнец', letter: 'S', least: 8}, by: {}},
-  {id: 'stable', label: 'Конюшня и псарня', about: 'Ездовые и боевые звери гильдии: держать, покупать, брать в поход.', start: 0, cost: [120, 250, 400], upkeep: 2, gate: 'Г3б', by: {}},
+  {id: 'armory', label: 'Оружейная', about: 'Хранит оружие и доспехи гильдии: купленные в городе и принесённые трофеями. Перед походом каждый сам выбирает, что взять; запертое не берут.', start: 0, cost: [150, 300, 500, 800], upkeep: 1, by: {slots: [0, 50, 100, 150, 200]}},
+  {id: 'merchant', label: 'Комната торговца', about: 'Торговец гильдии: оружие и доспехи дешевле, трофеи дороже; гости в таверне; на доске — один договор тиром выше.', start: 0, cost: [200], upkeep: 1,
+    post: {label: 'торговец', letter: 'C', least: 9}, by: {on: [false, true]}},
+  {id: 'forge', label: 'Кузница гильдии', about: 'Кузнец улучшает оружие и доспехи из оружейной, до +3: на 1-м уровне — медь (бронзу), на 2-м — железо, на 3-м — сталь. Мифрил — нет.', start: 0, cost: [250, 450, 700], upkeep: 2,
+    post: {label: 'кузнец', letter: 'S', least: 8}, by: {metal: [-1, 1, 2, 3]}},
+  {id: 'stable', label: 'Конюшня и псарня', about: 'Ездовые и вьючные звери гильдии: держать, покупать в городе; уходят с отрядом в поход.', start: 0, cost: [120, 250, 400], upkeep: 2, by: {slots: [0, 4, 8, 12]}},
 ]);

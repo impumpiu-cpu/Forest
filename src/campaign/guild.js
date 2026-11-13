@@ -31,6 +31,7 @@ import {HOUSE} from '../data/rooms.js';
 import {stepContracts, contractCards, contractOf, contractWhy, takeContract, settleContract, campsOf, fameBy, levelOf, tierOf, levelNext, abortWhy, abortContract} from './contracts.js';
 import {giveUp} from './errands.js';
 import {houseOf, houseSeason, finishBuilding, roomBy, grieve, working, roomLevel} from './house.js';
+import {outfit, bringHome} from './armory.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
 
@@ -353,6 +354,7 @@ export function launch(a, {contract = null, errand = null, targetId = null, ids 
   const G = a.guild, why = launchWhy(a, {ids, purse, errand, contract});
   if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
   const ms = ids.map(id => G.members.find(m => m.id === id));
+  for (const line of outfit(G, ms)) tell(a, G, `${line}.`, 'house');   // (the armory: each takes what is better than his own — campaign/armory.js)
   const rec = contract ? takeContract(a, G, contract, (G.expeditions.length || 0) + 1) : null;
   const K = a.campaign = newExpedition(a, G, ms, {errand, targetId, purse, mode, contract: rec});
   // sent against his will (GUILD.devotion): less devoted, and a bad mood on the road
@@ -390,7 +392,10 @@ export function closeExpedition(a, G, K) {
   G.nextMember = Math.max(G.nextMember, K.nextMember || 0);
   pay(G, K.gold, K.done?.at(-1)?.failed ? 'вернулись ни с чем: остаток кошеля' : `сдано поручение: ${questWord(K)} (с остатком кошеля)`);
   K.gold = 0;
-  G.store = {beasts: K.beasts.filter(b => b.hp > 0), vehicles: K.vehicles, cargo: K.cargo, buildings: K.buildings, nextBeast: K.nextBeast};
+  // the spoils onto the armory's racks and the beasts into the stable while there is room; the rest sold (campaign/armory.js)
+  const home = bringHome(a, G, K, pay);
+  if (home.kept) tell(a, G, `В оружейную легли трофеи: ${home.kept}.`, 'house');
+  G.store = {beasts: home.beasts, vehicles: K.vehicles, cargo: K.cargo, buildings: K.buildings, nextBeast: K.nextBeast};
   const p = (a.parties || []).find(x => x.id === K.party); if (p) p.state = 'gone';
   const last = K.done?.at(-1), how = !back.length ? 'не вернулся' : last?.failed ? 'вернулся ни с чем' : 'вернулся с победой';
   if (last && !last.failed) for (const m of mine) m.devotion = Math.min(1, devotionOf(m) + GUILD.devotion.back);

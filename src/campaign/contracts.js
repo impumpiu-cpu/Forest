@@ -148,7 +148,9 @@ export function stepContracts(a, G, io) {
   const most = tierOf(G), slots = roomBy(G, 'board', 'slots') ?? 4, open = () => C.records.filter(c => c.state === 'open' && !c.side).length;
   for (let k = 0; most > 0 && k < slots * 3 && open() < slots; k++) {
     if (!first && io.r() >= CONTRACT.board.post) break;
-    const tier = 1 + Math.floor(io.r() * most), rows = CONTRACTS.filter(x => x.tier === tier); if (!rows.length) continue;
+    // (the merchant at his post: one contract on the board a tier above the guild's — data/rooms.js)
+    const up = roomBy(G, 'merchant', 'on') && most < 5 && !C.records.some(c => c.state === 'open' && c.tier > most);
+    const tier = up ? most + 1 : 1 + Math.floor(io.r() * most), rows = CONTRACTS.filter(x => x.tier === tier); if (!rows.length) continue;
     const def = rows[Math.floor(io.r() * rows.length)];
     if (C.records.some(c => c.tmpl === def.id && c.state === 'open')) continue;
     const rec = post(a, G, def, {tmpl: def.id}, io.r);
