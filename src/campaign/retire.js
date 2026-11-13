@@ -5,23 +5,23 @@
 import {GUILD} from '../data/guild.js';
 import {moodBy, parted} from './kin.js';
 
-const R_ = GUILD.retire;
+// (read at the time: the screen «Таблицы» may put a new table in its place)
 const year = a => a.hist?.year ?? 0;
 const live = m => m.alive && m.guild && !['dead', 'left'].includes(m.guild.state);
 
 // why he would rest now: 'годы' (he has lived `old` of his years), 'увечья' (`maims` lasting maims) — or null
 export function restWhy(a, m) {
-  if (m.dies != null && m.born != null && year(a) - m.born >= R_.old * (m.dies - m.born)) return 'годы';
-  if ((m.maims || 0) >= R_.maims) return 'увечья';
+  if (m.dies != null && m.born != null && year(a) - m.born >= GUILD.retire.old * (m.dies - m.born)) return 'годы';
+  if ((m.maims || 0) >= GUILD.retire.maims) return 'увечья';
   return null;
 }
 // a season: those who would rest ask; one who asked and is still unheard grows sour
 export function restSeason(a, G, r, tell) {
   for (const m of G.members) {
     if (!live(m) || m.retired) continue;
-    if (m.asks) { if (m.guild.state === 'ready') moodBy(m, -R_.refused); continue; }
+    if (m.asks) { if (m.guild.state === 'ready') moodBy(m, -GUILD.retire.refused); continue; }
     const why = restWhy(a, m);
-    if (why && m.guild.state === 'ready' && r() < R_.ask) {
+    if (why && m.guild.state === 'ready' && r() < GUILD.retire.ask) {
       m.asks = {why, year: year(a)};
       tell(`${m.name} просится на покой: ${why === 'годы' ? 'годы уже не те' : 'увечья не дают ходить в походы'}.`);
     }
@@ -39,7 +39,7 @@ export function retire(a, id, tell) {
   const G = a.guild, m = G.members.find(x => x.id === id), why = retireWhy(G, m);
   if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
   m.retired = {day: G.day, year: year(a)};
-  if (m.asks) moodBy(m, R_.glad);
+  if (m.asks) moodBy(m, GUILD.retire.glad);
   m.asks = null;
   if (m.guild.state === 'ready') m.guild = {state: 'retired', since: G.day};
   tell(`${m.name} ${m.gender === 'f' ? 'ушла' : 'ушёл'} на покой: живёт при гильдии${m.guild.state === 'post' ? ' и остаётся на посту' : ''}.`);
@@ -56,7 +56,7 @@ export function unretire(a, id, tell) {
   tell(`${m.name} снова в строю.`);
 }
 // the gift of one let go with honour
-export const giftOf = m => R_.gift.base + R_.gift.perLevel * (m.level || 1);
+export const giftOf = m => GUILD.retire.gift.base + GUILD.retire.gift.perLevel * (m.level || 1);
 export function dismissWhy(G, m, honour) {
   if (!m || !live(m)) return 'некого';
   if (!['ready', 'retired', 'post'].includes(m.guild.state)) return `${m.name} сейчас занят`;
@@ -71,8 +71,8 @@ export function dismiss(a, id, honour, io) {
   m.guild = {state: 'left', since: G.day}; m.asks = null;
   m.left = {day: G.day, year: year(a), why: honour ? 'отставка с почётом' : 'уволен'};
   parted(G, m);
-  if (!honour) for (const x of G.members) if (x !== m && live(x) && io.bondOf(x.id, m.id) > GUILD.muster.friend / 2) x.devotion = Math.max(0, Math.round(((x.devotion ?? GUILD.devotion.start) - R_.fired) * 100) / 100);
+  if (!honour) for (const x of G.members) if (x !== m && live(x) && io.bondOf(x.id, m.id) > GUILD.muster.friend / 2) x.devotion = Math.max(0, Math.round(((x.devotion ?? GUILD.devotion.start) - GUILD.retire.fired) * 100) / 100);
   io.tell(honour ? `${m.name} ${m.gender === 'f' ? 'ушла' : 'ушёл'} в отставку с почётом: прощальный дар — ${giftOf(m)} зол.` : `${m.name} ${m.gender === 'f' ? 'уволена' : 'уволен'} из гильдии.`);
 }
 // a season's wage of one at rest: the pension's share (at a post — the whole)
-export const wageShare = m => (m.retired && m.guild?.state !== 'post' ? R_.pension : 1);
+export const wageShare = m => (m.retired && m.guild?.state !== 'post' ? GUILD.retire.pension : 1);
