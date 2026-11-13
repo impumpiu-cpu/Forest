@@ -21,7 +21,7 @@ import {stepHistory, startHistory, lifeOf, townLabel} from '../atlas/index.js';
 import {drawCore, coreMember, newExpedition} from './start.js';
 import {caravanDay, ended, alive, die, dayShot, isCore, say} from './march.js';
 import {upgradeMembers} from './start.js';
-import {award, levelEvening, ensureXp} from './experience.js';
+import {award, levelEvening, ensureXp, need} from './experience.js';
 import {bondBy, bondOf} from './social.js';
 import {opinion} from '../data/relations.js';
 import {TRAITS} from '../data/traits.js';
@@ -64,8 +64,18 @@ export const rosterMost = G => roomBy(G, 'barracks', 'roster') || GUILD.roster;
 export const healing = m => (m.hp ?? 1) < GUILD.home.ready;
 // a member's years now (world years)
 export const ageOf = (a, m) => (m.born == null ? null : Math.max(0, year(a) - m.born));
-// the expedition under way (a.campaign of this guild, not yet settled)
-export const expedition = a => (a.campaign && a.guild && a.campaign.guild === a.guild.id && !a.campaign.closed ? a.campaign : null);
+// the parties out (G.live: the campaigns of this guild not yet settled; plan Г3/Г4 — several at once, the planning room's count)
+export const parties = a => (a.guild?.live || []).filter(K => !K.closed);
+// the party watched (a.campaign: its camps played on the local map), or the first one out, or none
+export const expedition = a => (a.campaign && a.guild && a.campaign.guild === a.guild.id && !a.campaign.closed ? a.campaign : parties(a)[0] || null);
+export const partiesMost = G => roomBy(G, 'planning', 'parties') || 1;
+// watch one party: its camps on the local map (its mode 'local'), the others reckoned unseen (the quick mode: only their lines)
+export function watchParty(a, n) {
+  const K = parties(a).find(x => x.expedition === n); if (!K) throw new Error('Такого отряда в пути нет.');
+  for (const x of parties(a)) x.mode = x === K ? (x.watchMode || 'local') : 'auto';
+  a.campaign = K;
+  return K;
+}
 
 // ── the founding: the guild's house in a capital, its gold, and `candidates` at its door (the kinds and roles of the town,
 // each in the starting kit of a caravan's core: data/campaign.js RETINUE.level). The player takes `pick` of them (hire).
@@ -103,12 +113,15 @@ function rollRecruits(a, G, n) {
   return out;
 }
 // those who came to the door know one another from the town (GUILD.acquaint): a bond each way, the two close but not the same
-function acquaint(G, ms) {
-  const A = GUILD.acquaint, {r, done} = gdraw(G, 'acquaint'), H = {members: ms, social: G.social};
-  for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
+//   (one = a newcomer: only his pairs with `ms`)
+function acquaint(G, ms, one = null) {
+  const A = GUILD.acquaint, {r, done} = gdraw(G, 'acquaint'), H = {members: one ? [one, ...ms] : ms, social: G.social};
+  const pairs = one ? ms.map(x => [one, x]) : ms.flatMap((x, i) => ms.slice(i + 1).map(y => [x, y]));
+  for (const [p, q] of pairs) {
+    const ms_ = [p, q], i = 0, j = 1;
     if (r() >= A.chance) continue;
     const v = (r() < A.good ? 1 : -1) * A.spread * (A.least + (1 - A.least) * r()), d = (2 * r() - 1) * A.spread * A.diff;
-    bondBy(H, ms[i].id, ms[j].id, Math.round((v + d) * 10) / 10); bondBy(H, ms[j].id, ms[i].id, Math.round((v - d) * 10) / 10);
+    bondBy(H, ms_[i].id, ms_[j].id, Math.round((v + d) * 10) / 10); bondBy(H, ms_[j].id, ms_[i].id, Math.round((v - d) * 10) / 10);
   }
   done();
 }
@@ -121,9 +134,46 @@ export function hire(a, ids) {
   const R = G.social.relations, kept = new Set(take.map(m => String(m.id)));   // the bonds of those not taken go with them
   for (const k of Object.keys(R)) { if (!kept.has(k)) delete R[k]; else for (const j of Object.keys(R[k])) if (!kept.has(j)) delete R[k][j]; }
   G.candidates = null; G.phase = 'open';
-  offerChores(a, G); contracts(a, G);
+  offerChores(a, G); contracts(a, G); refreshRecruits(a, G);
   tell(a, G, `В гильдию вступили: ${take.map(m => `${m.name} (${roleWord(m)}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')})`).join(', ')}.`, 'people');
   return G;
+}
+// ── the door (GUILD.recruit; the author's word 13.11): anew each season, `count` from the town's people, of the guild's level
+// (at least the 1st) — a third or so one lower, a rare one higher; taken in for a fee, while the barracks have room
+export function refreshRecruits(a, G) {
+  const R = GUILD.recruit, base = Math.max(1, levelOf(G)), {r, done} = gdraw(G, 'door');
+  const ms = rollRecruits(a, G, R.count);
+  for (const m of ms) {
+    const x = r(), L = x < R.up ? base + 1 : x < R.up + R.down ? Math.max(1, base - 1) : base;
+    raiseTo(a, G, m, L);
+    m.fee = R.fee.base + R.fee.perLevel * (m.level || 1);
+  }
+  done();
+  G.recruits = ms;
+}
+// a recruit grown to his level as the guild's own would be (a level's letter and perk each: campaign/experience.js levelEvening)
+function raiseTo(a, G, m, L) {
+  ensureXp(m);
+  if (L <= 1) return;
+  m.xp = need(L); m.acts = {...(m.acts || {}), role: L};
+  levelEvening(a, {seed: `${G.seed}:door:${m.id}`, rng: {}, day: G.day, members: [m], people: G.people, realm: G.realm, capital: G.town, social: {relations: {}, facts: []}, log: [], beasts: [], vehicles: []});
+}
+export function recruitWhy(a, id) {
+  const G = a.guild, m = (G.recruits || []).find(x => x.id === id);
+  if (!m) return 'его у дверей больше нет';
+  if (membersOf(G).length >= rosterMost(G)) return `в казармах нет места (${rosterMost(G)})`;
+  if (G.gold < m.fee) return `в казне нет ${m.fee} зол.`;
+  return null;
+}
+export function takeRecruit(a, id) {
+  const G = a.guild, why = recruitWhy(a, id); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const m = G.recruits.find(x => x.id === id);
+  pay(G, -m.fee, `найм: ${m.name}`); delete m.fee;
+  m.guild = {state: 'ready', since: G.day}; m.core = true; m.joined = 0; G.members.push(m);
+  G.recruits = G.recruits.filter(x => x !== m);
+  acquaint(G, membersOf(G).filter(x => x !== m), m);   // (he may know some of them from the town)
+  tell(a, G, `В гильдию вступил ${m.name} (${roleWord(m)}, ${m.level || 1}-й уровень).`, 'people');
+  return m;
 }
 // an expedition's errand in words: «Разорить логово: логово варгов «Мёртвые буреломы»»
 export const questWord = K => [K?.quest?.spec?.label || (ERRANDS.has(K?.quest?.errand) ? ERRANDS.get(K.quest.errand).label : null), K?.quest?.crown?.label || K?.quest?.name].filter(Boolean).join(': ') || 'поручение';
@@ -135,21 +185,22 @@ export function stepGuild(a) {
   const G = a.guild; if (!G || G.phase !== 'open') return false;
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // (history goes on past its plan, as for a campaign)
-  const K = expedition(a);
-  if (K) { upgradeMembers(K); K.track = []; K.seasonFrom = K.day; K.daily = [dayShot(K, K.day - 1)]; }
+  const out = parties(a);
+  for (const K of out) { upgradeMembers(K); K.track = []; K.seasonFrom = K.day; K.daily = [dayShot(K, K.day - 1)]; }
   const spring = a.hist.season === 0;
   const paid = wages(a, G);
   houseSeason(a, G, paid, {pay, tell: (text, kind) => tell(a, G, text, kind), award: (m, xp) => award(homeK(a, G), m, 'train', 1, {xp}), level: () => levelEvening(a, homeK(a, G), text => tell(a, G, text, 'level'))});
   leaveCold(a, G);
   stepHistory(a, () => {
-    if (K && !K.closed) { caravanDay(a, K, K.day); if (K.phase === 'home' || ended(K)) closeExpedition(a, G, K); }
+    for (const K of out) if (!K.closed) { caravanDay(a, K, K.day); if (K.phase === 'home' || ended(K)) closeExpedition(a, G, K); }
     homeDay(a, G);
   });
   finishBuilding(a, G, text => tell(a, G, text, 'house'));
   if (spring) ageGuild(a, G);
   offerChores(a, G);
   contracts(a, G);
-  if (!membersOf(G).length && !expedition(a)) { G.phase = 'over'; tell(a, G, `В гильдии «${G.name}» не осталось никого. Дом заколочен.`, 'end', true); }
+  refreshRecruits(a, G);
+  if (!membersOf(G).length && !parties(a).length) { G.phase = 'over'; tell(a, G, `В гильдии «${G.name}» не осталось никого. Дом заколочен.`, 'end', true); }
   return G.phase === 'open';
 }
 // a day at the house: the hurt mend, the deeds in town come back
@@ -183,10 +234,10 @@ function leaveCold(a, G) {
 }
 // spring: age takes those whose years are out — at the house, on a deed, on the road
 function ageGuild(a, G) {
-  const K = expedition(a);
   for (const m of membersOf(G)) {
     if (m.dies == null || year(a) < m.dies) continue;
-    if (m.guild.state === 'expedition' && K?.members.includes(m)) { die(a, K, m, 'умер от старости'); continue; }
+    const K = parties(a).find(x => x.members.includes(m));
+    if (m.guild.state === 'expedition' && K) { die(a, K, m, 'умер от старости'); continue; }
     fall(a, G, m, 'умер от старости');
   }
 }
@@ -276,7 +327,7 @@ export function guildBoard(a, ids = [], sort = 'tier') {
   const chores = G.offers.map(o => { const R = CHORES.get(o.id); return {...o, label: R.label, text: R.text, hands: R.hands, days: R.days, stat: R.stat, xp: R.xp, why: ms.length ? choreWhy(a, o, ids) : null}; });
   // an errand above the people's rank is greyed with why: those picked, or (none picked) the best of those at the house
   const who = ms.length ? ms : membersOf(G, 'ready');
-  const errands = (expedition(a) ? [] : contractCards(a, G, ms, sort))
+  const errands = (parties(a).length >= partiesMost(G) ? [] : contractCards(a, G, ms, sort))
     .map(e => { const why = e.ok ? rankWhy(who, e.tier) : null; return why ? {...e, ok: false, why} : e; });
   return {chores, errands};
 }
@@ -337,7 +388,7 @@ export function musterWhy(a, {size = null, named = []} = {}) {
 export function launchWhy(a, {ids = [], purse = GUILD.purse, errand = null, contract = null} = {}) {
   const G = a.guild;
   if (G?.phase !== 'open') return 'гильдия закрыта';
-  if (expedition(a)) return 'отряд уже в пути';
+  if (parties(a).length >= partiesMost(G)) return `в пути уже ${parties(a).length} ${plural(parties(a).length, 'отряд', 'отряда', 'отрядов')}: больше комната планирования не позволяет`;
   if (ids.length < GUILD.party.min || ids.length > partyMost(G)) return `в отряде ${GUILD.party.min}–${partyMost(G)} человек (комната планирования)`;
   if (ids.some(id => G.members.find(m => m.id === id)?.guild?.state !== 'ready')) return 'не все свободны';
   if (G.gold < purse) return `в казне нет ${purse} зол. на дорогу`;
@@ -356,7 +407,10 @@ export function launch(a, {contract = null, errand = null, targetId = null, ids 
   const ms = ids.map(id => G.members.find(m => m.id === id));
   for (const line of outfit(G, ms)) tell(a, G, `${line}.`, 'house');   // (the armory: each takes what is better than his own — campaign/armory.js)
   const rec = contract ? takeContract(a, G, contract, (G.expeditions.length || 0) + 1) : null;
-  const K = a.campaign = newExpedition(a, G, ms, {errand, targetId, purse, mode, contract: rec});
+  const K = newExpedition(a, G, ms, {errand, targetId, purse, mode, contract: rec});
+  // several out at once: the first watched (its camps on the local map), the rest reckoned unseen till watched (watchParty)
+  K.watchMode = mode; (G.live ||= []).push(K);
+  if (!(a.campaign && !a.campaign.closed && a.campaign.guild === G.id)) a.campaign = K; else K.mode = 'auto';
   // sent against his will (GUILD.devotion): less devoted, and a bad mood on the road
   const D = GUILD.devotion;
   for (const x of M?.answers || []) if (x.unwilling) {
@@ -377,7 +431,7 @@ export function launch(a, {contract = null, errand = null, targetId = null, ids 
 // with the guild if there is room. The campaign stays as a.campaign, marked closed, till the next one sets out (its chronicle
 // and its map are the screen's to show)
 export function closeExpedition(a, G, K) {
-  K.closed = true;
+  K.closed = true; G.live = (G.live || []).filter(x => x !== K);
   const back = alive(K), mine = back.filter(m => m.guild), fell = K.members.filter(m => m.guild && !m.alive);
   for (const m of mine) m.guild = {state: 'ready', since: G.day, from: 'expedition'};
   // the errand's experience (data/experience.js XP.quest, by its tier): whole when handed in, a little when back with nothing
@@ -411,8 +465,8 @@ export const isGuildMember = m => !!m?.guild && isCore(m);
 export {campsOf, levelOf, tierOf, levelNext, abortWhy};
 // the guild calls its party back from a contract (campaign/contracts.js abortContract): home with nothing; early — a little
 // fame lost, in the last of its time — much
-export function recall(a) {
-  const G = a.guild, K = expedition(a);
+export function recall(a, n = null) {
+  const G = a.guild, K = n == null ? expedition(a) : parties(a).find(x => x.expedition === n);
   const late = abortContract(a, G, K, giveUp, say);
   tell(a, G, `Отряд отозван с договора${late ? ' в последний срок — это дорого стоит славе гильдии' : ''}: ${questWord(K)}.`, 'contract');
   return late;

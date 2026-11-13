@@ -4,7 +4,7 @@
 //   node tools/guild-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost, houseOf, partyMost} from '../src/campaign/index.js';
+import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost, houseOf, partyMost, parties, watchParty, refreshRecruits, recruitWhy, takeRecruit, levelOf} from '../src/campaign/index.js';
 import {XP} from '../src/data/experience.js';
 import {ERRANDS} from '../src/data/errands.js';
 import {GUILD} from '../src/data/guild.js';
@@ -79,6 +79,28 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
   ok(K.members.length === muster(a, {contract, size: 6, named: [lead.id]}).ids.length || K.members.every(m => m.guild?.state === 'expedition'), 'ушли те, кто согласился', K.members.map(m => m.name).join(', '));
 }
 
+// ── the door: anew each season; the guild's level, a third or so one lower, a rare one higher; a fee; the barracks' room
+{
+  const [a, G] = opened();
+  ok(G.recruits?.length === GUILD.recruit.count, `у дверей — ${GUILD.recruit.count}`, G.recruits?.map(m => `${m.name} ${m.level}`).join(', '));
+  const dist = fame => { G.fame = fame; const L = Math.max(1, levelOf(G)), n = {}; for (let k = 0; k < 60; k++) { refreshRecruits(a, G); for (const m of G.recruits) n[m.level - L] = (n[m.level - L] || 0) + 1; } return n; };
+  const d3 = dist(GUILD.level.need[3]), all = Object.values(d3).reduce((x, y) => x + y, 0);
+  ok((d3[0] || 0) / all > 0.5 && (d3[-1] || 0) / all > 0.2 && (d3[-1] || 0) / all < 0.5 && (d3[1] || 0) / all < 0.1 && !d3[2] && !d3[-2], 'гильдия 3-го уровня: больше всего 3-го, около трети 2-го, редко 4-й', JSON.stringify(d3));
+  const d0 = dist(0);
+  ok(!d0[-1] && (d0[0] || 0) > (d0[1] || 0) * 5, 'гильдия 0-го уровня: все 1-го, редко 2-й', JSON.stringify(d0));
+  G.fame = GUILD.level.need[3]; refreshRecruits(a, G);
+  const m = G.recruits.find(x => x.level === 3) || G.recruits[0], g0 = G.gold, fee = m.fee;
+  ok(m.level >= 2 && m.special && Object.values(m.special).reduce((x, y) => x + y, 0) > 0, 'пришедший уже вырос до своего уровня', `${m.name}: ур. ${m.level}`);
+  const n0 = membersOf(G).length;
+  takeRecruit(a, m.id);
+  ok(membersOf(G).length === n0 + 1 && G.gold === Math.round((g0 - fee) * 10) / 10 && !G.recruits.includes(m), 'нанят за плату', `${fee} зол.`);
+  houseOf(G).barracks = 1;
+  const other = G.recruits[0];
+  ok(!!recruitWhy(a, other.id), 'казармы полны — не нанять', recruitWhy(a, other.id));
+  stepGuild(a);
+  ok(!G.recruits.includes(other), 'к новому сезону у дверей другие');
+}
+
 // ── the deeds in town: one at a time each, settled with the pay and the experience
 {
   const [a, G] = opened(), ids = membersOf(G).map(m => m.id);
@@ -113,7 +135,15 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
   ok(K === a.campaign && K.members.every(m => G.members.includes(m)), 'в отряде — те же люди, что в гильдии (не копии)');
   ok(K.social === G.social && K.seen === G.seen, 'связи и знание мира — гильдии');
   ok(G.gold < g0 && ids.every(id => G.members.find(m => m.id === id).guild.state === 'expedition'), 'кошель и еда — из казны, ушедшие в походе', `${g0} → ${G.gold}`);
-  ok(!!launchWhy(a, {ids: membersOf(G, 'ready').map(m => m.id).slice(0, 2)}), 'второй отряд — пока нельзя', launchWhy(a, {ids: membersOf(G, 'ready').map(m => m.id).slice(0, 2)}));
+  ok(!launchWhy(a, {ids: membersOf(G, 'ready').map(m => m.id).slice(0, 2)}), 'второй отряд можно (комната планирования: до четырёх в пути)');
+  houseOf(G).planning = 1;   // (two at once at most)
+  const K2 = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok)?.contract, ids: membersOf(G, 'ready').map(m => m.id).slice(0, 2), mode: 'auto'});
+  ok(parties(a).length === 2 && a.campaign === K && K2.mode === 'auto', 'второй ушёл; смотрят первый, второй считается без карты', `${parties(a).length} в пути`);
+  ok(!!launchWhy(a, {ids: membersOf(G, 'ready').map(m => m.id).slice(0, 1)}), 'третий — нельзя при комнате 1-го уровня', launchWhy(a, {ids: membersOf(G, 'ready').map(m => m.id).slice(0, 1)}));
+  watchParty(a, K2.expedition);
+  ok(a.campaign === K2 && K2.mode === K2.watchMode && K.mode === 'auto', 'смотрим второй: его стоянки на карте, первый — только строки');
+  watchParty(a, K.expedition);
+  houseOf(G).planning = 3;
   // saved on the way, it goes on as the one that was not
   stepGuild(a);
   const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a))));
@@ -123,7 +153,7 @@ const opened = () => { const a = fresh(), G = foundGuild(a, cap.town); G.fame = 
   ok(guildHash(a.guild) === guildHash(b.guild), 'сохранённая в пути гильдия идёт так же', `${guildHash(a.guild)} / ${guildHash(b.guild)}`);
   ok(!expedition(a) && a.campaign?.closed, 'отряд вернулся (или не вернулся) — поход закрыт', `${n} сезонов, ${G.expeditions.at(-1)?.how}`);
   const back = K.members.filter(m => m.alive && m.guild);
-  ok(back.every(m => m.guild.state === 'ready') && K.members.filter(m => m.guild && !m.alive).every(m => m.guild.state === 'dead'), 'живые — дома, павшие — павшие');
+  ok(back.every(m => ['ready', 'left'].includes(m.guild.state)) && K.members.filter(m => m.guild && !m.alive).every(m => m.guild.state === 'dead'), 'живые — дома, павшие — павшие', K.members.map(m => `${m.name}:${m.alive}:${m.guild?.state}`).join(' '));
   ok(back.every(m => G.members.includes(m)), 'вернувшиеся — те же люди: уровни, вещи, раны с ними', back.map(m => `${m.name} ур. ${m.level}`).join(', '));
   const last = K.done?.at(-1), qx = XP.quest[K.quest.tier] * (last && !last.failed ? 1 : XP.questFail);
   ok(back.filter(m => m.guild).every(m => Math.abs((m.xpOf.quest || 0) - qx) < 0.01), 'опыт за поручение — по тиру, каждому вернувшемуся', `${qx}: ${back.map(m => m.xpOf.quest || 0).join(', ')}`);

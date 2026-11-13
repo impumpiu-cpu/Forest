@@ -30,6 +30,9 @@
 //   level     — the guild's level is its fame (the author's word 13.11: fame as experience, a level that can be lost): the
 //               fame each level needs (`need`, from level 0); the highest tier of the contracts the world gives a guild of a
 //               level (`tier`, by level: 0 — the deeds in town only); a deed in town done well — + `chore` fame
+//   recruit   — those who come to the guild's door, anew each season (the author's word 13.11): `count` of them; their level is
+//               the guild's (at least the 1st), but `down` of them one lower (not below the 1st) and `up` one higher; taking one
+//               in costs `fee.base` + `fee.perLevel` × his level (his first season's keep and the signing)
 //   bond      — a deed done together: the bond between each two of them, + `won` when it went right, `lost` when it went wrong
 //   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
 //               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
@@ -46,6 +49,7 @@ export const GUILD = {
   muster: {named: 0.25, base: 0.15, brave: 0.6, risk: 0.12, bond: 0.15, neutral: 2, rest: 0.2, restDays: 30, hurt: 1.5, sway: 0.25, line: 0, foe: -1, friend: 4},
   acquaint: {chance: 0.4, spread: 3.5, good: 0.6, least: 0.25, diff: 0.25},
   level: {need: [0, 8, 20, 40, 65, 95, 135, 185, 245, 320, 400], tier: [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5], chore: 1},
+  recruit: {count: 5, up: 0.03, down: 0.35, fee: {base: 10, perLevel: 15}},
   bond: {won: 0.5, lost: -0.2},
   devotion: {start: 0.7, forced: 0.2, paid: 0.02, back: 0.05, leave: 0.2, will: 0.5, mood: -0.15, days: 30},
 };

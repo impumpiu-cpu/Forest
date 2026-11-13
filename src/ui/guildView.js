@@ -5,7 +5,7 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
@@ -62,6 +62,9 @@ export class GuildView extends CampaignView {
       const ar = e.target.closest('button[data-arm]');
       if (ar) { const id = +ar.dataset.id, G = this.G; this.houseDo(() => ar.dataset.arm === 'lock' ? lockItem(G, id, !armoryOf(G).items.find(x => x.id === id)?.locked) : ar.dataset.arm === 'sell' ? sellItem(this.atlas, G, id, pay) : ar.dataset.arm === 'forge' ? forgeItem(G, id, pay) : buyItem(this.atlas, G, ar.dataset.token, pay)); return; }
       const bs = e.target.closest('button[data-beast]'); if (bs) { this.houseDo(() => buyBeast(this.atlas, this.G, bs.dataset.beast, pay)); return; }
+      const hr = e.target.closest('button[data-hire]'); if (hr) { this.houseDo(() => takeRecruit(this.atlas, +hr.dataset.hire)); return; }
+      const wt = e.target.closest('button[data-watch]'); if (wt) { this.houseDo(() => watchParty(this.atlas, +wt.dataset.watch)); this.draw?.(); return; }
+      const rc = e.target.closest('button[data-recall]'); if (rc) { this.houseDo(() => recall(this.atlas, +rc.dataset.recall)); return; }
       const fr = e.target.closest('button[data-free]'); if (fr) { this.houseDo(() => takeBack(this.G, +fr.dataset.free)); return; }
       const b = e.target.closest('button[data-act]'); if (!b) return;
       if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
@@ -168,7 +171,7 @@ export class GuildView extends CampaignView {
   stepSeason() {
     const a = this.atlas, G = this.G; if (!G) return super.stepSeason();
     if (G.phase !== 'open') return false;
-    const K0 = expedition(a), d0 = K0?.day ?? 0;
+    const K0 = expedition(a), d0 = K0?.day ?? 0, out0 = parties(a);
     this.autosave();
     const more = stepGuild(a);
     const K = a.campaign;
@@ -176,7 +179,8 @@ export class GuildView extends CampaignView {
       const W = WATCH[this.clock.pace], n = Math.max(1, K.track.length - 1);
       this.queue = this.watch ? (K.camps || []).filter(c => c.day >= d0 && (c.boss || (W && (c.kind !== 'stop' || W.stops)))).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
     } else this.queue = [];
-    if (K0 && K0.closed) { this.pauseAfter = `Отряд вернулся: ${G.expeditions.at(-1)?.how || ''}.`; }
+    const back = out0.filter(x => x.closed);   // (any party home this season: the player's word waits)
+    if (back.length) this.pauseAfter = back.map(x => `Отряд ${x.expedition} ${G.expeditions.find(e => e.n === x.expedition)?.how || 'вернулся'}.`).join(' ');
     if (!more) this.autosave(true);
     return more;
   }
@@ -216,7 +220,7 @@ export class GuildView extends CampaignView {
     const K = expedition(a), ms = membersOf(G);
     $('guildStatus').innerHTML = `<dt>Казна</dt><dd>${G.gold} зол.</dd><dt>Уровень</dt><dd>${levelOf(G)} · договоры до тира ${TIER_WORD[tierOf(G)] || '—'}</dd><dt>Слава</dt><dd>${G.fame}${levelNext(G) != null ? ` / ${levelNext(G)}` : ''}</dd>` +
       `<dt>Людей</dt><dd>${ms.length} · дома ${ms.filter(m => m.guild.state === 'ready').length}${ms.some(m => m.guild.state === 'chore') ? ` · на делах ${ms.filter(m => m.guild.state === 'chore').length}` : ''}${K ? ` · в походе ${ms.filter(m => m.guild.state === 'expedition').length}` : ''}</dd>` +
-      `<dt>Отряд</dt><dd>${K ? `в пути ${K.day} ${plural(K.day, 'день', 'дня', 'дней')}: ${esc(questWord(K))}` : 'дома'}</dd>` +
+      `<dt>Отряды</dt><dd>${parties(a).length ? `в пути ${parties(a).length} из ${partiesMost(G)}${K ? `; смотрим: ${K.expedition}-й, ${esc(questWord(K))}` : ''}` : `дома (до ${partiesMost(G)} в пути разом)`}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
     for (const id of [...this.gpick]) if (!ms.some(m => m.id === id && m.guild.state === 'ready')) this.gpick.delete(id);
     $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
@@ -234,7 +238,7 @@ export class GuildView extends CampaignView {
   }
   peopleHtml() {
     const G = this.G, live = membersOf(G), gone = G.members.filter(m => !live.includes(m));
-    return `<p class="note">Отметьте, кого послать: на дело в городе или в поход — на «Доске». Раненые лечатся дома сами; жалованье — каждый сезон из казны.</p>` +
+    return `<p class="note">Отметьте, кого послать: на дело в городе или в поход — на «Доске». Раненые лечатся дома сами; жалованье — каждый сезон из казны.</p>` + this.doorHtml() + `<h4 class="menu-group">Гильдия</h4>` +
       `<div class="savelist guild-people">${live.map(m => this.memberRow(m)).join('')}</div>` +
       (this.gpick.size ? `<div class="row"><small>Выбрано: ${this.gpick.size}</small><button type="button" class="quiet mini" data-act="none">снять</button></div>` : '') +
       (gone.filter(m => m.guild?.state === 'left').length ? `<details class="obs-lib"><summary>Ушедшие (${gone.filter(m => m.guild?.state === 'left').length})</summary><div class="savelist guild-people">${gone.filter(m => m.guild?.state === 'left').map(m => this.memberRow(m, false)).join('')}</div></details>` : '');
@@ -256,6 +260,23 @@ export class GuildView extends CampaignView {
     });
     return `<p class="note">Строится одна комната за раз, готова к новому сезону.${B ? ` Сейчас: <b>${esc(ROOMS.get(B.room).label)}</b>, ${B.level}-й уровень.` : ''} Содержание дома — каждый сезон вместе с жалованьем.</p>` +
       `<div class="savelist errands">${rows.join('')}</div>`;
+  }
+  // the parties out: each its errand and days; watch it (its camps on the local map — the others reckoned unseen), call it back
+  partiesHtml() {
+    const a = this.atlas, G = this.G, out = parties(a); if (!out.length) return '';
+    return `<div class="savelist guild-parties">${out.map(K => `<div class="row"><small>${K === a.campaign ? '👁 ' : ''}<b>Отряд ${K.expedition}</b> · ${K.day} ${plural(K.day, 'день', 'дня', 'дней')} · ${esc(questWord(K))} · ${K.members.filter(m => m.alive).map(m => esc(m.name)).join(', ')}</small>` +
+      (K === a.campaign ? '' : `<button type="button" class="quiet mini" data-watch="${K.expedition}">смотреть</button>`) +
+      (abortWhy(a, G, K) ? '' : `<button type="button" class="quiet mini" data-recall="${K.expedition}" title="договор будет брошен: сразу — малая потеря славы, в последнюю пятую часть срока — как провал">отозвать</button>`) + '</div>').join('')}</div>`;
+  }
+  // the door: who came this season (anew each season — campaign/guild.js refreshRecruits)
+  doorHtml() {
+    const a = this.atlas, G = this.G, rs = G.recruits || [];
+    if (!rs.length) return '';
+    return `<h4 class="menu-group">У дверей (до нового сезона) · мест в казармах: ${membersOf(G).length} из ${rosterMost(G)}</h4><div class="savelist guild-people">${rs.map(m => {
+      const why = recruitWhy(a, m.id);
+      return `<div class="gm"><span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${m.level || 1} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')}<br><small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}</small></span>` +
+        `<div class="row actions"><button type="button" class="mini" data-hire="${m.id}"${why ? ` disabled title="${esc(why)}"` : ''}>Нанять — ${m.fee} зол.</button></div></div>`;
+    }).join('')}</div>`;
   }
   // the armory's racks and the town's shop (campaign/armory.js)
   armoryHtml() {
@@ -304,8 +325,8 @@ export class GuildView extends CampaignView {
       `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +
       `<div class="row actions"><button type="button" data-act="chore"${choreOk ? '' : ' disabled'}>Послать на дело</button><small>${offer ? (offer.why ? esc(offer.why) : `отчёт — через ${offer.days[0] === offer.days[1] ? offer.days[0] : `${offer.days[0]}–${offer.days[1]}`} дн.`) : 'выберите дело'}</small></div>` +
       `<h4 class="menu-group">Договоры</h4>` +
-      (K ? `<p class="note">Отряд в пути: ${esc(questWord(K))}. Второй отряд — позже (Г3).</p>` +
-          (abortWhy(a, G, K) ? '' : `<div class="row actions"><button type="button" data-act="recall">Отозвать отряд</button><small>договор будет брошен: сразу — малая потеря славы, в последнюю пятую часть срока — как провал</small></div>`) :
+      this.partiesHtml() +
+      (parties(a).length >= partiesMost(G) ? `<p class="note">В пути все отряды, что позволяет комната планирования (${partiesMost(G)}).</p>` :
         (B.errands.length ? `<div class="row"><small>Порядок: <select data-gsort>${SORT_WORDS.map(([k, w]) => `<option value="${k}"${k === this.gsort ? ' selected' : ''}>${w}</option>`).join('')}</select></small></div>` : `<p class="note">Договоров нет: гильдии ${levelOf(G)}-го уровня мир доверяет только дела в городе. Слава — за сделанные дела.</p>`) +
         `<div class="savelist errands">${errandCards(B.errands, this.gerrand, 'gerrand')}</div>` +
         `<div class="row"><small>Отряд: <select data-gsize>${sizes}</select> чел.; назначить — до ${namedMost(this.gsize)} (отмеченные выше), остальные решают сами</small></div>` + answers +

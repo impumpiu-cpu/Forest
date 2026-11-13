@@ -24,7 +24,7 @@
 //            paid that share of the reserve less `cut` of it (the rest back to the issuer), the fame lost × (1 − the share)
 //   retreat — storms of the goal beaten back before a guild's party gives up and comes home with nothing (the author's word 13.11)
 export const CONTRACT = {
-  board: {open: [0, 3, 2, 2, 1, 1], post: 0.5},
+  board: {open: [0, 3, 2, 2, 1, 1], post: 1},
   offer: [60, 150],
   pay: [null, [20, 40], [45, 80], [90, 160], [160, 280], [260, 450]], share: 0.6, least: 0.5,
   issuer: {town: 2},
