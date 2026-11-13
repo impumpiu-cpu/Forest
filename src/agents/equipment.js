@@ -55,9 +55,9 @@ export function recalcGear(a) {
     const d = def(it);
     if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
     if (d.ranged && d.ranged.dmg > 0 && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};   // (a torch, thrown at a wall, is no shot: throwTorch)
-    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
+    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs ? {...d.vs} : null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
-    if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
+    if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs ? {...d.vs} : null; }
     if (d.speed) g.speed *= d.speed;
   }
   // the other hand: a one-handed weapon light enough for it (quality `paired`) strikes after the main one (agents/combat.js attack)
@@ -73,7 +73,8 @@ export function recalcGear(a) {
   // a thrown weapon is ready while throws are left in its bundle, a bow while arrows are in the quiver
   if (g.ranged) g.rangedReady = (throwsOf(def(g.ranged.item)) ? g.ranged.item.ammo || 0 : rangedAmmo(a, def(g.ranged.item))) > 0;
   const body = a.equip.body;
-  if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
+  // the `vs` tables are copies: a table shared with the data would save as a reference, and a loaded game would hash otherwise
+  if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs ? {...d.vs} : null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
   // tools work from the hands or from the back (the worker swaps them in)
   for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
     for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g.tool[job] || 1)) { g.tool[job] = m; g.toolItem[job] = it; }
