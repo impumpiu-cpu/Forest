@@ -93,9 +93,13 @@ else {
 function wilsonLow(k, n, z = 1) { if (!n) return 0; const p = k / n, d = 1 + z * z / n; return Math.max(0, (p + z * z / (2 * n) - z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d); }
 export function fitTable(rows) {
   const r3 = x => Math.round(x * 1000) / 1000;
+  // a point's wins: the worst world's share (a foe may fight harder in one world than its strength says — its summoners, its
+  // casters: data/autofight.js), as many fights as that world saw
+  const worst = rs => { const by = new Map(); for (const r of rs) { const o = by.get(r.seed) || {k: 0, n: 0}; o.k += +r.local.won; o.n++; by.set(r.seed, o); } return [...by.values()].sort((p, q) => p.k / p.n - q.k / q.n)[0]; };
   const point = rs => {
     const m = rs.map(r => r.local), mean = f => m.reduce((s, x) => s + f(x), 0) / m.length;
-    return {x: Math.exp(mean(x => Math.log(Math.max(1e-3, x.ours / Math.max(1e-6, x.theirs))))), won: m.filter(x => x.won).length, seen: m.length, dead: mean(x => x.fell / x.n), maim: mean(x => x.maims / x.n), hp: mean(x => x.hpLost / x.n), pot: mean(x => Math.max(0, x.used) / x.n)};
+    const w = worst(rs);
+    return {x: rs[0].ratio, won: w.k, seen: w.n, dead: mean(x => x.fell / x.n), maim: mean(x => x.maims / x.n), hp: mean(x => x.hpLost / x.n), pot: mean(x => Math.max(0, x.used) / x.n)};
   };
   const smooth = ps => {
     ps.sort((p, q) => p.x - q.x);

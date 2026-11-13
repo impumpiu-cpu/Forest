@@ -22,7 +22,7 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
-import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget, companyStrength} from './camp.js';
+import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget, foeNominal, companyStrength} from './camp.js';
 import {AUTOFIGHT} from '../data/autofight.js';
 import {takeOnce, takeBonds, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
@@ -340,7 +340,7 @@ function autoFight(a, K, d, r, how) {
   const {row, how: measured} = autoRow(d, how);
   // caught on the march when the table knows this foe only at night: the surprise the map would play (not caught napping — no)
   const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
-  const P = companyStrength(a, K) * caught, E = foeBudget(r, d, how), ratio = P / Math.max(1e-6, E);
+  const P = companyStrength(a, K) * caught, E = foeBudget(r, d, how), ratio = P / Math.max(1e-6, foeNominal(d));   // (E — the record's: what the map would buy)
   const o = readRow(row, ratio / A.doubt), win = r() < o.win ** A.sure;
   K.lastAuto = {E: Math.round(E), P: Math.round(P), heads: Math.max(1, Math.ceil(E / CAMP.foe.unit * CAMP.foe.quickUnit * CAMP.quickHeads)), weight: Math.round(E / Math.max(1e-6, P) * 100) / 100};   // for the fight's record (the map's units)
   const ms0 = alive(K).filter(m => !m.captive), n = ms0.length, hit = [], out = new Set();
@@ -370,13 +370,12 @@ function autoFight(a, K, d, r, how) {
     const m = pickOne(), b = Math.min(hurt, between(r, F.blow)); m.hp -= b; hurt -= b;
     if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;
     if (!hit.includes(m)) hit.push(m);
+    // (the dead and the maimed of the fight are counted above, as the map counts them — a fall here is a fall: bound up and alive,
+    // but one with three maims borne, whom the next deadly blow kills)
     if (m.hp <= 0 && spent(m)) die(a, K, m, where);
-    else if (m.hp <= 0 && !win) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = saved(m); out.add(m.id); } else die(a, K, m, where); }
-    else if (m.hp <= 0) { m.hp = saved(m); award(K, m, 'clean'); }
+    else if (m.hp <= 0) { m.hp = saved(m); if (win) award(K, m, 'clean'); }
   }
-  // a lost fight with nobody left on its feet: the maimed lying senseless may be finished off, as on the map where no one is
-  // there to bind them (Р3; a draw for each only then)
-  if (!win && !standing().length) for (const m of alive(K).filter(x => out.has(x.id))) if (r() < F.finishOff) die(a, K, m, `${m.gender === 'f' ? 'добита' : 'добит'}, лёжа без сознания (${foe.label})`);
+  // (a lost fight's finished-off are among the map's dead read above: no draw of their own)
   if (!alive(K).length) return win;
   if (win) {
     const loot = Math.round(between(r, F.loot)); K.food += loot;

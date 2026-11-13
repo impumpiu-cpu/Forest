@@ -281,6 +281,13 @@ export function foeWeight(r, F, kind) {
   return Math.max(B.floor, base + (2 * r() - 1) * B.sway);
 }
 export const foeBudget = (r, F, kind, unit = CAMP.foe.unit) => unit * foeStrength(F) * foeWeight(r, F, kind);
+// the foe as the quick fight weighs it (campaign/fight.js autoFight; data/autofight.js): its strength × `unit`, a named one × its
+// weight over a force's — the same the table of the map's outcomes was measured by (the sway and the chance meeting's lightness are
+// in the table: the map's fights had them)
+export function foeNominal(F) {
+  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.person ? B.leader : B.mini) / B.force : 1;
+  return B.unit * foeStrength(F) * named;
+}
 
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
