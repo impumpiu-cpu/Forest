@@ -5,11 +5,12 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, classOf, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK, guildIo, guildAscend, guildSummon, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy, summonLine} from '../view/campaign.js';
+import {foundGuild, foundWhy, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, classOf, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK, guildIo, guildAscend, guildSummon, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy, summonLine} from '../view/campaign.js';
 import {loadHeroes, saveHeroes} from './heroes.js';
 import {ROOMS} from '../data/rooms.js';
 import {TIER_LABEL} from '../data/errands.js';
-import {townLabel} from '../view/world.js';
+import {townLabel, realmLabel} from '../view/world.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
 import {SPECIES} from '../data/species.js';
@@ -99,6 +100,75 @@ export class GuildView extends CampaignView {
       b.checked ? this.hirePick.add(+b.dataset.mid) : this.hirePick.delete(+b.dataset.mid); this.syncHire();
     });
     $('guildHireGo').addEventListener('click', () => this.doHire());
+    // the town of the guild, of a branch, of the move (the author's word 14.11): by its name or by a click on the map
+    this.townQ = '';
+    $('campTownQ').addEventListener('input', e => { this.townQ = e.target.value; this.renderCaps(); });
+    $('campCaps').addEventListener('click', e => { const row = e.target.closest('.sv[data-town]'); if (row && this.guildOn && !this.G) this.pickTown(+row.dataset.town, {look: true}); }, true);
+    $('guildBody').addEventListener('input', e => { if (e.target.id === 'gTownQ') { this.townQ = e.target.value; this.renderTownHits(); } });
+    $('guildBody').addEventListener('click', e => { const row = e.target.closest('[data-gtown]'); if (row) this.pickTown(+row.dataset.gtown, {look: true}); });
+    $('campInspect').addEventListener('click', e => {
+      const b = e.target.closest('button[data-tact]'); if (!b) return;
+      const a = this.atlas, id = +b.dataset.town;
+      if (b.dataset.tact === 'found') { this.capPick = id; this.begin(); return; }
+      this.houseDo(() => (b.dataset.tact === 'branch' ? guildOpenBranch(a, id) : guildMove(a, id)));
+      this.renderInspect();
+    });
+  }
+  // ── the town picked: on the map (its card on the right with what the guild may do there), in the lists
+  pickTown(id, {look = false} = {}) {
+    const a = this.atlas, t = a?.towns.find(x => x.id === id); if (!t) return;
+    this.townPick = id;
+    if (!this.G) this.capPick = id;
+    if (look && this.cam) { this.cam.zoom = Math.max(this.cam.zoom, 2.5); this.cam.cx = t.x + 0.5; this.cam.cy = t.y + 0.5; this.follow = false; }
+    this.select({kind: 'town', id: t.id, i: t.y * a.w + t.x});
+    if (!this.G) this.renderCaps(); else if (this.gtab === 'branches') this.renderGuild();
+  }
+  clickAt(e) {
+    super.clickAt(e);
+    if (this.guildOn && this.sel?.kind === 'town' && this.sel.id !== this.townPick) this.pickTown(this.sel.id);
+  }
+  // the towns whose name begins with (or holds) what is typed; the living, of a people that comes to a guild's door first
+  townHits(q, n = 12) {
+    const a = this.atlas; q = q.trim().toLowerCase(); if (!a || !q) return [];
+    const rank = t => (t.name.toLowerCase().startsWith(q) ? 0 : 1) + (t.capital ? 0 : 0.5);
+    return a.towns.filter(t => t.alive && t.name.toLowerCase().includes(q)).sort((p, r) => rank(p) - rank(r) || (r.pop || 0) - (p.pop || 0)).slice(0, n);
+  }
+  townRow(t, {why = null, cur = false, attr = 'data-town'} = {}) {
+    const a = this.atlas, col = WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).color.join(',') : '128,128,128';
+    return `<div class="sv cap${cur ? ' cur' : ''}${why ? ' off' : ''}" ${attr}="${t.id}"${why ? ` title="${esc(why)}"` : ''}><span class="t"><i style="background:rgb(${col})"></i><b>${esc(townLabel(t, 0))} ${esc(t.name)}</b>${t.capital ? ' · столица' : ''}` +
+      `<br><small>${t.realm != null ? esc(realmLabel(a, t.realm)) : 'вольный город'} · жителей ${Math.round(t.pop || 0)}${why ? ` · <b>${esc(why)}</b>` : ''}</small></span></div>`;
+  }
+  // founding: any town of a people that comes to the door — found by its name, or clicked on the map; the capitals offered first
+  renderCaps() {
+    if (!this.guildOn || this.G) { $('campTownQ').hidden = true; $('campCapsLbl').textContent = 'Столица'; return super.renderCaps(); }
+    super.renderCaps();
+    const a = this.atlas; if (!a) return;
+    $('campCapsLbl').textContent = 'Город гильдии'; $('campTownQ').hidden = false;
+    $('campCapsNote').textContent = 'Щёлкните город на карте или найдите его по названию — не обязательно столицу. Его народ придёт к дверям, его держава даст грамоту.';
+    const q = this.townQ.trim(), hits = q ? this.townHits(q) : a.towns.filter(t => t.alive && t.capital);
+    const pick = a.towns.find(t => t.id === this.capPick), list = pick && !hits.includes(pick) ? [pick, ...hits] : hits;
+    $('campCaps').innerHTML = list.length ? list.map(t => this.townRow(t, {why: foundWhy(a, t.id), cur: t.id === this.capPick})).join('') : `<small>${q ? 'Таких городов нет.' : 'Щёлкните город на карте.'}</small>`;
+    $('campGo').disabled = this.capPick == null || !!foundWhy(a, this.capPick);
+  }
+  // the card of a town on the right: what the guild may do there — found its house, open a branch, move
+  renderInspect() {
+    super.renderInspect();
+    const a = this.atlas, box = $('campInspect'); if (!box || !a || !this.guildOn || this.sel?.kind !== 'town') return;
+    const id = this.sel.id, G = this.G, btn = (act, label, why) => `<button type="button" class="${act === 'found' ? 'primary' : 'mini'}" data-tact="${act}" data-town="${id}"${why ? ` disabled title="${esc(why)}"` : ''}>${label}</button>${why ? ` <small>${esc(why)}</small>` : ''}`;
+    let html = '';
+    if (!G) html = btn('found', 'Основать гильдию здесь', foundWhy(a, id));
+    else if (G.phase === 'open' && id !== G.town) {
+      const isBranch = branchesOf(G).some(b => b.town === id);
+      html = (isBranch ? '' : `<div class="row">${btn('branch', `Открыть филиал (${branchCost(G)} зол.)`, openWhy(a, G, id))}</div>`) +
+        (G.moving ? '' : `<div class="row">${btn('move', isBranch ? 'Переехать в филиал' : `Переехать сюда (дом ${moveCost(G, id)} зол.)`, moveWhy(a, G, id))}</div>`);
+    }
+    if (html) box.insertAdjacentHTML('afterbegin', `<div class="card guild-town-act">${html}</div>`);
+  }
+  // the branches' tab: the town found by its name (a click on a hit — the map goes there and the town is picked)
+  renderTownHits() {
+    const box = $('gTownHits'); if (!box) return;
+    const hits = this.townHits(this.townQ, 8);
+    box.innerHTML = hits.map(t => this.townRow(t, {cur: t.id === this.townPick, attr: 'data-gtown'})).join('');
   }
   get G() { return this.atlas?.guild || null; }
 
@@ -271,7 +341,9 @@ export class GuildView extends CampaignView {
       `<dt>Отряды</dt><dd>${parties(a).length ? `в пути ${parties(a).length} из ${partiesMost(G)}${K ? `; смотрим: ${K.expedition}-й, ${esc(questWord(K))}` : ''}` : `дома (до ${partiesMost(G)} в пути разом)`}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
     for (const id of [...this.gpick]) if (!ms.some(m => m.id === id && m.guild.state === 'ready')) this.gpick.delete(id);
+    const typing = document.activeElement?.id === 'gTownQ' ? document.activeElement.selectionStart : null;   // (a season's redraw keeps the search being typed)
     $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'branches' ? this.branchesHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
+    if (this.gtab === 'branches') { this.renderTownHits(); if (typing != null) { const q = $('gTownQ'); q?.focus(); q?.setSelectionRange(typing, typing); } }
   }
   // one member: a tick to pick (at the house only), name, role, level, years, health, what he is doing, wage
   memberRow(m, pickable = true) {
@@ -363,16 +435,18 @@ export class GuildView extends CampaignView {
     });
     const used = new Set([G.town, ...bs.map(b => b.town)]), towns = a.towns.filter(t => t.alive && !used.has(t.id)).sort((p, q) => roadDays(a, G.town, p.id) - roadDays(a, G.town, q.id));
     const ow = towns.length ? openWhy(a, G, towns[0].id) : 'некуда';
-    const open = `<div class="row"><small>Открыть филиал (${branchCost(G)} зол.): <select id="gBranchTown">${towns.map(t => `<option value="${t.id}"${openWhy(a, G, t.id) ? ' disabled' : ''}>${esc(t.name)} · ${esc(townLabel(t, 0))} · ${roadDays(a, G.town, t.id)} дн.</option>`).join('')}</select>` +
+    const open = `<div class="row"><small>Открыть филиал (${branchCost(G)} зол.): <select id="gBranchTown">${towns.map(t => `<option value="${t.id}"${t.id === this.townPick ? ' selected' : ''}${openWhy(a, G, t.id) ? ' disabled' : ''}>${esc(t.name)} · ${esc(townLabel(t, 0))} · ${roadDays(a, G.town, t.id)} дн.</option>`).join('')}</select>` +
       ` <button type="button" class="mini" data-branch="open"${ow && !towns.some(t => !openWhy(a, G, t.id)) ? ` disabled title="${esc(ow)}"` : ''}>Открыть</button>${ow && !towns.some(t => !openWhy(a, G, t.id)) ? ` ${esc(ow)}` : ''}</small></div>`;
     const houses = [G.town, ...bs.map(b => b.town)], who = membersOf(G).filter(m => ['ready', 'retired'].includes(m.guild.state));
     const xfer = bs.length ? `<div class="row"><small>Перевести: <select id="gXferWho">${who.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(this.townOf(houseTown(G, m))?.name || '')})</option>`).join('')}</select> в <select id="gXferTo">${houses.map(id => `<option value="${id}">${esc(this.townOf(id)?.name || '')}${id === G.town ? ' (дом)' : ''}</option>`).join('')}</select>` +
       ` <button type="button" class="mini" data-branch="xfer">В дорогу</button> · ${BR.road.gold} зол. за день пути</small></div>` : '';
     const dests = [...bs.map(b => this.townOf(b.town)).filter(t => t?.alive), ...towns];
     const move = G.moving ? '' : `<h4 class="menu-group">Переезд</h4><p class="note">Дом гильдии переезжает в город филиала (${BR.move.branch.join('–')} сезона) или в город, где куплен дом (${BR.move.house} зол., ${BR.move.bare[0] / SEASONS.all().length}–${BR.move.bare[1] / SEASONS.all().length} года). Пока переезжает, гильдия ничего не берёт; комнаты теряют ${BR.move.lose.branch}–${BR.move.lose.bare} ур.; старый дом становится филиалом, если для него есть место. Женатые в городе, родня его жителей и родители растущих детей остаются в старом доме — а если филиала там не будет, могут уйти из гильдии.</p>` +
-      `<div class="row"><small>Переехать в <select id="gMoveTown">${dests.map(t => `<option value="${t.id}"${moveWhy(a, G, t.id) ? ` disabled` : ''}>${esc(t.name)}${bs.some(b => b.town === t.id) ? ' — филиал' : ` — дом ${moveCost(G, t.id)} зол.`} · ${moveSpan(G, t.id).join('–')} сез.</option>`).join('')}</select>` +
+      `<div class="row"><small>Переехать в <select id="gMoveTown">${dests.map(t => `<option value="${t.id}"${t.id === this.townPick ? ' selected' : ''}${moveWhy(a, G, t.id) ? ` disabled` : ''}>${esc(t.name)}${bs.some(b => b.town === t.id) ? ' — филиал' : ` — дом ${moveCost(G, t.id)} зол.`} · ${moveSpan(G, t.id).join('–')} сез.</option>`).join('')}</select>` +
       ` <button type="button" class="mini" data-branch="move"${dests.some(t => !moveWhy(a, G, t.id)) ? '' : ` disabled title="${esc(dests.length ? moveWhy(a, G, dests[0].id) : 'некуда')}"`}>Переехать</button>${dests.length && !dests.some(t => !moveWhy(a, G, t.id)) ? ` ${esc(moveWhy(a, G, dests[0].id))}` : ''}</small></div>`;
-    return mv + head + `<div class="savelist errands">${rows.join('')}</div>` + (G.moving ? '' : open) + xfer + move;
+    // the town to open a branch in or move to: by its name, or a click on it on the map (its card then offers both)
+    const find = `<div class="row"><input id="gTownQ" type="search" autocomplete="off" placeholder="Найти город по названию…" aria-label="Найти город" value="${esc(this.townQ || '')}"><small> или щёлкните город на карте</small></div><div id="gTownHits" class="savelist"></div>`;
+    return mv + head + `<div class="savelist errands">${rows.join('')}</div>` + find + (G.moving ? '' : open) + xfer + move;
   }
   // the parties out: each its errand and days; watch it (its camps on the local map — the others reckoned unseen), call it back
   partiesHtml() {

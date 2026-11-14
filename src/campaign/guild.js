@@ -17,6 +17,7 @@ import {restSeason, wageShare, retire, unretire, dismiss} from './retire.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {plural, refuse} from '../core/util.js';
 import {GUILD} from '../data/guild.js';
+import {RETINUE} from '../data/campaign.js';
 import {CHORES, CHORE} from '../data/chores.js';
 import {SPECIES} from '../data/species.js';
 import {COMBAT_ROLES} from '../data/roles.js';
@@ -91,10 +92,18 @@ export function watchParty(a, n) {
 
 // ── the founding: the guild's house in a capital, its gold, and `candidates` at its door (the kinds and roles of the town,
 // each in the starting kit of a caravan's core: data/campaign.js RETINUE.level). The player takes `pick` of them (hire).
+// where a guild may be founded (the author's word 14.11: not only a capital — a town of colour will do): a living town of a
+// people that makes a company (data/campaign.js RETINUE: its people come to the door); → why not, or null
+export function foundWhy(a, townId) {
+  const t = a.towns?.find(x => x.id === townId);
+  if (!t?.alive) return 'такого города нет';
+  if (!RETINUE[t.people]) return 'в этом городе не наберёшь людей в гильдию';
+  return null;
+}
 export function foundGuild(a, townId, {name = null} = {}) {
   if (!a.hist) throw new Error('Гильдии нужен мир с историей.');
+  refuse(foundWhy(a, townId));
   const t = a.towns.find(x => x.id === townId && x.alive);
-  if (!t || !t.capital) throw new Error('Гильдию основывают в столице.');
   const G = a.guild = {
     v: 1, id: `${a.cfg.seed}:guild:${t.id}`, name: name || `${t.name}ский дом`, seed: `${a.cfg.seed}:guild:${t.id}`, town: t.id, people: t.people, realm: t.realm,
     founded: {year: a.hist.year, season: a.hist.season}, day: 0, gold: 0, fame: 0, phase: 'hire', candidates: [], members: [], nextMember: 0,

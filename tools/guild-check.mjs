@@ -4,7 +4,7 @@
 //   node tools/guild-check.mjs [seed]
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost, houseOf, partyMost, parties, watchParty, refreshRecruits, recruitWhy, takeRecruit, levelOf} from '../src/campaign/index.js';
+import {capitals, foundGuild, foundWhy, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, expedition, membersOf, atHouse, ageOf, rankOf, muster, namedMost, houseOf, partyMost, parties, watchParty, refreshRecruits, recruitWhy, takeRecruit, levelOf} from '../src/campaign/index.js';
 import {XP} from '../src/data/experience.js';
 import {ERRANDS} from '../src/data/errands.js';
 import {GUILD} from '../src/data/guild.js';
@@ -19,6 +19,13 @@ const base = generateAtlas({seed, size: 'small', land: 1, plates: 1, hemisphere:
 const frozen = JSON.stringify(saveAtlas(base));
 const fresh = () => loadAtlas(JSON.parse(frozen));
 const cap = capitals(base)[0];
+// the house anywhere (the author's word 14.11): a town of a people that comes to the door, not only a capital
+{
+  const a = fresh(), town = a.towns.find(t => t.alive && !t.capital && !foundWhy(a, t.id)), none = a.towns.find(t => t.alive && foundWhy(a, t.id));
+  let G = null; try { G = town ? foundGuild(a, town.id) : null; } catch (e) { /* the check below says it */ }
+  ok(town && G?.town === town.id && G.candidates.length > 0 && (!none || foundWhy(a, none.id)), 'гильдию основывают в любом городе своего народа, не только в столице',
+    `${town?.name} · кандидатов ${G?.candidates.length ?? 0}${none ? ` · нельзя в ${none.name}: ${foundWhy(a, none.id)}` : ''}`);
+}
 const sum = G => Math.round(G.ledger.reduce((s, l) => s + l.gold, 0) * 10) / 10;
 // a fingerprint of the guild: every member's state, health, level, experience; the gold; the chronicle's words
 function guildHash(G) {

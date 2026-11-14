@@ -563,8 +563,8 @@
             <div class="row"><input id="guildName" type="text" maxlength="40" autocomplete="off" placeholder="Название гильдии" aria-label="Название гильдии"></div>
             <small>Дом гильдии встанет в выбранной столице: казна от державы, к дверям придут люди этого города — из двадцати возьмёте восьмерых. Мир живёт сам; гильдия берёт то, что он просит.</small></div>
           <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
-          <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
-            <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
+          <div class="field" id="campCapsField" hidden><span class="lbl" id="campCapsLbl">Столица</span><input id="campTownQ" type="search" autocomplete="off" placeholder="Найти город по названию…" aria-label="Найти город" hidden><div id="campCaps" class="savelist"></div>
+            <small id="campCapsNote">Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
         </div>
         <details class="card obs-lib" id="campLibField" open>
           <summary>Мир из библиотеки</summary>
