@@ -114,9 +114,10 @@ export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
 // A parrying weapon in hand (quality `parry`) adds to the block against blows, never past CAPS.block
 export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.max(against(g.block, g.blockVs, type), Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry)) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
-// natural armour (a perk «Чешуя и панцирь», data/perks.js) stands in the place of the body's own answer to that kind, never on top
-export const resistOf = (sp, type, melee) => {
-  const sc = innateOf(sp, 'scales')?.[type];
+// natural armour (a perk «Чешуя и панцирь», data/perks.js) stands in the place of the body's own answer to that kind, never on top;
+// `a` — the creature itself: its scales as it carries them now (its kind's way may have grown them: data/paths.js), else its kind's
+export const resistOf = (sp, type, melee, a = null) => {
+  const sc = (a ? heldOf(a, 'scales') : innateOf(sp, 'scales'))?.[type];
   const by = sc ?? sp.resist?.[type] ?? 1;
   return by * (sp.resist?.[melee ? 'melee' : 'ranged'] ?? 1);
 };
@@ -145,7 +146,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // a rider: the blow may fall on its mount (agents/mount.js)
   { const m = blowOnMount(w, t, raw, type, melee, resistOf); if (m != null) return m; }
   if (mix) type = mix[0][0];
-  else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
+  else raw *= resistOf(tsp, type, melee, t);   // a spear point in a skeleton, an axe in a mycelium do little
   // a blow from the flank meets half a shield, one in the back none (stanceOf)
   const block = blockAgainst(g, type, melee) * (stance === 'back' ? 0 : stance === 'flank' ? COMBAT.flank.block : 1);
   // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
@@ -177,7 +178,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = (t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1) * forestGuard(w, t);
-  let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty) * pierce), 0)
+  let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee, t) * (1 - armorAgainst(g, ty) * pierce), 0)
     : raw * home * wall * (1 - armorAgainst(g, type) * pierce);
   taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
@@ -187,14 +188,14 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   moraleWound(w, t, dmg);
   // creatures that drink blood heal by what they draw
   const bsp = SPECIES.get(by.species);
-  const drink = melee && innateOf(bsp, 'bloodDrink');
+  const drink = melee && heldOf(by, 'bloodDrink');   // (its own: its kind's way may have deepened it — data/paths.js)
   if (drink && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * drink.share);
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js); a breath is an act of its own (agents/abilities.js)
-  const venom = melee && innateOf(bsp, 'venom');   // (the book of perks: «Ядовитый укус», its rank's profile or the species' own numbers)
+  const venom = melee && heldOf(by, 'venom');   // (the book of perks: «Ядовитый укус», its rank's profile or the species' own numbers)
   if (venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
   if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead || !!tsp.mechanism);
-  const web = melee && innateOf(bsp, 'web');
+  const web = melee && heldOf(by, 'web');
   if (web) t.webbed = {slow: web.slow, until: w.tick + web.ticks};
   // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall; so does a
   // burning throw that struck home (the forge-master's fire: data/balance/forms.js spitfire)

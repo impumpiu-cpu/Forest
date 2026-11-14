@@ -107,7 +107,7 @@ export function campSetup(a, K, ev) {
     // the pieces of terrain of this map (world/pieces.js): a scene on a storm or a boss, else the land's and the scatter
     // (a camp kept from before the pieces has none, and is watched again as it was played)
     layout: {v: 1, kind: ev.kind, scene: ev.kind === 'guard' || !!ev.foe?.boss, foe: ev.foe ? {kind: ev.foe.kind, band: ev.foe.band || CAMP_FOES[ev.foe.kind]?.band || null, beast: ev.foe.beast || CAMP_FOES[ev.foe.kind]?.beast || null, boss: ev.foe.boss?.species || null} : null},
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null, one: !!ev.foe.one} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, person: ev.foe.person || null, one: !!ev.foe.one, ...(ev.foe.level ? {level: ev.foe.level} : {})} : null,
   };
 }
 
@@ -342,6 +342,9 @@ function spawnFoe(w) {
     group = part({beast, band}, main, true);
     if (W) group = group.concat(part(W, budget - main, false));
   }
+  // the level its folk stand at (plan З-10): a lair's by its age, a contract's camp by its tier (campaign/land.js lairGuard,
+  // campaign/contracts.js campGuard) — its kind's way and its class's to that level (data/perks.js perksOf); none — the band's own
+  if (F.level) for (const g of group) { g.level = F.level; refreshBody(g); g.hp = maxHp(g); }
   // the guards of a place stormed (campaign/quest.js) hold it (goal `hold`, agents/squad.js holdPlan): about its heart, or where
   // they stand; their morale their own (agents/morale.js: their home steadies them) — they break as anyone, they do not loot
   if (S.kind === 'guard') {

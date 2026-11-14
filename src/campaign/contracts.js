@@ -15,6 +15,7 @@ import {roomBy} from './house.js';
 import {cagesOf, cageRoom, cage, beastLabel} from './cages.js';
 import {ERRANDS, TIER_LABEL} from '../data/errands.js';
 import {LAIRS} from '../data/lairs.js';
+import {tierLevel} from '../data/paths.js';
 import {SPECIES} from '../data/species.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {QUEST} from '../data/quest.js';
@@ -82,7 +83,7 @@ function placeCamp(a, G, tier, spec, s, r) {
   if (!pool.length) return null;
   const {i, d} = pool[Math.floor(r() * pool.length)], C = contractsOf(a);
   const camp = {id: C.nextId++, contract: null, kind: spec.lair ? 'lair' : spec.beast ? 'beasts' : spec.band, lair: spec.lair || null, band: spec.band || null, beast: spec.beast || null,
-    label: `${spec.name} — ${wherePhrase(a, i)}`, name: spec.name, i, x: i % a.w + 0.5, y: ((i / a.w) | 0) + 0.5, s: Math.round(s * 100) / 100, alive: true, days: Math.max(1, Math.round(d))};
+    label: `${spec.name} — ${wherePhrase(a, i)}`, name: spec.name, i, x: i % a.w + 0.5, y: ((i / a.w) | 0) + 0.5, s: Math.round(s * 100) / 100, alive: true, days: Math.max(1, Math.round(d)), tier};
   C.camps.push(camp);
   return camp;
 }
@@ -90,6 +91,7 @@ function placeCamp(a, G, tier, spec, s, r) {
 export function campGuard(a, camp, spec) {
   const g = camp.lair ? {...lairGuard(a, camp.lair, camp.i, camp.s)} : camp.beast ? {kind: 'beasts', strength: camp.s, beast: camp.beast} : {kind: camp.band, band: camp.band, strength: camp.s, ...(camp.band === 'cultists' ? {pool: cultPool(a, camp.i)} : {})};
   g.label = camp.label;
+  if (camp.tier) g.level = tierLevel(camp.tier);   // its folk's level by the contract's tier (data/paths.js; plan З-10)
   if (spec.boss) g.boss = {name: spec.boss.name, g: 'm', species: spec.boss.species, add: {...spec.boss.add}, mustDie: true};
   if (spec.summon) g.with = {band: 'undead', label: 'поднятые мертвецы', share: CONTRACT.summon, summoned: true};
   return g;

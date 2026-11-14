@@ -35,7 +35,7 @@ export function strengthParts(a, {now = false} = {}) {
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
-  const venom = innateOf(sp, 'venom'); if (venom) melee += venom.dmg * Math.min(1, venom.ticks / cd);
+  const venom = heldOf(a, 'venom'); if (venom) melee += venom.dmg * Math.min(1, venom.ticks / cd);
   // a sly weapon (quality `backstab`): the share of blows from the flank strikes deeper (COMBAT.flank)
   const sly = q => 1 + COMBAT.flank.share * (COMBAT.flank.dmg - 1) * traitOf(q, 'backstab');
   melee *= sly(g.melee.q) * pierceGain(g.melee.q);
@@ -68,10 +68,10 @@ export function strengthParts(a, {now = false} = {}) {
   // against the average blow: armour and the body's resistance taken over the three kinds of blow
   const kinds = Object.keys(BLOWS), mean = f => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
   let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => (1 - STRENGTH.shotShare) * blockAgainst(g, k) + STRENGTH.shotShare * blockAgainst(g, k, false))) * (1 - (m.dodge || 0)));
-  staying /= mean(k => resistOf(sp, k, true));
+  staying /= mean(k => resistOf(sp, k, true, a));
   staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
   if (fearsSilver(sp)) staying /= COMBAT.silver.plain;   // against plain weapons
-  const drink = innateOf(sp, 'bloodDrink'); if (drink) staying /= 1 - drink.share * STRENGTH.drinksWeight;
+  const drink = heldOf(a, 'bloodDrink'); if (drink) staying /= 1 - drink.share * STRENGTH.drinksWeight;
   // high in the air most blades miss it; under the ground nothing does, till it comes up (agents/abilities.js)
   const fly = heldOf(a, 'flight'); if (fly?.high) staying *= STRENGTH.acts.aloft;
   if (heldOf(a, 'burrow')) staying *= STRENGTH.acts.under;

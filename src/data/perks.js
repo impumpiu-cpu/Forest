@@ -30,6 +30,7 @@ import {Registry} from '../core/registry.js';
 import {SPECIES} from './species.js';
 import {roleRow} from './roles.js';
 import {classOfRole} from './classes.js';
+import {pathOf} from './paths.js';
 
 export const PERKS = new Registry('perk');
 PERKS.registerAll([
@@ -102,8 +103,8 @@ PERKS.registerAll([
 // ── a class's own (data/classes.js; plan З-8): only one of that class may take them (`req.cls`); each rank its own row
 PERKS.registerAll([
   {id: 'stalwart', label: 'Несокрушимый', kind: 'классовые', how: 'mods', about: 'здоровье: I — +10 %, II — +20 %',
-    req: {level: 3, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.1, pull: {leans: {persist: 1}, values: ['strength']},
-    rank: [{}, {req: {level: 7, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.2}]},
+    req: {level: 3, cls: ['warden', 'smith', 'knight', 'forgemaster', 'pikeman', 'berserker']}, hp: 1.1, pull: {leans: {persist: 1}, values: ['strength']},
+    rank: [{}, {req: {level: 7, cls: ['warden', 'smith', 'knight', 'forgemaster', 'pikeman', 'berserker']}, hp: 1.2}]},
   {id: 'spearDrill', label: 'Выучка копейщика', kind: 'классовые', how: 'fight', about: 'колющий удар копьём сильнее: I — на десятую, II — на пятую',
     req: {level: 3, cls: ['pikeman']}, fight: {blows: {pierce: 1.1}}, pull: {leans: {persist: 1}},
     rank: [{}, {req: {level: 7, cls: ['pikeman']}, fight: {blows: {pierce: 1.2}}}]},
@@ -117,11 +118,11 @@ PERKS.registerAll([
     req: {level: 3, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.05}, pull: {leans: {curious: 0.5}},
     rank: [{}, {req: {level: 7, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.1}}]},
   {id: 'fleet', label: 'Лёгкая нога', kind: 'классовые', how: 'mods', about: 'шаг: I — ×1,05, II — ×1,1',
-    req: {level: 3, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.05}, pull: {leans: {curious: 0.5}},
-    rank: [{}, {req: {level: 8, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.1}}]},
+    req: {level: 3, cls: ['skirmisher', 'catcher', 'beastmaster', 'cutthroat', 'archer']}, mods: {speed: 1.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 8, cls: ['skirmisher', 'catcher', 'beastmaster', 'cutthroat', 'archer']}, mods: {speed: 1.1}}]},
   {id: 'fury', label: 'Ярость боя', kind: 'классовые', how: 'mods', about: 'храбрость: I — +0,2, II — +0,4',
-    req: {level: 3, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.2}, pull: {values: ['strength'], traits: ['brave']},
-    rank: [{}, {req: {level: 7, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.4}}]},
+    req: {level: 3, cls: ['berserker', 'knight', 'beastmaster', 'cleaver']}, mods: {bravery: 0.2}, pull: {values: ['strength'], traits: ['brave']},
+    rank: [{}, {req: {level: 7, cls: ['berserker', 'knight', 'beastmaster', 'cleaver']}, mods: {bravery: 0.4}}]},
 ]);
 
 // ── what a creature is born with, or given by its role (plan claude/bestiary-plan.md З-1, the expert's note 13.11): the same
@@ -347,6 +348,8 @@ export function perksOf(a) {
   // (it chooses nothing), a pawn of the caravan or the guild only the given — the rest it draws to at a level's pick
   const C = classOfRole(a?.fightRole || a?.fight), pawn = a?.faction === 'colony' || a?.member != null || a?.acts != null;
   for (const e of C?.path || []) if ((a.level || 1) >= e.level && (e.how === 'grant' || !pawn)) add({id: e.perk, rank: e.rank, from: 'class', ...(e.hold ? {hold: e.hold} : {})});
+  // its kind's way (data/paths.js, plan З-10): a creature of a band or a lair carries it up to its level; a pawn grows by its picks
+  if (!pawn) for (const e of pathOf(a?.species ?? a?.race)) if ((a.level || 1) >= e.level) add({id: e.perk, rank: e.rank, from: 'kind'});
   return out;
 }
 // perksOf kept by its signature (what it learned and at which ranks, its role, its level, its kind): read at every blow

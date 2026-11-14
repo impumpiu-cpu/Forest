@@ -7,6 +7,7 @@
 // Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
+import {SPECIES_PATH, pathOf, LAIR_LEVEL, TIER_LEVEL} from '../paths.js';
 import {FUEL, POOLS, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
 import {VECTORS, VEC_RULES, DEED_VEC, MIND, vectorOf} from '../mind.js';
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
@@ -596,6 +597,13 @@ TABLES.push(
       col('pawn', 'Пешке', 'enum', {values: PERK_WHO}), col('monster', 'Монстру', 'enum', {values: PERK_WHO}),
       col('learn', 'За уровень', 'bool', {edit: false}), col('from', 'Откуда', 'text', {edit: false}), col('ranks', 'Рангов', 'int', {edit: false}), col('holders', 'У кого', 'text', {edit: false})]},
   // classes (plan З-8): a role + a body + a way through the book of perks
+  {id: 'speciesPaths', label: 'Пути видов', group: 'Существа', key: 'id',
+    note: 'Путь вида по уровням (data/paths.js SPECIES_PATH, план З-10): монстр банды или логова несёт перки пути до своего уровня — поверх врождённых и пути класса; пешка пути вида не несёт. Уровень банды — по угрозе (1/3/5/7/9), логова мира — по возрасту, временного логова — по тиру договора («Пути видов: уровни»).',
+    rows: () => Object.keys(SPECIES_PATH).filter(id => SPECIES.has(id)).map(id => ({id, label: SPECIES.get(id).label,
+      path: pathOf(id).map(e => `${e.level}: ${PERKS.get(e.perk).label}${e.rank > 1 ? ' ' + 'I II III IV V'.split(' ')[e.rank - 1] : ''}`).join('; ')})),
+    columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Вид', 'text', {edit: false}), col('path', 'Путь (уровень: перк)', 'text', {edit: false})]},
+  {id: 'pathLevels', label: 'Пути видов: уровни', group: 'Существа', ...grp({lair: LAIR_LEVEL, tier: TIER_LEVEL}),
+    note: 'lair.age — возраст логова (лет со дня основания), с которого его обитатели — на lair.level; tier.level[тир] — уровень обитателей временного логова договора (0 — без тира).'},
   {id: 'classes', label: 'Классы', group: 'Существа', key: 'id',
     note: 'Класс — боевая роль (что несёт, где стоит) + тело (SPECIAL) + путь по справочнику перков (data/classes.js). Путь — по уровням: «даётся» — сам, «тянет» — при выборе перка за уровень класс тянет к нему (× PERK_PICK.path). Пешка берёт данное, остальное выбирает; монстр банды несёт весь путь до уровня банды (по угрозе: BAND_LEVEL). Не ниже «нужно» — подходит; «опора» — буквы, по которым меряется, насколько подходит.',
     rows: () => CLASSES.all().map(C => ({id: C.id, label: C.label, role: COMBAT_ROLES.get(C.role)?.label || C.role, pawn: C.who.pawn, monster: C.who.monster,

@@ -23,6 +23,7 @@ import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {SPECIES, MINDS} from '../data/species.js';
+import {PERKS, heldPerks} from '../data/perks.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, dayOf} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -170,6 +171,11 @@ export function creatureHtml(w, a) {
   if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
   const inn = innateOf(sp);
   if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
+  // a foe's level and the perks it carries (data/perks.js heldPerks: its kind's, its class's way to its level — plan З-10)
+  if (a.faction !== 'colony') {
+    const held = heldPerks(a).filter(p => PERKS.has(p.id)), R = ['', '', ' II', ' III', ' IV', ' V'];
+    if (held.length || (a.level || 1) > 1) rows.push(`<dt>Ур. ${a.level || 1}</dt><dd>${held.map(p => `<span class="chip" title="${esc(PERKS.get(p.id).about || '')}${p.from === 'kind' ? ' — путь вида' : p.from === 'class' ? ' — путь класса' : ''}">${esc(PERKS.get(p.id).label)}${R[p.rank || 1] || ''}</span>`).join(' ') || '—'}</dd>`);
+  }
   if (a.brain === 'trader' && w.caravan?.traderId === a.id) {
     const c = w.caravan;
     rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);

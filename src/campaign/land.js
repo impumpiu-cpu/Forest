@@ -1,6 +1,7 @@
 // The land as the caravan sees it: how much food a cell gives to those who hunt and gather there, and
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
+import {lairLevel} from '../data/paths.js';
 import {realmBand} from '../atlas/index.js';
 import {isAt} from '../atlas/index.js';
 import {cellRegion as regionOf} from '../seam/index.js';
@@ -169,7 +170,9 @@ export function lairGuard(a, lairKind, i, strength, lair = null) {
   const L = LAIRS.get(lairKind); if (!L) return {kind: 'lair', strength};
   const kind = L.fiend ? 'undead' : lairFoeKind(L), who = L.fiend ? {band: 'undead'} : lairFoe(lairKind);
   const S = lairPolity(L).guard?.summons;
-  return {kind, strength, ...who, ...(who.band === 'cultists' ? {pool: cultPool(a, i)} : {}), ...(S ? {with: {band: S.band, label: S.label, share: S.share, summoned: true}} : {}), ...(lair ? {seat: lair.id} : {})};
+  // its folk's level by the lair's age (data/paths.js LAIR_LEVEL; plan З-10): an old lair's folk carry more of their kind's way
+  const level = lair && Number.isFinite(lair.born) && a.hist ? lairLevel(a.hist.year - lair.born) : null;
+  return {kind, strength, ...who, ...(who.band === 'cultists' ? {pool: cultPool(a, i)} : {}), ...(S ? {with: {band: S.band, label: S.label, share: S.share, summoned: true}} : {}), ...(lair ? {seat: lair.id} : {}), ...(level ? {level} : {})};
 }
 // the guard as it stands at the storm: the ruler of its lair (atlas/persons.js — a leader of an old lair, a chief), if it is
 // alive and at home, at the head of it, a named foe whose fate in the fight is its fate in the world (campaign/march.js

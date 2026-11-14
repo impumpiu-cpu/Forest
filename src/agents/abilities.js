@@ -213,7 +213,7 @@ function harmTo(w, o, type) {
   const sp = SPECIES.get(o.species);
   if (type === 'fire') return resistTo(sp, 'fire') * (o.effects ? effectResist(w, o, 'fire') : 1) * (heldOf(o, 'fireproof')?.fire ?? 1);
   if (type === 'acid') return resistTo(sp, 'acid');   // (an acid eats past the armour — and the armour with it: `corrode`)
-  return resistOf(sp, type, true) * (1 - (o.gear ? armorAgainst(o.gear, type) : 0));
+  return resistOf(sp, type, true, o) * (1 - (o.gear ? armorAgainst(o.gear, type) : 0));
 }
 
 function release(w, a) {
