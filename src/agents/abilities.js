@@ -13,7 +13,7 @@
 //   A wind-up is broken by a stun: ABILITY.interrupt ticks before the next try.
 //   a.act = {id, rank, x, y, dir, at} — the wind-up under way; a.actReady = {id: tick} — when each is ready again (plain data)
 import {ABILITY, FLIGHT, GRIP, BURROW} from '../data/abilities.js';
-import {PERKS, perksOf, perkProfile, heldOf} from '../data/perks.js';
+import {PERKS, perkProfile, heldOf, heldPerks} from '../data/perks.js';
 import {SPECIES, isMindless} from '../data/species.js';
 import {isHostile} from '../data/factions.js';
 import {resistTo} from '../data/balance/combat.js';
@@ -41,22 +41,23 @@ const holds = (a, form) => handItems(a).some(it => def(it).form === form);
 // the acts one holds now, each at its rank's row (a grant may ask a thing in hand: the forge-master's coal)
 export function actsOf(a) {
   const out = [];
-  for (const g of perksOf(a)) {
+  for (const g of heldPerks(a)) {   // (kept by their signature: data/perks.js)
     const P = PERKS.has(g.id) ? PERKS.get(g.id) : null;
     if (P?.how !== 'act' || (g.hold && !holds(a, g.hold))) continue;
     const row = perkProfile(g.id, g.rank || 1, g.own); if (row) out.push({id: g.id, rank: g.rank || 1, row, P});
   }
   return out;
 }
-// (the species and the role of one decide whether it has acts at all: a cheap first look, kept on the side)
-const HAS = new Map();
-const mayAct = a => {
-  const k = `${a.species}|${a.fightRole || ''}|${a.perks?.length || 0}`;
-  if (!HAS.has(k)) HAS.set(k, actsOf(a).length > 0);
-  return HAS.get(k);
-};
+// whether one has acts at all, in hand or not (a cheap first look: its perks are kept by their signature — data/perks.js heldPerks)
+const mayAct = a => heldPerks(a).some(g => PERKS.has(g.id) && PERKS.get(g.id).how === 'act');
+
+// the row of a standing perk one holds (flight, charge, burrow, constrict, swallow, leap), looked up once and kept on it:
+// a.<id>Row — null for one that has none (sim.js skips it by that)
+const holdRow = (a, id) => (a[`${id}Row`] !== undefined ? a[`${id}Row`] : (a[`${id}Row`] = heldOf(a, id)));
 
 // ── the shapes
+// the angle a shape is drawn with, degrees: all round, a row's own, or — a jet — the one its width makes at its end
+const drawAngle = row => (row.shape === 'aura' || row.shape === 'leap' ? 360 : row.shape === 'line' ? 2 * Math.atan2(row.width / 2, row.length) / RAD : row.angle);
 const angDiff = (x, y) => { let d = x - y; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 export function inShape(w, row, ox, oy, dir, x, y) {
   const dx = x - ox, dy = y - oy, d = Math.hypot(dx, dy);
@@ -186,7 +187,7 @@ function begin(w, a, act, dir, tid = null) {
   const {row} = act, ox = act.ox ?? a.x, oy = act.oy ?? a.y;   // (where it strikes: where it stands, or where it lands)
   a.act = {id: act.id, rank: act.rank, x: ox, y: oy, dir, at: w.tick + row.prep, ...(tid != null ? {tid} : {}), ...(act.sub ? {sub: act.sub} : {})};
   if (tid != null) return;   // (one target: a quick throw, no shape to step out of)
-  w.fx.push({kind: 'cone', x1: ox, y1: oy, dir, angle: row.shape === 'aura' || row.shape === 'leap' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: row.prep, T: row.prep, prep: true, x2: ox, y2: oy});
+  w.fx.push({kind: 'cone', x1: ox, y1: oy, dir, angle: drawAngle(row), rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: row.prep, T: row.prep, prep: true, x2: ox, y2: oy});
   if (row.fear) return;   // (a roar is heard, not stepped out of)
   // whoever sees it coming and stands in it steps out: past the rim, or out past its end
   for (const o of caught(w, a, row, ox, oy, dir)) {
@@ -194,7 +195,10 @@ function begin(w, a, act, dir, tid = null) {
     const dx = o.x - ox, dy = o.y - oy, d = Math.hypot(dx, dy);
     let x, y;
     if (row.shape === 'aura' || row.shape === 'leap' || row.shape === 'rear' || d < ABILITY.eps) { const k = (row.length + ABILITY.edge + ABILITY.out) / Math.max(d, ABILITY.eps); const ux = d < ABILITY.eps ? 1 : dx, uy = d < ABILITY.eps ? 0 : dy; x = ox + ux * k; y = oy + uy * k; }
-    else {
+    else if (row.shape === 'line') {   // a jet: a step across it, past its width
+      const nx = -Math.sin(dir), ny = Math.cos(dir), off = dx * nx + dy * ny, by = (Math.sign(off) || 1) * (row.width / 2 + ABILITY.out) - off;
+      x = o.x + nx * by; y = o.y + ny * by;
+    } else {
       const side = Math.sign(angDiff(Math.atan2(dy, dx), dir)) || 1, phi = dir + side * (row.angle / 2 + ABILITY.slack) * RAD;
       const sideX = a.x + Math.cos(phi) * d, sideY = a.y + Math.sin(phi) * d;
       const far = row.length + ABILITY.edge + ABILITY.out, endX = a.x + Math.cos(dir) * far, endY = a.y + Math.sin(dir) * far;
@@ -213,8 +217,9 @@ function harmTo(w, o, type) {
 }
 
 function release(w, a) {
-  const {id, rank, x, y, dir, tid, sub} = a.act, P = PERKS.get(id), g = perksOf(a).find(p => p.id === id), whole = perkProfile(id, g?.rank || rank, g?.own);
-  const row = sub ? whole[sub] : whole;   // (a part of a rank's row: the burrower's bursting out)
+  const {id, rank, x, y, dir, tid, sub} = a.act, P = PERKS.get(id), g = heldPerks(a).find(p => p.id === id), whole = perkProfile(id, g?.rank || rank, g?.own);
+  const row = sub ? whole?.[sub] : whole;   // (a part of a rank's row: the burrower's bursting out)
+  if (!row) { a.act = null; return; }   // (the perk gone meanwhile: nothing comes of it)
   a.act = null; (a.actReady ||= {})[id] = w.tick + (row.wait || 0);
   if (id === 'burrow') { a.under = false; a.surfaced = w.tick; }
   if (row.shape === 'leap' && walkable(w, Math.min(w.h - 1, y | 0) * w.w + Math.min(w.w - 1, x | 0))) { a.x = x; a.y = y; a.path = null; }   // (it comes down where it aimed)
@@ -226,7 +231,7 @@ function release(w, a) {
     if (targets[0]) w.fx.push({x1: a.x, y1: a.y, x2: targets[0].x, y2: targets[0].y, t: 8, kind: row.web || row.venom && !row.dmg ? 'stone' : 'arrow'});
   } else {
     targets = caught(w, a, row, x, y, dir);
-    w.fx.push({kind: 'cone', x1: x, y1: y, dir, angle: row.shape === 'aura' || row.shape === 'leap' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: 8, T: 8, type: row.type || 'fear', x2: x, y2: y});
+    w.fx.push({kind: 'cone', x1: x, y1: y, dir, angle: drawAngle(row), rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: 8, T: 8, type: row.type || 'fear', x2: x, y2: y});
   }
   let hit = 0;
   for (const o of targets) {
@@ -283,7 +288,7 @@ function strike(w, a, o, row) {
 // ── flight (the perk «Полёт»; data/abilities.js FLIGHT): up in the air while it goes; down to strike, `ground` ticks there,
 // then up for `rise`; its wings fail below `grounded` of its health. a.aloft — in the air now (agents/movement.js: straight
 // over water and walls, not through rock, at `air`; agents/combat.js: a short blade does not reach one `high` up)
-export const flightOf = a => (a.flightRow !== undefined ? a.flightRow : (a.flightRow = heldOf(a, 'flight')));
+export const flightOf = a => holdRow(a, 'flight');
 export function stepFlight(w, a) {
   const F = flightOf(a); if (!F) return;
   if (a.downed || a.dead || a.captive || a.hp / maxHp(a) < F.grounded) { a.aloft = false; return; }
@@ -321,7 +326,6 @@ export function letGo(w, a, o) {
   if (o.swallowed && a) { o.x = a.x; o.y = a.y; }   // (out of it, where it lies)
   o.held = null; o.swallowed = false;
 }
-const holdRow = (a, id) => (a[`${id}Row`] !== undefined ? a[`${id}Row`] : (a[`${id}Row`] = heldOf(a, id)));
 // the held: it pulls every `every` ticks (its max(S, A), its own close by pulling too); inside — it is carried, digested
 function stepHeld(w, o) {
   const h = liveById(w, o.held.by);
@@ -383,7 +387,7 @@ function stepBurrow(w, a) {
     // one that leaps (a bulette) comes up short of its prey and leaps on it from there
     const L = holdRow(a, 'leap'), dt = Math.hypot(t.x - a.x, t.y - a.y);
     if (L && (a.actReady?.leap ?? 0) <= w.tick && dt >= L.from && dt <= L.range * ABILITY.aim) { a.under = false; a.surfaced = w.tick; a.task = {id: 'maul', target: t}; return false; }
-    if (Math.hypot(t.x - a.x, t.y - a.y) <= B.strike) { a.task = {id: 'maul', target: t}; begin(w, a, {id: 'burrow', rank: perksOf(a).find(p => p.id === 'burrow')?.rank || 1, row: {...B.emerge, prep: B.prep}, sub: 'emerge'}, 0); return true; }
+    if (Math.hypot(t.x - a.x, t.y - a.y) <= B.strike) { a.task = {id: 'maul', target: t}; begin(w, a, {id: 'burrow', rank: heldPerks(a).find(p => p.id === 'burrow')?.rank || 1, row: {...B.emerge, prep: B.prep}, sub: 'emerge'}, 0); return true; }
     const dx = t.x - a.x, dy = t.y - a.y, d = Math.hypot(dx, dy), k = Math.min(1, B.dig / d), nx = a.x + dx * k, ny = a.y + dy * k;
     const j = Math.min(w.h - 1, Math.max(0, ny | 0)) * w.w + Math.min(w.w - 1, Math.max(0, nx | 0));
     if (soft(w, a, B, j)) { a.x = nx; a.y = ny; }   // (the hard ground stops it: it waits at its edge)

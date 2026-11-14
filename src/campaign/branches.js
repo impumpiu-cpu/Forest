@@ -8,11 +8,12 @@
 //   a member living at a branch: m.house = its town (none: at the guild's house); his post there: m.guild = {state: 'post',
 //     post: 'branch', branch (its town)}; on the road between houses: m.guild = {state: 'road', since, until, to, then}
 //   G.moving = {to, from, until (the history step it is done at), branch (to a branch's town), forced (the old town fell)} | null
+import {isLive as live, release, leaveGuild} from './roster.js';
 import {GUILD} from '../data/guild.js';
 import {ROOMS} from '../data/rooms.js';
 import {RETINUE, CAMPAIGN} from '../data/campaign.js';
 import {scaleOf, townLabel, atWar} from '../atlas/index.js';
-import {cellDist} from '../core/util.js';
+import {cellDist, refuse} from '../core/util.js';
 import {levelOf, tierOf, postBranch, dropContracts} from './contracts.js';
 import {houseOf} from './house.js';
 
@@ -21,7 +22,6 @@ const r1 = x => Math.round(x * 10) / 10;
 const townOf = (a, id) => a.towns.find(t => t.id === id) || null;
 const inTown = t => (t ? `${townLabel(t, 3)} ${t.name}` : 'городе');   // «в городе Брод»
 const toTown = t => (t ? `${townLabel(t, 1)} ${t.name}` : 'город');     // «в город Брод»
-const live = m => m.alive && m.guild && !['dead', 'left', 'candidate'].includes(m.guild.state);
 const outNow = G => (G.live || []).filter(K => !K.closed);
 
 export const branchesOf = G => (G.branches ||= []);
@@ -76,7 +76,7 @@ export function openWhy(a, G, town) {
   return null;
 }
 export function openBranch(a, G, town, {pay, tell}) {
-  const why = openWhy(a, G, town); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = openWhy(a, G, town); refuse(why);
   const t = townOf(a, town), c = branchCost(G);
   pay(G, -c, `филиал в ${inTown(t)}`);
   branchesOf(G).push({town, opened: {year: a.hist?.year ?? 0, season: a.hist?.season ?? 0}, manager: null, fame: 0});
@@ -89,7 +89,7 @@ export function closeBranch(a, G, town, {tell}, why = null) {
   G.branches = branchesOf(G).filter(b => b !== br);
   for (const m of G.members) {
     if (!live(m)) continue;
-    if (m.guild.state === 'post' && m.guild.post === 'branch' && m.guild.branch === town) m.guild = {state: 'ready', since: G.day};
+    if (m.guild.state === 'post' && m.guild.post === 'branch' && m.guild.branch === town) release(G, m);
     if (m.house === town && ['ready', 'retired'].includes(m.guild.state)) sendOff(a, G, m, home?.id ?? G.town);
     else if (m.guild.state === 'road' && m.guild.to === town) m.guild.to = home?.id ?? G.town;
   }
@@ -112,8 +112,8 @@ export function setManager(a, G, town, id, io) {
   const br = branchAt(G, town), t = townOf(a, town), was = managerOf(G, br), m = id == null ? null : G.members.find(x => x.id === id);
   if (!br) throw new Error('Здесь нет филиала.');
   if (m && m === was) return;
-  if (m) { const why = managerWhy(a, G, town, m); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.'); }
-  if (was) { was.guild = {state: was.retired ? 'retired' : 'ready', since: G.day}; io.tell(`${was.name} оставил филиал в ${inTown(t)}.`, 'house'); }
+  if (m) { const why = managerWhy(a, G, town, m); refuse(why); }
+  if (was) { release(G, was); io.tell(`${was.name} оставил филиал в ${inTown(t)}.`, 'house'); }
   br.manager = null;
   if (!m) return;
   if (houseTown(G, m) === town) { take(G, br, m); io.tell(`${m.name} — управляющий филиала в ${inTown(t)}.`, 'house'); return; }
@@ -139,7 +139,7 @@ export function transferWhy(a, G, m, to) {
 }
 export function transfer(a, G, id, to, {pay, tell}, then = null) {
   const m = G.members.find(x => x.id === id), why = transferWhy(a, G, m, to);
-  if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  refuse(why);
   const g = roadGold(a, G, m, to), t = townOf(a, to);
   if (g > 0) pay(G, -g, `дорога: ${m.name} — в ${toTown(t)}`);
   sendOff(a, G, m, to, then);
@@ -151,9 +151,10 @@ export function roadDay(a, G, tell) {
   for (const m of G.members) {
     if (!m.alive || m.guild?.state !== 'road' || G.day < m.guild.until) continue;
     const {to, then} = m.guild;
-    if (!houses(a, G).includes(to)) { m.house = to; sendOff(a, G, m, G.moving?.to ?? G.town); continue; }
+    const home = G.moving?.to ?? G.town;
+    if (!houses(a, G).includes(to) && to !== home) { m.house = to; sendOff(a, G, m, home); continue; }   // (the house gone: on to the guild's — its own gone too, he waits there)
     if (to === G.town) delete m.house; else m.house = to;
-    m.guild = {state: m.retired ? 'retired' : 'ready', since: G.day};
+    release(G, m);
     const br = branchAt(G, to);
     if (then === 'manage' && br && !managerOf(G, br) && !G.moving) { take(G, br, m); tell(`${m.name} ${m.gender === 'f' ? 'приняла' : 'принял'} филиал в ${inTown(townOf(a, to))}.`, 'house'); }
   }
@@ -178,7 +179,9 @@ export function branchSeason(a, G, io) {
     if (to) {
       const [lo, hi] = B().move.branch, n = lo + Math.floor(io.r() * (hi - lo + 1));
       G.moving = {to: to.id, from: G.town, until: a.hist.step + n, branch: true, forced: true};
-      for (const m of G.members) if (live(m) && m.house == null && m.guild.state !== 'road' && m.guild.state !== 'expedition') { if (m.guild.state === 'post' || m.guild.state === 'training' || m.guild.state === 'treat') m.guild = {state: 'ready', since: G.day}; sendOff(a, G, m, to.id); }
+      for (const c of G.chores || []) for (const id of c.ids) { const m = G.members.find(x => x.id === id); if (m && live(m)) release(G, m); }
+      G.chores = []; G.offers = []; G.recruits = (G.recruits || []).filter(m => m.family);   // (the deeds of the fallen town are over)
+      for (const m of G.members) if (live(m) && m.house == null && m.guild.state !== 'road' && m.guild.state !== 'expedition') { sendOff(a, G, m, to.id); }
       io.tell(`Город гильдии пал. Гильдия уходит в свой филиал в ${toTown(to)}: дом придётся ставить заново.`, 'death', true);
     }
   }
@@ -220,43 +223,53 @@ export function moveWhy(a, G, to) {
 // the move begun: the house bought (no branch there), the people at the guild's house on the road — those tied to the town stay
 // at it (it becomes a branch, if there is a place for one) or, with no branch to stay at, may leave
 export function moveGuild(a, G, to, io) {
-  const why = moveWhy(a, G, to); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = moveWhy(a, G, to); refuse(why);
   const t = townOf(a, to), br = branchAt(G, to), [lo, hi] = moveSpan(G, to), n = lo + Math.floor(io.r() * (hi - lo + 1)), from = townOf(a, G.town);
   const c = moveCost(G, to); if (c) io.pay(G, -c, `дом гильдии в ${inTown(t)}`);
-  const keep = branchesOf(G).length - (br ? 1 : 0) < branchesMost(G);
   G.moving = {to, from: G.town, until: a.hist.step + n, branch: !!br};
-  G.offers = []; G.recruits = [];
+  const keep = keepOld(a, G, G.moving);
+  G.offers = []; G.recruits = (G.recruits || []).filter(m => m.family);   // (its own grown children wait for the new door)
   const stay = [], left = [];
   for (const m of G.members) {
     if (!live(m) || m.house != null || m.guild.state === 'road') continue;
     const tie = tiedHere(a, G, m);
     if (tie && keep) { stay.push(m); continue; }
-    if (tie && io.r() < B().move.stay) { m.guild = {state: 'left', since: G.day}; m.left = {day: G.day, year: a.hist?.year ?? 0, why: `остался в ${inTown(from)}: ${tie}`}; left.push(m); continue; }
-    if (m.guild.state !== 'ready' && m.guild.state !== 'retired') m.guild = {state: m.retired ? 'retired' : 'ready', since: G.day};
+    if (tie && io.r() < B().move.stay) { leaveGuild(a, G, m, `остался в ${inTown(from)}: ${tie}`); left.push(m); continue; }
+    if (m.guild.state !== 'ready' && m.guild.state !== 'retired') release(G, m);
     sendOff(a, G, m, to);
   }
   io.tell(`Гильдия переезжает в ${toTown(t)}: ${n} ${n === 1 ? 'сезон' : n < 5 ? 'сезона' : 'сезонов'} без новых дел.${stay.length ? ` Остаются в ${inTown(from)}: ${stay.map(m => m.name).join(', ')}.` : ''}${left.length ? ` Ушли из гильдии, не бросив своих: ${left.map(m => m.name).join(', ')}.` : ''}`, 'start', true);
   return G.moving;
 }
+// (a story's step, the guild's own errand: the guild's wherever its house is — never a branch's, never dropped by a move)
+const theirs = rec => rec.chain != null || rec.issuer?.kind === 'guild';
+// whether the old house will be a branch once the move is done (a place for one, the new house's branch not counted)
+const keepOld = (a, G, M) => !!townOf(a, M.from)?.alive && branchesOf(G).filter(b => b.town !== M.to).length < branchesMost(G);
 // the move done: the house at the new town (its rooms a level or two lower, the building under way left behind), the old one a
 // branch (if there is a place for one) with its contracts, those living at the new town home
 function settleMove(a, G, io) {
   const M = G.moving, t = townOf(a, M.to), old = townOf(a, M.from);
   if (!t?.alive) { G.moving = null; io.tell(`Переезд сорван: ${toTown(t)} больше нет.`, 'death', true); return; }
-  const lose = M.branch && !M.forced ? B().move.lose.branch : B().move.lose.bare, rooms = houseOf(G);
-  const lost = [];
+  const keep = keepOld(a, G, M), rooms = houseOf(G), lose = M.branch && !M.forced ? B().move.lose.branch : B().move.lose.bare, lost = [];
   for (const R of ROOMS.all()) { const L = rooms[R.id] ?? R.start, L2 = Math.max(R.start, L - lose); if (L2 < L) lost.push(R.label); rooms[R.id] = L2; }
-  for (const m of G.members) if (live(m) && m.guild.state === 'post' && m.guild.post !== 'branch' && !rooms[m.guild.post]) m.guild = {state: m.retired ? 'retired' : 'ready', since: G.day};
   G.building = null;
+  // the branches: the new house's struck off, the old house one of them (with the board's own contracts, not the stories)
   G.branches = branchesOf(G).filter(b => b.town !== M.to);
-  const keep = !!old?.alive && G.branches.length < branchesMost(G);
   const C = a.contracts?.records || [];
-  if (keep) { G.branches.push({town: M.from, opened: {year: a.hist?.year ?? 0, season: a.hist?.season ?? 0}, manager: null, fame: 0, seeded: true}); for (const rec of C) if (rec.state === 'open' && rec.branch == null) rec.branch = M.from; }
-  else dropContracts(a, G, rec => rec.branch == null, 'гильдия переехала', {tell: io.tell, r: () => 0});
+  if (keep) { G.branches.push({town: M.from, opened: {year: a.hist?.year ?? 0, season: a.hist?.season ?? 0}, manager: null, fame: 0, seeded: true}); for (const rec of C) if (rec.state === 'open' && rec.branch == null && !theirs(rec)) rec.branch = M.from; }
+  else dropContracts(a, G, rec => rec.branch == null && !theirs(rec), 'гильдия переехала', {tell: io.tell, r: () => 0});
   for (const rec of C) if (rec.state === 'open' && rec.branch === M.to) delete rec.branch;
+  // the people: those still at the old house stay at it (a branch now) or set out; those of the new town are home. A post no
+  // longer there — of a room lost, of the branch that is now the house, of one left behind — is given up
+  const free = m => release(G, m);
   for (const m of G.members) {
     if (!live(m)) continue;
-    if (m.house == null && m.guild.state !== 'road') { if (keep) m.house = M.from; else sendOff(a, G, m, M.to); }
+    const st = m.guild.state, room = st === 'post' && m.guild.post !== 'branch';
+    if (st === 'post' && m.guild.post === 'branch' && m.guild.branch === M.to) free(m);
+    if (m.house == null && st !== 'road') {
+      if (room || st === 'training' || st === 'treat') free(m);
+      if (keep) m.house = M.from; else sendOff(a, G, m, M.to);
+    } else if (room && !rooms[m.guild.post]) free(m);
     if (m.house === M.to) delete m.house;
   }
   G.town = M.to; G.realm = t.realm; if (RETINUE[t.people]) G.people = t.people;

@@ -93,9 +93,9 @@ export function partyFelt(G, went, fell, won) {
 // ── a season: the spirits fade; one low may leave (as a caravan's companion), his kin perhaps with him
 export function spiritsSeason(a, G, r, {leave, tell}) {
   for (const m of [...G.members]) {
-    if (!m.alive || m.guild?.state !== 'ready') continue;
-    const v = moodOf(m);
-    if (v < M_.low && r() < (M_.low - v) * M_.leave) { leave(m, 'тоска: в гильдии стало невмоготу'); continue; }
+    if (!m.alive || !m.guild || ['dead', 'left', 'candidate'].includes(m.guild.state)) continue;
+    const v = moodOf(m);   // (the spirits of all fade — at a post, on the road, away; only one free at his house walks out)
+    if (m.guild.state === 'ready' && v < M_.low && r() < (M_.low - v) * M_.leave) { leave(m, 'тоска: в гильдии стало невмоготу'); continue; }
     m.mood = Math.round(v * M_.fade * 100) / 100;
   }
 }

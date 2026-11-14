@@ -5,9 +5,10 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK, guildAscend, guildSummon, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy, summonLine} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK, guildIo, guildAscend, guildSummon, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy, summonLine} from '../view/campaign.js';
 import {loadHeroes, saveHeroes} from './heroes.js';
 import {ROOMS} from '../data/rooms.js';
+import {TIER_LABEL} from '../data/errands.js';
 import {townLabel} from '../view/world.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
@@ -25,7 +26,6 @@ const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом
 const STATE = {retired: 'на покое', ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря', road: 'в дороге'};
 const LOG_LINES = 80;   // the guild's chronicle in its tab: the last lines
 
-const TIER_WORD = ['', 'I', 'II', 'III', 'IV', 'V'];
 const SORT_WORDS = [['tier', 'по тиру'], ['pay', 'по плате'], ['margin', 'по запасу дней'], ['road', 'по дороге'], ['left', 'по сроку предложения']];
 // what a room does now, in a line (data/rooms.js `by`)
 function roomFx(G, id) {
@@ -59,16 +59,16 @@ export class GuildView extends CampaignView {
     $('guildBody').addEventListener('change', e => {
       const box = e.target.closest('input[data-mid]'); if (box) { box.checked ? this.gpick.add(+box.dataset.mid) : this.gpick.delete(+box.dataset.mid); this.renderGuild(); return; }
       const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.renderGuild(); return; }
-      const ps = e.target.closest('select[data-post]'); if (ps) { this.houseDo(() => setRoomPost(this.atlas, ps.dataset.post, ps.value ? +ps.value : null, () => {})); return; }
-      const rs = e.target.closest('select[data-room]'); if (rs && rs.value) { this.houseDo(() => sendToRoom(this.atlas, rs.dataset.room, +rs.value, () => {})); return; }
+      const ps = e.target.closest('select[data-post]'); if (ps) { this.houseDo(() => setRoomPost(this.atlas, ps.dataset.post, ps.value ? +ps.value : null, guildIo(this.atlas).tell)); return; }
+      const rs = e.target.closest('select[data-room]'); if (rs && rs.value) { this.houseDo(() => sendToRoom(this.atlas, rs.dataset.room, +rs.value, guildIo(this.atlas).tell)); return; }
       const bm = e.target.closest('select[data-bmgr]'); if (bm) { this.houseDo(() => guildSetManager(this.atlas, +bm.dataset.bmgr, bm.value ? +bm.value : null)); return; }
       const so = e.target.closest('select[data-gsort]'); if (so) { this.gsort = so.value; this.renderGuild(); return; }
       const sz = e.target.closest('select[data-gsize]'); if (sz) { this.gsize = +sz.value; this.renderGuild(); return; }
       const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.renderGuild(); this.lookAtCard(r.value); }
     });
     $('guildBody').addEventListener('click', e => {
-      const bd = e.target.closest('button[data-build]'); if (bd) { this.houseDo(() => buildRoom(this.atlas, bd.dataset.build, {pay: (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); }, tell: text => this.G.log.push({day: this.G.day, year: this.atlas.hist.year, season: this.atlas.hist.season, text, kind: 'house'})})); return; }
-      const pay = (g, gold, why) => { g.gold = Math.round((g.gold + gold) * 10) / 10; g.ledger.push({day: g.day, gold, why}); };
+      const bd = e.target.closest('button[data-build]'); if (bd) { this.houseDo(() => buildRoom(this.atlas, bd.dataset.build, guildIo(this.atlas))); return; }
+      const pay = guildIo(this.atlas).pay;   // (the guild's own ledger: campaign/guild.js)
       const ar = e.target.closest('button[data-arm]');
       if (ar) { const id = +ar.dataset.id, G = this.G; this.houseDo(() => ar.dataset.arm === 'lock' ? lockItem(G, id, !armoryOf(G).items.find(x => x.id === id)?.locked) : ar.dataset.arm === 'sell' ? sellItem(this.atlas, G, id, pay) : ar.dataset.arm === 'forge' ? forgeItem(G, id, pay) : buyItem(this.atlas, G, ar.dataset.token, pay)); return; }
       const cg = e.target.closest('button[data-cage]'); if (cg) { const id = +cg.dataset.id, G = this.G; this.houseDo(() => (cg.dataset.cage === 'home' ? keepHome(G, id, !cagesOf(G).beasts.find(x => x.id === id)?.home) : releaseBeast(G, id))); return; }
@@ -156,6 +156,7 @@ export class GuildView extends CampaignView {
   guildMode() {
     const G = this.G; if (!G) return;
     this.guildOn = true; this.choosing = false; this.hideOffer?.();
+    this.heroReg = undefined;   // (the ascended: read anew — a walk may have raised or summoned some)
     $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = !this.atlas.campaign; $('guildSide').hidden = false;
     this.setupShell?.leave(); (this.shell ||= new CampShell(this)).enter();
     this.syncGuildRail();
@@ -244,7 +245,7 @@ export class GuildView extends CampaignView {
   renderGuild() {
     const a = this.atlas, G = this.G; if (!G || G.phase === 'hire') return;
     const K = expedition(a), ms = membersOf(G);
-    $('guildStatus').innerHTML = `<dt>Казна</dt><dd>${G.gold} зол.</dd><dt>Уровень</dt><dd>${levelOf(G)} · договоры до тира ${TIER_WORD[tierOf(G)] || '—'}</dd><dt>Слава</dt><dd>${G.fame}${levelNext(G) != null ? ` / ${levelNext(G)}` : ''}</dd>` +
+    $('guildStatus').innerHTML = `<dt>Казна</dt><dd>${G.gold} зол.</dd><dt>Уровень</dt><dd>${levelOf(G)} · договоры до тира ${TIER_LABEL[tierOf(G)] || '—'}</dd><dt>Слава</dt><dd>${G.fame}${levelNext(G) != null ? ` / ${levelNext(G)}` : ''}</dd>` +
       `<dt>Людей</dt><dd>${ms.length} · дома ${ms.filter(m => m.guild.state === 'ready').length}${ms.some(m => m.guild.state === 'chore') ? ` · на делах ${ms.filter(m => m.guild.state === 'chore').length}` : ''}${K ? ` · в походе ${ms.filter(m => m.guild.state === 'expedition').length}` : ''}</dd>` +
       `<dt>Отряды</dt><dd>${parties(a).length ? `в пути ${parties(a).length} из ${partiesMost(G)}${K ? `; смотрим: ${K.expedition}-й, ${esc(questWord(K))}` : ''}` : `дома (до ${partiesMost(G)} в пути разом)`}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
@@ -334,7 +335,7 @@ export class GuildView extends CampaignView {
       const pick = `<select data-bmgr="${br.town}"><option value="">— никого —</option>${cands.map(m => { const why = m === mgr ? null : managerWhy(a, G, br.town, m); return `<option value="${m.id}"${m === mgr ? ' selected' : ''}${why ? ` disabled title="${esc(why)}"` : ''}>${esc(m.name)}, ур. ${m.level || 1} · Х ${m.special?.C ?? 5}${houseTown(G, m) !== br.town ? ` · ${roadDays(a, houseTown(G, m), br.town)} дн. пути` : ''}</option>`; }).join('')}</select>`;
       const going = G.members.find(m => m.alive && m.guild?.state === 'road' && m.guild.to === br.town && m.guild.then === 'manage');
       return `<div class="sv${idle ? ' off' : ''}"><span class="t"><b>${esc(t?.name || '?')}</b> · ${roadDays(a, G.town, br.town)} дн. от дома · ${idle ? `<b>стоит: ${esc(idle)}</b>` : 'работает'}` +
-        `<br><small class="fact">местная слава ${br.fame || 0} · плата его договоров +${pc(payK(br))} · договоры до тира ${TIER_WORD[tierAt(G, br)] || '—'}${mgr ? ` · цены ×${priceK(G, br).toFixed(2).replace('.', ',')}, найм ×${feeK(G, br).toFixed(2).replace('.', ',')}` : ''}</small>` +
+        `<br><small class="fact">местная слава ${br.fame || 0} · плата его договоров +${pc(payK(br))} · договоры до тира ${TIER_LABEL[tierAt(G, br)] || '—'}${mgr ? ` · цены ×${priceK(G, br).toFixed(2).replace('.', ',')}, найм ×${feeK(G, br).toFixed(2).replace('.', ',')}` : ''}</small>` +
         `<br><small>Живут: ${lives.map(m => esc(m.name)).join(', ') || 'никого'}${going ? ` · управляющий в пути: ${esc(going.name)}` : ''}</small></span>` +
         `<div class="row"><small>Управляющий (ур. ${BR.manager.level}+; Харизма — цены и найм): ${pick}</small></div>` +
         `<div class="row actions"><button type="button" class="quiet mini" data-branch="close" data-town="${br.town}">закрыть филиал</button></div></div>`;

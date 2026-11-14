@@ -57,3 +57,6 @@ export const cellDist = (a, i, j) => Math.hypot(i % a.w - j % a.w, ((i / a.w) | 
 export const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // a number between the two ends of a range [lo, hi] by one draw of `rng`
 export const between = (rng, [lo, hi]) => lo + rng() * (hi - lo);
+
+// a refusal as an error: `why` (a reason in lower case, no full stop — as the screens show it greyed), or nothing to refuse
+export function refuse(why) { if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.'); }

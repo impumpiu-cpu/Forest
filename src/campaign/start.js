@@ -161,7 +161,7 @@ export function newExpedition(a, G, ms, {errand = null, targetId = null, purse =
   K.food = capacity(K);
   K.quest = contract ? contractQuest(a, K, r, contract, G) : makeErrand(a, K, r, errand, {targetId});
   if (contract) K.contract = contract.uid;
-  if (!K.quest) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
+  if (!K.quest) { done(); Object.assign(S, {beasts: K.beasts, vehicles: K.vehicles, cargo: K.cargo, buildings: K.buildings}); throw new Error('В этом мире такого поручения сейчас нет.'); }   // (the baggage back in the store)
   K.goal = questTarget(a, K, r);
   if (K.quest.epic) K.years = EPIC.years;
   done();

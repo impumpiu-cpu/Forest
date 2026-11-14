@@ -218,6 +218,11 @@ const ledgerHas = (G, s) => G.ledger.some(l => l.why.startsWith(s));
     for (const x of G.members) x.level = 20;
     const K = launch(a, {contract: guildBoard(a, []).errands.find(e => e.ok).contract, ids: [membersOf(G, 'ready')[0].id], mode: 'auto'});
     ok(K.beasts.length === 1 && !G.store.beasts.length, 'зверь ушёл с отрядом');
+    // bought while the party is out; the party home: both in the stable (a party's baggage does not replace the store)
+    buyBeast(a, G, B[0].kind, I.pay); G.store.cargo.rope = 3;
+    for (let k = 0; k < 16 && parties(a).length; k++) stepGuild(a);
+    const back = K.beasts.filter(b => b.hp > 0).length, ids = G.store.beasts.map(b => b.id);
+    ok(!parties(a).length && G.store.beasts.length === 1 + back && new Set(ids).size === ids.length && (G.store.cargo.rope || 0) >= 3, 'отряд вернулся: купленный без него зверь и запасы склада на месте, номера зверей не совпали', `зверей ${G.store.beasts.length}, из похода ${back}`);
   } else ok(true, 'в городе зверей не продают — не проверить на этом сиде');
 }
 

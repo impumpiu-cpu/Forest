@@ -3,6 +3,8 @@
 // the browser outside every world (ui/heroes.js). For gold one of the guild at its house is raised among them — he leaves the
 // guild, with all he became and the gear on him; and one of them is summoned into the guild — mortal again, his death for good
 // (the registry gives him up the moment he is called: no undo). Pure: the registry is handed in and handed back.
+import {leaveGuild} from './roster.js';
+import {refuse} from '../core/util.js';
 import {HOUSE} from '../data/rooms.js';
 import {SPECIES} from '../data/species.js';
 import {XP} from '../data/experience.js';
@@ -26,20 +28,19 @@ export function templeAscendWhy(a, G, m) {
   const p = ascendPrice(G, m); if (G.gold < p) return `в казне нет ${p} зол.`;
   return null;
 }
-// → the registry with him in it; he leaves the guild (io: {pay, tell, parted})
+// → the registry with him in it; he leaves the guild (io: {pay, tell})
 export function templeAscend(a, G, id, reg, io) {
   const m = G.members.find(x => x.id === id), why = templeAscendWhy(a, G, m);
-  if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  refuse(why);
   const t = a.towns.find(x => x.id === G.town), p = ascendPrice(G, m);
   const view = {seed: G.seed, capital: G.town, capitalName: t?.name || G.name, people: G.people, day: G.day, members: [m], phase: 'temple'};
-  const snap = {...snapshotOf(a, view, m), uid: `${G.seed}:temple:${year(a)}:${G.day}:${m.id}`,
+  const snap = {...snapshotOf(a, view, m), uid: `${G.seed}:temple:${year(a)}:${G.day}:${m.id}`, given: m.given ?? null, clan: m.clan ?? null,   // (his people's name: his children's — data/names.js)
     life: m.born != null ? {age: Math.max(0, year(a) - m.born), rest: m.dies != null ? Math.max(1, m.dies - year(a)) : null} : null};
   const R = reg?.v === ASCEND.version ? {...reg, heroes: [...reg.heroes]} : emptyRegistry();
   R.heroes.push(snap);
   while (R.heroes.length > ASCEND.keep) R.heroes.shift();
   io.pay(G, -p, `Храм всех богов: вознесение — ${m.name}`);
-  m.guild = {state: 'left', since: G.day}; m.left = {day: G.day, year: year(a), why: 'вознесён в Храме всех богов'}; m.ascended = {year: year(a), uid: snap.uid};
-  io.parted?.(m);
+  leaveGuild(a, G, m, 'вознесён в Храме всех богов'); m.ascended = {year: year(a), uid: snap.uid};
   io.tell(`${m.name} ${m.gender === 'f' ? 'вознесена' : 'вознесён'} в Храме всех богов${t ? ` в ${townLabel(t, 3)} ${t.name}` : ''}. ${m.gender === 'f' ? 'Её' : 'Его'} можно призвать снова — в гильдию или в Поход.`, 'people', true);
   return R;
 }
@@ -57,14 +58,14 @@ export function templeSummonWhy(a, G, reg, uid, room) {
 // → {reg (without him), m (the guild's member now)}; io: {pay, tell, room (a place in the barracks), body () — a newcomer's body
 // to put him into (the guild's door: campaign/guild.js rollRecruits)}
 export function templeSummon(a, G, reg, uid, io) {
-  const why = templeSummonWhy(a, G, reg, uid, io.room); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = templeSummonWhy(a, G, reg, uid, io.room); refuse(why);
   const s = templeSummonable(a, G, reg).find(h => h.uid === uid), p = summonPrice(G, s);
   const {reg: R, snaps} = takeHeroes(reg, [uid]);
   const m = applySnapshot(io.body(), snaps[0]);
   // his years: those he had (raised from a guild), or a grown one's of his race; his end of age as far off as it was
   const B = SPECIES.get(m.race)?.body || {}, age = s.life?.age ?? (B.adult ?? 16) + 4;
   m.born = year(a) - age; m.dies = year(a) + (s.life?.rest ?? Math.max(1, Math.round(lifeOf(m.race, 1) - age)));
-  m.given = m.name.split(' ')[0];
+  m.given = s.given ?? m.name.split(' ')[0]; if (s.clan !== undefined) m.clan = s.clan; else delete m.clan;   // (not the newcomer's whose body he took)
   m.guild = {state: 'ready', since: G.day}; m.core = true; m.joined = 0;
   io.pay(G, -p, `Храм всех богов: призван — ${m.name}`);
   io.tell(`В Храме всех богов ${m.gender === 'f' ? 'призвана' : 'призван'} ${m.name} (${m.level || 1}-й уровень): ${s.story?.from ? `в прошлый раз — из ${s.story.from}` : 'из вознесённых'}. ${m.gender === 'f' ? 'Она снова смертна' : 'Он снова смертен'}: смерть будет навсегда.`, 'people', true);

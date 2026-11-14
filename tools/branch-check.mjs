@@ -148,11 +148,12 @@ function working(a, G, t) {
 // ── the move to a branch's town: a season or two; nothing new meanwhile; rooms a level lower; the old house a branch; the tied stay
 {
   const [a, G] = opened(), t = others(a, G)[0], old = G.town;
-  working(a, G, t);
+  const mgr = working(a, G, t);
   buildRoom(a, 'barracks', io); season(a);
   for (let k = 0; k < 6 && membersOf(G).length < 10; k++) { if (!(G.recruits || []).length) season(a); const r = (G.recruits || []).find(x => !recruitWhy(a, x.id) && x.house == null); if (r) takeRecruit(a, r.id); }
   const L0 = roomLevel(G, 'barracks'), tied = membersOf(G, 'ready').find(m => m.house == null); tied.wedTown = {year: 0};
   ok(!!tiedHere(a, G, tied), 'женатый в городе — привязан к нему');
+  const kid = (G.recruits || []).find(x => x.house == null); if (kid) kid.family = true;   // (a grown child of the guild at its door)
   ok(!moveWhy(a, G, t.id), 'переезд в город филиала возможен');
   moveGuild(a, G, t.id, io);
   ok(!!G.moving && G.moving.until - a.hist.step >= BR.move.branch[0] && G.moving.until - a.hist.step <= BR.move.branch[1], `переезд — ${G.moving.until - a.hist.step} сез. (${BR.move.branch.join('–')})`);
@@ -161,6 +162,8 @@ function working(a, G, t) {
   ok(!G.moving && G.town === t.id, 'переехали');
   ok(roomLevel(G, 'barracks') === Math.max(ROOMS.get('barracks').start, L0 - BR.move.lose.branch), `комнаты теряют ${BR.move.lose.branch} ур.: казармы ${L0} → ${roomLevel(G, 'barracks')}`);
   ok(!!branchAt(G, old) && !branchAt(G, t.id), 'старый дом — теперь филиал, новый — дом');
+  ok(mgr.guild.state === 'ready' && mgr.house == null, 'управляющий бывшего филиала — снова в строю, дома');
+  ok(!kid || (G.recruits || []).includes(kid), 'выросший ребёнок гильдии дождался у дверей конца переезда');
   { const n = membersOf(G).length, most = rosterMost(G), m0 = membersOf(G).find(m => m.house == null && m.guild.state === 'ready'), mood0 = m0?.mood ?? 0, log0 = G.log.length;
     ok(n > most, `людей больше, чем коек: ${n} на ${most} — никого не выгнали`);
     const r = (G.recruits || [])[0]; if (r) ok(!!recruitWhy(a, r.id), `нанять сверх коек нельзя (${recruitWhy(a, r.id)})`);

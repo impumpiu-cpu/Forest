@@ -330,7 +330,7 @@ function coverFor(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a) || fleeing(a)) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a) || fleeing(a) || a.held || a.swallowed) return null;   // (in a grip one draws no bow: agents/abilities.js)
   const SHOT = COMBAT.shot, HIT = COMBAT.hit;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot

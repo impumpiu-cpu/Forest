@@ -4,6 +4,7 @@
 // forge; before a party sets out, each one takes from the racks what is better than his own, and leaves his own in its place.
 // The stable keeps the guild's beasts (G.store.beasts: an expedition takes them along — campaign/start.js newExpedition).
 //   G.armory = {items: [{id, token, locked}], nextId}
+import {refuse} from '../core/util.js';
 import {HOUSE} from '../data/rooms.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {MAX_Q} from '../data/quality.js';
@@ -54,7 +55,7 @@ export function buyWhy(a, G, token) {
   return null;
 }
 export function buyItem(a, G, token, pay) {
-  const why = buyWhy(a, G, token); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = buyWhy(a, G, token); refuse(why);
   const o = shopOf(a, G).items.find(x => x.token === token), p = o.price;
   pay(G, -p, `оружейная: куплено — ${gearDef(token).label}${o.from ? ` (из ${o.from})` : ''}`); toTown(o.at != null ? a.towns.find(x => x.id === o.at) : town(a, G), p);
   return rack(G, token);
@@ -86,7 +87,7 @@ export function forgeWhy(G, id) {
   return null;
 }
 export function forgeItem(G, id, pay) {
-  const why = forgeWhy(G, id); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = forgeWhy(G, id); refuse(why);
   const it = armoryOf(G).items.find(x => x.id === id), s = gearSpec(it.token), c = forgeCost(it.token);
   pay(G, -c, `кузница: ${gearDef(it.token).label} — тоньше работа`);
   it.token = gearToken({...s, q: (s.q || 0) + 1});
@@ -125,7 +126,7 @@ export function bringHome(a, G, K, pay) {
     sold += fromTown(t, sellPrice(G, token));
   }
   K.spoils = [];
-  const beasts = (K.beasts || []).filter(b => b.hp > 0 && !BEASTS[b.kind]?.golem), room = Math.max(stalls(G), K.tookBeasts || 0);   // (the guild's own back whatever the stable now holds: no beast of its own sold for a room lost in a move)
+  const beasts = (K.beasts || []).filter(b => b.hp > 0 && !BEASTS[b.kind]?.golem), room = Math.max(stalls(G) - (G.store?.beasts?.length || 0), K.tookBeasts || 0);   // (the stalls not taken by those at home; the guild's own back whatever the stable now holds: none of its own sold for a room lost in a move)
   const keep = beasts.slice(0, room), extra = beasts.slice(room);
   for (const b of extra) sold += fromTown(t, Math.floor((PRICES.beasts[b.kind] || 10) * HOUSE.armory.sell));
   if (sold > 0) pay(G, r1(sold), 'продано по возвращении: трофеи и звери, которым нет места');

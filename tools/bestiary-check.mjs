@@ -47,12 +47,14 @@ function bout(id, tries = 3) {
       if (men.some(m => m.held)) did.held++;
       if (b.under) did.under++;
       if (men.some(m => m.numbFree > w.tick)) did.numbed++;
+      if (w.agents.some(o => !Number.isFinite(o.x) || !Number.isFinite(o.y) || (o.dodge && !Number.isFinite(o.dodge.x + o.dodge.y)))) did.lost = (did.lost || 0) + 1;   // (a step out of a shape must lead somewhere)
     }
     for (const [k, v] of Object.entries(w.chronicle.acts || {})) did.acts[k] = (did.acts[k] || 0) + v;
     did.rusted += iron0 - men.reduce((s, m) => s + (m.equip.right?.dur || 0), 0);
   }
   return did;
 }
+let lost = 0;
 const expect = [
   ['owlbear', d => d.acts.roar > 0, 'совомед ревёт и бросается'],
   ['ankheg', d => d.under > 0 && (d.acts.burrow > 0) && (d.acts.acidJet > 0 || d.held > 0), 'анхег выныривает из-под земли, хватает или плюёт кислотой'],
@@ -70,7 +72,8 @@ const expect = [
   ['hookhorror', d => d.held > 0, 'крюкастый ужас хватает крюками'],
   ['cyclops', d => d.acts.rockThrow > 0, 'циклоп швыряет валуны'],
 ];
-for (const [id, f, what] of expect) { const d = bout(id); ok(f(d), what, JSON.stringify(d)); }
+for (const [id, f, what] of expect) { const d = bout(id); lost += d.lost || 0; delete d.lost; ok(f(d), what, JSON.stringify(d)); }
+ok(!lost, 'шаг из-под удара всегда ведёт в точку карты (линия, конус, круг)', String(lost));
 
 // ── a rust eats the iron, not the bone; an acid eats any thing (a few wears a touch, never the thing at once)
 {
