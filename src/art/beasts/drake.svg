@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- дрейк: коренастый ящер на четырёх лапах, гребень по спине, короткие сложенные крылья, рога, огонь из пасти; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="40" ry="5" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M24 66L22 86H32L32 68Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 68L36 86H46L44 68Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M58 68L58 86H68L66 66Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M68 64L72 86H82L76 62Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M2 70Q12 60 22 62Q30 48 50 46Q70 46 78 56L80 70Q60 76 40 74Q24 74 18 70Q10 76 2 70Z"/>
+<path fill="bone" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M26 52L30 42L34 50L38 40L42 48L46 38L50 47L54 40L58 48L62 44L64 52Z"/>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M36 56Q42 36 60 32Q56 42 58 50Q50 50 46 58Z"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M40 56L58 34M46 57L56 44"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M72 52Q74 40 86 40Q96 42 98 50L94 58Q84 62 76 60Z"/>
+<path fill="bone" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M78 42L72 32L82 40ZM84 40L82 30L88 40Z"/>
+<circle class="figure" cx="86" cy="48" r="2.3" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+<path class="figure" fill="fire" stroke="ink" stroke-width="2" stroke-linejoin="round" d="M96 54Q100 52 100 56Q98 58 100 62Q96 62 94 58Z"/>
+<path class="detail" fill="none" stroke="shade" stroke-width="3" stroke-linecap="round" d="M30 64Q40 68 50 66M52 62Q62 66 70 62"/>
+</svg>

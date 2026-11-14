@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- виверна: две лапы, перепончатые крылья, длинная шея и хвост с ядовитым жалом; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M44 50Q30 10 6 8Q12 18 8 28Q18 26 20 36Q28 34 30 44Q36 42 38 54Z"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M42 48L10 12M40 50L14 30M38 52L24 40"/>
+<path fill="none" stroke="ink" stroke-width="11" stroke-linecap="round" d="M30 66Q14 72 6 62Q2 56 8 50"/>
+<path fill="none" stroke="fur" stroke-width="5" stroke-linecap="round" d="M30 66Q14 72 6 62Q2 56 8 50"/>
+<path fill="#a8c83a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M8 50L2 40L14 46Z"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M40 68L36 84L30 88H42L46 70Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M56 68L58 84L52 88H64L64 68Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M26 64Q28 50 46 50Q62 50 68 60Q66 72 50 74Q32 74 26 64Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M50 52Q56 14 80 4Q74 16 76 26Q68 28 66 38Q60 38 58 54Z"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M54 52L78 6M58 54L72 30"/>
+<path fill="none" stroke="ink" stroke-width="11" stroke-linecap="round" d="M62 56Q72 46 74 32"/>
+<path fill="none" stroke="fur" stroke-width="5" stroke-linecap="round" d="M62 56Q72 46 74 32"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M68 30Q70 20 82 20Q94 22 98 30L90 34Q82 38 72 36Z"/>
+<path fill="bone" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M72 22L68 12L78 20Z"/>
+<circle class="figure" cx="82" cy="27" r="2.3" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+</svg>
