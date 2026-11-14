@@ -27,7 +27,7 @@ import {moveToward} from './movement.js';
 import {lethal} from './wounds.js';
 import {noteHit} from './trophies.js';
 import {moraleShock, moraleWound, fleeing} from './morale.js';
-import {maxHp} from './agent.js';
+import {maxHp, kill} from './agent.js';
 import {heatTo} from '../world/heat.js';
 import {cellMid, cellOf, walkable} from '../world/grid.js';
 import {T} from '../data/terrain.js';
@@ -93,6 +93,7 @@ function aimOf(w, a, act) {
     const dir = Math.atan2(t.y - a.y, t.x - a.x), in_ = caught(w, a, row, a.x, a.y, dir);
     return in_.some(o => foeOf(a, o)) && !in_.some(o => ours(a, o)) ? {dir} : null;
   }
+  if (row.finish) return finishAim(w, a, act);
   if (row.shape === 'shot' || row.shape === 'touch') return markAim(w, a, act);
   if (row.shape === 'leap') return leapAim(w, a, act);
   if (a.aloft && flightOf(a)?.high) return null;   // (a breath, a tail from the ground: it comes down first)
@@ -105,6 +106,22 @@ function markAim(w, a, {row, id}) {
   const R = row.range + ABILITY.edge, fits = t => t && !t.dead && !t.downed && !t.captive && foeOf(a, t) && Math.hypot(t.x - a.x, t.y - a.y) <= R && canSee(w, a, t) && lineOfFire(w, a.x, a.y, t.x, t.y);
   let t = fits(a.task?.target) ? a.task.target : null;
   if (!t) { let bd = Infinity; for (const o of nearAgents(w, a.x, a.y, R)) { const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd && fits(o)) { bd = d; t = o; } } }
+  return t ? {dir: Math.atan2(t.y - a.y, t.x - a.x), tid: t.id} : null;
+}
+// finishing the weak (the perk «Добить слабого», plan З-11): within range, a foe of it on the ground — the nearest — else the one
+// bent over such a one (TEND: the tasks of the healer, the dresser), seen
+const TEND = new Set(['aid', 'treat', 'bind', 'mend']);
+function finishAim(w, a, {row}) {
+  if (a.aloft && flightOf(a)?.high) return null;
+  const R = row.range + ABILITY.edge;
+  let down = null, tender = null, bd = Infinity, bt = Infinity;
+  for (const o of nearAgents(w, a.x, a.y, R)) {
+    if (o === a || o.dead || o.captive || o.gone || o.under || o.swallowed || ours(a, o) || o.faction === a.faction) continue;
+    const d = Math.hypot(o.x - a.x, o.y - a.y); if (d > R || !lineOfFire(w, a.x, a.y, o.x, o.y)) continue;
+    if (o.downed) { if (d < bd && (isHostile(a, o) || foeOf(a, o))) { bd = d; down = o; } continue; }
+    if (TEND.has(o.task?.id) && foeOf(a, o) && canSee(w, a, o) && d < bt) { bt = d; tender = o; }
+  }
+  const t = down || tender;
   return t ? {dir: Math.atan2(t.y - a.y, t.x - a.x), tid: t.id} : null;
 }
 // a leap (the perk «Прыжок»): onto a foe it sees between `from` and `range` cells off, the way clear — where it lands strikes
@@ -209,9 +226,9 @@ function begin(w, a, act, dir, tid = null) {
 }
 
 // × the harm of a kind to one: fire past its fire's answer, a fire-ward, a fireproof perk; a blow past the body and the armour
-function harmTo(w, o, type) {
+export function harmTo(w, o, type) {
   const sp = SPECIES.get(o.species);
-  if (type === 'fire') return resistTo(sp, 'fire') * (o.effects ? effectResist(w, o, 'fire') : 1) * (heldOf(o, 'fireproof')?.fire ?? 1);
+  if (type === 'fire') return resistTo(sp, 'fire') * (o.effects ? effectResist(w, o, 'fire') : 1) * (heldOf(o, 'fireproof')?.fire ?? 1) * (heldOf(o, 'jelly')?.fire ?? 1);   // (a jelly burns well: plan З-11)
   if (type === 'acid') return resistTo(sp, 'acid');   // (an acid eats past the armour — and the armour with it: `corrode`)
   return resistOf(sp, type, true, o) * (1 - (o.gear ? armorAgainst(o.gear, type) : 0));
 }
@@ -226,7 +243,7 @@ function release(w, a) {
   let targets;
   if (tid != null) {   // one target: still there, in range, in sight
     const t = liveById(w, tid), R = row.range + ABILITY.edge + 1;
-    targets = t && !t.dead && !t.downed && Math.hypot(t.x - a.x, t.y - a.y) <= R && lineOfFire(w, a.x, a.y, t.x, t.y) ? [t] : [];
+    targets = t && !t.dead && (!t.downed || row.finish) && Math.hypot(t.x - a.x, t.y - a.y) <= R && lineOfFire(w, a.x, a.y, t.x, t.y) ? [t] : [];   // (finishing the weak: the fallen too)
     if (row.ammo) (a.ammo ||= {})[id] = (a.ammo[id] ?? row.ammo) - 1;
     if (targets[0]) w.fx.push({x1: a.x, y1: a.y, x2: targets[0].x, y2: targets[0].y, t: 8, kind: row.web || row.venom && !row.dmg ? 'stone' : 'arrow'});
   } else {
@@ -259,14 +276,18 @@ function release(w, a) {
 // at once; a burning, a poison, a web, a knock left behind. → true when it reached the body
 function strike(w, a, o, row) {
   const sp = SPECIES.get(o.species);
+  // finishing the weak: the fallen it kills where it lies (plan З-11); the one bent over it is struck as any other
+  if (row.finish && o.downed) { o.hurtBy = {id: a.id, tick: w.tick, far: false}; noteHit(o, a); kill(w, o, 'ран', a); (w.chronicle.finished ||= 0); w.chronicle.finished++; return true; }
   if (row.shield && o.gear?.cover > 0 && w.rngs.combat() < o.gear.cover) { o.flash = 3; return false; }
   const A = o.special?.A ?? 5, dodged = row.dodge && w.rngs.combat() < A / (A + row.dodge);
-  const harm = (row.dmg || 0) * (dodged ? ABILITY.dodged : 1) * harmTo(w, o, row.type);
+  // a swarm (plan З-11): what takes the many — a breath, a jet, a ring — × its `area`; a single shot or touch finds one wasp
+  const many = row.shape !== 'shot' && row.shape !== 'touch' ? heldOf(o, 'swarm')?.area ?? 1 : 1;
+  const harm = (row.dmg || 0) * (dodged ? ABILITY.dodged : 1) * harmTo(w, o, row.type) * many;
   o.flash = 6; o.hurtBy = {id: a.id, tick: w.tick, far: true}; noteHit(o, a);
   if (harm > 0) { o.hp -= harm; moraleWound(w, o, harm); }
   if (!dodged) {
     if (row.burn && harmTo(w, o, 'fire') > 0) {
-      const b = row.burn.dmg * harmTo(w, o, 'fire');
+      const b = row.burn.dmg * harmTo(w, o, 'fire') * many;
       o.burning = {dmg: Math.max(b, o.burning?.dmg || 0), until: Math.max(w.tick + row.burn.ticks, o.burning?.until || 0)};
     }
     if (row.venom && !sp.undead && !sp.mechanism) {

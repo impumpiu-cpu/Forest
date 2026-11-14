@@ -5,7 +5,8 @@ import {moraleWound, moraleBlow, moraleGuard, fleeing} from './morale.js';
 import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
-import {maxHp, hpShare} from './agent.js';
+import {maxHp, hpShare, createAgent} from './agent.js';
+import {refreshBody} from './special.js';
 import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
@@ -63,7 +64,7 @@ const echoOf = a => (a.echoRow !== undefined ? a.echoRow : (a.echoRow = heldOf(a
 // how long a net holds this body, × COMBAT.net's ticks and hold (the author's word 14.11: no perks of their own — the body's own
 // make it): a swarm slips through it (0), scales or spikes shed it (`shed`), a great body tears it (`tear`: its size at least)
 export function netGrip(t, tsp) {
-  const N = COMBAT.net; if (tsp.swarm) return 0;
+  const N = COMBAT.net; if (tsp.swarm || heldOf(t, 'swarm')) return 0;
   let k = 1;
   if (heldOf(t, 'scales') || heldOf(t, 'spikes')) k *= N.shed;
   if ((tsp.look?.size ?? (tsp.big ? GRIP.size.big : GRIP.size.person)) >= N.tear.size) k *= N.tear.k;
@@ -117,9 +118,11 @@ export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.
 // natural armour (a perk «Чешуя и панцирь», data/perks.js) stands in the place of the body's own answer to that kind, never on top;
 // `a` — the creature itself: its scales as it carries them now (its kind's way may have grown them: data/paths.js), else its kind's
 export const resistOf = (sp, type, melee, a = null) => {
-  const sc = (a ? heldOf(a, 'scales') : innateOf(sp, 'scales'))?.[type];
+  const own = id => (a ? heldOf(a, id) : innateOf(sp, id));
+  const sc = own('scales')?.[type];
   const by = sc ?? sp.resist?.[type] ?? 1;
-  return by * (sp.resist?.[melee ? 'melee' : 'ranged'] ?? 1);
+  // a body of jelly, a swarm (plan З-11): on top of the body's own answer — a hammer sinks into either
+  return by * (own('jelly')?.[type] ?? 1) * (own('swarm')?.[type] ?? 1) * (sp.resist?.[melee ? 'melee' : 'ranged'] ?? 1);
 };
 
 // Apply a hit: a shield may stop a blow or a shot (a parry only a blow), armour absorbs part of the rest.
@@ -206,11 +209,38 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const rb = bsp.remembers, rt = tsp.remembers;
   const memKey = rb === 'wolf' || rt === 'wolf' ? 'wolf' : rb === 'mule' || rt === 'mule' ? 'mule' : rb || rt || 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
+  // quills (a perk «Иглы», plan З-11): the one who struck it close takes a prick, through its armour as it may
+  const Q = melee && dmg > 0 && heldOf(t, 'quills');
+  if (Q && !by.dead && !by.downed) {
+    const p = Q.dmg * resistOf(bsp, Q.type, true, by) * (1 - armorAgainst(ensureGear(by), Q.type));
+    if (p > 0) { by.hp -= p; by.flash = 3; moraleWound(w, by, p); if (by.hp <= 0) lethal(w, by, 'ран', t); }
+  }
+  // a cut deep enough splits a jelly in two (a perk «Деление»)
+  if (t.hp > 0 && dmg > 0 && (type === 'slash' || mix?.some(([k]) => k === 'slash'))) splitOff(w, t, dmg);
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)
   if (t.hp <= 0 && breakToWar(w, by, t)) return dmg;   // the greenskins' pits: a beaten beast broken to war (settlement/warbeasts.js)
   if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
+}
+
+// «Деление» (data/perks.js split): a slashing blow of `at` of its whole health or more, while it keeps more than `least` of it,
+// makes a second of it beside it — the same kind, level, perks, side and squad — each with half of what is left; at most `most`
+// times down one line (a.splitGen). → the new one, or null
+export function splitOff(w, t, dmg) {
+  const S = heldOf(t, 'split'), full = maxHp(t);
+  if (!S || dmg < S.at * full || t.hp <= S.least * full || (t.splitGen || 0) >= S.most) return null;
+  const c = createAgent(w, t.species, t.faction, Math.min(w.w - 1, t.x + 0.4), t.y);
+  for (const k of ['special', 'level', 'perks', 'band', 'side', 'brain', 'marks', 'defend', 'warBeast', 'hunger', 'master', 'name'])
+    if (t[k] !== undefined) c[k] = Array.isArray(t[k]) ? [...t[k]] : t[k] && typeof t[k] === 'object' ? {...t[k]} : t[k];
+  c.needs = {...t.needs};
+  t.splitGen = c.splitGen = (t.splitGen || 0) + 1;
+  refreshBody(c);
+  t.hp /= 2; c.hp = t.hp;
+  const sq = t.squad != null ? w.squads?.[t.squad] : null;
+  if (sq) { c.squad = sq.id; c.sqRole = t.sqRole; if (!sq.members.includes(c.id)) { sq.members.push(c.id); sq.size = (sq.size || 0) + 1; } }
+  (w.chronicle.splits ||= 0); w.chronicle.splits++;
+  return c;
 }
 
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely

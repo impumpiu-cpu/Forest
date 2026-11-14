@@ -284,6 +284,32 @@ PERKS.registerAll([
   {id: 'scales', label: 'Чешуя и панцирь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
     about: 'колющий и рубящий удар слабее, дробящий — чуть слабее',
     rank: [{pierce: 0.9, slash: 0.9, blunt: 0.95}, {pierce: 0.8, slash: 0.8, blunt: 0.9}, {pierce: 0.7, slash: 0.7, blunt: 0.85}]},
+  // ── the answers (plan claude/bestiary-plan.md З-11): to the hammer, the healer, the blade at the back
+  // a body of jelly (the slimes): a blow by kind × the row (blunt sinks into it), fire × `fire` — it burns well; on top of the body's
+  // own answer, never in its place
+  {id: 'jelly', label: 'Студенистое тело', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'дробящий удар вязнет: I — ×0,4, II — ×0,3; колющий слабее; огонь жжёт сильнее',
+    rank: [{blunt: 0.4, pierce: 0.7, fire: 1.5}, {blunt: 0.3, pierce: 0.6, fire: 1.5}]},
+  // a cut deep enough splits it in two (agents/combat.js splitOff): a slashing blow of `at` of its whole health or more, while it
+  // keeps more than `least` of it, makes a second of it with half of what is left — at most `most` times down one line
+  {id: 'split', label: 'Деление', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'сильный рубящий удар делит его надвое: у каждого половина оставшегося здоровья',
+    rank: [{at: 0.25, least: 0.3, most: 1}, {at: 0.2, least: 0.25, most: 2}]},
+  // quills: one who strikes it close takes a prick through its armour as it may (agents/combat.js), once a blow
+  {id: 'quills', label: 'Иглы', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'кто бьёт вплотную, получает укол иглами',
+    rank: [{dmg: 0.04, type: 'pierce'}, {dmg: 0.07, type: 'pierce'}]},
+  // a swarm: thousands of small bodies — a hammer or a point finds little, a breath, a jet, a ring (what takes the many) × `area`;
+  // a net catches none of it (agents/combat.js netGrip)
+  {id: 'swarm', label: 'Рой', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'рой: дробящее и колющее почти не берут, огонь и всё площадное — вдвое; сетью не поймать',
+    rank: [{blunt: 0.3, pierce: 0.3, area: 2}]},
+  // finishing the weak (a hyena's, a wolverine's, an upyr's): within `range` it goes for one of its foes on the ground — and kills
+  // it — or for the one bent over such a one (the healer: tasks aid, treat, bind, mend), struck × the row (agents/abilities.js)
+  {id: 'finishWeak', label: 'Добить слабого', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'добивает упавшего врага рядом или бьёт того, кто его перевязывает',
+    rank: [{shape: 'touch', finish: true, range: 1.6, type: 'pierce', dmg: 0.15, prep: 6, wait: 120, dodge: 10},
+      {shape: 'touch', finish: true, range: 2, type: 'pierce', dmg: 0.25, prep: 5, wait: 100, dodge: 12}]},
   {id: 'fireproof', label: 'Огнестойкость', kind: 'врождённые', how: 'fight', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
     about: 'огонь × fire; heat — жар земли не берёт вовсе (мастер горна)',
     rank: [{fire: 0.75}, {fire: 0.4}, {fire: 0.1}]},
