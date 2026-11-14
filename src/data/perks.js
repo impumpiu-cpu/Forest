@@ -191,6 +191,21 @@ PERKS.registerAll([
       {shape: 'touch', range: 1.5, type: 'pierce', dmg: 0.04, numbFor: 24, numb: 100, prep: 4, wait: 80, dodge: 10},
       {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.06, numbFor: 30, numb: 100, prep: 4, wait: 80, dodge: 12},
     ]},
+  // a leap (agents/abilities.js `leap`): onto a foe between `from` and `range` cells off, the landing plain to see the wind-up
+  // long (`prep`); where it comes down a ring of `length` takes the harm and is knocked down; its own not there
+  {id: 'leap', label: 'Прыжок', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'прыгает на врага издали и бьёт всех, кто рядом с местом приземления',
+    rank: [
+      {shape: 'leap', from: 2.5, range: 4, length: 1.2, type: 'blunt', dmg: 0.25, knock: 14, prep: 14, wait: 140, dodge: 10},
+      {shape: 'leap', from: 2.5, range: 6, length: 1.6, type: 'blunt', dmg: 0.4, knock: 18, prep: 16, wait: 140, dodge: 12},
+    ]},
+  // a rock thrown (one target): a heavy blow that knocks one down; a one-eyed thrower's aim is poor — its foes dodge more
+  {id: 'rockThrow', label: 'Бросок камня', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'швыряет валун: тяжёлый удар и сбивает с ног',
+    rank: [
+      {shape: 'shot', range: 8, type: 'blunt', dmg: 0.5, knock: 12, prep: 14, wait: 120, dodge: 12},
+      {shape: 'shot', range: 10, type: 'blunt', dmg: 0.7, knock: 16, prep: 16, wait: 120, dodge: 14},
+    ]},
   // ── holding (agents/abilities.js): `grab` — a hit takes hold of one no bigger than `size` (a body's: data/abilities.js GRIP);
   // it holds while it can: each `every` ticks the held one breaks free at its max(S, A) (+ GRIP.help for each of its own close
   // by, pulling) against `hold`; the holder does nothing else, the held one strikes only at the holder. Its death, a stun,
@@ -234,6 +249,10 @@ PERKS.registerAll([
       {air: 0.22, high: true, ground: 40, rise: 30, grounded: 0.3},
       {air: 0.24, high: true, ground: 50, rise: 30, grounded: 0.25},
     ]},
+  // ── senses (agents/combat.js canSee, darkness): within `range` it hears what creeps and «sees» in the dark
+  {id: 'echo', label: 'Эхолокация', kind: 'врождённые', how: 'sense', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'щёлкает и слушает эхо: в темноте видит как днём, крадущегося слышит в пределах range',
+    rank: [{range: 8}, {range: 12}]},
   // ── a body's guard: × the harm by kind (the natural armour stands in the place of a `resist` of the same kinds, never on top)
   {id: 'scales', label: 'Чешуя и панцирь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
     about: 'колющий и рубящий удар слабее, дробящий — чуть слабее',

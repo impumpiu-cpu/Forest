@@ -118,6 +118,10 @@ export const CREATURES = {
   crawler:     {special: {...around({S: 10, P: 10, E: 12, C: 0, I: 1, A: 6, L: 5}), C: [0, 0]}, hp: 2.4, speed: 0.09, attack: {power: 1.2, cooldown: 16, type: 'pierce'}, ks: 0.71},
   rustbeast:   {special: around({S: 5, P: 8, E: 7, C: 1, I: 2, A: 7, L: 5}), hp: 1, speed: 0.1, attack: {power: 0.6, cooldown: 16, type: 'pierce'}, ks: 1.02},
   cobra:       {special: {...around({S: 3, P: 8, E: 4, C: 0, I: 1, A: 10, L: 5}), C: [0, 0]}, hp: 0.35, speed: 0.1, attack: {power: 0.45, cooldown: 14, type: 'pierce'}, ks: 1.39},
+  // the second row (З-7)
+  bulette:     {special: {...around({S: 16, P: 8, E: 16, C: 0, I: 1, A: 6, L: 5}), C: [0, 0]}, hp: 4.5, speed: 0.11, attack: {power: 2.6, cooldown: 16, type: 'slash'}, ks: 1.06},
+  hookhorror:  {special: around({S: 13, P: 12, E: 12, C: 2, I: 3, A: 8, L: 5}), hp: 3.2, speed: 0.1, attack: {power: 1.8, cooldown: 15, type: 'pierce'}, ks: 0.76},
+  cyclops:     {special: around({S: 18, P: 6, E: 16, C: 3, I: 4, A: 4, L: 5}), hp: 5, speed: 0.12, attack: {power: 3, cooldown: 18, type: 'blunt'}, ks: 1.22},
   polarbear:   {special: around({S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4}), hp: 4.2, speed: 0.12, attack: {power: 2.6, cooldown: 16, type: 'slash'}, ks: 0.88},
   seal:        {special: around({S: 5, P: 6, E: 8, C: 1, I: 2, A: 4, L: 5}), hp: 0.8, speed: 0.07},
   sheep:       {special: around({S: 3, P: 5, E: 5, C: 2, I: 1, A: 6, L: 4}), hp: 0.35, speed: 0.12},

@@ -64,7 +64,7 @@ export function inShape(w, row, ox, oy, dir, x, y) {
   if (row.shape === 'line') {   // a jet: along it up to its length, no wider than `width`
     const along = dx * Math.cos(dir) + dy * Math.sin(dir), across = Math.abs(-dx * Math.sin(dir) + dy * Math.cos(dir));
     if (along < 0 || across > row.width / 2) return false;
-  } else if (row.shape !== 'aura' && d > ABILITY.eps) {
+  } else if (row.shape !== 'aura' && row.shape !== 'leap' && d > ABILITY.eps) {
     const face = row.shape === 'rear' ? dir + Math.PI : dir;
     if (Math.abs(angDiff(Math.atan2(dy, dx), face)) > row.angle * RAD / 2) return false;
   }
@@ -93,6 +93,7 @@ function aimOf(w, a, act) {
     return in_.some(o => foeOf(a, o)) && !in_.some(o => ours(a, o)) ? {dir} : null;
   }
   if (row.shape === 'shot' || row.shape === 'touch') return markAim(w, a, act);
+  if (row.shape === 'leap') return leapAim(w, a, act);
   if (a.aloft && flightOf(a)?.high) return null;   // (a breath, a tail from the ground: it comes down first)
   return coneAim(w, a, row, a.x, a.y);
 }
@@ -104,6 +105,20 @@ function markAim(w, a, {row, id}) {
   let t = fits(a.task?.target) ? a.task.target : null;
   if (!t) { let bd = Infinity; for (const o of nearAgents(w, a.x, a.y, R)) { const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd && fits(o)) { bd = d; t = o; } } }
   return t ? {dir: Math.atan2(t.y - a.y, t.x - a.x), tid: t.id} : null;
+}
+// a leap (the perk «Прыжок»): onto a foe it sees between `from` and `range` cells off, the way clear — where it lands strikes
+// round about it (a ring of `length`), its own not there
+function leapAim(w, a, {row}) {
+  if (a.aloft || a.held || a.holding != null) return null;
+  let best = null, bn = 0;
+  for (const t of nearAgents(w, a.x, a.y, row.range)) {
+    const d = Math.hypot(t.x - a.x, t.y - a.y);
+    if (t === a || t.dead || t.downed || d < row.from || !foeOf(a, t) || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y) || !walkable(w, cellOf(w, t))) continue;
+    const in_ = caught(w, a, row, t.x, t.y, 0);
+    if (in_.some(o => !foeOf(a, o))) continue;
+    if (in_.length > bn) { bn = in_.length; best = {dir: Math.atan2(t.y - a.y, t.x - a.x), ox: t.x, oy: t.y}; }
+  }
+  return best;
 }
 // a cone from (ox, oy): towards each foe it sees within reach — the direction with the most foes in it and nobody else (its
 // own, a neutral beast) → {dir, n} or null
@@ -161,24 +176,24 @@ export function stepAct(w, a) {
       if (to) { a.dodge = {x: to.x, y: to.y, until: w.tick + ABILITY.shift.ticks, aim: true}; return true; }
       continue;
     }
-    begin(w, a, act, aim.dir, aim.tid);
+    begin(w, a, aim.ox != null ? {...act, ox: aim.ox, oy: aim.oy} : act, aim.dir, aim.tid);
     return true;
   }
   return false;
 }
 
 function begin(w, a, act, dir, tid = null) {
-  const {row} = act;
-  a.act = {id: act.id, rank: act.rank, x: a.x, y: a.y, dir, at: w.tick + row.prep, ...(tid != null ? {tid} : {}), ...(act.sub ? {sub: act.sub} : {})};
+  const {row} = act, ox = act.ox ?? a.x, oy = act.oy ?? a.y;   // (where it strikes: where it stands, or where it lands)
+  a.act = {id: act.id, rank: act.rank, x: ox, y: oy, dir, at: w.tick + row.prep, ...(tid != null ? {tid} : {}), ...(act.sub ? {sub: act.sub} : {})};
   if (tid != null) return;   // (one target: a quick throw, no shape to step out of)
-  w.fx.push({kind: 'cone', x1: a.x, y1: a.y, dir, angle: row.shape === 'aura' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: row.prep, T: row.prep, prep: true, x2: a.x, y2: a.y});
+  w.fx.push({kind: 'cone', x1: ox, y1: oy, dir, angle: row.shape === 'aura' || row.shape === 'leap' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: row.prep, T: row.prep, prep: true, x2: ox, y2: oy});
   if (row.fear) return;   // (a roar is heard, not stepped out of)
   // whoever sees it coming and stands in it steps out: past the rim, or out past its end
-  for (const o of caught(w, a, row, a.x, a.y, dir)) {
+  for (const o of caught(w, a, row, ox, oy, dir)) {
     if (isMindless(SPECIES.get(o.species)) || o.captive || o.sleeping || o.held || (!a.act.sub && !canSee(w, o, a))) continue;   // (the ground heaving is seen by all near)
-    const dx = o.x - a.x, dy = o.y - a.y, d = Math.hypot(dx, dy);
+    const dx = o.x - ox, dy = o.y - oy, d = Math.hypot(dx, dy);
     let x, y;
-    if (row.shape === 'aura' || row.shape === 'rear' || d < ABILITY.eps) { const k = (row.length + ABILITY.edge + ABILITY.out) / Math.max(d, ABILITY.eps); x = a.x + dx * k; y = a.y + dy * k; }
+    if (row.shape === 'aura' || row.shape === 'leap' || row.shape === 'rear' || d < ABILITY.eps) { const k = (row.length + ABILITY.edge + ABILITY.out) / Math.max(d, ABILITY.eps); const ux = d < ABILITY.eps ? 1 : dx, uy = d < ABILITY.eps ? 0 : dy; x = ox + ux * k; y = oy + uy * k; }
     else {
       const side = Math.sign(angDiff(Math.atan2(dy, dx), dir)) || 1, phi = dir + side * (row.angle / 2 + ABILITY.slack) * RAD;
       const sideX = a.x + Math.cos(phi) * d, sideY = a.y + Math.sin(phi) * d;
@@ -202,6 +217,7 @@ function release(w, a) {
   const row = sub ? whole[sub] : whole;   // (a part of a rank's row: the burrower's bursting out)
   a.act = null; (a.actReady ||= {})[id] = w.tick + (row.wait || 0);
   if (id === 'burrow') { a.under = false; a.surfaced = w.tick; }
+  if (row.shape === 'leap' && walkable(w, Math.min(w.h - 1, y | 0) * w.w + Math.min(w.w - 1, x | 0))) { a.x = x; a.y = y; a.path = null; }   // (it comes down where it aimed)
   let targets;
   if (tid != null) {   // one target: still there, in range, in sight
     const t = liveById(w, tid), R = row.range + ABILITY.edge + 1;
@@ -210,7 +226,7 @@ function release(w, a) {
     if (targets[0]) w.fx.push({x1: a.x, y1: a.y, x2: targets[0].x, y2: targets[0].y, t: 8, kind: row.web || row.venom && !row.dmg ? 'stone' : 'arrow'});
   } else {
     targets = caught(w, a, row, x, y, dir);
-    w.fx.push({kind: 'cone', x1: x, y1: y, dir, angle: row.shape === 'aura' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: 8, T: 8, type: row.type || 'fear', x2: x, y2: y});
+    w.fx.push({kind: 'cone', x1: x, y1: y, dir, angle: row.shape === 'aura' || row.shape === 'leap' ? 360 : row.angle, rear: row.shape === 'rear', length: row.length + ABILITY.edge, t: 8, T: 8, type: row.type || 'fear', x2: x, y2: y});
   }
   let hit = 0;
   for (const o of targets) {
@@ -364,6 +380,9 @@ function stepBurrow(w, a) {
   if (a.under) {
     const t = near(B.sense, prey);
     if (!t) return true;   // (lies still under the ground, waiting)
+    // one that leaps (a bulette) comes up short of its prey and leaps on it from there
+    const L = holdRow(a, 'leap'), dt = Math.hypot(t.x - a.x, t.y - a.y);
+    if (L && (a.actReady?.leap ?? 0) <= w.tick && dt >= L.from && dt <= L.range * ABILITY.aim) { a.under = false; a.surfaced = w.tick; a.task = {id: 'maul', target: t}; return false; }
     if (Math.hypot(t.x - a.x, t.y - a.y) <= B.strike) { a.task = {id: 'maul', target: t}; begin(w, a, {id: 'burrow', rank: perksOf(a).find(p => p.id === 'burrow')?.rank || 1, row: {...B.emerge, prep: B.prep}, sub: 'emerge'}, 0); return true; }
     const dx = t.x - a.x, dy = t.y - a.y, d = Math.hypot(dx, dy), k = Math.min(1, B.dig / d), nx = a.x + dx * k, ny = a.y + dy * k;
     const j = Math.min(w.h - 1, Math.max(0, ny | 0)) * w.w + Math.min(w.w - 1, Math.max(0, nx | 0));

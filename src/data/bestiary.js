@@ -375,6 +375,31 @@ export const BESTIARY = [
     yields: {venom: 1, hide: 1}, trophies: [{res: 'venom', n: 1, chance: 0.4, tier: 2}],
     killMessage: name => `Кобра ужалила поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['rat', 'hare'], boldPeople: 0.4, groupFear: 2, sight: 10, meal: 0.5})}),
+  // ── the second row (plan claude/bestiary-plan.md З-7)
+  // Bulette, the land shark: an armoured burrower of the hills; it comes up under one and leaps on a knot of people (D&D)
+  beast({id: 'bulette', kind: 'monster', label: 'панцирница', labelAcc: 'панцирницу', plural: 'панцирницы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true,
+    arrive: {group: [1, 1], every: [7, 10], chance: 0.3, cap: 1, first: 6, message: 'земля ходит волной, гребень режет дёрн — это панцирница'},
+    habitat: {steppe: 'rare', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
+    look: {shape: 'lizard', size: 0.95, color: '#6f7a86'}, perks: [{id: 'burrow', rank: 2}, {id: 'leap', rank: 2}, {id: 'scales', rank: 3}],
+    yields: {meat: 9, hide: 3, bone: 3}, trophies: [{res: 'bone', n: 2, chance: 0.3}],
+    killMessage: name => `Панцирница выпрыгнула из-под земли и задрала поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['deer', 'goat', 'boar', 'elk', 'saiga'], weakPrey: ['mule'], boldPeople: 0.7, groupFear: 6, sight: 16, meal: 3, bigMeal: 5})}),
+  // Hook horror: a tall armoured thing of the deep caves with hooks for hands; blind, it hunts by the echo of its clicks (D&D)
+  beast({id: 'hookhorror', kind: 'monster', label: 'крюкастый ужас', labelAcc: 'крюкастого ужаса', plural: 'крюкастые ужасы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [2, 3], every: [6, 9], chance: 0.35, cap: 3, first: 5, message: 'из темноты — щёлканье, будто стучат по камню. Крюкастые ужасы'},
+    habitat: {underground: 'usual', barrows: 'rare'},
+    look: {shape: 'bird', size: 0.85, color: '#4e5560'}, perks: [{id: 'echo', rank: 2}, {id: 'grab', rank: 2}, {id: 'scales', rank: 2}],
+    yields: {meat: 4, bone: 2}, trophies: [{res: 'bone', n: 1, chance: 0.3}],
+    killMessage: name => `Крюкастый ужас утащил поселенца во тьму: <b>${name}</b>.`,
+    predator: hunts({prey: ['rat', 'goat', 'hare'], boldPeople: 0.7, groupFear: 5, sight: 12, meal: 2})}),
+  // Cyclops: a one-eyed giant of the high pastures; it throws rocks, but one eye judges the distance ill (D&D)
+  beast({id: 'cyclops', kind: 'monster', label: 'циклоп', labelAcc: 'циклопа', plural: 'циклопы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true,
+    arrive: {group: [1, 1], every: [8, 12], chance: 0.25, cap: 1, first: 7, message: 'по склону катятся валуны — наверху циклоп'},
+    habitat: {highlands: 'usual', foothills: 'rare', tundra: 'rare'},
+    look: {shape: 'golem', size: 1, color: '#b08a6a'}, perks: [{id: 'rockThrow', rank: 2}, {id: 'roar', rank: 1}],
+    yields: {meat: 12, hide: 4, bone: 4}, trophies: [{res: 'bone', n: 2, chance: 0.4}],
+    killMessage: name => `Циклоп раздавил поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'sheep', 'deer', 'aurochs'], weakPrey: ['mule'], boldPeople: 0.8, groupFear: 7, sight: 22, meal: 4, bigMeal: 6})}),
 
   // White bear: the lord of the ice; hunts seals, and anything else that walks the snow
   beast({id: 'polarbear', snowfoot: true, kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true, heatHarm: 55,

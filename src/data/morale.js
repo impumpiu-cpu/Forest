@@ -61,6 +61,7 @@ export const MORALE = {
       griffin: 60, manticore: 65, wyvern: 70, drake: 70, dragon: 95, stoneworm: 70,
       vampire: 70, upyr: 50,
       owlbear: 65, ankheg: 55, constrictor: 50, crawler: 45, rustbeast: 35, cobra: 30,
+      bulette: 75, hookhorror: 60, cyclops: 70,
     }},
   temper: {
     // the big ones: a blow, a ring of foes, a friend's fall — little to them
@@ -70,7 +71,7 @@ export const MORALE = {
     // the skittish: frightened easily, bold in a crowd
     skittish: {fell: 1.4, wound: 1.2, odds: 1.2, ring: 1.3, numbers: true},
   },
-  tempers: {troll: 'stubborn', ogre: 'stubborn', giant: 'stubborn', dragon: 'stubborn', stoneworm: 'stubborn', owlbear: 'stubborn',
+  tempers: {troll: 'stubborn', ogre: 'stubborn', giant: 'stubborn', dragon: 'stubborn', stoneworm: 'stubborn', owlbear: 'stubborn', bulette: 'stubborn', cyclops: 'stubborn', hookhorror: 'pack',
     gnoll: 'pack', hyena: 'pack', wolf: 'pack', varg: 'pack',
     goblin: 'skittish', halfling: 'skittish', lynx: 'skittish'},
 };

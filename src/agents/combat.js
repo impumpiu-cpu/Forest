@@ -37,7 +37,7 @@ import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
-import {perkMulA, perkOf, innateOf} from '../data/perks.js';
+import {perkMulA, perkOf, innateOf, heldOf} from '../data/perks.js';
 import {FLIGHT} from '../data/abilities.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
@@ -57,8 +57,11 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 // Finding a foe, keeping after one and striking one all go by this.
 // how close one who creeps is seen (COMBAT.sneak): heavier armour is heard further
 export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
+// echolocation (the perk «Эхолокация», data/perks.js): within its `range` one hears what creeps and sees in the dark
+const echoOf = a => (a.echoRow !== undefined ? a.echoRow : (a.echoRow = heldOf(a, 'echo')));
 export function canSee(w, a, t) {
   if (t.hiddenUntil > w.tick || t.under || t.swallowed) return false;   // (under the ground, inside a beast: agents/abilities.js)
+  const E = echoOf(a); if (E && Math.hypot(t.x - a.x, t.y - a.y) <= E.range) return true;
   if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;   // the fallen and the bound creep no more
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
@@ -69,7 +72,7 @@ export function canSee(w, a, t) {
 // only WATCH.torch of it
 export function darkness(w, a) {
   const night = nightness(w);
-  if (!(night > 0) || !(NIGHT.loss > 0)) return 1;
+  if (!(night > 0) || !(NIGHT.loss > 0) || echoOf(a)) return 1;
   if (w.campLit && w.camp && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight) return 1;
   const k = nightSight(a.species, night, a);
   return k < 1 && carriesTorch(a) ? 1 - (1 - k) * (1 - WATCH.torch) : k;   // (a torch: half of what the night takes, as the watchman's)

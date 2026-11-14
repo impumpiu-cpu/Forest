@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- панцирница: «земляная акула» — тяжёлое тело в бронепластинах, спинной плавник-гребень, тупая морда с пастью, короткие когтистые лапы; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="44" ry="6" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M22 72L18 86H32L32 74Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 74L36 86H50L48 74Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M60 74L60 86H74L70 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M72 70L76 86H90L82 68Z"/><path class="figure" fill="bone" d="M18 86L20 90L22 86ZM24 86L26 90L28 86ZM76 86L78 90L80 86ZM82 86L84 90L86 86Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M2 62Q10 54 20 56Q40 44 64 46Q84 46 92 56Q98 64 94 72Q80 80 56 78Q30 80 14 72Q6 70 2 62Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M36 48L46 24L54 30L58 46Z"/>
+<g class="figure" fill="none" stroke="ink" stroke-width="3" stroke-linecap="round"><path d="M26 54Q28 64 26 74"/><path d="M38 49Q40 62 38 76"/><path d="M52 47Q54 62 52 77"/><path d="M66 47Q68 62 66 77"/></g>
+<path class="detail" fill="shine" d="M28 52L36 50L36 56L28 58Z"/>
+<path fill="#3a1a1a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M78 66Q92 62 98 64Q96 72 82 74Z"/>
+<g class="figure" fill="light" stroke="ink" stroke-width="1"><path d="M82 65L84 69L86 65Z"/><path d="M88 64L90 68L92 64Z"/><path d="M84 73L86 69L88 73Z"/></g>
+<circle class="figure" cx="84" cy="56" r="2.4" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+</svg>

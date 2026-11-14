@@ -14,6 +14,7 @@ import {recalcGear} from '../src/agents/equipment.js';
 import {newItem} from '../src/agents/itemDefs.js';
 import {step} from '../src/sim.js';
 import {stepAct} from '../src/agents/abilities.js';
+import {canSee, darkness} from '../src/agents/combat.js';
 import {SPECIES} from '../src/data/species.js';
 import {CREATURES} from '../src/data/balance/creatures.js';
 import {CAMP} from '../src/data/camp.js';
@@ -65,6 +66,9 @@ const expect = [
   ['spider', d => d.acts.webShot > 0, 'паук бросает паутину'],
   ['toad', d => d.held > 0, 'жаба хватает языком'],
   ['stoneworm', d => d.acts.burrow > 0, 'каменный червь выходит из-под земли'],
+  ['bulette', d => d.acts.leap > 0, 'панцирница прыгает на врага издали'],
+  ['hookhorror', d => d.held > 0, 'крюкастый ужас хватает крюками'],
+  ['cyclops', d => d.acts.rockThrow > 0, 'циклоп швыряет валуны'],
 ];
 for (const [id, f, what] of expect) { const d = bout(id); ok(f(d), what, JSON.stringify(d)); }
 
@@ -75,6 +79,18 @@ for (const [id, f, what] of expect) { const d = bout(id); ok(f(d), what, JSON.st
   const sw = m.equip.right.dur, bo = m.equip.body.dur; r.task = {id: 'maul', target: m};
   for (let g = 0; g < 80 && !(w.chronicle.acts?.rust); g++) { w.tick++; stepAct(w, r); }
   ok(m.equip.right.dur < sw && m.equip.body.dur === bo && m.equip.right.dur > 0, 'ржа ест железный меч, костяной доспех цел', `меч ${sw} → ${m.equip.right.dur}, доспех ${bo} → ${m.equip.body.dur}`);
+}
+
+// ── echolocation: a hook horror hears one creeping in the dark; a leap lands where it aimed and knocks those about it down
+{
+  const w = field(), h = createAgent(w, 'hookhorror', 'raiders', 30, 30), m = createAgent(w, 'human', 'colony', 38, 30), g = createAgent(w, 'goblin', 'raiders', 30, 31);
+  m.sneaking = true;
+  ok(canSee(w, h, m) && !canSee(w, g, m) && darkness(w, h) === 1, 'эхолокация: ужас слышит крадущегося в восьми клетках и видит в темноте; гоблин — нет');
+  const w2 = field(), b = createAgent(w2, 'bulette', 'raiders', 30, 30), t = createAgent(w2, 'human', 'colony', 35, 30), u = createAgent(w2, 'human', 'colony', 35.6, 30.6);
+  b.think = t.think = u.think = 1e9; b.under = false; b.surfaced = w2.tick; b.task = {id: 'maul', target: t}; t.mods.dodge = 0; u.mods.dodge = 0; t.special.A = 0; u.special.A = 0;
+  const h0 = t.hp; let landed = false;
+  for (let k = 0; k < 60 && !landed; k++) { w2.tick++; stepAct(w2, b); if (w2.chronicle.acts?.leap) landed = true; }
+  ok(landed && Math.hypot(b.x - 35, b.y - 30) < 1 && t.hp < h0 && (t.stunned?.until > w2.tick || u.stunned?.until > w2.tick), 'прыжок: панцирница приземлилась на цель, задела и сбила с ног', `x ${b.x.toFixed(1)}, −${(h0 - t.hp).toFixed(2)}`);
 }
 
 // ── the bodies: the expert's centres
