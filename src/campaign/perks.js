@@ -125,5 +125,11 @@ export function classFit(m, C) {
   const sp = SPECIES.get(m.race), mid = L => { const r = sp.special?.[L]; return r ? (r[0] + r[1]) / 2 : 5; };
   return C.keys.reduce((s, L) => s + (m.special?.[L] ?? 0) / Math.max(1, mid(L)), 0) / C.keys.length;
 }
+// a member's class for the card (the author's word 14.11: a class is a craft learned for life — it follows the fighting role
+// taken at hiring and is never changed): {label, note, path: [{level, label, how}]} or null for one with no class
+export function classOf(m) {
+  const C = classOfRole(m?.fight); if (!C) return null;
+  return {id: C.id, label: C.label, note: C.note, path: (C.path || []).slice().sort((x, y) => x.level - y.level).map(e => ({level: e.level, how: e.how, label: perkLabel(e.perk, e.rank)}))};
+}
 // the classes a member suits, best first: [{C, fit}]
 export const classesFor = m => CLASSES.all().filter(C => C.who.pawn === 'yes').map(C => ({C, fit: classFit(m, C)})).filter(x => x.fit != null).sort((x, y) => y.fit - x.fit);

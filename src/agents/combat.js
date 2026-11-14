@@ -33,11 +33,12 @@ import {roleRow} from '../data/roles.js';
 import {blowOnMount, mountBite, loose} from './mount.js';
 import {breakToWar} from '../settlement/warbeasts.js';
 import {potionOf} from '../data/potions.js';
-import {NIGHT, nightSight} from '../data/tongues.js';
+import {NIGHT, nightSight, scentReach} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
 import {perkMulA, perkOf, innateOf, heldOf} from '../data/perks.js';
+import {GRIP} from '../data/abilities.js';
 import {FLIGHT} from '../data/abilities.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
@@ -59,10 +60,19 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
 // echolocation (the perk «Эхолокация», data/perks.js): within its `range` one hears what creeps and sees in the dark
 const echoOf = a => (a.echoRow !== undefined ? a.echoRow : (a.echoRow = heldOf(a, 'echo')));
+// how long a net holds this body, × COMBAT.net's ticks and hold (the author's word 14.11: no perks of their own — the body's own
+// make it): a swarm slips through it (0), scales or spikes shed it (`shed`), a great body tears it (`tear`: its size at least)
+export function netGrip(t, tsp) {
+  const N = COMBAT.net; if (tsp.swarm) return 0;
+  let k = 1;
+  if (heldOf(t, 'scales') || heldOf(t, 'spikes')) k *= N.shed;
+  if ((tsp.look?.size ?? (tsp.big ? GRIP.size.big : GRIP.size.person)) >= N.tear.size) k *= N.tear.k;
+  return k;
+}
 export function canSee(w, a, t) {
   if (t.hiddenUntil > w.tick || t.under || t.swallowed) return false;   // (under the ground, inside a beast: agents/abilities.js)
   const E = echoOf(a); if (E && Math.hypot(t.x - a.x, t.y - a.y) <= E.range) return true;
-  if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;   // the fallen and the bound creep no more
+  if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > Math.max(sneakSeen(t), scentReach(a.species))) return false;   // the fallen and the bound creep no more; a nose finds the creeper closer than its reach (data/tongues.js SENSES scent)
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
 }
@@ -163,7 +173,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (stun && !tsp.mechanism && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   // a net (quality `ensnare`): tangled — slow, and no blow until it is shaken off (COMBAT.net)
   const snare = traitOf(q, 'ensnare');
-  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; if (!tsp.mechanism) t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; }
+  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net, k = netGrip(t, tsp); if (k > 0) { t.webbed = {slow: N.slow, until: w.tick + Math.round(N.ticks * k)}; if (!tsp.mechanism) t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + Math.round(N.hold * k))}; } }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = (t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1) * forestGuard(w, t);

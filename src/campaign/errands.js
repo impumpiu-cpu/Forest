@@ -37,6 +37,7 @@ export function lairTargets(a, K, E, mask) {
     if (!l.alive || l.hidden || l.boss != null) continue;   // (a hidden lair is not known; a boss's seat is the calamity's own)
     const L = LAIRS.get(l.kind); if (!L || L.fiend || L.at === 'town') continue;
     if (E.lairs && !E.lairs.includes(l.kind)) continue;
+    if (E.tierOf && E.lairTier(l.kind) !== E.tierOf) continue;   // (a contract of any lair: only one of its tier — campaign/contracts.js)
     if (E.captives && !Object.values(l.captives || {}).some(n => n > 0)) continue;
     if (E.leader && !l.leader) continue;
     const i = foot(a, mask, l.i); if (i < 0) continue;

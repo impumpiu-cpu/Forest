@@ -8,7 +8,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {LEAN_AXES} from '../data/leans.js';
 import {commandOf} from '../data/commands.js';
-import {reasonsOf, levelOn, need, atCap, specialOn, grewBy, growText, perksBy, perkLabel, perkAbout, perkWhy, woundLabel, maimMax, scarsOn, maimsOn, xpOn, toNext, deedsOf, scarEased, summonLine} from '../view/campaign.js';
+import {reasonsOf, levelOn, need, atCap, specialOn, grewBy, growText, perksBy, classOf, perkLabel, perkAbout, perkWhy, woundLabel, maimMax, scarsOn, maimsOn, xpOn, toNext, deedsOf, scarEased, summonLine} from '../view/campaign.js';
 import {fateOf} from '../social/fate.js';
 import {drawPawn} from '../render/art/pawn.js';
 import {dress, gearDef} from '../view/local.js';
@@ -101,9 +101,12 @@ export function memberCardHtml(K, m, day = Infinity) {
   // the experience as of the day shown: the level, the whole and the bar to the next (K.daily keeps it: campaign/march.js)
   const xp = xpOn(K, m, day), bar = toNext(K, m, day);
   const xpLine = m.captive ? '' : `<p>Уровень ${lv}${atCap(lv) ? ' — предел, дальше роста нет' : xp != null ? ` · опыт ${Math.floor(xp)} из ${need(lv + 1)}` : ''}</p>${bar != null ? `<div class="xpbar" title="до ${lv + 1}-го уровня"><i style="width:${Math.round(bar * 100)}%"></i></div>` : ''}`;
+  // its class (campaign/perks.js classOf): learned for life, never changed — what it is and its way through the perks
+  const C = m.captive ? null : classOf(m);
+  const clsLine = C ? `<p title="Класс — ремесло на всю жизнь: следует из боевой роли и не меняется">Класс: <b>${esc(C.label)}</b> — ${esc(C.note)}${C.path.length ? `<br><small class="muted">Путь: ${C.path.map(e => `${e.level}-й — ${esc(e.label)}${e.how === 'grant' ? ' (даётся)' : ''}`).join(', ')}</small>` : ''}</p>` : '';
   // the deeds that brought it most (the counts are its whole road to now: the deeds are not kept by day)
   const deeds = m.captive ? '' : deedsOf(m).map(d => `<li>${esc(d.label)}${d.count ? ` × ${d.count}` : ''} — ${d.xp} оп.</li>`).join('');
-  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${m.summoned ? `<p class="muted">${esc(summonLine({name: m.name, gender: m.gender, story: m.summoned}))}</p>` : ''}${xpLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
+  return `<div class="pc"><h4>${esc(m.name)}${fate !== 'in' ? ` <small class="muted">(${fate === 'dead' ? 'погиб' : 'нет в отряде'})</small>` : ''}</h4>${m.summoned ? `<p class="muted">${esc(summonLine({name: m.name, gender: m.gender, story: m.summoned}))}</p>` : ''}${xpLine}${clsLine}${letters ? `<p class="muted">${letters}</p>` : ''}${char ? `<p>${char}</p>` : ''}<p>Усталость: ${Math.round(tired * 100)}%</p>` +
     `${grew ? `<h5>Рост</h5><ul>${grew}</ul>` : ''}` +
     `${deeds ? `<h5>Опыт и дела${now ? '' : ' <small class="muted">(на сегодня)</small>'}</h5><ul>${deeds}</ul>` : ''}` +
     `${perks ? `<h5>Перки</h5><ul>${perks}</ul>` : ''}` +

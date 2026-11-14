@@ -102,7 +102,7 @@ function post(a, G, def, {tmpl, chain = null, side = false, strong = 1, branch =
   const tier = def.tier, iss = issuerFor(a, G, tier), C = contractsOf(a);
   const known = def.camp ? !def.camp.clue || !!roomBy(G, 'maps', 'known') : !(errandOfDef(def)?.clueAt?.length);   // (the maps room's last level: the camps' places known)
   let target = null, at = null, s = 0, days = null, where = '', facts = [], goal = '';
-  if (def.errand || def.capture?.lairs) {
+  if (def.errand || def.lair || def.capture?.lairs) {
     const E = errandOfDef(def), {mask} = reachable(a, stub(t)), busy = new Set(C.records.filter(c => c.state === 'open' || c.state === 'accepted').map(c => c.target?.lair));
     const T = lairTargets(a, stub(t), E, mask).find(x => !busy.has(x.l.id)); if (!T) return null;
     target = {lair: T.l.id}; s = garrison(T.l, E.guard) * strong; at = known ? {x: T.l.x, y: T.l.y} : null;
@@ -127,7 +127,14 @@ function post(a, G, def, {tmpl, chain = null, side = false, strong = 1, branch =
   return rec;
 }
 // the errand row a contract of a lair goes by: its errand's (data/errands.js), or — a capture — the lair it is caught from
-const errandOfDef = def => (def.errand ? ERRANDS.get(def.errand) : def.capture?.lairs ? {id: def.id, lairs: def.capture.lairs, at: [0, 1], pick: 'near', clueAt: [], guard: 1, trophy: def.capture.trophy, pursuit: false} : null);
+// a lair kind's tier by its danger (CONTRACT.lair.upTo; the author's word 14.11: any lair may be a contract's goal)
+export function lairTier(kind) {
+  const d = LAIRS.has(kind) ? LAIRS.get(kind).danger ?? 1 : 1, U = CONTRACT.lair.upTo;
+  const k = U.findIndex(v => d <= v); return k < 0 ? U.length + 1 : k + 1;
+}
+// a contract of any lair: the errand of its tier (CONTRACT.lair)
+const anyLair = def => { const L = CONTRACT.lair, t = def.tier; return {id: def.id, tierOf: t, lairTier, at: L.at[t], clueAt: L.clueAt[t], guard: L.guard[t], trophy: L.trophy, pursuit: L.pursuit[t]}; };
+const errandOfDef = def => (def.lair ? anyLair(def) : def.errand ? ERRANDS.get(def.errand) : def.capture?.lairs ? {id: def.id, lairs: def.capture.lairs, at: [0, 1], pick: 'near', clueAt: [], guard: 1, trophy: def.capture.trophy, pursuit: false} : null);
 // the guild's own catches (data/contracts.js CONTRACT.capture; the author's word 13.11): one for each species marked `catchable`
 // in the tables (data/bestiary.js), from a lair of its kind (data/lairs.js) — a species with no lair, from a den of its own
 // put up for the errand (a camp of beasts); its tier by its D&D challenge rating. Made anew from the tables each time: a beast
@@ -316,7 +323,7 @@ function chainOn(a, G, rec, won, io) {
 export function contractQuest(a, K, rnd, rec, G) {
   const def = defOf(rec);
   let Q;
-  if (def.errand || def.capture?.lairs) {
+  if (def.errand || def.lair || def.capture?.lairs) {
     Q = lairErrand(a, K, rnd, errandOfDef(def), rec.target.lair);
     if (!Q) return null;
   } else {

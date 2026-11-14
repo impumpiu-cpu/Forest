@@ -6,7 +6,8 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, foundGuild, hire, stepGuild, guildBoard, launch, expedition, membersOf, muster, devotionOf, newCampaign, takeChore, levelOf, tierOf, recall, houseOf} from '../src/campaign/index.js';
-import {takeContract, settleContract, contractOf, campOf, contractsOf} from '../src/campaign/contracts.js';
+import {takeContract, settleContract, contractOf, campOf, contractsOf, lairTier} from '../src/campaign/contracts.js';
+import {LAIRS} from '../src/data/lairs.js';
 import {GUILD} from '../src/data/guild.js';
 import {CONTRACT, CHAINS} from '../src/data/contracts.js';
 import {CHORES} from '../src/data/chores.js';
@@ -42,13 +43,25 @@ const strong = G => { for (const m of G.members) m.level = 20; };
   ok(B.errands.filter(e => e.tier >= 1).every(e => !e.ok && e.why.startsWith('рано')), 'новички — только на городские дела');
 }
 
+// ── any lair is a contract's goal (the author's word 14.11): its tier by its kind's danger; a «Разорить логово» of tier k takes
+// a lair of that tier only
+{
+  const U = CONTRACT.lair.upTo, want = d => { const k = U.findIndex(v => d <= v); return k < 0 ? U.length + 1 : k + 1; };
+  const kinds = LAIRS.all().filter(L => !L.fiend);
+  ok(kinds.every(L => lairTier(L.id) === want(L.danger ?? 1)), 'тир логова — по его опасности', kinds.map(L => `${L.id} ${L.danger ?? 1} → ${lairTier(L.id)}`).join(', '));
+  ok(lairTier('dragon') === 5 && lairTier('varg') === 1, 'дракон — V, варги — I');
+  const [a] = opened(), C = contractsOf(a), dens = C.records.filter(c => /^den\d?$/.test(c.tmpl) && c.target?.lair != null);
+  ok(dens.every(c => lairTier(a.lairs.find(l => l.id === c.target.lair).kind) === c.tier), 'договор «Разорить логово» берёт логово своего тира',
+    dens.map(c => `${c.tier}: ${a.lairs.find(l => l.id === c.target.lair).kind}`).join(', ') || 'на доске таких нет');
+}
+
 // ── offers run out: the reserve back, the camp struck
 {
-  const [a, G, before] = opened(), C = contractsOf(a), first = C.records.filter(c => c.state === 'open' && !c.chain && c.target.camp != null)[0];
+  const [a, G, before] = opened(), C = contractsOf(a), open1 = C.records.filter(c => c.state === 'open' && !c.chain), first = open1.find(c => c.target.camp != null) || open1[0];   // (a camp's if the board drew one: then its camp is struck too)
   first.until = G.day + 1;
   stepGuild(a);
   ok(first.state === 'closed' && first.why === 'срок предложения вышел' && first.escrow === 0, 'предложение вышло — договор снят, резерв вернулся', first.why);
-  ok(!campOf(a, first.target.camp).alive, 'его лагерь свернулся');
+  if (first.target.camp != null) ok(!campOf(a, first.target.camp).alive, 'его лагерь свернулся');
   ok(purses(a) === before || Math.abs(purses(a) - before) < 1e9, 'деньги сходятся и после хода мира (казны городов живут своей жизнью)');
 }
 

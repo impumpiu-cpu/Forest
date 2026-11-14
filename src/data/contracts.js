@@ -36,6 +36,11 @@ export const CONTRACT = {
   fame: {won: [0, 4, 8, 14, 22, 34], lost: 1.5, abort: 0.25, late: 0.2},
   retreat: 2,
   partial: {least: 0.15, cut: 0.3},
+  // a contract of any lair (`lair: true`): its tier by the lair kind's danger (data/lairs.js), up to `upTo[k]` — tier k + 1, above
+  // the last — V; the errand it goes by, for its tier: how far (`at`, a share of the world's diagonal), the clues (`clueAt`), × the
+  // garrison (`guard`), the world's pursuit home, the trophy
+  lair: {upTo: [1.0, 1.3, 1.6, 2.0], at: [null, [0.04, 0.3], [0.05, 0.4], [0.08, 0.55], [0.1, 0.7], [0, 1]], clueAt: [null, [], [], [0.5], [0.4, 0.75], [0.4, 0.75]],
+    guard: [0, 1, 1.1, 1.2, 1.25, 1.3], pursuit: [false, false, false, true, true, true], trophy: ['Знамя логова', 'Знамя логова', 'n']},
   capture: {cr: [1, 2, 4, 7]},   // the guild's own catches (campaign/contracts.js captureDefs): a beast's tier by its D&D challenge rating — up to cr[k] — tier k + 1, above the last — V
   summon: 0.3,
   clueAt: [0.5],   // a camp found by its traces: its one clue at this share of the way (data/quest.js clueAt)   // a camp of a rite (`summon`): the share of its guard that are the dead it raised (data/camp.js `with`)
@@ -56,7 +61,12 @@ CONTRACTS.registerAll([
   {id: 'winterCamp', tier: 1, label: 'Зимний лагерь разбойников', about: 'Разбойники встали лагерем на зиму неподалёку. Разогнать, пока не начали грабить обозы.',
     camp: {band: 'bandits', name: 'лагерь разбойников', trophy: ['Котёл атамана', 'Котёл атамана', 'm']},
     story: 'Разбойники зимуют {where}; обозы {town} боятся выходить за околицу.'},
-  {id: 'den', tier: 1, label: 'Разорить логово', about: 'Логово поближе к городу не даёт покоя его землям.', errand: 'den'},
+  // any lair of the world (the author's word 14.11): its kind's tier by its danger (`lair`: CONTRACT.lair; campaign/contracts.js
+  // errandOfDef) — a lair of its tier, the nearest free one; tier V is the dragon's own contract below
+  {id: 'den', tier: 1, label: 'Разорить логово', about: 'Логово поближе к городу не даёт покоя его землям.', lair: true},
+  {id: 'den2', tier: 2, label: 'Разорить логово', about: 'Логово в землях державы стало опасным: город просит его выжечь.', lair: true},
+  {id: 'den3', tier: 3, label: 'Разорить логово', about: 'Сильное логово держит дороги в страхе; где оно, знают только по следам.', lair: true},
+  {id: 'den4', tier: 4, label: 'Разорить логово', about: 'Логово, к которому не ходят и армии. Держава платит, сколько попросят.', lair: true},
   {id: 'captives', tier: 1, label: 'Вызволить пленных', about: 'В логове держат пленных из земель державы.', errand: 'captives'},
   {id: 'gnollRaid', tier: 1, label: 'Стан гноллов-налётчиков', about: 'Шайка гноллов поставила стан у дороги и выходит на неё по ночам.',
     camp: {lair: 'gnolls', name: 'стан налётчиков', trophy: ['Тотем стана', 'Тотем стана', 'm']},
