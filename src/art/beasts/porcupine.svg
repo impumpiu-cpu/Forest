@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гигантский дикобраз: округлое тело, длинные полосатые иглы веером; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d=" M22 58L16 30 M27 56L22 33 M32 54L28 36 M37 58L34 39 M42 56L40 30 M47 54L46 33 M52 58L52 36 M57 56L58 39 M62 54L64 30 M67 58L70 33 M72 56L76 36"/><path class="figure" fill="none" stroke="light" stroke-width="1.6" stroke-linecap="round" d=" M22 58L16 30 M27 56L22 33 M32 54L28 36 M37 58L34 39 M42 56L40 30 M47 54L46 33 M52 58L52 36 M57 56L58 39 M62 54L64 30 M67 58L70 33 M72 56L76 36"/>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M30 78L30 88L38 88L38 80ZM60 78L60 88L68 88L66 78Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M16 76Q14 54 42 52Q66 52 74 64L84 70L74 80Q48 86 26 84Q16 82 16 76Z"/>
+<circle class="figure" cx="74" cy="66" r="2.2" fill="ink"/><circle class="figure" cx="84" cy="70" r="1.8" fill="ink"/>
+</svg>

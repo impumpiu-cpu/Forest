@@ -56,7 +56,8 @@ export function stepIll(w, a) {
 }
 
 export function taintBy(w, t, by) {
-  if (!(TAINT.perHit > 0) || !SPECIES.get(by.species).undead || SPECIES.get(t.species).undead) return;   // the dead are past the rot
+  const bsp = SPECIES.get(by.species);
+  if (!(TAINT.perHit > 0) || !(bsp.undead || bsp.rotCarrier) || SPECIES.get(t.species).undead) return;   // the dead are past the rot; corpse flies carry it (data/bestiary.js `rotCarrier`)
   const before = taintRow(t);
   t.taint = (t.taint || 0) + TAINT.perHit * resistTo(SPECIES.get(t.species), 'rot');
   const after = taintRow(t);

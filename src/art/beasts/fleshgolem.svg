@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- мясной голем: груда сшитых тел, швы, маленькая голова, огромные руки; смотрит вправо (игра зеркалит) -->
+<ellipse cx="50" cy="92" rx="34" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 74L30 90L44 90L44 76ZM56 76L56 90L70 90L68 74Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M24 70Q18 40 34 28Q50 20 66 28Q82 40 76 70Q64 80 50 80Q34 80 24 70Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M26 38Q10 50 12 74L22 76Q22 58 30 48ZM74 38Q90 50 90 74L80 76Q78 58 70 48Z"/>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M44 26Q44 14 52 14Q60 14 60 26Z"/>
+<circle class="figure" cx="55" cy="20" r="1.8" fill="#e8d050"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M34 40Q50 46 66 38M38 58Q52 54 64 62M50 28L48 78"/>
+<path class="detail" fill="none" stroke="ink" stroke-width="1.4" d="M38 37L36 43M44 41L42 46M56 41L58 46M62 38L64 43M44 57L42 62M58 57L60 62M47 34L52 35M47 50L52 50M47 66L52 66"/>
+</svg>

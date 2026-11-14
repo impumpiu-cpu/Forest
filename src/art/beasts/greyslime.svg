@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- серая слизь: тусклый плоский ком, капли едкой слизи; смотрит вправо (игра зеркалит) -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 86Q8 70 22 62Q26 40 48 38Q72 36 78 56Q94 62 90 80Q88 88 74 88L26 88Q14 88 12 86Z"/>
+<path class="figure" fill="none" stroke="light" stroke-width="3" stroke-linecap="round" opacity="0.6" d="M30 56Q36 46 46 46"/>
+<g class="figure" fill="#b8c040" stroke="ink" stroke-width="1"><circle cx="88" cy="70" r="2.2"/><circle cx="94" cy="64" r="1.6"/></g><path class="detail" fill="none" stroke="ink" stroke-width="1.5" opacity="0.5" d="M30 76Q44 70 58 78M44 60Q54 56 62 62"/>
+</svg>

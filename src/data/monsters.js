@@ -48,6 +48,13 @@ export const MONSTERS = [
     drinks: 0.5, sun: 0.0004,
     killMessage: name => `Упыри выпили кровь поселенца: <b>${name}</b>.`},
 
+  // a flesh golem (plan З-12): the necromancer's mass of sewn bodies — a hammer sinks into the meat, a blade cuts it well; it
+  // seizes and takes the small one into itself (the perks «Захват», «Проглатывание»)
+  {id: 'fleshgolem', kind: 'undead', label: 'мясной голем', labelAcc: 'мясного голема', plural: 'мясные големы', mind: 'mindless', undead: true, big: true,
+    needs: [], heatHarm: 50, look: {shape: 'golem', size: 0.95, color: '#a86a5e'},
+    rots: 0.000008, perks: [{id: 'grab', rank: 2}, {id: 'swallow', rank: 1}],
+    killMessage: name => `Мясной голем вобрал в себя поселенца: <b>${name}</b>.`},
+
   // bandHead: 'band' — leads the band it comes with and takes no rank in it (agents/squad.js, agents/ranks.js); 'dead' — and
   // the dead walk behind him: no wight is made of him, his fall is told (agents/agent.js)
   {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, bandHead: 'band',

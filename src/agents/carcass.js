@@ -142,6 +142,7 @@ export function stepHunts(w) {
     if (!prey || prey.dead) { endHunt(w, h, prey?.dead || h.preyDead ? 'taken' : 'escaped'); continue; }
     if (agentInZone(w, prey)) { endHunt(w, h, 'zone'); continue; }
     const P = SPECIES.get(ms[0].species).predator;
+    if (!P) { endHunt(w, h, 'gave'); continue; }   // (a hunt led by one with no hunter's numbers — a monster's own: nothing to keep it by)
     if (ms.some(m => dist(m, prey) < P.sight)) h.seen = {x: prey.x, y: prey.y, t: w.tick};
     else if (w.tick - h.seen.t > PACK.lost) { endHunt(w, h, 'escaped'); continue; }
     if (ms.every(m => m.stamina < PACK.winded)) { endHunt(w, h, 'tired'); continue; }

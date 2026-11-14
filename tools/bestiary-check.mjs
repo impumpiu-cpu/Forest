@@ -19,6 +19,10 @@ import {SPECIES} from '../src/data/species.js';
 import {CREATURES} from '../src/data/balance/creatures.js';
 import {CAMP} from '../src/data/camp.js';
 import {T} from '../src/data/terrain.js';
+import {SPECIES_PATH} from '../src/data/paths.js';
+import {scentReach} from '../src/data/tongues.js';
+import {TAINT} from '../src/data/afflictions.js';
+import {SPRITES} from '../src/art/sprites.js';
 
 const seed = process.argv[2] || '777';
 let fails = 0;
@@ -28,17 +32,18 @@ const frozen = JSON.stringify(saveAtlas(base)), cap = capitals(base)[0];
 const field = () => {
   const a = loadAtlas(JSON.parse(frozen)), K = newCampaign(a, cap.town, {mode: 'local'});
   const w = openCamp(campSetup(a, K, {kind: 'night', foe: {kind: 'bandits', strength: companyStrength(a, K) / CAMP.foe.unit}, dayIn: K.dayIn}));
-  for (const o of w.agents) o.dead = true; w.agents = []; w.fx = [];
+  for (const o of w.agents) o.dead = true; w.agents = []; w.fx = []; w.carcasses = [];   // (no meal left about to call a beast off the bout)
   for (let i = 0; i < w.w * w.h; i++) { w.grid.terr[i] = T.GRASS; w.grid.fire[i] = 0; }
   w.nav.dirty('trees'); w.campaign.S.kind = 'night'; w.campaign.alarm = w.tick; w.campaign.spawned = true;
   return w;
 };
 // one of the species against three armed people of the caravan, the brains playing it; → what it did
 function bout(id, tries = 3) {
-  const did = {acts: {}, held: 0, under: 0, rusted: 0, numbed: 0};
+  const did = {acts: {}, held: 0, under: 0, rusted: 0, numbed: 0, taint: 0};
   for (let i = 0; i < tries; i++) {
     const w = field(), b = createAgent(w, id, 'raiders', 30, 30);
     const men = [0, 1, 2].map(k => { const m = createAgent(w, 'human', 'colony', 36 + k * 0.8, 29 + k); m.equip.right = newItem(k ? 'sword' : 'spear'); m.equip.body = newItem('chainmail'); recalcGear(m); m.hp = m.maxHp * 3; return m; });
+    if (b.needs) b.needs.food = 0;   // (a hungry one: what it does in a fight is the question, not whether three armed men scare it off — that rolls with the world's dice)
     w.campaign.foeObjs = [b];
     const iron0 = men.reduce((s, m) => s + (m.equip.right?.dur || 0), 0);
     for (let r = 0; r < i * 5; r++) w.rngs.combat();
@@ -47,6 +52,8 @@ function bout(id, tries = 3) {
       if (men.some(m => m.held)) did.held++;
       if (b.under) did.under++;
       if (men.some(m => m.numbFree > w.tick)) did.numbed++;
+      did.kin = Math.max(did.kin || 0, w.agents.filter(o => !o.dead && o.species === id).length);   // (a slime split under the blade: plan З-12)
+      if (men.some(m => m.taint > 0)) did.taint++;
       if (w.agents.some(o => !Number.isFinite(o.x) || !Number.isFinite(o.y) || (o.dodge && !Number.isFinite(o.dodge.x + o.dodge.y)))) did.lost = (did.lost || 0) + 1;   // (a step out of a shape must lead somewhere)
     }
     for (const [k, v] of Object.entries(w.chronicle.acts || {})) did.acts[k] = (did.acts[k] || 0) + v;
@@ -61,6 +68,11 @@ const expect = [
   ['constrictor', d => d.held > 0, 'удав хватает и душит'],
   ['crawler', d => d.numbed > 0, 'падальщик сковывает'],
   ['rustbeast', d => d.acts.rust > 0 && d.rusted > 0, 'ржавник ржавит железо'],
+  // the answers' kinds (plan З-12)
+  ['slime', d => d.kin > 1, 'малый слизень делится под клинком'],
+  ['ochrejelly', d => d.held > 0 || d.kin > 1, 'охряной студень хватает или делится'],
+  ['fleshgolem', d => d.held > 0, 'мясной голем хватает'],
+  ['corpseflies', d => d.taint > 0, 'трупные мухи разносят гниль'],
   ['cobra', d => d.acts.venomSpit > 0, 'кобра плюётся ядом'],
   ['dragon', d => d.acts.fireBreath > 0, 'дракон дышит огнём'],
   ['manticore', d => d.acts.spikes > 0, 'мантикора мечет шипы'],
@@ -72,7 +84,8 @@ const expect = [
   ['hookhorror', d => d.held > 0, 'крюкастый ужас хватает крюками'],
   ['cyclops', d => d.acts.rockThrow > 0, 'циклоп швыряет валуны'],
 ];
-for (const [id, f, what] of expect) { const d = bout(id); lost += d.lost || 0; delete d.lost; ok(f(d), what, JSON.stringify(d)); }
+for (const [id, f, what] of expect) { const was = TAINT.perHit; if (id === 'corpseflies') TAINT.perHit = 1;   // (the rot is shut by default: opened for the flies' bout)
+  const d = bout(id); TAINT.perHit = was; lost += d.lost || 0; delete d.lost; ok(f(d), what, JSON.stringify(d)); }
 ok(!lost, 'шаг из-под удара всегда ведёт в точку карты (линия, конус, круг)', String(lost));
 
 // ── a rust eats the iron, not the bone; an acid eats any thing (a few wears a touch, never the thing at once)
@@ -104,6 +117,19 @@ ok(!lost, 'шаг из-под удара всегда ведёт в точку �
     'тела по записке эксперта: дракон 40/14/36/10/12/10/5, совомед, скорпион, грифон');
   ok(CREATURES.spider.special.C[1] === 0 && CREATURES.cobra.special.C[1] === 0 && CREATURES.dragon.special.L[0] === 5 && CREATURES.dragon.special.L[1] === 5, 'нулевая Харизма — точно 0; Удача дракона — точно 5');
   ok(SPECIES.get('dragon').speed === 0.12 && SPECIES.get('scorpion').hp === 1.8, 'дракон на земле 0,12; скорпион тяжелее (hp 1,8)');
+}
+
+// the answers' kinds (plan З-12): each lives somewhere, carries its answer, has a picture and a path to level 9
+{
+  const NEW = {slime: ['jelly', 'split'], greyslime: ['jelly', 'split', 'acidJet'], ochrejelly: ['jelly', 'split', 'grab', 'swallow'],
+    hornets: ['swarm', 'sting'], midges: ['swarm'], fireants: ['swarm', 'venom'], corpseflies: ['swarm'],
+    wolverine: ['finishWeak'], porcupine: ['quills'], fleshgolem: ['grab', 'swallow']};
+  const bad = Object.entries(NEW).filter(([id, ps]) => { const sp = SPECIES.get(id), own = (sp?.perks || []).map(p => p.id);
+    return !sp || !ps.every(p => own.includes(p)) || !SPECIES_PATH[id] || !Object.keys(SPRITES).some(k => k.endsWith(`/${id}`) || k === id) || (id !== 'fleshgolem' && !Object.keys(sp.habitat || {}).length); });
+  const golem = SPECIES.get('fleshgolem');
+  ok(!bad.length && scentReach('wolverine') > 0 && SPECIES.get('midges').drinks > 0 && SPECIES.get('corpseflies').rotCarrier
+    && golem.undead && CREATURES.fleshgolem.resist.blunt < 1 && CREATURES.fleshgolem.resist.slash > 1,
+    'новые виды З-12: слизни, рои, росомаха, дикобраз, мясной голем — с ответами, ареалом, картинкой и путём', bad.map(([id]) => id).join(', '));
 }
 
 if (fails) { console.log(`\nbestiary-check: FAIL ×${fails}`); process.exit(1); }

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- охряной студень: большой бурый ком, внутри видна проглоченная кость; смотрит вправо (игра зеркалит) -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 86Q8 70 22 62Q26 40 48 38Q72 36 78 56Q94 62 90 80Q88 88 74 88L26 88Q14 88 12 86Z"/>
+<path class="figure" fill="none" stroke="light" stroke-width="3" stroke-linecap="round" opacity="0.6" d="M30 56Q36 46 46 46"/>
+<path class="figure" fill="#e8dcc0" stroke="ink" stroke-width="2" d="M36 68L60 74L62 70L66 76L60 78L36 72L32 76L30 70Z" opacity="0.7"/><g class="detail" fill="light" opacity="0.4"><circle cx="70" cy="60" r="3"/><circle cx="24" cy="74" r="2"/></g>
+</svg>

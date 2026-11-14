@@ -156,7 +156,7 @@ RAID_BANDS.registerAll([
     members: (w, rng, budget, t, o) => {
       const lead = t >= 10 ? [{species: 'necromancer', init: a => { a.name = 'Некромант'; }}] : [];
       // the dead are slow: a host of them comes a fifth bigger than its rating says it needs to be
-      return fill(rng, budget * 1.2, [['zombie', 3], ['skeleton', t >= 6 ? 2 : 0]], t, {extra: lead, ...o});
+      return fill(rng, budget * 1.2, [['zombie', 3], ['skeleton', t >= 6 ? 2 : 0], ['fleshgolem', t >= 16 ? 1 : 0]], t, {extra: lead, ...o});   // (a flesh golem in a strong host: plan З-12)
     },
     groupInit: group => { const nec = group.find(a => a.species === 'necromancer'); if (nec) for (const a of group) if (a !== nec) a.obeys = nec.id; },
     message: (n, group) => `Из курганов поднялись мертвецы: ${n}${group.some(a => a.species === 'necromancer') ? '. За ними идёт некромант — без него они разбредутся' : ''}`},

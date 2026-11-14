@@ -51,6 +51,16 @@ export const SPECIES_PATH = {
   cobra:    [{level: 5, perk: 'venomSpit', rank: 3}, {level: 9, perk: 'venom', rank: 3}],
   bulette:  [{level: 5, perk: 'charge', rank: 1}, {level: 9, perk: 'roar', rank: 1}],
   hookhorror: [{level: 5, perk: 'grab', rank: 3}, {level: 9, perk: 'scales', rank: 3}],
+  slime:    [{level: 5, perk: 'jelly', rank: 2}, {level: 9, perk: 'split', rank: 2}],
+  greyslime: [{level: 5, perk: 'acidJet', rank: 2}, {level: 9, perk: 'split', rank: 2}],
+  ochrejelly: [{level: 5, perk: 'grab', rank: 3}, {level: 9, perk: 'swallow', rank: 3}],
+  hornets:  [{level: 5, perk: 'sting', rank: 2}, {level: 9, perk: 'sting', rank: 3}],
+  midges:   [{level: 5, perk: 'bloodDrink', rank: 2}, {level: 9, perk: 'flight', rank: 2}],
+  fireants: [{level: 5, perk: 'venom', rank: 2}, {level: 9, perk: 'venom', rank: 3}],
+  corpseflies: [{level: 5, perk: 'numbing', rank: 1}, {level: 9, perk: 'roar', rank: 1}],
+  wolverine: [{level: 5, perk: 'finishWeak', rank: 2}, {level: 7, perk: 'fury', rank: 1}, {level: 9, perk: 'charge', rank: 1}],
+  porcupine: [{level: 5, perk: 'scales', rank: 1}, {level: 9, perk: 'charge', rank: 1}],
+  fleshgolem: [{level: 5, perk: 'stalwart', rank: 1}, {level: 7, perk: 'grab', rank: 3}, {level: 9, perk: 'swallow', rank: 2}],
   cyclops:  [{level: 5, perk: 'stalwart', rank: 1}, {level: 7, perk: 'roar', rank: 2}, {level: 9, perk: 'charge', rank: 2}],
 };
 

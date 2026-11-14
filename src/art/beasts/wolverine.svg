@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- росомаха: приземистая, бурая с светлой полосой по боку, мощные лапы; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M20 64Q10 66 8 74"/><path fill="none" stroke="fur" stroke-width="4" stroke-linecap="round" d="M20 64Q10 66 8 74"/>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M26 76L24 88L32 88L34 78ZM62 76L62 88L70 88L70 76Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 66Q20 50 44 50Q66 50 74 58L72 76Q50 82 26 78Q16 74 18 66Z"/>
+<path class="figure" fill="none" stroke="#c8a870" stroke-width="4" stroke-linecap="round" d="M24 64Q44 58 66 62"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 56Q74 46 86 52Q94 58 90 64Q82 70 72 68Z"/>
+<path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M72 52L74 44L78 50Z"/>
+<circle class="figure" cx="82" cy="56" r="2.2" fill="ink"/><circle class="figure" cx="91" cy="61" r="2" fill="ink"/>
+<path class="detail" fill="none" stroke="light" stroke-width="1.5" d="M84 66L86 70M88 65L89 69"/>
+</svg>

@@ -67,7 +67,9 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
   // the board over a longer stretch: flags come with the foes
   const long = 3 * DAY, seenB = new Map();
   traceMode('collect', {sink: r => { if (r.point) seenB.set(r.point, (seenB.get(r.point) || 0) + 1); }});
-  const watched = run(cfg, long);
+  // (until the foes come: the raid's day rolls with the world's dice — the new kinds of Ver_H З-12 put it past the third day)
+  const watched = newGame(cfg), want = ['settlement.board', 'settlement.plan', 'settlement.watch'];
+  for (let t = 0; t < 3 * long && !watched.over && (t < long || !want.every(p => seenB.has(p))); t++) step(watched);
   traceMode('off');
   check('поселение: доска поднимает флаги, совет раздаёт места, вечером выставляется дозор — всё в следе', ['settlement.board', 'settlement.plan', 'settlement.watch'].every(p => seenB.get(p) > 0),
     ['settlement.board', 'settlement.plan', 'settlement.watch'].map(p => `${p} ${seenB.get(p) || 0}`).join(', '));

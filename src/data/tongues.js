@@ -38,7 +38,7 @@ export const SENSES = new Registry('sense');
 SENSES.registerAll([
   {id: 'darkvision', label: 'ночное зрение', live: true, species: ['dwarf', 'orc', 'goblin', 'darkelf', 'troll', 'ogre', 'vampire', 'upyr', 'necromancer', 'lynx', 'bat', 'varg'],
     note: 'видит ночью как днём'},
-  {id: 'scent', label: 'чутьё', live: true, reach: 6, species: ['wolf', 'varg', 'bear', 'polarbear', 'hyena', 'fox', 'boar', 'gnoll'],
+  {id: 'scent', label: 'чутьё', live: true, reach: 6, species: ['wolf', 'varg', 'bear', 'polarbear', 'hyena', 'fox', 'boar', 'gnoll', 'wolverine'],
     note: 'чует крадущегося: ближе reach клеток его не спрятать ни днём, ни ночью (добычу звери ищут по своим повадкам)'},
 ]);
 // how much of its sight the night takes at its deepest (× nightness); a campfire lights WATCH.fireLight around it
