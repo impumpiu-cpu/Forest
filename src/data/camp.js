@@ -110,7 +110,7 @@ export const CAMP_WORKS = {
 // one) and back, within `hours`; given up after
   // `tries` sendings that came to nothing. `want` — the walk against the needs (data/needs.js), `dark` — the night that
   // stops it (core/time.js nightness)
-  scout: {radius: 14, inner: 5, points: 8, hours: 6, want: 1.6, hurt: 0.7, dark: 0.5, tries: 2},
+  scout: {radius: 14, inner: 5, points: 8, hours: 7, want: 1.6, hurt: 0.7, dark: 0.5, tries: 2},
   // where things stand about the fire: the cart at a random bearing, the rest turned from it by these angles (radians); a
   // taken cell is passed by `step` of a turn at a time
   place: {step: 0.26, tether: 0.9, racks: 2.5, spit: 4.4, smoke: 1.25},   // (`idle` — the chores' weight after the first hours; one below `hurt` of its health sits by the fire)
