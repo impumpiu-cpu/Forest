@@ -5,7 +5,8 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK, guildAscend, guildSummon, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy, summonLine} from '../view/campaign.js';
+import {loadHeroes, saveHeroes} from './heroes.js';
 import {ROOMS} from '../data/rooms.js';
 import {townLabel} from '../view/world.js';
 import {BEASTS} from '../data/transport.js';
@@ -79,6 +80,7 @@ export class GuildView extends CampaignView {
         this.houseDo(() => k === 'open' ? guildOpenBranch(a, +v('gBranchTown')) : k === 'close' ? guildCloseBranch(a, +bb.dataset.town) : k === 'move' ? guildMove(a, +v('gMoveTown')) : guildTransfer(a, +v('gXferWho'), +v('gXferTo')));
         return;
       }
+      const tp = e.target.closest('button[data-temple]'); if (tp) { this.templeDo(tp.dataset.temple, tp.dataset.id); return; }
       const hr = e.target.closest('button[data-hire]'); if (hr) { this.houseDo(() => takeRecruit(this.atlas, +hr.dataset.hire)); return; }
       const wt = e.target.closest('button[data-watch]'); if (wt) { this.houseDo(() => watchParty(this.atlas, +wt.dataset.watch)); this.draw?.(); return; }
       const rc = e.target.closest('button[data-recall]'); if (rc) { this.houseDo(() => recall(this.atlas, +rc.dataset.recall)); return; }
@@ -287,13 +289,34 @@ export class GuildView extends CampaignView {
       const kind = R.id === 'training' ? 'training' : R.id === 'healer' ? 'treat' : null, inside = kind ? G.members.filter(m => m.alive && m.guild?.state === kind) : [];
       const room = kind && working(G, R.id) ? `<div class="row"><small>${kind === 'training' ? 'Учатся' : 'Лечатся'}: ${inside.map(m => `${esc(m.name)} <button type="button" class="quiet mini" data-free="${m.id}">отпустить</button>`).join(', ') || 'никого'}` +
         ` · <select data-room="${kind}"><option value="">${kind === 'training' ? 'отдать в учёбу…' : 'к лекарю…'}</option>${ready.map(m => `<option value="${m.id}"${(kind === 'training' ? trainWhy(G, m) : treatWhy(G, m)) ? ' disabled' : ''}>${esc(m.name)}, ур. ${m.level || 1}</option>`).join('')}</select></small></div>` : '';
-      const extra = R.id === 'armory' && L ? this.armoryHtml() : R.id === 'stable' && L ? this.stableHtml() : R.id === 'cages' && L ? this.cagesHtml() : '';
+      const extra = R.id === 'armory' && L ? this.armoryHtml() : R.id === 'stable' && L ? this.stableHtml() : R.id === 'cages' && L ? this.cagesHtml() : R.id === 'temple' && L ? this.templeHtml() : '';
       return `<div class="sv${L ? '' : ' off'}"><span class="t"><b>${esc(R.label)}</b> · ${L ? `${L}-й уровень${max > 1 ? ` из ${max}` : ''}` : 'не построено'}${idle ? ` · <b>стоит: нужен ${esc(R.post.label)}</b>` : ''}` +
         `<br><small>${esc(R.about)}</small>${fx ? `<br><small class="fact">${esc(fx)}</small>` : ''}</span>${post}${room}${extra}` +
         `<div class="row actions">${cost != null ? `<button type="button" class="mini" data-build="${R.id}"${why ? ' disabled' : ''}>${L ? 'Улучшить' : 'Построить'} — ${cost} зол.</button>` : ''}<small>${why && cost != null ? esc(why) : ''}</small></div></div>`;
     });
     return `<p class="note">Строится одна комната за раз, готова к новому сезону.${B ? ` Сейчас: <b>${esc(ROOMS.get(B.room).label)}</b>, ${B.level}-й уровень.` : ''} Содержание дома — каждый сезон вместе с жалованьем.</p>` +
       `<div class="savelist errands">${rows.join('')}</div>`;
+  }
+  // ── the Temple of All Gods (campaign/temple.js): raise one at the house among the ascended, summon one of them (the registry
+  // of this browser: ui/heroes.js — both games' pool)
+  templeHtml() {
+    const a = this.atlas, G = this.G;
+    if (this.heroReg === undefined) { this.heroReg = null; loadHeroes().then(r => { this.heroReg = r; this.renderGuild(); }); }
+    if (!this.heroReg) return '<div class="row"><small>Храм: читаю список вознесённых…</small></div>';
+    const home = membersOf(G).filter(m => m.house == null && ['ready', 'retired', 'post'].includes(m.guild.state));
+    const room = membersOf(G).length < rosterMost(G), can = templeSummonable(a, G, this.heroReg);
+    const up = home.map(m => { const why = templeAscendWhy(a, G, m); return `<div class="row"><small><b>${esc(m.name)}</b>, ур. ${m.level || 1}</small><button type="button" class="quiet mini" data-temple="up" data-id="${m.id}"${why ? ` disabled title="${esc(why)}"` : ' title="уходит из гильдии к вознесённым: его можно призвать снова — сюда или в Поход"'}>вознести — ${ascendPrice(G, m)} зол.</button></div>`; }).join('');
+    const call = can.map(h => { const why = templeSummonWhy(a, G, this.heroReg, h.uid, room); return `<div class="row"><small><b>${esc(h.name)}</b>, ур. ${h.level || 1} · ${esc(raceLabel(SPECIES.get(h.race)))} — ${esc(summonLine(h))}</small><button type="button" class="mini" data-temple="call" data-id="${esc(h.uid)}"${why ? ` disabled title="${esc(why)}"` : ' title="снова смертен: его смерть будет навсегда"'}>призвать — ${summonPrice(G, h)} зол.</button></div>`; }).join('');
+    return `<div class="savelist guild-people"><h4 class="menu-group">Вознести</h4>${up || '<small>дома никого</small>'}<h4 class="menu-group">Призвать из вознесённых (${can.length} из ${this.heroReg.heroes.length} — по народам города)</h4>${call || '<small>некого призвать</small>'}</div>`;
+  }
+  async templeDo(kind, id) {
+    const a = this.atlas;
+    try {
+      const reg = await loadHeroes();
+      const next = kind === 'up' ? guildAscend(a, +id, reg) : guildSummon(a, reg, id).reg;
+      await saveHeroes(next); this.heroReg = next; $('guildNote').textContent = '';
+    } catch (e) { $('guildNote').textContent = e.message; }
+    this.renderGuild(); this.autosave?.(true);
   }
   // ── the branches and the move (campaign/branches.js; GUILD.branch): each branch — its town, its manager, its fame and people;
   // opening one, sending people between the houses, moving the guild

@@ -128,6 +128,8 @@ export {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, summon
 export {contractsOf, contractOf, contractCards, issuerName} from './contracts.js';
 export {houseOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack} from './house.js';
 export {build as buildRoom, setPost as setRoomPost, sendTo as sendToRoom} from './house.js';
+export {templeOn, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy} from './temple.js';
+export {guildAscend, guildSummon} from './guild.js';
 export {guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove} from './guild.js';
 export {branchesOf, branchAt, branchesMost, branchCost, houseTown, managerOf, branchIdle, branchWorks, feeK, priceK, payK, tierAt, openWhy, openBranch, closeBranch, managerWhy, setManager, roadDays, roadGold, transferWhy, transfer, moveSpan, moveCost, moveWhy, moveGuild, tiedHere} from './branches.js';
 export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from './armory.js';

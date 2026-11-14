@@ -30,6 +30,10 @@ import {Registry} from '../core/registry.js';
 //             the town as `least` of the land's carrying (atlas/fauna.js) — at `price` gold × its strength in fresh eights
 //             (agents/strength.js / CAMP.foe.unit), never below `floor`; the beasts of a lair (a griffin, a wyvern) only caught
 //             on an expedition (data/contracts.js `capture`); in the quick mode a war beast's might is its strength × `might`
+//   temple  — the Temple of All Gods (campaign/temple.js; the author's word 14.11): one of the guild raised among the ascended
+//             for `ascend.base` + `ascend.perLevel` × his level gold, one of the ascended summoned into the guild for `summon.base`
+//             + `summon.perLevel` × his level (each × the temple's `price` by its level); the ascended one leaves the guild, the
+//             summoned one is mortal again (his death is for good)
 //   grief   — a member dies: the devotion each who thought well of him loses (his bond above `bond`), × (1 − the chapel's share)
 export const HOUSE = {
   build: 1, upkeep: 1, xpRef: 4, xpSpan: [0.5, 2],
@@ -39,6 +43,7 @@ export const HOUSE = {
   armory: {buy: 1.25, sell: 0.5, merchant: {buy: 0.85, sell: 1.2}, tavern: 1.5},
   forge: {fee: 1, most: 3},
   cages: {reach: 6, least: 0.15, price: 60, floor: 15, might: 0.0067},
+  temple: {ascend: {base: 40, perLevel: 20}, summon: {base: 60, perLevel: 30}},
 };
 
 export const ROOMS = new Registry('room');
@@ -69,5 +74,8 @@ ROOMS.registerAll([
   {id: 'forge', label: 'Кузница гильдии', about: 'Кузнец улучшает оружие и доспехи из оружейной, до +3: на 1-м уровне — медь (бронзу), на 2-м — железо, на 3-м — сталь. Мифрил — нет.', start: 0, cost: [250, 450, 700], upkeep: 2,
     post: {label: 'кузнец', letter: 'S', least: 8}, by: {metal: [-1, 1, 2, 3]}},
   {id: 'cages', label: 'Клетки', about: 'Боевые звери гильдии: ходят с отрядами и бьются на их стороне. В городе купишь лишь обычных хищников здешних мест; грифона или виверну — только поймав их в походе.', start: 0, cost: [150, 300, 500], upkeep: 2, by: {slots: [0, 2, 4, 6]}},
+  // ── Г8: the Temple of All Gods — the ascended, the pool of both games (campaign/ascend.js)
+  {id: 'temple', label: 'Храм всех богов', about: 'Возносит бойцов гильдии к вознесённым и призывает вознесённых обратно — за деньги. Вознесённый уходит из гильдии; его можно призвать здесь или в Походе. Призванный снова смертен: его смерть — навсегда.', start: 0, cost: [400, 700], upkeep: 2,
+    by: {price: [0, 1, 0.75]}},
   {id: 'stable', label: 'Конюшня и псарня', about: 'Ездовые и вьючные звери гильдии: держать, покупать в городе; уходят с отрядом в поход.', start: 0, cost: [120, 250, 400], upkeep: 2, by: {slots: [0, 4, 8, 12]}},
 ]);

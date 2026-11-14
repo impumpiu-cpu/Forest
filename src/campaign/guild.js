@@ -40,6 +40,7 @@ import {relWord} from './kin.js';
 import {doorKin, kinGrief, personsMourned, parted, partyFelt, spiritsSeason, familyWill, familySeason, grownUp, moodOf, isKin} from './kin.js';
 import {boardFor} from './errands.js';
 import {ERRANDS} from '../data/errands.js';
+import {templeAscend, templeSummon} from './temple.js';
 import {branchesOf, branchAt, branchWorks, branchIdle, branchSeason, branchContracts, roadDay, settleAt, localFame, houseTown, feeK, doorOf, openBranch, closeBranch, setManager, transfer, moveGuild} from './branches.js';
 
 // a named stream of the guild, kept by its position (as the campaign's: campaign/start.js draw)
@@ -550,6 +551,14 @@ export const guildOpenBranch = (a, town) => openBranch(a, a.guild, town, gio(a, 
 export const guildCloseBranch = (a, town) => closeBranch(a, a.guild, town, gio(a, a.guild));
 export const guildSetManager = (a, town, id) => setManager(a, a.guild, town, id, gio(a, a.guild));
 export const guildTransfer = (a, id, to) => transfer(a, a.guild, id, to, gio(a, a.guild));
+// the Temple of All Gods (campaign/temple.js): raise one of the guild (→ the registry with him), summon one of the ascended (→ {reg, m})
+export const guildAscend = (a, id, reg) => templeAscend(a, a.guild, id, reg, {...gio(a, a.guild), parted: m => parted(a.guild, m)});
+export function guildSummon(a, reg, uid) {
+  const G = a.guild, room = membersOf(G).length < rosterMost(G);
+  const out = templeSummon(a, G, reg, uid, {...gio(a, G), room, body: () => rollRecruits(a, G, 1)[0]});
+  G.members.push(out.m);
+  return out;
+}
 export function guildMove(a, to) { const G = a.guild, {r, done} = gdraw(G, 'move'); try { return moveGuild(a, G, to, {...gio(a, G), r}); } finally { done(); } }
 export const isGuildMember = m => !!m?.guild && isCore(m);
 export {campsOf, levelOf, tierOf, levelNext, abortWhy};
