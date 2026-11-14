@@ -11,6 +11,7 @@ import {ROOMS} from '../data/rooms.js';
 import {TIER_LABEL} from '../data/errands.js';
 import {townLabel, realmLabel} from '../view/world.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
+import {drawPortraits} from './portrait.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
 import {SPECIES} from '../data/species.js';
@@ -21,7 +22,7 @@ import {rememberRun, forgetRun, saveDue} from './autosave.js';
 import {WATCH} from './campLocal.js';
 import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
-import {CampShell} from './shell/campShell.js';
+import {CampShell, GUILD_MENUS} from './shell/campShell.js';
 
 const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом'], ['branches', 'Филиалы'], ['fallen', 'Павшие'], ['log', 'Летопись']];
 const STATE = {retired: 'на покое', ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря', road: 'в дороге'};
@@ -59,15 +60,17 @@ export class GuildView extends CampaignView {
     seg('guildTabs', TABS, this.gtab, v => { this.gtab = v; this.renderGuild(); });
     $('guildBody').addEventListener('change', e => {
       const box = e.target.closest('input[data-mid]'); if (box) { box.checked ? this.gpick.add(+box.dataset.mid) : this.gpick.delete(+box.dataset.mid); this.renderGuild(); return; }
-      const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.renderGuild(); return; }
+      const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.gerrand = null; this.renderGuild(); return; }
       const ps = e.target.closest('select[data-post]'); if (ps) { this.houseDo(() => setRoomPost(this.atlas, ps.dataset.post, ps.value ? +ps.value : null, guildIo(this.atlas).tell)); return; }
       const rs = e.target.closest('select[data-room]'); if (rs && rs.value) { this.houseDo(() => sendToRoom(this.atlas, rs.dataset.room, +rs.value, guildIo(this.atlas).tell)); return; }
       const bm = e.target.closest('select[data-bmgr]'); if (bm) { this.houseDo(() => guildSetManager(this.atlas, +bm.dataset.bmgr, bm.value ? +bm.value : null)); return; }
       const so = e.target.closest('select[data-gsort]'); if (so) { this.gsort = so.value; this.renderGuild(); return; }
       const sz = e.target.closest('select[data-gsize]'); if (sz) { this.gsize = +sz.value; this.renderGuild(); return; }
-      const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.renderGuild(); this.lookAtCard(r.value); }
+      const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.offerUid = null; this.renderGuild(); this.lookAtCard(r.value); }
     });
     $('guildBody').addEventListener('click', e => {
+      const ch = e.target.closest('button[data-chip]');
+      if (ch) { const id = +ch.dataset.chip; this.gpick.has(id) ? this.gpick.delete(id) : this.gpick.add(id); this.renderGuild(); return; }
       const bd = e.target.closest('button[data-build]'); if (bd) { this.houseDo(() => buildRoom(this.atlas, bd.dataset.build, guildIo(this.atlas))); return; }
       const pay = guildIo(this.atlas).pay;   // (the guild's own ledger: campaign/guild.js)
       const ar = e.target.closest('button[data-arm]');
@@ -88,6 +91,8 @@ export class GuildView extends CampaignView {
       const rt = e.target.closest('button[data-rest]'); if (rt) { e.preventDefault(); this.houseDo(() => restMember(this.atlas, +rt.dataset.id, rt.dataset.rest)); return; }
       const fr = e.target.closest('button[data-free]'); if (fr) { this.houseDo(() => takeBack(this.G, +fr.dataset.free)); return; }
       const b = e.target.closest('button[data-act]'); if (!b) return;
+      if (b.dataset.act === 'send') { if (this.offerUid) this.doChore(); else this.doLaunch(); return; }
+      if (b.dataset.act === 'unjob') { this.offerUid = null; this.gerrand = null; this.renderGuild(); this.draw(); return; }
       if (b.dataset.act === 'chore') this.doChore(); else if (b.dataset.act === 'launch') this.doLaunch(); else if (b.dataset.act === 'recall') { try { recall(this.atlas); } catch (err) { $('guildNote').textContent = err.message; } this.renderGuild(); this.autosave?.(); } else if (b.dataset.act === 'none') { this.gpick.clear(); this.renderGuild(); }
     });
     // the board's errands ring their targets on the map, as the capital's board does (ui/campaignView.js drawBoard)
@@ -235,9 +240,41 @@ export class GuildView extends CampaignView {
     $('guildHire').hidden = true;
     if (!this.cam) return;
     this.renderGuild(); this.renderSide(); this.syncRun(); this.draw();
-    if (this.shell?.open !== 'guild') this.shell?.toggle('guild');
+    if (!GUILD_MENUS.some(m => m[0] === this.shell?.open)) this.openGuild();
   }
-  syncGuildRail() { const b = this.shell?.rail?.querySelector('[data-menu="guild"]'); if (b) b.hidden = !this.G; }
+  syncGuildRail() { for (const [id] of GUILD_MENUS) { const b = this.shell?.rail?.querySelector(`[data-menu="${id}"]`); if (b) b.hidden = !this.G; } $('guildTabs').hidden = !!this.shell; }
+  // ── the strip along the bottom (the author's word 14.11): the guild's people as portraits — a click on one at home picks
+  // it for the job (the same pick as the muster's); a switch per party out shows that party's own strip (the walk's roster)
+  renderStrip() {
+    const box = $('campShParty'), a = this.atlas, G = this.G; if (!box || !G || G.phase !== 'open') { $('guildStrip')?.remove(); $('campRoster')?.removeAttribute('hidden'); return; }
+    let gs = $('guildStrip');
+    if (!gs) {
+      gs = document.createElement('div'); gs.id = 'guildStrip'; gs.className = 'guild-strip'; box.prepend(gs);
+      gs.addEventListener('click', e => {
+        const t = e.target.closest('button[data-gs]');
+        if (t) { const v = t.dataset.gs; this.stripMode = v === 'guild' ? 'guild' : +v; if (v !== 'guild') { try { watchParty(this.atlas, +v); } catch (err) { /* gone home meanwhile */ } this.renderSide(); this.draw(); } this.renderStrip(); return; }
+        const c = e.target.closest('[data-gsm]'); if (!c) return;
+        const id = +c.dataset.gsm, m = this.G.members.find(x => x.id === id); if (!m || m.guild.state !== 'ready') return;
+        this.gpick.has(id) ? this.gpick.delete(id) : this.gpick.add(id); this.renderGuild();
+      });
+    }
+    const out = parties(a);
+    if (this.stripMode == null || (this.stripMode !== 'guild' && !out.some(K => K.expedition === this.stripMode))) this.stripMode = 'guild';
+    const tabs = [['guild', `Гильдия · ${membersOf(G).length}`], ...out.map(K => [K.expedition, `Отряд ${K.expedition} · ${K.members.filter(m => m.alive).length}`])];
+    const own = this.stripMode === 'guild';
+    $('campRoster').hidden = own;
+    const order = {ready: 0, chore: 1, training: 2, post: 3, expedition: 4, road: 5, retired: 6};
+    const ms = own ? membersOf(G).slice().sort((p, q) => (order[p.guild.state] ?? 9) - (order[q.guild.state] ?? 9)) : [];
+    gs.innerHTML = `<div class="gs-tabs">${tabs.map(([v, l]) => `<button type="button" data-gs="${v}" aria-pressed="${v === this.stripMode}">${esc(l)}</button>`).join('')}</div>` +
+      (own ? `<div class="gs-people">${ms.map(m => { const st = m.guild.state, free = st === 'ready';
+        return `<div class="gs-m${free ? '' : ' busy'}${this.gpick.has(m.id) ? ' lit' : ''}" data-gsm="${m.id}" title="${esc(`${m.name}, ${roleWord(m)}, ур. ${m.level || 1} — ${STATE[st] || st}${free ? '; щелчок — отметить для задания' : ''}`)}">` +
+          `<em class="role">${esc(roleWord(m))}</em><canvas class="pt" width="96" height="96" data-pt="${m.id}"></canvas><b class="nm">${esc(m.name.split(' ')[0])}</b><small>${esc(STATE[st] || st)}</small></div>`; }).join('')}</div>` : '');
+    this.pawns ||= new Map(); drawPortraits(gs, id => G.members.find(m => m.id === id), this.pawns);
+  }
+  // a section of the guild opened from the rail (ui/shell/campShell.js GUILD_MENUS)
+  guildTab(tab) { this.gtab = tab; this.renderGuild(); }
+  // the guild's panel open at a section (its button pressed on the rail)
+  openGuild(tab = this.gtab) { const id = GUILD_MENUS.find(m => m[3] === tab)?.[0] || 'guild'; this.gtab = tab; if (this.shell?.open !== id) this.shell?.toggle(id); else this.renderGuild(); }
   runMode() {
     super.runMode();
     this.syncGuildRail();
@@ -299,7 +336,7 @@ export class GuildView extends CampaignView {
   afterSeason() {
     super.afterSeason();
     if (this.G) this.renderGuild();
-    if (this.pauseAfter) { const t = this.pauseAfter; this.pauseAfter = null; $('guildNote').textContent = t; this.clock.pause(); this.syncRun(); if (this.shell?.open !== 'guild') this.shell?.toggle('guild'); }
+    if (this.pauseAfter) { const t = this.pauseAfter; this.pauseAfter = null; $('guildNote').textContent = t; this.clock.pause(); this.syncRun(); if (!GUILD_MENUS.some(m => m[0] === this.shell?.open)) this.openGuild(); }
   }
 
   // the map: an expedition out (or the last one back) as the walk draws it; none — the guild's house ringed and the board's targets
@@ -328,7 +365,7 @@ export class GuildView extends CampaignView {
     const x = i % this.atlas.w, y = (i / this.atlas.w) | 0;
     const c = this.board.find(b => b.ok && b.at && Math.abs(b.at.x - x) <= 1 && Math.abs(b.at.y - y) <= 1); if (!c) return false;
     this.gerrand = c.id; this.gtab = 'board'; press('guildTabs', 'board'); this.renderGuild(); this.lookAtCard(c.id);
-    if (this.shell?.open !== 'guild') this.shell?.toggle('guild');
+    if (!GUILD_MENUS.some(m => m[0] === this.shell?.open)) this.openGuild();
     return true;
   }
 
@@ -343,6 +380,8 @@ export class GuildView extends CampaignView {
     for (const id of [...this.gpick]) if (!ms.some(m => m.id === id && m.guild.state === 'ready')) this.gpick.delete(id);
     const typing = document.activeElement?.id === 'gTownQ' ? document.activeElement.selectionStart : null;   // (a season's redraw keeps the search being typed)
     $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'branches' ? this.branchesHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
+    this.pawns ||= new Map(); drawPortraits($('guildBody'), id => this.G.members.find(m => m.id === id), this.pawns);   // (the muster's portraits)
+    this.renderStrip();
     if (this.gtab === 'branches') { this.renderTownHits(); if (typing != null) { const q = $('gTownQ'); q?.focus(); q?.setSelectionRange(typing, typing); } }
   }
   // one member: a tick to pick (at the house only), name, role, level, years, health, what he is doing, wage
@@ -506,33 +545,57 @@ export class GuildView extends CampaignView {
         `<br><small>${m.died ? `${m.died.year}-й год: ${esc(m.died.why || 'пал')}` : 'пал'} · походов ${went}${m.maims ? ` · увечий ${m.maims}` : ''}</small></span></div>`;
     }).join('')}</div>`;
   }
+  // the board (the author's word 14.11): one way — the job first (a deed in town or a contract), then the party for it: the
+  // named picked on their portraits (a deed — all who go; a contract — up to namedMost, the rest answer for themselves and
+  // light up as they say yes, campaign/guild.js muster), then «Отправить»
   boardHtml() {
-    const a = this.atlas, G = this.G, ids = [...this.gpick], B = guildBoard(a, ids, this.gsort), K = expedition(a);
+    const a = this.atlas, G = this.G, ids = [...this.gpick], B = guildBoard(a, ids, this.gsort);
     this.gsize = Math.min(this.gsize, partyMost(G));   // (the planning room: data/rooms.js)
     if (this.offerUid && !B.chores.some(o => o.uid === this.offerUid)) this.offerUid = null;
-    const picked = ids.length ? ids.map(id => G.members.find(m => m.id === id)?.name).join(', ') : 'никто — отметьте людей в «Людях» или здесь';
+    this.board = B.errands;
+    if (this.gerrand && !B.errands.some(e => e.id === this.gerrand && e.ok)) this.gerrand = null;
+    const offer = B.chores.find(o => o.uid === this.offerUid) || null, card = this.gerrand ? B.errands.find(e => e.id === this.gerrand) : null;
     const chores = B.chores.map(o => `<label class="sv${o.uid === this.offerUid ? ' cur' : ''}${o.why ? ' off' : ''}"><input type="radio" name="gchore" value="${esc(o.uid)}"${o.uid === this.offerUid ? ' checked' : ''}>` +
       `<span class="t"><span class="tier">0</span><b>${esc(o.label)}</b> · плата ${o.pay} зол. · ${o.hands[0] === o.hands[1] ? o.hands[0] : `${o.hands[0]}–${o.hands[1]}`} чел. · ${o.days[0] === o.days[1] ? o.days[0] : `${o.days[0]}–${o.days[1]}`} дн.` +
       `<br><small>${esc(o.text)}${o.why ? ` <b>${esc(o.why)}</b>` : ''}</small></span></label>`).join('');
-    const offer = B.chores.find(o => o.uid === this.offerUid), choreOk = offer && !offer.why && ids.length;
-    this.board = B.errands;
-    this.gerrand = errandPicked(B.errands, this.gerrand);
-    // the muster (campaign/guild.js): the picked are the named; the others answer for themselves — shown before the gate
-    const contract = B.errands.find(e => e.id === this.gerrand)?.contract || null, M = contract && ids.length ? muster(a, {contract, size: this.gsize, named: ids}) : null;
-    const why = musterWhy(a, {size: this.gsize, named: ids}) || launchWhy(a, {ids: M ? M.ids : ids, contract});
-    const sizes = Array.from({length: partyMost(G) - GUILD.party.min + 1}, (_, k) => GUILD.party.min + k).map(n => `<option value="${n}"${n === this.gsize ? ' selected' : ''}>${n}</option>`).join('');
-    const answers = M ? `<div class="guild-muster">${M.answers.map(x => { const m = G.members.find(y => y.id === x.id); return `<div class="${x.go ? 'go' : 'no'}">${x.go ? '✓' : '✗'} <b>${esc(m.name)}</b> <small>ур. ${m.level || 1} · ${esc(x.why)}</small></div>`; }).join('')}</div>` : '';
-    return `<div class="row"><small>Отмечены (на дело в городе — все они; в поход — назначенные): <b>${esc(picked)}</b></small></div>` +
-      `<div class="savelist guild-pick">${membersOf(G, 'ready').map(m => this.memberRow(m)).join('')}</div>` +
-      `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +
-      `<div class="row actions"><button type="button" data-act="chore"${choreOk ? '' : ' disabled'}>Послать на дело</button><small>${offer ? (offer.why ? esc(offer.why) : `отчёт — через ${offer.days[0] === offer.days[1] ? offer.days[0] : `${offer.days[0]}–${offer.days[1]}`} дн.`) : 'выберите дело'}</small></div>` +
-      `<h4 class="menu-group">Договоры</h4>` +
-      this.partiesHtml() +
-      (parties(a).length >= partiesMost(G) ? `<p class="note">В пути все отряды, что позволяет комната планирования (${partiesMost(G)}).</p>` :
-        (B.errands.length ? `<div class="row"><small>Порядок: <select data-gsort>${SORT_WORDS.map(([k, w]) => `<option value="${k}"${k === this.gsort ? ' selected' : ''}>${w}</option>`).join('')}</select></small></div>` : `<p class="note">Договоров нет: гильдии ${levelOf(G)}-го уровня мир доверяет только дела в городе. Слава — за сделанные дела.</p>`) +
-        `<div class="savelist errands">${errandCards(B.errands, this.gerrand, 'gerrand')}</div>` +
-        `<div class="row"><small>Отряд: <select data-gsize>${sizes}</select> чел.; назначить — до ${namedMost(this.gsize)} (отмеченные выше), остальные решают сами</small></div>` + answers +
-        `<div class="row actions"><button type="button" data-act="launch" class="primary"${why || !this.gerrand ? ' disabled' : ''}>Отправить отряд</button><small>${why ? esc(why) : (M ? `идут ${M.ids.length} из ${this.gsize}; в дорогу — ${GUILD.purse} зол. из казны и еда` : 'выберите поручение')}</small></div>`);
+    const full = parties(a).length >= partiesMost(G);
+    const lists = `<h4 class="menu-group">В городе</h4><div class="savelist errands">${chores || '<small>Дел в городе пока нет: новые — с началом сезона.</small>'}</div>` +
+      `<h4 class="menu-group">Договоры</h4>` + this.partiesHtml() +
+      (full ? `<p class="note">В пути все отряды, что позволяет комната планирования (${partiesMost(G)}).</p>` :
+        (B.errands.length ? `<div class="row"><small>Порядок: <select data-gsort>${SORT_WORDS.map(([k, w]) => `<option value="${k}"${k === this.gsort ? ' selected' : ''}>${w}</option>`).join('')}</select></small></div>` : `<p class="note">Договоров нет: гильдии ${levelOf(G)}-го уровня мир доверяет немногое.</p>`) +
+        `<div class="savelist errands">${errandCards(B.errands, this.gerrand, 'gerrand')}</div>`);
+    const step = !offer && !card ? `<p class="note guild-step">1. Выберите задание — дело в городе или договор. 2. Соберите отряд на портретах. 3. «Отправить».</p>` : this.musterHtml(offer, card);
+    return step + lists;
+  }
+  // step 2: the party for the job picked — the people at home as portraits: a click names one (goes for sure); for a contract
+  // the others answer for themselves — lit who goes, dim who stays (with why)
+  musterHtml(offer, card) {
+    const a = this.atlas, G = this.G, ready = membersOf(G, 'ready'), ids = [...this.gpick].filter(id => ready.some(m => m.id === id));
+    let head, lim, answers = new Map(), why, go = ids, size = '';
+    if (offer) {
+      head = `<b>${esc(offer.label)}</b> · в городе · плата ${offer.pay} зол. · ${offer.days[0] === offer.days[1] ? offer.days[0] : `${offer.days[0]}–${offer.days[1]}`} дн.`;
+      lim = offer.hands[1];
+      why = offer.why || (ids.length < offer.hands[0] ? `нужно ${offer.hands[0] === offer.hands[1] ? offer.hands[0] : `${offer.hands[0]}–${offer.hands[1]}`} чел.: отметьте их` : null);
+      size = `<small>идут все отмеченные: ${ids.length} из ${offer.hands[0] === offer.hands[1] ? offer.hands[0] : `${offer.hands[0]}–${offer.hands[1]}`}</small>`;
+    } else {
+      head = `<b>${esc(card.label)}</b> · договор ${TIER_LABEL[card.tier]} · плата ${card.gold} зол.`;
+      lim = namedMost(this.gsize);
+      const M = ids.length ? muster(a, {contract: card.contract, size: this.gsize, named: ids}) : null;
+      if (M) { for (const x of M.answers) answers.set(x.id, x); go = M.ids; }
+      why = musterWhy(a, {size: this.gsize, named: ids}) || launchWhy(a, {ids: M ? M.ids : ids, contract: card.contract});
+      if (!ids.length) why = `назначьте хотя бы одного (до ${lim}): остальные решат сами`;
+      const sizes = Array.from({length: partyMost(G) - GUILD.party.min + 1}, (_, k) => GUILD.party.min + k).map(n => `<option value="${n}"${n === this.gsize ? ' selected' : ''}>${n}</option>`).join('');
+      size = `<small>Отряд: <select data-gsize>${sizes}</select> чел.; назначить — до ${lim}, остальные вызываются сами${M ? ` · идут ${M.ids.length} из ${this.gsize}` : ''}</small>`;
+    }
+    const chip = m => {
+      const named = ids.includes(m.id), x = answers.get(m.id), lit = named || go.includes(m.id);
+      const tip = named ? 'назначен — идёт' : x ? (x.go ? `вызвался: ${x.why}` : `остаётся: ${x.why}`) : 'щелчок — назначить';
+      return `<button type="button" class="gchip${named ? ' named' : ''}${lit ? ' lit' : ''}${x && !x.go && !named ? ' no' : ''}" data-chip="${m.id}" title="${esc(`${m.name}, ${roleWord(m)}, ур. ${m.level || 1} — ${tip}`)}">` +
+        `<canvas class="pt" width="96" height="96" data-pt="${m.id}"></canvas><b>${esc(m.name.split(' ')[0])}</b><small>${esc(roleWord(m))} · ${m.level || 1}${named ? ' · ★' : x ? (x.go ? ' · ✓' : ' · ✗') : ''}</small></button>`;
+    };
+    return `<div class="guild-muster-panel"><div class="row"><span>${head}</span> <button type="button" class="quiet mini" data-act="unjob">← другое задание</button></div>` +
+      `<div class="row">${size}</div><div class="gchips">${ready.map(chip).join('') || '<small>Дома никого: все на делах или в пути.</small>'}</div>` +
+      `<div class="row actions"><button type="button" data-act="send" class="primary"${why ? ' disabled' : ''}>Отправить</button><small>${why ? esc(why) : offer ? 'отчёт придёт в летопись гильдии' : `в дорогу — ${GUILD.purse} зол. из казны и еда`}</small></div></div>`;
   }
   logHtml() {
     const G = this.G;

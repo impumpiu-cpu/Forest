@@ -385,6 +385,28 @@ dd.q4{color:#c58cff;font-weight:600}
 .gm .hp i{display:block;height:100%;background:#8fbf6a}
 .gm .hp i.low{background:var(--ember)}
 .gm .xp i{display:block;height:100%;background:#c9a24a}
+.guild-muster-panel{border:1px solid var(--ember);border-radius:6px;padding:6px 8px;margin:4px 0 8px;display:flex;flex-direction:column;gap:6px;background:rgba(232,137,58,.06)}
+.guild-step{padding:4px 0}
+.gchips{display:flex;flex-wrap:wrap;gap:6px}
+.gchip{display:flex;flex-direction:column;align-items:center;width:76px;padding:3px 2px 4px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);cursor:pointer;opacity:.55;font:inherit}
+.gchip canvas.pt{width:56px;height:56px}
+.gchip b{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gchip small{font-size:10px;color:var(--muted);white-space:nowrap}
+.gchip.lit{opacity:1;border-color:var(--good);box-shadow:0 0 6px rgba(143,191,90,.45)}
+.gchip.named{border-color:var(--ember);box-shadow:0 0 8px rgba(232,137,58,.6)}
+.gchip.no{opacity:.35}
+.guild-strip{display:flex;flex-direction:column;gap:4px;min-width:max-content}
+.gs-tabs{display:flex;gap:4px}
+.gs-tabs button{font-size:12px;padding:2px 8px}
+.gs-tabs button[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#1b130a}
+.gs-people{display:flex;gap:6px}
+.gs-m{display:flex;flex-direction:column;align-items:center;width:84px;padding:2px;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.gs-m canvas.pt{width:64px;height:64px}
+.gs-m .role{font-size:10px;color:var(--muted);font-style:normal;white-space:nowrap}
+.gs-m .nm{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gs-m small{font-size:10px;color:var(--muted)}
+.gs-m.busy{opacity:.55;cursor:default}
+.gs-m.lit{border-color:var(--ember);box-shadow:0 0 8px rgba(232,137,58,.6)}
 .guild-log{display:flex;flex-direction:column;gap:4px;font-size:12px;max-height:60vh;overflow:auto}
 .guild-log small{color:var(--muted)}
 .guild-hire{width:min(94%,760px)}

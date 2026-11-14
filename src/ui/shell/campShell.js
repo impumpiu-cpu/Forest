@@ -4,11 +4,12 @@
 // and the company along the bottom as portraits, with a word said by the fire over the one who says it.
 import {$} from '../dom.js';
 import {Shell, SAY_EVENT} from './shell.js';
-import {SPECIES} from '../../data/species.js';
-import {dress, gearDef} from '../../view/local.js';
-import {drawPawn} from '../../render/art/pawn.js';
+import {drawPortrait} from '../portrait.js';
 import {esc} from '../../core/util.js';
 
+// the guild's sections, each its own button on the rail (the author's word 14.11: the guild's one button held everything):
+// [menu, icon, label, the guild panel's tab]
+export const GUILD_MENUS = [['guild', '⚑', 'Гильдия', 'people'], ['gboard', '✉', 'Задания', 'board'], ['ghouse', '▣', 'Дом', 'house'], ['gbranch', '⚐', 'Филиалы', 'branches'], ['gfallen', '✝', 'Павшие', 'fallen'], ['glog', '☰', 'Летопись гильдии', 'log']];
 const RES = [['Еда', '🍖', 'еда'], ['Груз', '▦', 'груз'], ['Казна', '◉', 'казна'], ['Следы', '✦', 'следы']];
 const SAY_MS = 5000;   // a bubble's time on the screen, by the clock on the wall
 
@@ -17,9 +18,10 @@ export class CampShell extends Shell {
     const S = () => $('campaign');
     super(view, {
       section: 'campaign', title: ['campTitle', 'campName2'], top: ['campDay'], topEnd: ['campSpeed', 'campPause', 'campBack'],
-      rail: [['guild', '⚑', 'Гильдия'], ['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись похода'], ['world', '◷', 'Летопись мира'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
+      rail: [...GUILD_MENUS.map(([id, ic, t]) => [id, ic, t]), ['stock', '▦', 'Склад'], ['fights', '⚔', 'Бои'], ['fire', '♨', 'Совет'], ['chron', '✎', 'Летопись похода'], ['world', '◷', 'Летопись мира'], ['layers', '❖', 'Слои'], ['save', '⌂', 'Мир']],
       menus: {
-        guild: [() => $('guildSide'), 'Гильдия'],   // (the adventurers' guild: ui/guildView.js; hidden on a campaign of its own)
+        // (the adventurers' guild: ui/guildView.js — one panel, a section a button; hidden on a campaign of its own)
+        ...Object.fromEntries(GUILD_MENUS.map(([id, , t, tab]) => [id, [() => $('guildSide'), t, () => this.view.guildTab?.(tab)]])),
         stock: [() => S().querySelector('[data-pane="stock"]'), 'Склад'], fights: [() => S().querySelector('[data-pane="fights"]'), 'Бои'],
         fire: [() => S().querySelector('[data-pane="fire"]'), 'Совет у костра', () => $('campDock')?.dispatchEvent(new CustomEvent('tab', {detail: {id: 'fire'}}))],   // (the scene drawn at its real size)
         chron: [() => S().querySelector(':scope > .obs-chron'), 'Летопись похода', () => { const log = $('campLog'); log.scrollTop = log.scrollHeight; }],
@@ -31,7 +33,7 @@ export class CampShell extends Shell {
         {id: 'last', title: 'Последнее', note: 'летопись — в меню', rows: 'calc(118 * var(--u))'}],
       strip: {title: 'Отряд', cls: 'sh-party', body: `<button type="button" class="arrow" data-dir="-1" aria-label="Назад">‹</button><div class="scroll" id="campShParty"></div><button type="button" class="arrow" data-dir="1" aria-label="Дальше">›</button>`},
       watch: [[() => $('campStatus'), () => this.syncTop()], [() => $('campRoster'), () => this.portraits()], [() => $('campLog'), () => this.last($('campLog'), this.slot('last'))]],
-      onEnter: () => { this.take($('campRoster'), $('campShParty')); const b = this.rail.querySelector('[data-menu="guild"]'); if (b) b.hidden = !this.view.atlas?.guild; },
+      onEnter: () => { this.take($('campRoster'), $('campShParty')); for (const [id] of GUILD_MENUS) { const b = this.rail.querySelector(`[data-menu="${id}"]`); if (b) b.hidden = !this.view.atlas?.guild; } },
     });
     this.pawns = new Map(); this.bubbles = []; this.bubbleTimer = 0;
     document.addEventListener(SAY_EVENT, e => this.speak(e.detail.who, e.detail.said));
@@ -55,15 +57,7 @@ export class CampShell extends Shell {
       row.insertBefore(cv, row.firstChild);
       const r = document.createElement('em'); r.className = 'role'; r.textContent = role; row.insertBefore(r, cv);
       const nm = document.createElement('b'); nm.className = 'nm'; nm.textContent = m.name; cv.after(nm);
-      const sp = SPECIES.get(m.race), ctx = cv.getContext('2d'), key = `${m.gear?.hand?.join(',')}|${m.gear?.body}`;
-      let pawn = this.pawns.get(m.id);
-      if (!pawn || pawn.key !== key) {
-        pawn = {key, id: m.id, species: m.race, gender: m.gender, equip: {}, faceX: 1};
-        try { dress(pawn, [...(m.gear?.hand || []), m.gear?.body].filter(id => id && gearDef(id)), 0); } catch (e) { pawn.equip = {}; }
-        this.pawns.set(m.id, pawn);
-      }
-      ctx.clearRect(0, 0, 256, 256);
-      if (!sp || !drawPawn(ctx, pawn, sp, 128, 168, 118, '#8a6a4a')) { ctx.fillStyle = '#c9b48a'; ctx.beginPath(); ctx.arc(128, 128, 36, 0, 6.283); ctx.fill(); }
+      drawPortrait(cv, m, this.pawns);
     }
   }
   // words said in the company (ui/campaignView.js SAY_EVENT: the fire's lines now, abilities and the small talk of the march
