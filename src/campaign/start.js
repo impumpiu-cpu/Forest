@@ -141,9 +141,10 @@ export function coreMember(K, a, rnd, {species, role}, k) {
 // share a stream. The guild settles what comes back (guild/index.js closeExpedition).
 //   ms — the guild's members going (alive, free); errand, targetId — as newCampaign's; purse — gold from the treasury
 // contract — a contract of the board taken (campaign/contracts.js takeContract): its quest instead of an errand's
-export function newExpedition(a, G, ms, {errand = null, targetId = null, purse = 0, mode = 'local', contract = null} = {}) {
-  const t = a.towns.find(x => x.id === G.town && x.alive);
-  if (!t) throw new Error('Город гильдии пал.');
+//   from — the town it sets out from (a branch's: campaign/branches.js); none — the guild's
+export function newExpedition(a, G, ms, {errand = null, targetId = null, purse = 0, mode = 'local', contract = null, from = null} = {}) {
+  const t = a.towns.find(x => x.id === (from ?? G.town) && x.alive);
+  if (!t) throw new Error(from != null ? 'Город филиала пал.' : 'Город гильдии пал.');
   if (targetId != null) { const why = targetWhy(a, {home: t.i, people: t.people, realm: t.realm, capital: t.id}, errand, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
   const n = G.nextExpedition = (G.nextExpedition || 0) + 1, S = G.store;
   const K = {
@@ -153,6 +154,7 @@ export function newExpedition(a, G, ms, {errand = null, targetId = null, purse =
     seen: G.seen, log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null, social: G.social,
     beasts: S.beasts, nextBeast: S.nextBeast || 1, vehicles: S.vehicles, buildings: S.buildings, cargo: S.cargo, build: null, route: null,
   };
+  K.tookBeasts = (S.beasts || []).filter(b => b.hp > 0).length;   // (campaign/armory.js bringHome: these come back whatever the stable holds)
   S.beasts = []; S.vehicles = []; S.cargo = {}; S.buildings = [];   // (taken along: they come back with whoever comes back)
   for (const m of ms) { m.joined = 0; m.core = true; memberLocal(K, m); ensureXp(m); }
   const {r, done} = draw(K, 'birth');

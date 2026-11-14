@@ -5,8 +5,9 @@
 // runs the world's seasons whether an expedition is out or not (campaign/guild.js stepGuild); an expedition out is shown as a
 // campaign is (its camps on the local map while watched: «⚔»; else only its lines).
 import {CampaignView, errandCards, errandPicked, itemShort, baseName, clockTime} from './campaignView.js';
-import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext} from '../view/campaign.js';
+import {foundGuild, hire, stepGuild, guildBoard, takeChore, launch, launchWhy, muster, musterWhy, namedMost, devotionOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, recruitWhy, takeRecruit, kinOf, relWord, moodOf, restMember, retireWhy, unretireWhy, dismissWhy, giftOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack, buildRoom, setRoomPost, sendToRoom, armoryOf, racks, stalls, shopOf, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast, cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, expedition, membersOf, healing, ageOf, roleWord, questWord, GUILD, levelOn, toNext, guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove, branchesOf, branchesMost, branchCost, branchIdle, managerOf, managerWhy, openWhy, roadDays, roadGold, transferWhy, moveWhy, moveSpan, moveCost, houseTown, payK, tierAt, priceK, feeK} from '../view/campaign.js';
 import {ROOMS} from '../data/rooms.js';
+import {townLabel} from '../view/world.js';
 import {BEASTS} from '../data/transport.js';
 const BEAST_WORD = Object.fromEntries(Object.entries(BEASTS).map(([k, v]) => [k, v.label]));
 import {SPECIES} from '../data/species.js';
@@ -19,8 +20,8 @@ import {plural, esc} from '../core/util.js';
 import {$, seg, press} from './dom.js';
 import {CampShell} from './shell/campShell.js';
 
-const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом'], ['fallen', 'Павшие'], ['log', 'Летопись']];
-const STATE = {retired: 'на покое', ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря'};
+const TABS = [['people', 'Люди'], ['board', 'Доска'], ['house', 'Дом'], ['branches', 'Филиалы'], ['fallen', 'Павшие'], ['log', 'Летопись']];
+const STATE = {retired: 'на покое', ready: 'дома', chore: 'на деле', expedition: 'в походе', dead: 'погиб', left: 'ушёл', post: 'на посту', training: 'учится у тренера', treat: 'у лекаря', road: 'в дороге'};
 const LOG_LINES = 80;   // the guild's chronicle in its tab: the last lines
 
 const TIER_WORD = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -59,6 +60,7 @@ export class GuildView extends CampaignView {
       const o = e.target.closest('input[name="gchore"]'); if (o) { this.offerUid = o.value; this.renderGuild(); return; }
       const ps = e.target.closest('select[data-post]'); if (ps) { this.houseDo(() => setRoomPost(this.atlas, ps.dataset.post, ps.value ? +ps.value : null, () => {})); return; }
       const rs = e.target.closest('select[data-room]'); if (rs && rs.value) { this.houseDo(() => sendToRoom(this.atlas, rs.dataset.room, +rs.value, () => {})); return; }
+      const bm = e.target.closest('select[data-bmgr]'); if (bm) { this.houseDo(() => guildSetManager(this.atlas, +bm.dataset.bmgr, bm.value ? +bm.value : null)); return; }
       const so = e.target.closest('select[data-gsort]'); if (so) { this.gsort = so.value; this.renderGuild(); return; }
       const sz = e.target.closest('select[data-gsize]'); if (sz) { this.gsize = +sz.value; this.renderGuild(); return; }
       const r = e.target.closest('input[name="gerrand"]'); if (r) { this.gerrand = r.value; this.renderGuild(); this.lookAtCard(r.value); }
@@ -71,6 +73,12 @@ export class GuildView extends CampaignView {
       const cg = e.target.closest('button[data-cage]'); if (cg) { const id = +cg.dataset.id, G = this.G; this.houseDo(() => (cg.dataset.cage === 'home' ? keepHome(G, id, !cagesOf(G).beasts.find(x => x.id === id)?.home) : releaseBeast(G, id))); return; }
       const wr = e.target.closest('button[data-war]'); if (wr) { this.houseDo(() => buyWarBeast(this.atlas, this.G, wr.dataset.war, pay)); return; }
       const bs = e.target.closest('button[data-beast]'); if (bs) { this.houseDo(() => buyBeast(this.atlas, this.G, bs.dataset.beast, pay)); return; }
+      const bb = e.target.closest('button[data-branch]');
+      if (bb) {
+        const a = this.atlas, k = bb.dataset.branch, v = id => $(id)?.value;
+        this.houseDo(() => k === 'open' ? guildOpenBranch(a, +v('gBranchTown')) : k === 'close' ? guildCloseBranch(a, +bb.dataset.town) : k === 'move' ? guildMove(a, +v('gMoveTown')) : guildTransfer(a, +v('gXferWho'), +v('gXferTo')));
+        return;
+      }
       const hr = e.target.closest('button[data-hire]'); if (hr) { this.houseDo(() => takeRecruit(this.atlas, +hr.dataset.hire)); return; }
       const wt = e.target.closest('button[data-watch]'); if (wt) { this.houseDo(() => watchParty(this.atlas, +wt.dataset.watch)); this.draw?.(); return; }
       const rc = e.target.closest('button[data-recall]'); if (rc) { this.houseDo(() => recall(this.atlas, +rc.dataset.recall)); return; }
@@ -205,6 +213,12 @@ export class GuildView extends CampaignView {
     if (!this.G || this.choosing || a.campaign) return super.overlay(a, px, cam);
     const t = a.towns.find(x => x.id === this.G.town), k = this.unit(a);
     if (t) { px.strokeStyle = '#ffd36a'; px.lineWidth = Math.max(this.minW, 0.3 * k); px.beginPath(); px.arc(t.x + 0.5, t.y + 0.5, 2.4 * Math.max(0.6, k), 0, Math.PI * 2); px.stroke(); }
+    // the branches (campaign/branches.js): a smaller ring each, dashed while idle
+    for (const br of branchesOf(this.G)) {
+      const b = a.towns.find(x => x.id === br.town); if (!b) continue;
+      px.strokeStyle = '#8fc8ff'; px.setLineDash(branchIdle(a, this.G, br) ? [0.6 * k, 0.6 * k] : []);
+      px.beginPath(); px.arc(b.x + 0.5, b.y + 0.5, 1.8 * Math.max(0.6, k), 0, Math.PI * 2); px.stroke(); px.setLineDash([]);
+    }
     // the camps of the contracts (campaign/contracts.js), those whose place is known: a small tent each
     px.fillStyle = '#d8573f';
     for (const c of this.board || []) if (c.at && c.ok !== undefined) { const x = c.at.x + 0.5, y = c.at.y + 0.5, s = 0.9 * Math.max(0.6, k); px.beginPath(); px.moveTo(x, y - s); px.lineTo(x + s, y + s * 0.7); px.lineTo(x - s, y + s * 0.7); px.closePath(); px.fill(); }
@@ -233,15 +247,16 @@ export class GuildView extends CampaignView {
       `<dt>Отряды</dt><dd>${parties(a).length ? `в пути ${parties(a).length} из ${partiesMost(G)}${K ? `; смотрим: ${K.expedition}-й, ${esc(questWord(K))}` : ''}` : `дома (до ${partiesMost(G)} в пути разом)`}</dd>` +
       (G.phase === 'over' ? '<dt>Гильдия</dt><dd>закрыта</dd>' : '');
     for (const id of [...this.gpick]) if (!ms.some(m => m.id === id && m.guild.state === 'ready')) this.gpick.delete(id);
-    $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
+    $('guildBody').innerHTML = this.gtab === 'people' ? this.peopleHtml() : this.gtab === 'board' ? this.boardHtml() : this.gtab === 'house' ? this.houseHtml() : this.gtab === 'branches' ? this.branchesHtml() : this.gtab === 'fallen' ? this.fallenHtml() : this.logHtml();
   }
   // one member: a tick to pick (at the house only), name, role, level, years, health, what he is doing, wage
   memberRow(m, pickable = true) {
     const a = this.atlas, G = this.G, st = m.guild.state, free = st === 'ready', K = expedition(a) || {members: [m], day: 0};
-    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : st === 'post' ? `на посту: ${ROOMS.get(m.guild.post)?.post?.label || ''}${m.retired ? ' (на покое)' : ''}` : STATE[st] || st;
+    const doing = st === 'chore' ? `на деле до ${m.guild.until - G.day > 0 ? `${m.guild.until - G.day} ${plural(m.guild.until - G.day, 'дня', 'дней', 'дней')}` : 'вечера'}` : st === 'ready' && healing(m) ? 'лечится' : st === 'post' ? (m.guild.post === 'branch' ? `управляет филиалом в ${this.townIn(m.guild.branch)}` : `на посту: ${ROOMS.has(m.guild.post) ? ROOMS.get(m.guild.post).post?.label || '' : ''}`) + (m.retired ? ' (на покое)' : '') : st === 'road' ? `в дороге в ${this.townName(m.guild.to)}: ещё ${Math.max(0, m.guild.until - G.day)} дн.` : STATE[st] || st;
+    const lives = m.house != null && st !== 'road' && st !== 'post' ? ` · живёт в ${this.townIn(m.house)}` : '';
     const lv = m.level || 1, nx = toNext(K, m, K.day);
     return `<label class="gm${free ? '' : ' busy'}${m.alive ? '' : ' dead'}">${pickable ? `<input type="checkbox" data-mid="${m.id}"${this.gpick.has(m.id) ? ' checked' : ''}${free ? '' : ' disabled'}>` : ''}` +
-      `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing)}</i>` +
+      `<span class="t"><b>${esc(m.name)}</b> · ${esc(roleWord(m))}, ур. ${lv} · ${esc(raceLabel(SPECIES.get(m.race)))}, ${ageOf(a, m)} ${plural(ageOf(a, m), 'год', 'года', 'лет')} · <i>${esc(doing + lives)}</i>` +
       `<span class="hp"><i class="${(m.hp ?? 1) < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp ?? 1) * 100)}%"></i></span>` +
       (nx != null ? `<span class="xp" title="опыт до ${lv + 1}-го уровня: ${Math.round(nx * 100)}%"><i style="width:${Math.round(nx * 100)}%"></i></span>` : '') +
       `<small>${letters(m)} · ${esc([...m.gear.hand, m.gear.body].filter(Boolean).map(itemShort).join(', '))}${m.maims ? ` · увечий ${m.maims}` : ''} · верность ${Math.round(devotionOf(m) * 100)}% · ${moodWord(moodOf(m))}</small>${kinLine(this.atlas, G, m)}${pickable ? this.restButtons(m) : ''}</span></label>`;
@@ -279,6 +294,40 @@ export class GuildView extends CampaignView {
     });
     return `<p class="note">Строится одна комната за раз, готова к новому сезону.${B ? ` Сейчас: <b>${esc(ROOMS.get(B.room).label)}</b>, ${B.level}-й уровень.` : ''} Содержание дома — каждый сезон вместе с жалованьем.</p>` +
       `<div class="savelist errands">${rows.join('')}</div>`;
+  }
+  // ── the branches and the move (campaign/branches.js; GUILD.branch): each branch — its town, its manager, its fame and people;
+  // opening one, sending people between the houses, moving the guild
+  townOf(id) { return this.atlas.towns.find(t => t.id === id) || null; }
+  townIn(id) { const t = this.townOf(id); return t ? `${townLabel(t, 3)} ${t.name}` : 'городе'; }
+  townName(id) { const t = this.townOf(id); return t ? `${townLabel(t, 1)} ${t.name}` : 'город'; }
+  branchesHtml() {
+    const a = this.atlas, G = this.G, BR = GUILD.branch, bs = branchesOf(G), most = branchesMost(G), pc = x => `${Math.round((x - 1) * 100)} %`;
+    const mv = G.moving ? `<p class="note"><b>Гильдия переезжает в ${esc(this.townName(G.moving.to))}</b>: ещё ${Math.max(0, G.moving.until - a.hist.step)} ${plural(Math.max(0, G.moving.until - a.hist.step), 'сезон', 'сезона', 'сезонов')}. Пока — ни дел в городе, ни походов, никого у дверей.</p>` : '';
+    const nextAt = BR.at.find(L => L > levelOf(G));
+    const head = `<p class="note">Филиал — второй дом гильдии в другом городе: ${BR.slots} договора его города на доске сверх своих, ${BR.door[0]}–${BR.door[1]} человека у дверей из его земли, товар его города в оружейную. Отряд на договор филиала выходит оттуда и туда возвращается. Без управляющего филиал стоит. Филиалов сейчас ${bs.length} из ${most}${nextAt ? ` (ещё один — с ${nextAt}-го уровня)` : ''}; содержание — ${BR.upkeep} зол. за сезон каждый.</p>`;
+    const rows = bs.map(br => {
+      const t = this.townOf(br.town), idle = branchIdle(a, G, br), mgr = managerOf(G, br), lives = membersOf(G).filter(m => m.house === br.town && m !== mgr);
+      const cands = membersOf(G).filter(m => m === mgr || ['ready', 'retired'].includes(m.guild.state));
+      const pick = `<select data-bmgr="${br.town}"><option value="">— никого —</option>${cands.map(m => { const why = m === mgr ? null : managerWhy(a, G, br.town, m); return `<option value="${m.id}"${m === mgr ? ' selected' : ''}${why ? ` disabled title="${esc(why)}"` : ''}>${esc(m.name)}, ур. ${m.level || 1} · Х ${m.special?.C ?? 5}${houseTown(G, m) !== br.town ? ` · ${roadDays(a, houseTown(G, m), br.town)} дн. пути` : ''}</option>`; }).join('')}</select>`;
+      const going = G.members.find(m => m.alive && m.guild?.state === 'road' && m.guild.to === br.town && m.guild.then === 'manage');
+      return `<div class="sv${idle ? ' off' : ''}"><span class="t"><b>${esc(t?.name || '?')}</b> · ${roadDays(a, G.town, br.town)} дн. от дома · ${idle ? `<b>стоит: ${esc(idle)}</b>` : 'работает'}` +
+        `<br><small class="fact">местная слава ${br.fame || 0} · плата его договоров +${pc(payK(br))} · договоры до тира ${TIER_WORD[tierAt(G, br)] || '—'}${mgr ? ` · цены ×${priceK(G, br).toFixed(2).replace('.', ',')}, найм ×${feeK(G, br).toFixed(2).replace('.', ',')}` : ''}</small>` +
+        `<br><small>Живут: ${lives.map(m => esc(m.name)).join(', ') || 'никого'}${going ? ` · управляющий в пути: ${esc(going.name)}` : ''}</small></span>` +
+        `<div class="row"><small>Управляющий (ур. ${BR.manager.level}+; Харизма — цены и найм): ${pick}</small></div>` +
+        `<div class="row actions"><button type="button" class="quiet mini" data-branch="close" data-town="${br.town}">закрыть филиал</button></div></div>`;
+    });
+    const used = new Set([G.town, ...bs.map(b => b.town)]), towns = a.towns.filter(t => t.alive && !used.has(t.id)).sort((p, q) => roadDays(a, G.town, p.id) - roadDays(a, G.town, q.id));
+    const ow = towns.length ? openWhy(a, G, towns[0].id) : 'некуда';
+    const open = `<div class="row"><small>Открыть филиал (${branchCost(G)} зол.): <select id="gBranchTown">${towns.map(t => `<option value="${t.id}"${openWhy(a, G, t.id) ? ' disabled' : ''}>${esc(t.name)} · ${esc(townLabel(t, 0))} · ${roadDays(a, G.town, t.id)} дн.</option>`).join('')}</select>` +
+      ` <button type="button" class="mini" data-branch="open"${ow && !towns.some(t => !openWhy(a, G, t.id)) ? ` disabled title="${esc(ow)}"` : ''}>Открыть</button>${ow && !towns.some(t => !openWhy(a, G, t.id)) ? ` ${esc(ow)}` : ''}</small></div>`;
+    const houses = [G.town, ...bs.map(b => b.town)], who = membersOf(G).filter(m => ['ready', 'retired'].includes(m.guild.state));
+    const xfer = bs.length ? `<div class="row"><small>Перевести: <select id="gXferWho">${who.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(this.townOf(houseTown(G, m))?.name || '')})</option>`).join('')}</select> в <select id="gXferTo">${houses.map(id => `<option value="${id}">${esc(this.townOf(id)?.name || '')}${id === G.town ? ' (дом)' : ''}</option>`).join('')}</select>` +
+      ` <button type="button" class="mini" data-branch="xfer">В дорогу</button> · ${BR.road.gold} зол. за день пути</small></div>` : '';
+    const dests = [...bs.map(b => this.townOf(b.town)).filter(t => t?.alive), ...towns];
+    const move = G.moving ? '' : `<h4 class="menu-group">Переезд</h4><p class="note">Дом гильдии переезжает в город филиала (${BR.move.branch.join('–')} сезона) или в город, где куплен дом (${BR.move.house} зол., ${BR.move.bare[0] / SEASONS.all().length}–${BR.move.bare[1] / SEASONS.all().length} года). Пока переезжает, гильдия ничего не берёт; комнаты теряют ${BR.move.lose.branch}–${BR.move.lose.bare} ур.; старый дом становится филиалом, если для него есть место. Женатые в городе, родня его жителей и родители растущих детей остаются в старом доме — а если филиала там не будет, могут уйти из гильдии.</p>` +
+      `<div class="row"><small>Переехать в <select id="gMoveTown">${dests.map(t => `<option value="${t.id}"${moveWhy(a, G, t.id) ? ` disabled` : ''}>${esc(t.name)}${bs.some(b => b.town === t.id) ? ' — филиал' : ` — дом ${moveCost(G, t.id)} зол.`} · ${moveSpan(G, t.id).join('–')} сез.</option>`).join('')}</select>` +
+      ` <button type="button" class="mini" data-branch="move"${dests.some(t => !moveWhy(a, G, t.id)) ? '' : ` disabled title="${esc(dests.length ? moveWhy(a, G, dests[0].id) : 'некуда')}"`}>Переехать</button>${dests.length && !dests.some(t => !moveWhy(a, G, t.id)) ? ` ${esc(moveWhy(a, G, dests[0].id))}` : ''}</small></div>`;
+    return mv + head + `<div class="savelist errands">${rows.join('')}</div>` + (G.moving ? '' : open) + xfer + move;
   }
   // the parties out: each its errand and days; watch it (its camps on the local map — the others reckoned unseen), call it back
   partiesHtml() {

@@ -13,6 +13,7 @@ import {gearDef, gearType, gearValue, gearToken, gearSpec, itemPrice, mayTake} f
 import {toTown, fromTown} from '../atlas/index.js';
 import {offers} from './town.js';
 import {roomBy, roomLevel, working} from './house.js';
+import {branchesOf, branchWorks, priceK} from './branches.js';
 
 export const armoryOf = G => (G.armory ||= {items: [], nextId: 1});
 export const racks = G => roomBy(G, 'armory', 'slots') || 0;
@@ -30,9 +31,16 @@ export const sellPrice = (G, token) => Math.max(0, Math.floor(gearValue(token) *
 // what the guild's town sells of arms and armour, and of beasts the stable takes
 export function shopOf(a, G) {
   const t = town(a, G); if (!t) return {items: [], beasts: []};
-  const all = offers(t, a);
+  const all = offers(t, a), arms = o => o.kind === 'item' && kindOf(o.id) && kindOf(o.id) !== 'tool';
+  const items = all.filter(arms).map(o => ({token: o.id, label: gearDef(o.id).label, kind: kindOf(o.id), price: buyPrice(G, o.id)}));
+  // the goods of the branches' towns (campaign/branches.js): what the guild's town does not sell, at their prices × the manager's
+  const seen = new Set(items.map(o => o.token));
+  for (const br of branchesOf(G)) {
+    const bt = branchWorks(a, G, br) ? a.towns.find(x => x.id === br.town) : null; if (!bt) continue;
+    for (const o of offers(bt, a)) if (arms(o) && !seen.has(o.id)) { seen.add(o.id); items.push({token: o.id, label: gearDef(o.id).label, kind: kindOf(o.id), price: Math.max(1, Math.round(buyPrice(G, o.id) * priceK(G, br))), at: bt.id, from: bt.name}); }
+  }
   return {
-    items: all.filter(o => o.kind === 'item' && kindOf(o.id) && kindOf(o.id) !== 'tool').map(o => ({token: o.id, label: gearDef(o.id).label, kind: kindOf(o.id), price: buyPrice(G, o.id)})),
+    items,
     beasts: stalls(G) ? all.filter(o => o.kind === 'beast' && !o.golem && BEASTS[o.id] && BEASTS[o.id].use !== 'food').map(o => ({kind: o.id, label: BEASTS[o.id].label || o.id, price: Math.round(o.price * (merchant(G) ? HOUSE.armory.merchant.buy : 1))})) : [],
   };
 }
@@ -41,13 +49,14 @@ export function shopOf(a, G) {
 export function buyWhy(a, G, token) {
   if (!racks(G)) return 'нет оружейной';
   if (armoryOf(G).items.length >= racks(G)) return 'в оружейной нет места';
-  const p = buyPrice(G, token); if (G.gold < p) return `в казне нет ${p} зол.`;
-  if (!shopOf(a, G).items.some(o => o.token === token)) return 'в городе этого не продают';
+  const o = shopOf(a, G).items.find(x => x.token === token); if (!o) return 'в городе этого не продают';
+  if (G.gold < o.price) return `в казне нет ${o.price} зол.`;
   return null;
 }
 export function buyItem(a, G, token, pay) {
   const why = buyWhy(a, G, token); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
-  const p = buyPrice(G, token); pay(G, -p, `оружейная: куплено — ${gearDef(token).label}`); toTown(town(a, G), p);
+  const o = shopOf(a, G).items.find(x => x.token === token), p = o.price;
+  pay(G, -p, `оружейная: куплено — ${gearDef(token).label}${o.from ? ` (из ${o.from})` : ''}`); toTown(o.at != null ? a.towns.find(x => x.id === o.at) : town(a, G), p);
   return rack(G, token);
 }
 const rack = (G, token, locked = false) => { const A = armoryOf(G), it = {id: A.nextId++, token, locked}; A.items.push(it); return it; };
@@ -116,7 +125,7 @@ export function bringHome(a, G, K, pay) {
     sold += fromTown(t, sellPrice(G, token));
   }
   K.spoils = [];
-  const beasts = (K.beasts || []).filter(b => b.hp > 0 && !BEASTS[b.kind]?.golem), room = stalls(G);
+  const beasts = (K.beasts || []).filter(b => b.hp > 0 && !BEASTS[b.kind]?.golem), room = Math.max(stalls(G), K.tookBeasts || 0);   // (the guild's own back whatever the stable now holds: no beast of its own sold for a room lost in a move)
   const keep = beasts.slice(0, room), extra = beasts.slice(room);
   for (const b of extra) sold += fromTown(t, Math.floor((PRICES.beasts[b.kind] || 10) * HOUSE.armory.sell));
   if (sold > 0) pay(G, r1(sold), 'продано по возвращении: трофеи и звери, которым нет места');

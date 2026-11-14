@@ -44,7 +44,9 @@
 //   mood      — a member's spirits at the guild, −1 … 1 (campaign/kin.js): a friend dead − `friend`, a party lost whole − `lost`,
 //               more than half of it − `half`, a party back with its errand done + `won` (to those at the house and back);
 //               fades × `fade` a season; below `low` — he may leave (× `leave` a season for each step under it, as a
-//               companion of a caravan does); in the muster + `will` × his mood; a parent of a child not grown − `parent`
+//               companion of a caravan does); in the muster + `will` × his mood; a parent of a child not grown − `parent`; more
+//               in the guild than the barracks hold (after a move: rooms lost) — each at the house − `cramped` a season (no one is
+//               turned out: only no one more is taken in)
 //   bond      — a deed done together: the bond between each two of them, + `won` when it went right, `lost` when it went wrong
 //   rank      — by an errand's tier (data/errands.js; 0 — a deed in town): the least level the best of an expedition must have —
 //               the newcomers start with the deeds in town (the author's word 12.11), a dragon is for a party of 16–20
@@ -53,6 +55,22 @@
 //               at rest he stays at the house, never in a party, may hold a post (trainer, healer…), paid `pension` × his wage
 //               (a post — the whole wage); granted — his mood + `glad`. Let go with honour — `gift`: base + perLevel × level gold
 //               from the treasury; let go without — his friends at the guild lose `fired` of their devotion
+//   branch    — the guild's branches and its move (campaign/branches.js; plan claude/guild-plan.md Г7; the author's word 14.11): a
+//               branch is a second house in another town — the 1st, 2nd and 3rd opened from the guild's levels `at`, each for
+//               `cost` of its own, `upkeep` gold a season each; it needs a `manager` at his post there (at least his `level`),
+//               else it stands idle. At work it gives `slots` contracts of its town on the board (besides the board's own), `door`
+//               (lo…hi) more at the door a season — the people of its town and land, living there once taken in — and the goods
+//               of its town to the armory. The manager's Charisma: each point over 5 the fee of those at its door − `manager.fee`,
+//               its town's prices − `manager.price` (each within `manager.span`). Local fame (`fame`): the fame a contract of its
+//               town brings × `share`, kept by the branch: its town pays × (1 + `pay` × it), at most + `payMost`; from `tier` of it
+//               its board gives one tier above the guild's. A party for a contract of its town sets out from it and comes back to
+//               it. A member goes from one house to another by the road (`road`: its days, at least `least`; `gold` a day each).
+//               A town fallen — the branch lost, its people on the road home; a branch in a realm at war with the guild's, or its
+//               town under siege — idle. The move (`move`): the house goes to a branch's town (`branch` seasons, lo…hi) or to a
+//               town where one is bought for `house` gold (`bare` seasons); the guild takes nothing in meanwhile; each room loses
+//               `lose` levels (not below its start); the old house becomes a branch if there is a place for one; those tied to
+//               the old town (wed there, kin of its people, children growing there) stay at it — or, no branch, leave the guild
+//               with the chance `stay`
 export const GUILD = {
   start: {gold: 150, candidates: 20, pick: 8},
   party: {min: 1, max: 6},
@@ -68,8 +86,10 @@ export const GUILD = {
   level: {need: [0, 8, 20, 40, 65, 95, 135, 185, 245, 320, 400], tier: [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5], chore: 1},
   recruit: {count: 5, up: 0.03, down: 0.35, fee: {base: 10, perLevel: 15}},
   kin: {door: 0.15, person: 0.08, bond: 3, like: 2, grief: 0.15, mood: 0.5, parting: 0.2, couple: {bond: 4, chance: 0.15, town: 0.02}, child: 0.35, fertile: 0.5},
-  mood: {friend: 0.15, lost: 0.3, half: 0.15, won: 0.1, fade: 0.7, low: -0.4, leave: 0.6, will: 0.3, parent: 0.2},
+  mood: {friend: 0.15, lost: 0.3, half: 0.15, won: 0.1, fade: 0.7, low: -0.4, leave: 0.6, will: 0.3, parent: 0.2, cramped: 0.1},
   bond: {won: 0.5, lost: -0.2},
   retire: {old: 0.75, maims: 2, ask: 0.35, refused: 0.15, glad: 0.2, pension: 0.5, gift: {base: 10, perLevel: 4}, fired: 0.1},
+  branch: {at: [3, 6, 9], cost: [150, 250, 400], upkeep: 4, manager: {level: 2, fee: 0.05, price: 0.03, span: [0.6, 1.3]}, slots: 2, door: [1, 3],
+    fame: {share: 1, pay: 0.03, payMost: 0.5, tier: 15}, road: {least: 1, gold: 0.5}, move: {branch: [1, 2], bare: [4, 8], house: 300, lose: {branch: 1, bare: 2}, stay: 0.5}},
   devotion: {start: 0.7, forced: 0.2, paid: 0.02, back: 0.05, leave: 0.2, will: 0.5, mood: -0.15, days: 30},
 };

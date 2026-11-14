@@ -42,7 +42,8 @@ export function postWhy(G, id, m) {
   const P = ROOMS.get(id)?.post; if (!P) return 'здесь не нужен работник';
   if (roomLevel(G, id) < 1) return 'комната ещё не построена';
   if (!m || !m.alive) return 'некого';
-  if (!['ready', 'retired'].includes(m.guild?.state) && !(m.guild?.state === 'post' && m.guild.post === id)) return `${m.name} сейчас занят`;   // (one at rest may hold a post: campaign/retire.js)
+  if (!['ready', 'retired'].includes(m.guild?.state) && !(m.guild?.state === 'post' && m.guild.post === id)) return `${m.name} сейчас занят`;
+  if (m.house != null) return `${m.name} живёт в филиале`;   // (campaign/branches.js)   // (one at rest may hold a post: campaign/retire.js)
   if (P.level && (m.level || 1) < P.level) return `${P.label} — не ниже ${P.level}-го уровня (у ${m.name} ${m.level || 1}-й)`;
   if (P.letter && (m.special?.[P.letter] ?? 5) < P.least) return `${P.label} — ${P.letter} не ниже ${P.least} (у ${m.name} ${m.special?.[P.letter] ?? 5})`;
   return null;
@@ -60,6 +61,7 @@ export function trainWhy(G, m) {
   if (!working(G, 'training')) return 'тренировочный зал не работает (нет зала или тренера)';
   if (G.members.filter(x => x.alive && x.guild?.state === 'training').length >= roomBy(G, 'training', 'slots')) return 'все места в зале заняты';
   if (m.guild?.state !== 'ready') return `${m.name} сейчас занят`;
+  if (m.house != null) return `${m.name} живёт в филиале`;
   if ((m.level || 1) >= 1 + roomLevel(G, 'training')) return `зал учит до ${1 + roomLevel(G, 'training')}-го уровня`;
   if ((m.level || 1) >= (staffOf(G, 'training')?.level || 1)) return 'ученик не может быть не ниже тренера';
   return null;
@@ -69,6 +71,7 @@ export function treatWhy(G, m) {
   if (!working(G, 'healer')) return 'комната лекаря не работает (нет комнаты или лекаря)';
   if (G.members.filter(x => x.alive && x.guild?.state === 'treat').length >= roomBy(G, 'healer', 'slots')) return 'все места у лекаря заняты';
   if (m.guild?.state !== 'ready') return `${m.name} сейчас занят`;
+  if (m.house != null) return `${m.name} живёт в филиале`;
   if (!wounded(m)) return `у ${m.name} нет тяжёлых травм`;
   return null;
 }

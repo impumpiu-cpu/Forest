@@ -58,9 +58,9 @@ export function issuerName(a, iss) {
   if (iss.kind === 'guild') return 'сама гильдия';
   return iss.kind === 'town' ? `${townLabel(h, 0)} ${h.name}` : `держава ${h.name}`;   // (townLabel 0: «город», «крепость»…)
 }
-// the reserve: out of the issuer's treasury, at most `share` of it; a one-off that cannot put aside enough is not posted
-function reserve(a, iss, tier, r, must) {
-  const h = holder(a, iss), want = rng(r, CONTRACT.pay[tier]), have = Math.max(0, h?.gold || 0);
+// the reserve: out of the issuer's treasury, at most `share` of it (× `k`: a branch's local fame — campaign/branches.js); a one-off that cannot put aside enough is not posted
+function reserve(a, iss, tier, r, must, k = 1) {
+  const h = holder(a, iss), want = Math.round(rng(r, CONTRACT.pay[tier]) * k), have = Math.max(0, h?.gold || 0);
   const take = Math.min(want, Math.floor(have * CONTRACT.share));
   if (!must && take < CONTRACT.least * CONTRACT.pay[tier][0]) return null;
   if (h && take > 0) h.gold = Math.round((h.gold - take) * 10) / 10;
@@ -96,7 +96,8 @@ export function campGuard(a, camp, spec) {
 }
 
 // ── posting: a contract of a row (one-off) or of a chain's step
-function post(a, G, def, {tmpl, chain = null, side = false, strong = 1}, r) {
+//   branch — the town of the guild's branch it is posted at (G then the branch's view: campaign/branches.js viewAt); k — its pay ×
+function post(a, G, def, {tmpl, chain = null, side = false, strong = 1, branch = null, k = 1}, r) {
   const t = a.towns.find(x => x.id === G.town); if (!t) return null;
   const tier = def.tier, iss = issuerFor(a, G, tier), C = contractsOf(a);
   const known = def.camp ? !def.camp.clue || !!roomBy(G, 'maps', 'known') : !(errandOfDef(def)?.clueAt?.length);   // (the maps room's last level: the camps' places known)
@@ -113,13 +114,14 @@ function post(a, G, def, {tmpl, chain = null, side = false, strong = 1}, r) {
     target = {camp: camp.id}; s = camp.s; at = known ? {x: camp.x, y: camp.y} : null; days = camp.days; where = wherePhrase(a, camp.i);
     goal = known ? camp.label : `${def.camp.name} — где-то ${where}; найти по следам`;
   }
-  const escrow = def.own ? 0 : reserve(a, iss, tier, r, !!chain);
+  const escrow = def.own ? 0 : reserve(a, iss, tier, r, !!chain, k);
   const issuer = def.own ? {kind: 'guild', id: G.id} : iss;
   if (escrow == null) { if (target.camp != null) C.camps = C.camps.filter(c => c.id !== target.camp); return null; }
   const id = C.nextId++, rec = {id, uid: `c${id}`, tmpl, chain, side, tier, label: def.label, about: def.about || '',
     story: fill(def.story || def.about || '', {town: `${townLabel(t, 1)} ${t.name}`, where: where || 'неподалёку'}),
     issuer, escrow, posted: G.day, until: G.day + rng(r, CONTRACT.offer), state: 'open', why: null, target, known, at, s: Math.round(s * 100) / 100, days, goal, facts,
     completeBy: null, by: null};
+  if (branch != null) rec.branch = branch;
   if (target.camp != null) campOf(a, target.camp).contract = rec.uid;
   C.records.push(rec);
   return rec;
@@ -158,6 +160,7 @@ export function stepContracts(a, G, io) {
     else if (!liveTarget(a, rec)) close(a, G, rec, 'цель уничтожена другими', io);
     else if (G.day >= rec.until) close(a, G, rec, 'срок предложения вышел', io);
   }
+  if (G.moving) return;   // (the guild moving: nothing new on its board — campaign/branches.js)
   for (const H of CHAINS.all()) {
     if (levelOf(G) < H.level || C.chains.some(c => c.chain === H.id && c.guild === G.id)) continue;
     const ch = {id: C.nextId++, chain: H.id, guild: G.id, step: H.start, flags: {}, state: 'on', steps: []};
@@ -168,7 +171,7 @@ export function stepContracts(a, G, io) {
   }
   // the one-offs: the board's slots (its room's level: data/rooms.js) filled from the tiers the guild is trusted with, the
   // stories' steps among them; a season posts what is missing, each with the chance `post` (the first season: all)
-  const most = tierOf(G), slots = roomBy(G, 'board', 'slots') ?? 4, open = () => C.records.filter(c => c.state === 'open' && !c.side).length;
+  const most = tierOf(G), slots = roomBy(G, 'board', 'slots') ?? 4, open = () => C.records.filter(c => c.state === 'open' && !c.side && c.branch == null).length;   // (a branch's are its own: postBranch)
   for (let k = 0; most > 0 && k < slots * 3 && open() < slots; k++) {
     if (!first && io.r() >= CONTRACT.board.post) break;
     // (the merchant at his post: one contract on the board a tier above the guild's — data/rooms.js)
@@ -181,6 +184,24 @@ export function stepContracts(a, G, io) {
     if (rec && !first) io.tell(`На доске новый договор: ${rec.label} (${tierWord(tier)}; платит ${issuerName(a, rec.issuer)} — ${rec.escrow} зол.).`, 'contract');
   }
   G.contractsSeeded = true;
+}
+// ── a branch's contracts (campaign/branches.js; GUILD.branch): `slots` of its town's, of the tiers up to `most`, the pay × `k`;
+// V — the guild seen from the branch (its town: the issuer, the road, the camps). A season posts what is missing, as the board does
+export function postBranch(a, V, br, {slots, most, k}, io) {
+  const C = contractsOf(a), open = () => C.records.filter(c => c.state === 'open' && c.branch === br.town).length, first = !br.seeded;
+  for (let n = 0; most > 0 && n < slots * 3 && open() < slots; n++) {
+    if (!first && io.r() >= CONTRACT.board.post) break;
+    const tier = 1 + Math.floor(io.r() * most), rows = CONTRACTS.filter(x => x.tier === tier && !x.own); if (!rows.length) continue;
+    const def = rows[Math.floor(io.r() * rows.length)];
+    if (C.records.some(c => c.tmpl === def.id && c.state === 'open' && c.branch === br.town)) continue;
+    const rec = post(a, V, def, {tmpl: def.id, branch: br.town, k}, io.r);
+    if (rec && !first) io.tell(`На доске филиала новый договор: ${rec.label} (${tierWord(tier)}; платит ${issuerName(a, rec.issuer)} — ${rec.escrow} зол.).`, 'contract');
+  }
+  br.seeded = true;
+}
+// the open contracts `pick` takes off the board (a branch lost, the guild moved): the reserve back, told why
+export function dropContracts(a, G, pick, why, io) {
+  for (const rec of contractsOf(a).records) if (rec.state === 'open' && pick(rec)) close(a, G, rec, why, io);
 }
 // ── the guild's level (GUILD.level; the author's word 13.11): its fame as experience — the level reached, the highest tier the
 // world trusts it with; fame lost, the level lost with it
@@ -327,7 +348,7 @@ export function contractCards(a, G, ms = [], sort = 'tier') {
       ...(c.facts || [])];
     return {id: c.uid, contract: c.uid, errand: null, targetId: null, tier: c.tier, label: c.label, about: c.story || c.about, years: null, gold: c.escrow,
       ok: true, why: '', goal: c.goal, known: c.known, at: c.at, guard: c.s, risk: riskWord(c.s, might), facts, days: c.days, chain: !!c.chain,
-      margin: marginOf(c), left: Math.max(0, c.until - G.day)};
+      margin: marginOf(c), left: Math.max(0, c.until - G.day), branch: c.branch ?? null};
   }).sort(SORTS[sort] || SORTS.tier);
 }
 // the board's orders (ui/guildView.js): by tier, by pay, by the time to spare, by the road, by the offer running out
