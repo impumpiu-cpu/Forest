@@ -14,7 +14,7 @@
 //   ARMOR      the form of a body piece (data/balance/forms.js) → the flags of the body picture it is drawn with
 //              (the plates: `heavy` too from the material's tier 2); garment — no armour drawn; others — a jerkin
 export const LAIRS = {
-  griffin: 'nest', wyvern: 'nest', drake: 'cave', dragon: 'cave', spider: 'web', stoneworm: 'cave', bat: 'cave', varg: 'den',
+  griffin: 'nest', manticore: 'cave', wyvern: 'nest', drake: 'cave', dragon: 'cave', spider: 'web', stoneworm: 'cave', bat: 'cave', varg: 'den',
   goblins: 'camp', gnolls: 'camp', ogres: 'camp', trolls: 'camp', swamptrolls: 'camp', icetrolls: 'camp', giants: 'camp',
   wights: 'barrow', ghouls: 'barrow', necromancer: 'tower', vampire: 'manor', rift: 'rift',
 };

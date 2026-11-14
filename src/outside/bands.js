@@ -48,7 +48,7 @@ export function raiderStrength(t) {
 // next link, while the budget lasts by the same rule as fill. The rest of the mix comes in among them by its share of
 // its weight: the beasts (no hands, no roles) and those whose roles none of the band's links has a place for (an ogre
 // with the orcs: a brute, drawn its role of its own). Every member of a link knows it (`linkNo`, `linkKind`).
-function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
+function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost, most = BAND.max}) {
   const places = new Set(links.flatMap(([id]) => (LINKS.has(id) ? LINKS.get(id).roles : [])));
   const linked = sp => SPECIES.get(sp).inventory && Object.keys(mixOf(sp)).some(r => places.has(r) && mixOf(sp)[r] > 0);
   const out = [...extra], people = mix.filter(([sp, wt]) => wt > 0 && linked(sp)), beasts = mix.filter(([sp, wt]) => wt > 0 && !linked(sp));
@@ -56,7 +56,7 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
   let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0), no = 0, kind = null, slot = 0;
   const fits = c => (up ? left > 0 : c / 2 <= left);
   const under = sp => out.filter(m => m.species === sp).length < (max[sp] ?? Infinity);
-  for (let guard = 0; guard < BAND.linkGuard && out.length < BAND.max; guard++) {
+  for (let guard = 0; guard < BAND.linkGuard * Math.max(1, most / BAND.max) && out.length < most; guard++) {
     // a war beast now and then, as thick as the band's mix has them
     if (B > 0 && rng() < B / (P + B)) {
       const sp = weighted(rng, beasts.filter(([s]) => under(s) && fits(cost(s))));
@@ -73,7 +73,7 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
     out.push({species: sp, role, linkNo: no, linkKind: kind}); left -= cost(sp, role);
   }
   if (!out.length) { const sp = (people[0] || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null; out.push({species: sp, ...(role ? {role} : {})}); }
-  return out.slice(0, BAND.max);
+  return out.slice(0, most);
 }
 
 // the war beasts a beast-driver brings (role `lead`, data/roles.js): of the land's beasts and monsters, as thick as they
@@ -98,14 +98,15 @@ export const heads = (budget, t) => budget / raiderStrength(t);
 // big creatures comes out over as often as under; with `up` — while anything of the budget is left, so the heads are
 // rounded up: a campaign's foe, data/camp.js CAMP.foe); `max` caps a
 // species by head count ({ogre: 2}); `extra` — members who come anyway (a necromancer), paid from the budget
-// too. At least one member; no more than BAND.max.
-export function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, here = null, roles = null, least = null, links = null} = {}) {
+// too. At least one member; no more than BAND.max (`most` — another cap: a campaign's stormed place holds more, data/camp.js
+// CAMP.foe.mostGuard).
+export function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, here = null, roles = null, least = null, links = null, most = BAND.max} = {}) {
   const cost = (sp, role = null) => memberStrength(sp, t, role);
   if (here) mix = mix.map(([sp, wt]) => [sp, wt * (here[sp] ?? 1)]);   // the war beasts only as many as live about (data/raids.js BAND_BEASTS)
-  if (links?.length) return fillLinks(rng, budget, mix, t, links, {extra, max, up, cost});
+  if (links?.length) return fillLinks(rng, budget, mix, t, links, {extra, max, up, cost, most});
   const out = [...extra];
   let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0);
-  for (let guard = 0; guard < BAND.guard; guard++) {
+  for (let guard = 0; guard < BAND.guard * Math.max(1, most / BAND.max); guard++) {
     const fits = mix.filter(([sp, wt]) => wt > 0 && (up ? left > 0 : cost(sp) / 2 <= left) && out.filter(m => m.species === sp).length < (max[sp] ?? Infinity));
     if (!fits.length) break;
     let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
@@ -115,7 +116,7 @@ export function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, her
     out.push({species: sp, ...(role ? {role} : {})}); left -= cost(sp, role);
   }
   if (!out.length) { const sp = (mix.find(m => m[1] > 0) || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp, {bias: roles, least}) : null; out.push({species: sp, ...(role ? {role} : {})}); }
-  return out.slice(0, BAND.max);
+  return out.slice(0, most);
 }
 
 // what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing

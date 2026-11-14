@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ржавник: низкий зверь в пластинах панциря, длинные перистые усики, хвост с лопастью; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M26 70L22 88H30L32 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 72L36 88H44L44 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M58 72L58 88H66L64 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M68 70L70 88H78L74 70Z"/></g>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M18 64Q8 62 6 52"/>
+<path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M6 52L0 44L4 40L10 46L12 52Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M16 66Q16 42 44 40Q70 40 78 58L80 70Q50 76 22 74Q16 72 16 66Z"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="3" stroke-linecap="round" d="M28 48Q30 60 28 72M40 42Q42 58 40 74M52 41Q54 58 52 74M64 46Q66 60 64 73"/>
+<path class="detail" fill="none" stroke="shine" stroke-width="2" stroke-linecap="round" d="M30 46Q38 42 46 42"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M72 54Q74 46 84 46Q94 48 94 58Q92 66 82 66Q74 64 72 54Z"/>
+<circle class="figure" cx="86" cy="54" r="2.4" fill="ink"/>
+<g fill="none" stroke="ink" stroke-width="2.5" stroke-linecap="round"><path d="M86 48Q90 30 100 22"/><path d="M82 48Q80 30 86 16"/></g>
+<g class="figure" fill="none" stroke="#d07a3a" stroke-width="2" stroke-linecap="round"><path d="M92 34L96 38M95 28L99 31M88 30L84 32M86 22L82 22"/></g>
+</svg>

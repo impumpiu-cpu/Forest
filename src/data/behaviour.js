@@ -12,7 +12,7 @@ export const WAYS = {
   // a hunter of the pack: holds a stormed lair to the last; fire, a crowd and the settlement zone drive it off;
   // wounded (or a night hunter at dawn) it leaves; eats its kill, chases game, goes for a lone person,
   // gets its breath back, moves on when the land is empty, else roams — hungry, on the scent of prey
-  predator: ['defendLair', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
+  predator: ['defendLair', 'rout', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
   // a big grazer that stands its ground (a mule, a boar, a bear, an elk): fire sends it off; whoever comes at it is
   // kicked, whoever shot it is charged, a bold bull stands up for its herd; a pack mule walks behind its trader (`mule`);
   // it sniffs the herder's hay, else leaves, sleeps, grazes; one of a herd (an elk) also draws off from what comes
@@ -34,7 +34,7 @@ export const WAYS = {
   // ── people: a role is a list (agents/brains/index.js; the people's bodies: agents/people.js)
   // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
   // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
-  raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
+  raider: ['downed', 'fleeFire', 'rout', 'retreat', 'capture', 'raid'],
   // a forest beast called into a fight (agents/summon.js): it goes for the caller's foes, then back to the wood
   summoned: ['fleeFire', 'summoned'],
   // a golem of our side (agents/golem.js): no fire drives it (tag «Механизм»); it guards its post
@@ -49,13 +49,17 @@ export const WAYS = {
   // utility AI — every behaviour offers with its weight: the body, the work, the council, the trade, the healer, a prayer,
   // low spirits, a nechist's spell, a fire at the camp, the board's cries and alarms, the night watch, going along,
   // helping, binding a fallen foe, learning beside a master, idling; at the caravan's camp — its evening chores (campwork)
-  colonist: ['downed', 'fleeFire', 'warband', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
+  colonist: ['downed', 'fleeFire', 'rout', 'warband', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
   // a captive: the body, the camp's work, out of harm's way at the fire — no council, no flag, no watch, no trade, no
   // healer, no going along; kept inside the zone (keepIn)
   captive: ['downed', 'fleeFire', 'defend', 'keepIn', 'needs', 'campwork', 'work', 'idle', 'sulk', 'spellbound', 'pray', 'douse', 'muster', 'reserve', 'assist'],
   // a former slave: everything a free colonist may, but no flag, watch, council or trade
-  former: ['downed', 'fleeFire', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
+  former: ['downed', 'fleeFire', 'rout', 'defend', 'rescue', 'needs', 'campwork', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
 };
+
+// the map of influence (agents/influence.js; plan claude/combat-plan.md Бой-3, Wesnoth's power projection): each fighter's
+// strength spread over the cells about it, to nothing at `r`; laid anew every `every` ticks while a fight is on
+export const INFLUENCE = {r: 8, every: 20, mid: 0.5};
 
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
@@ -71,6 +75,24 @@ export const SQUAD = {
   burnNear: 1.6,     // a torch is put to a wall from this close
   burnFor: 60,       // after the fire is lit, the band lingers this long and goes
   rearHold: 150,     // the rear guard holds pursuers off this long
+  // the guards of a place stormed (goal `hold`, campaign/camp.js; plan claude/combat-plan.md Бой-2): they keep within `r` cells of
+  // their post (a lair's heart), go for a foe who comes within `r` + `chase` of it, and no further; `slack` — how far from its
+  // spot one stands at ease; `ring` — the spots spread about the post this far
+  hold: {r: 7, chase: 5, slack: 1.5, ring: 3, turn: 2.399963},
+  // a flank (plan claude/combat-plan.md Бой-3): a living band of at least `least` that has met the foe sends `share` of its front
+  // round the side of the foe's line where the foe is weakest (agents/influence.js) — `side` cells aside its middle, `deep`
+  // past it; there (within `near`), or struck on the way, it turns on the nearest foe; its blows from the side and behind
+  // land harder as any (data/balance/combat.js COMBAT.flank, back)
+  // an ambush (plan claude/combat-plan.md Бой-4; the donor OpenXcom setupAmbush): a band that lies in wait creeps up unseen (its
+  // members `sneaking`: seen only close, agents/combat.js) to within `strike` cells of the caravan's people, and strikes when
+  // all of it is there, or it is seen, or `wait` ticks pass — the first blows fall on the unaware (from behind: COMBAT.back)
+  lurk: {wait: 150, strike: 3, ready: 0.75},
+  creep: 0.6,   // the pace of one creeping up (× its own)
+  // a line (Бой-4, «стенка на стенку»): a living band of at least `least` come to fight (goal kill, slaughter) first forms a line
+  // `form` cells short of the foe, its members `space` cells apart across the way, and comes on together once `ready` of them
+  // stand in it or `wait` ticks pass
+  line: {least: 6, form: 8, space: 1.6, ready: 0.75, wait: 120},   // (and a band with ranks, whatever it came for: data/raids.js `ranks`)
+  flank: {least: 4, share: 0.34, side: 6, deep: 2, near: 2, answer: 2.5},   // (`answer`: a foe this close on the way is answered)   // (`turn`: the angle between two guards' spots — the golden one, so they spread)
   looters: 0.4,      // share of a looting band sent to the stores
   campPrey: 0.34,    // at a caravan's camp a band come for easy prey goes once this share of its number has fallen (agents/squad.js)
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
@@ -86,7 +108,10 @@ export const SQUAD = {
 //   mend        — the healer: goes to a fallen one of its band within `near`, works `ticks` on it; a sentient one gives
 //                 a potion to one below `potionBelow` of its health (`potionTicks` to give it); gives it up after `chase`
 //                 ticks; the one it dressed stands up with `standUp` of its health and fights on
-export const TACTICS = {kite: 2.5, kiteFor: 30, kiteRest: 60, kiteOut: 1.6, kiteStep: 2, mendReach: 1.3, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
+// `focus` (plan claude/combat-plan.md Бой-2 «отстрел», the donor 0 A.D. Petra: no more than two on one foe): a shooter picks among
+// the foes in its range the nearest, a soft one (a shooter, the wounded) the sooner (`focus.soft`), one already aimed at by
+// `focus.most` of its side's shooters the later (`focus.crowd` each, more past the most)
+export const TACTICS = {focus: {most: 2, crowd: 0.3, over: 2, soft: 0.5}, kite: 2.5, kiteFor: 30, kiteRest: 60, kiteOut: 1.6, kiteStep: 2, mendReach: 1.3, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
 
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this
@@ -328,9 +353,10 @@ export const TORCH = {casual: 0.06, clear: 3};
 // the cold × the season's dress, a lost share of speed × `bodySpeed`. On the back: a quiver for the bow in hand
 // `quiver`, a basket `carryBase` + carry × `carry` × liking for gathering, a spare weapon `spareWeapon`; a second
 // one-hander adds `second`. The colonist swaps only for a loadout better by `swap`.
+// `act` — worth of a thing in hand its role's act needs (the forge-master's coal: «Огнедышащий I», data/roles.js `hold`)
 export const GEAR = {
   brave: [0.5, 0.5], blowTicks: 12, melee: 0.6, meleeBase: 0.15, silverHere: 1.6, silverMet: 0.35,
-  ranged: 0.55, rangedBase: 0.1, noAmmo: 0.3, block: 1.6, tool: 1.4, backTool: 1.3, handSpeed: 2,
+  ranged: 0.55, rangedBase: 0.1, act: 1.5, noAmmo: 0.3, block: 1.6, tool: 1.4, backTool: 1.3, handSpeed: 2,
   armorBrave: [0.6, 0.4], armor: 2, warmth: 0.8, bodySpeed: 2, quiver: 3, carryBase: 0.25, carry: 0.15, spareWeapon: 0.05,
   second: 0.05, swap: 0.12,
 };

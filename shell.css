@@ -101,3 +101,6 @@ body.shelled > .wrap > header{display:none}
 .sh-say[data-side="left"]:after{left:calc(8 * var(--u));border-top-color:transparent;border-right-color:#f3e9c9;top:40%;left:-14px}
 .sh-say[data-side="right"]:after{left:auto;right:-14px;border-top-color:transparent;border-left-color:#f3e9c9;top:40%}
 .sh-say[hidden]{display:none}
+/* «Новый поход» (forest.html #quick): two panels side by side, not one boxed form */
+.sh-center > .newrun{width:min(100%,calc(1180 * var(--u)));background:none;border:0;padding:0}
+.sh-center > .newrun > .menu-form{background:var(--sh-panel);border:1px solid var(--sh-edge);border-radius:calc(6 * var(--u));padding:calc(16 * var(--u)) calc(20 * var(--u))}

@@ -146,6 +146,10 @@ function arrivalFor(sp) {
   });
 }
 for (const sp of SPECIES.filter(s => s.arrive)) arrivalFor(sp);
+// the dragon never comes to a colony's map of itself: only a campaign brings it — its lair stormed, or met on the wing
+// (campaign/errands.js, campaign/land.js lairFoe); one, as it is
+MIGRATIONS.register({id: 'dragon', species: 'dragon', faction: 'predators', minDist: 30, topic: 'danger', level: 'notice', accept: () => 0,
+  init: a => { a.name = 'Дракон'; }, groupInit: group => { for (const a of group) a.pack = group[0].id; }});   // (a hunter is of a pack: agents/hunting.js packOf)
 // a species made in the constructor (data/species.js cloneSpecies) comes and goes as the one it was copied from
 onSpeciesChange((what, sp) => {
   if (what !== 'added' && MIGRATIONS.has(sp.id)) MIGRATIONS.unregister(sp.id);

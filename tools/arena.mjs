@@ -99,7 +99,8 @@ export async function engine() {
     import('../src/data/species.js'), import('../src/data/races.js'), import('../src/data/monsters.js'), import('../src/core/rng.js'), import('../src/data/special.js')]);
   const {itemDef} = await import('../src/agents/equipment.js'), power = await import('../src/data/balance/power.js'), {RULES} = await import('../src/data/balance/rules.js');
   const strength = await import('../src/agents/strength.js'), {STRENGTH, CREATURES} = await import('../src/data/balance/creatures.js'), {kitFor: raidKit} = await import('../src/outside/bands.js');
-  return {newGame, DEFAULT_CFG, createAgent, maxHp, TASKS, T, dress, refreshBody, ITEMS, SPECIES, RACES, MONSTERS, newStreams, mulberry, seedNumber, STATS, itemDef, power, RULES, strength, STRENGTH, CREATURES, raidKit};
+  const {stepAct, stepBurning} = await import('../src/agents/abilities.js');
+  return {stepAct, stepBurning, newGame, DEFAULT_CFG, createAgent, maxHp, TASKS, T, dress, refreshBody, ITEMS, SPECIES, RACES, MONSTERS, newStreams, mulberry, seedNumber, STATS, itemDef, power, RULES, strength, STRENGTH, CREATURES, raidKit};
 }
 
 // a flat grass field with nobody on it (as in tools/logic-check.mjs)
@@ -211,7 +212,8 @@ export function duel(E, w, P, opt, i) {
       // venom keeps biting (as in agents/body.js)
       if (me.poison) { if (w.tick < me.poison.until) { me.hp -= me.poison.dmg; if (me.hp <= 0) { me.dead = true; continue; } } else me.poison = null; }
       if (me.task?.id !== 'fight' || me.task.target !== foe) me.task = {id: 'fight', target: foe};
-      fight.step(w, me, me.task);
+      if (me.burning) E.stepBurning(w, me, false);
+      if (!E.stepAct(w, me)) fight.step(w, me, me.task);   // (a breath, a sting, a grip: agents/abilities.js)
     }
   }
   const winner = out(b) && !out(a) ? 'a' : out(a) && !out(b) ? 'b' : 'draw';
@@ -242,7 +244,8 @@ function brawl(E, w, opt, A, B) {
       if (!foe) { let bd = Infinity; for (const o of aSet.has(me) ? B : A) { if (out(o)) continue; const dd = (o.x - me.x) ** 2 + (o.y - me.y) ** 2; if (dd < bd) { bd = dd; foe = o; } } }
       if (!foe) continue;
       if (me.task?.id !== 'fight' || me.task.target !== foe) me.task = {id: 'fight', target: foe};
-      fight.step(w, me, me.task);
+      if (me.burning) E.stepBurning(w, me, false);
+      if (!E.stepAct(w, me)) fight.step(w, me, me.task);   // (a breath, a sting, a grip: agents/abilities.js)
     }
   }
   const upA = A.filter(a => !out(a)).length, upB = B.filter(b => !out(b)).length;

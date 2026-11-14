@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- анхег: роющее насекомое — низкий панцирь из сегментов, шесть ног, серповидные жвалы, усики, капля кислоты; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="40" ry="5" fill="shade"/>
+<g class="up" fill="none" stroke="ink" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M28 70L18 78L14 88"/><path d="M42 72L38 82L40 90"/><path d="M56 72L60 82L58 90"/><path d="M66 70L76 78L80 88"/></g>
+<g class="no-up" fill="none" stroke="ink" stroke-width="4" stroke-linecap="round"><path d="M26 74L12 82M44 76L42 86M58 76L62 86M68 72L82 80"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 66Q4 52 18 50Q24 52 26 58Q22 70 12 72Q4 72 4 66Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M20 58Q24 42 44 42Q62 42 66 56Q64 72 44 74Q24 74 20 58Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M60 54Q66 44 78 46Q88 48 88 58Q86 68 76 70Q64 70 60 54Z"/>
+<path class="figure" fill="none" stroke="shade" stroke-width="3" stroke-linecap="round" d="M30 46Q32 58 30 72M40 42Q42 58 40 74M50 43Q52 58 50 74M10 54Q12 62 10 70"/>
+<path fill="bone" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M84 52Q96 46 100 54Q94 52 88 58Z"/>
+<path fill="bone" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M84 64Q96 70 100 62Q94 64 88 60Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" stroke-linecap="round" d="M78 46Q80 30 92 24M74 46Q72 32 80 22"/>
+<circle class="figure" cx="78" cy="54" r="2.6" fill="ink"/>
+<path class="detail" fill="#a8c83a" stroke="ink" stroke-width="1.5" d="M96 58Q100 62 98 66Q94 66 95 61Z"/>
+</svg>

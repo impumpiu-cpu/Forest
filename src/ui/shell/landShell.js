@@ -36,7 +36,7 @@ export class LandShell extends Shell {
 export class QuickShell extends Shell {
   constructor(view) {
     const S = () => $('quick');
-    super(view, {section: 'quick', title: ['quickTitle'], top: [], topEnd: [], rail: [], menus: {}, map: () => null, center: () => S().querySelector('.menu-form'), mini: false, side: [], strip: null});
+    super(view, {section: 'quick', title: ['quickTitle'], top: [], topEnd: [], rail: [], menus: {}, map: () => null, center: () => S().querySelector('.newrun'), mini: false, side: [], strip: null});
     const back = S().querySelector('.app-head [data-go="home"]'); if (back) this.spec.topEnd.push(back.id ||= 'quickBack');
   }
 }

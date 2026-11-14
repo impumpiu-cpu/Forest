@@ -2,12 +2,44 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/index.js';
-import {caravanDay, ended, finished, alive, die, dayShot} from './march.js';
+import {caravanDay, ended, finished, alive, die, dayShot, handedOf} from './march.js';
 import {finish, stepEpilogue} from './ending.js';
 import {personOf, agedOut} from '../atlas/index.js';
-import {upgradeMembers} from './start.js';
+import {upgradeMembers, draw} from './start.js';
+import {makeErrand, targetWhy} from './errands.js';
+import {questTarget, questIntro} from './quest.js';
+import {capacity} from './baggage.js';
+import {say} from './march.js';
+import {plural} from '../core/util.js';
+import {YEAR_DAYS} from '../data/seasons.js';
 
 export {newCampaign, capitals} from './start.js';
+export {restMember, foundGuild, hire, stepGuild, guildBoard, takeChore, choreWhy, launch, launchWhy, expedition, membersOf, atHouse, healing, ageOf, roleWord, questWord, rankOf, rankWhy, muster, musterWhy, namedMost, devotionOf, campsOf, levelOf, tierOf, levelNext, abortWhy, recall, partyMost, rosterMost, parties, partiesMost, watchParty, refreshRecruits, recruitWhy, takeRecruit, GUILD} from './guild.js';
+export {errandsFor, errandOf, boardFor} from './errands.js';
+
+// ── a campaign of chapters (campaign/ending.js handIn): the caravan at its capital, an errand handed in
+// another errand for the same company (data/errands.js id): fresh from the capital — the satchels full, the wounds tended
+// targetId — the lair picked on the board (campaign/errands.js boardFor): one no longer there throws, the campaign untouched
+export function nextErrand(a, id, {targetId = null} = {}) {
+  const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не ждёт поручения.');
+  if (targetId != null) { const why = targetWhy(a, K, id, targetId); if (why) throw new Error(`Цель не ждёт: ${why}.`); }
+  const {r, done} = draw(K, 'errand');
+  const Q = makeErrand(a, K, r, id, {targetId}); if (!Q) { done(); throw new Error('В этом мире такого поручения сейчас нет.'); }
+  K.quest = Q; K.phase = 'out'; K.path = null; K.via = null; K.viaWhy = null; K.camp = 0; K.hungry = 0;
+  K.food = Math.max(K.food, capacity(K));
+  for (const m of alive(K)) if (!m.captive) m.hp = 1;
+  K.goal = questTarget(a, K, r);
+  done();
+  say(a, K, `Караван снова выходит из столицы. ${questIntro(a, K)}`, 'start', true);
+  return K;
+}
+// the end: the company goes home for good — the epilogue, then the ascension (campaign/ascend.js)
+export function endCampaign(a) {
+  const K = a.campaign; if (K?.phase !== 'home') throw new Error('Караван не в столице.');
+  K.phase = 'won';
+  say(a, K, `Караван распущен: ${handedOf(K).length} ${plural(handedOf(K).length, 'поручение', 'поручения', 'поручений')} исполнено${K.done.length > handedOf(K).length ? `, ${K.done.length - handedOf(K).length} провалено` : ''}, ${Math.round(K.day / YEAR_DAYS * 10) / 10} лет в пути.`, 'home', true);
+  finish(a, K);
+}
 export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
 export {chronicleText} from './chronicle.js';
 
@@ -16,6 +48,7 @@ export {chronicleText} from './chronicle.js';
 export function stepCampaign(a) {
   const K = a.campaign;
   if (!K) return false;
+  if (K.phase === 'home') return true;   // the errand handed in: the world waits for the player's word (nextErrand, endCampaign)
   if (ended(K)) {
     if (!K.epilogue) finish(a, K);   // a campaign saved at its very end, before this was
     if (!K.epilogue.done) stepEpilogue(a, K);
@@ -92,3 +125,14 @@ export {woundLabel, maimMax, scarsOn, maimsOn, scarEased} from './maims.js';
 export {FATES, HOWS, fightReportText, fightStats, groupText, walkReportText, walkStats} from './stats.js';
 export {workText} from './works.js';
 export {ASCEND, emptyRegistry, mayAscend, ascend, summonable, takeHeroes, summonLine, snapshotOf} from './ascend.js';
+export {contractsOf, contractOf, contractCards, issuerName} from './contracts.js';
+export {houseOf, roomLevel, roomBy, working, staffOf, buildWhy, nextCost, postWhy, trainWhy, treatWhy, takeBack} from './house.js';
+export {build as buildRoom, setPost as setRoomPost, sendTo as sendToRoom} from './house.js';
+export {templeOn, ascendPrice, summonPrice, templeAscendWhy, templeSummonable, templeSummonWhy} from './temple.js';
+export {guildAscend, guildSummon} from './guild.js';
+export {guildOpenBranch, guildCloseBranch, guildSetManager, guildTransfer, guildMove} from './guild.js';
+export {branchesOf, branchAt, branchesMost, branchCost, houseTown, managerOf, branchIdle, branchWorks, feeK, priceK, payK, tierAt, openWhy, openBranch, closeBranch, managerWhy, setManager, roadDays, roadGold, transferWhy, transfer, moveSpan, moveCost, moveWhy, moveGuild, tiedHere} from './branches.js';
+export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from './armory.js';
+export {cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, release as releaseBeast, keepHome, beastLabel, beastStrength} from './cages.js';
+export {kinOf, relWord, moodOf} from './kin.js';
+export {restWhy, retireWhy, unretireWhy, dismissWhy, giftOf} from './retire.js';

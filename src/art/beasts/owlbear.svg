@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- совомед: туша медведя в перьях, совиная голова — лицевой диск, крючковатый клюв, перьевые «уши», когти; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<g class="up"><rect x="18" y="62" width="10" height="26" rx="5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="31" y="62" width="10" height="26" rx="5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="58" y="62" width="10" height="26" rx="5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><rect x="71" y="62" width="10" height="26" rx="5" fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round"/><path class="figure" fill="bone" stroke="ink" stroke-width="1.5" stroke-linejoin="round" d="M68 86L66 91L70 88ZM72 86L71 92L75 88ZM76 86L77 91L79 87ZM81 86L79 91L84 88Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M4 60Q2 30 30 26Q46 22 60 30L78 40L80 70Q50 76 20 72Q4 70 4 60Z"/>
+<path class="figure" fill="none" stroke="shade" stroke-width="3" stroke-linecap="round" d="M16 44Q22 40 28 44M26 36Q32 32 38 36M36 46Q42 42 48 46M44 34Q50 30 56 34M22 56Q28 52 34 56M46 58Q52 54 58 58"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M62 30L66 12L74 22Q80 18 86 22L94 12L96 32Q100 44 94 54Q86 62 74 60Q62 56 62 44Z"/>
+<path fill="light" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M68 38Q68 26 79 26Q92 26 92 38Q92 50 80 52Q68 50 68 38Z"/>
+<circle class="figure" cx="75" cy="36" r="4" fill="#ffd36a" stroke="ink" stroke-width="2"/><circle class="figure" cx="86" cy="36" r="4" fill="#ffd36a" stroke="ink" stroke-width="2"/>
+<circle class="figure" cx="75.5" cy="36" r="1.6" fill="ink"/><circle class="figure" cx="86.5" cy="36" r="1.6" fill="ink"/>
+<path fill="gold" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M77 42H86L83 52Q81 54 80 52Z"/>
+</svg>

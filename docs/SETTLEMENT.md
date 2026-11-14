@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Как играть](GAME.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Карта мира](WORLD.md) · **Поселение** · [Поведение](BEHAVIOUR.md) · [Плен и свита](CAPTIVES.md) · [Кампания](CAMPAIGN.md) · [Правила](RULES.md) · [Баланс вещей](BALANCE.md) · [Картинки](ART.md) · [Таблицы](TABLES.md) · [Справочник](REFERENCE.md) · [Проверки](TESTING.md) · [Перенос Ver_b](MIGRATION.md) · [Отложено](TODO.md)
+[Главная](../README.md) · [Как играть](GAME.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Карта мира](WORLD.md) · **Поселение** · [Поведение](BEHAVIOUR.md) · [Плен и свита](CAPTIVES.md) · [Поход](CAMPAIGN.md) · [Правила](RULES.md) · [Баланс вещей](BALANCE.md) · [Картинки](ART.md) · [Таблицы](TABLES.md) · [Справочник](REFERENCE.md) · [Проверки](TESTING.md) · [Перенос Ver_b](MIGRATION.md) · [Отложено](TODO.md)
 
 # Поселение
 

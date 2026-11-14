@@ -14,7 +14,7 @@ import {CREATURE_MODS, ADD_MODS} from '../data/mods.js';
 import {WOUNDS} from '../data/wounds.js';
 import {exhaustionRow, taintRow, marksOf, effectsOf, CONDITIONS} from '../data/conditions.js';
 import {illStage} from '../data/afflictions.js';
-import {PERKS} from '../data/perks.js';
+import {PERKS, rowOf, heldPerks} from '../data/perks.js';
 
 // the limits of the species (a variety of a race is a race of its own: data/races.js)
 export function limits(sp) {
@@ -137,11 +137,11 @@ export function refreshBody(a) {
   P.into(m);
   // the perks (data/perks.js): a learned knack adds to what one is — on top of the innate, the traits and the wounds, not
   // a contest with them; a goblin's herd aura while three of its kind are in the company (campaign/camp.js a.kinHere)
-  for (const p of a.perks || []) {
-    const R = PERKS.has(p.id) ? PERKS.get(p.id) : null; if (!R) continue;
+  for (const p of heldPerks(a)) {   // (learned, and its class's given: data/classes.js)
+    const R = PERKS.has(p.id) ? rowOf(PERKS.get(p.id), p.rank) : null; if (!R) continue;   // (its rank's row, written out: data/perks.js)
     const mods = {...(R.mods || {}), ...(R.aura && (a.kinHere || 0) >= R.aura.kin ? R.aura.mods : {})};
-    for (const [k, v] of Object.entries(mods)) { if (ADD.has(k)) m[k] = (m[k] ?? 0) + v * (p.rank || 1); else m[k] = (m[k] ?? 1) * v ** (p.rank || 1); }
-    if (R.hp) hpMul *= R.hp ** (p.rank || 1);
+    for (const [k, v] of Object.entries(mods)) { if (ADD.has(k)) m[k] = (m[k] ?? 0) + v; else m[k] = (m[k] ?? 1) * v; }
+    if (R.hp) hpMul *= R.hp;
   }
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;

@@ -1,16 +1,17 @@
 // Perks (plan claude/xp-plan.md, Ver_E Э3; data/perks.js, campaign/perks.js; docs/CAMPAIGN.md «Перки»).
 //   every perk of the catalogue is reachable by a deed both modes see (the expert's Р1: the mode must not shut a perk);
-//   none is offered without its deed, its race, its hands, its letters, its level; a rank asks RANK_LEVEL more;
+//   none is offered without its deed, its race, its hands, its letters, its level; a rank asks what its own row asks;
 //   the gob with a shield earns «Плечом к плечу» by its deeds, not by Strength;
 //   the pick is the member's own (its character), from the campaign's own stream: the same seed — the same perk;
 //   each way a perk works reaches what it should: the body (refreshBody, on top of a trait), the fight (cover, blows, the
 //   first shot, the dressing, the blood price, the frenzy's weariness), the day (the watch, the load, the prices, the better
 //   ware, the spoils, the sight, the pursuit, the bonds).
 //   node tools/perk-check.mjs
+import {CLASSES} from '../src/data/classes.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
-import {PERKS, RANK_LEVEL, perkOf, perkMulA} from '../src/data/perks.js';
+import {PERKS, rowOf, perkOf, perkMulA, perkAccess} from '../src/data/perks.js';
 import {meets, offered, pickPerk, perkVal, perkMul, companyVal, companyMul, pullOf} from '../src/campaign/perks.js';
 import {levelEvening, need, ensureXp} from '../src/campaign/experience.js';
 import {capacity} from '../src/campaign/baggage.js';
@@ -25,6 +26,7 @@ import {gearSpec} from '../src/agents/itemDefs.js';
 import {noteScars} from '../src/campaign/maims.js';
 import {fight} from '../src/campaign/fight.js';
 import {inLine, CAMPAIGN} from '../src/data/campaign.js';
+import {AUTOFIGHT} from '../src/data/autofight.js';
 import {memberMight} from '../src/campaign/march.js';
 
 let fails = 0;
@@ -52,6 +54,7 @@ function bothModes(P) {
   const R = P.req || {}, o = {acts: {}, work: {}, special: {...(R.stat || {})}, level: (R.level || 1) + 6};
   if (R.race) o.race = R.race[0];
   if (R.role) { o.fight = R.role[0]; }
+  if (R.cls) o.fight = CLASSES.get(R.cls[0]).role;   // (a class's own: its role — data/classes.js)
   if (R.group) o.fight = {'линия': 'shieldman', 'дальний бой': 'archer'}[R.group[0]] || o.fight;
   if (R.hand) o.hand = [R.hand.find(f => FORMS[f]) || R.hand[0]];
   if (R.work) { const [sk, v] = Object.entries(R.work)[0]; o.work[sk] = v; }
@@ -67,8 +70,8 @@ function bothModes(P) {
 // ── every perk is reachable by deeds both modes see
 {
   const bad = [];
-  for (const P of PERKS.all()) { const m = bothModes(P); if (!m || !meets(m, P)) bad.push(P.id); }
-  ok(!bad.length, `каждый перк каталога (${PERKS.all().length}) открывается делом, которое видят оба режима`, bad.join(', ') || 'все');
+  for (const P of PERKS.all().filter(P => perkAccess(P).learn)) { const m = bothModes(P); if (!m || !meets(m, P)) bad.push(P.id); }
+  ok(!bad.length, `каждый перк каталога за уровень (${PERKS.all().filter(P => perkAccess(P).learn).length}) открывается делом, которое видят оба режима`, bad.join(', ') || 'все');
 }
 
 // ── nothing without its deed, race, hands, letters, level
@@ -80,7 +83,7 @@ function bothModes(P) {
   ok(!meets(who({special: {S: 6}, hand: ['maul'], acts: {killBlow: 3}}), P('breaker')) && meets(who({special: {S: 7}, hand: ['maul'], acts: {killBlow: 3}}), P('breaker')), 'проламыватель — единственный, кому нужна Сила 7');
   ok(!meets(who({level: 1, acts: {watch: 9}}), P('secondWind')), 'до уровня перка нет');
   const h = who({special: {C: 6}, acts: {trade: 3}, level: 4}), hp = P('haggler');
-  ok(meets(h, hp, 1) && !meets(h, hp, 2), 'второй ранг требует больше уровня и больше дел', `уровень ${hp.req.level + RANK_LEVEL} и ${hp.req.any[0][1] * 2} сделок`);
+  ok(meets(h, hp, 1) && !meets(h, hp, 2), 'второй ранг требует больше уровня и больше дел', `уровень ${rowOf(hp, 2).req.level} и ${rowOf(hp, 2).req.any[0][1]} сделок`);
   ok(!meets(who({race: 'orc', fight: 'firespitter', hand: ['bow'], acts: {hit: 30}}), P('steadyShot')), 'мастеру горна «Выждать выстрел» не предлагается');
 }
 
@@ -96,7 +99,7 @@ function bothModes(P) {
   const r1 = run();
   ok(r1 === run() && r1.split(',').filter(Boolean).length >= 4, 'тот же сид — те же перки в том же порядке', r1);
   const m = who({acts: {watch: 9}, level: 30}); m.perks = [];
-  const got = []; for (let k = 0; k < PERKS.all().length + 3; k++) { const p = pickPerk(K, m); if (p) got.push(p.id); }
+  const got = []; for (let k = 0; k < PERKS.all().filter(P => perkAccess(P).learn).length + 3; k++) { const p = pickPerk(K, m); if (p) got.push(p.id); }
   ok(got.filter(x => x === 'secondWind').length === 1 && !offered(m).length, 'перк берут один раз (ранги — до последнего); каталог кончился — перка нет', got.join(','));
   const brave = who(); brave.local.traits = ['brave']; brave.local.leans = {persist: 1};
   ok(pullOf(brave, PERKS.get('oldWolf')) > pullOf(who(), PERKS.get('oldWolf')), 'характер тянет: смелого и настойчивого — к «Старому волку»');
@@ -163,22 +166,26 @@ function bothModes(P) {
   // …and saves lives, not bruises: the deadly chance of the covered ÷ cover (Р3) — the maims of those not in the line, many fights
   const deadly = (s, cov) => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}); for (const m of K2.members) ensureXp(m);
     if (cov) for (const m of K2.members.filter(inLine)) m.perks = [{id: 'shoulder', rank: 1}];
-    fight(a2, K2, {kind: 'raiders', strength: 2, label: 'налётчики'}, rng(s), 'night');
+    fight(a2, K2, {kind: 'raiders', strength: 1, label: 'налётчики'}, rng(s), 'night');
     return K2.members.filter(m => !inLine(m)).reduce((v, m) => v + (m.maims || 0) + (m.alive ? 0 : 1), 0); };
   // (the deadly chance raised for the count, then put back: 0.02 gives too few to tell)
-  const M0 = CAMPAIGN.fight.mortal; CAMPAIGN.fight.mortal = 0.3;
+  // (the quick fight's toll raised for the count, then put back: data/autofight.js — the map's measure gives too few to tell)
+  const X0 = AUTOFIGHT.extra; AUTOFIGHT.extra = 1.5;
   let d0 = 0, d1 = 0; for (let s = 1; s <= 60; s++) { d0 += deadly(s, false); d1 += deadly(s, true); }
-  CAMPAIGN.fight.mortal = M0;
-  ok(d1 < d0 * 0.85, 'быстрый бой: прикрытый щитоносцем реже получает смертельную рану', `увечий и смертей не в строю за 60 боёв (смертельный шанс 0,3 на время счёта): ${d0} → ${d1}`);
+  AUTOFIGHT.extra = X0;
+  ok(d1 < d0 * 0.85, 'быстрый бой: прикрытый щитоносцем реже получает смертельную рану', `увечий и смертей не в строю за 60 боёв (потери быстрого боя ×1,5 на время счёта): ${d0} → ${d1}`);
   // the one saved stands up stronger with «Полевая перевязь» in the company; one maimed is out of the fight
   const saved = perk => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}), [m, h] = K2.members; for (const x of K2.members) ensureXp(x);
     for (const x of K2.members) x.hp = x === m ? 0.01 : 5; if (perk) h.perks = [{id: 'fieldDressing', rank: 2}];
     fight(a2, K2, {kind: 'raiders', strength: 0.3, label: 'налётчики'}, () => 0.001, 'night'); return m.hp; };
+  // (a fight with no dead and no maims, only blows: data/autofight.js read as one plain row)
+  const T0 = AUTOFIGHT.table, E0 = AUTOFIGHT.else; AUTOFIGHT.table = {}; AUTOFIGHT.else = {r: [1], win: [1], dead: [0], maim: [0], hp: [0.0125], pot: [0]};   // (about one blow in all)
   const h0 = saved(false), h1 = saved(true);
   // the healer saved does not bind itself (Р3): its own «Полевая перевязь» does not raise it
   const self = () => { const a2 = fresh(), K2 = newCampaign(a2, cap.town, {mode: 'auto'}), [m] = K2.members; for (const x of K2.members) { ensureXp(x); x.hp = x === m ? 0.01 : 5; }
     m.perks = [{id: 'fieldDressing', rank: 2}]; fight(a2, K2, {kind: 'raiders', strength: 0.3, label: 'налётчики'}, () => 0.001, 'night'); return m.hp; };
-  ok(Math.abs(self() - h0) < 1e-9, 'знахарь с «Полевой перевязью» не перевязывает сам себя', `${self().toFixed(2)} при ${h0.toFixed(2)} без перка`);
+  const hs = self(); AUTOFIGHT.table = T0; AUTOFIGHT.else = E0;
+  ok(Math.abs(hs - h0) < 1e-9, 'знахарь с «Полевой перевязью» не перевязывает сам себя', `${hs.toFixed(2)} при ${h0.toFixed(2)} без перка`);
   ok(h1 > h0 + 0.15, 'быстрый бой: вытащенный встаёт крепче, если в отряде «Полевая перевязь»', `${h0.toFixed(2)} → ${h1.toFixed(2)}`);
   const a3 = fresh(), K3 = newCampaign(a3, cap.town, {mode: 'auto'}), arm = K3.members.find(m => m.gear.hand.length > 1) || K3.members[0];
   const before = memberMight(arm, true), bought = memberMight(arm); arm.wounds = [{id: 'lostArm', day: null}];

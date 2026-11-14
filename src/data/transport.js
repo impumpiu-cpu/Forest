@@ -11,6 +11,8 @@ export const CELL = 6, BOX = 10;
 // rides) and four cells; `pack` carries two boxes and walks; `draft` — what pulls a wagon: one beast
 // of `pulls` 1, or two of 0.5. Speeds are the species' own (data/species.js `speed`).
 export const BEASTS = {
+  // a war beast of the guild's cages (campaign/cages.js): its species its own (b.species), no load, a fighter at the company's side
+  war:   {use: 'war', label: 'боевой зверь', plural: 'боевые звери', acc: 'боевого зверя'},
   horse: {use: 'ride', cells: 4, pulls: 0.5, label: 'лошадь', plural: 'лошади', acc: 'лошадь'},
   camel: {use: 'ride', cells: 4, pulls: 0.5, label: 'верблюд', plural: 'верблюды', acc: 'верблюда'},
   mule:  {use: 'pack', boxes: 2, pulls: 1, label: 'мул', plural: 'мулы', acc: 'мула'},

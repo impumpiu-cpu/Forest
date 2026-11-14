@@ -65,7 +65,9 @@ import {SEAM, FLORA, OUTLAWS} from '../seam.js';
 import {SHAPE} from '../atlas.js';
 import {EROSION, RIVERS} from '../hydrology.js';
 import {CAMPAIGN as CAMP_RULES, GAME, MINE, NIGHT} from '../campaign.js';
+import {MORALE} from '../morale.js';
 import {QUEST} from '../quest.js';
+import {ERRANDS} from '../errands.js';
 import {MARKET, VISIT, LOYALTY, CONTRACT, COMPANIONS, FREED, HIRES, SMITH, EARN} from '../market.js';
 import {BUBBLE, THINGS, AMBUSH, HERD as GAME_HERD, TRAIN} from '../bubble.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../camp.js';
@@ -132,7 +134,8 @@ import {EPILOGUE} from '../epilogue.js';
 import {FOLK_RAIDS} from '../seam.js';
 import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
 import {ACTS, XP} from '../experience.js';
-import {PERKS} from '../perks.js';
+import {PERKS, PERK_WHO, PERK_FROM, perkAccess, speciesGrants, perkRanks} from '../perks.js';
+import {CLASSES} from '../classes.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -212,7 +215,7 @@ export const TABLES = [
       col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,
-      col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
+      col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'), col('catchable', 'Ловится гильдией', 'bool', {note: 'гильдия может поймать его для клеток: свои дела «Поймать…» (campaign/contracts.js); тир — по опасности (ПО)'}), col('cr', 'Опасность (ПО D&D)', 'num', {min: 0, nullable: true, note: 'показатель опасности по таблицам D&D — мерка относительной силы; тир поимки гильдией (data/contracts.js CONTRACT.capture)'}),
     ]},
   // the behaviours a species row may list (agents/behaviours/): code, shown for reference
   {id: 'behaviours', label: 'Поведения', group: 'Существа', key: 'id', computed: true, rows: () => BEHAVIOURS.all(),
@@ -509,6 +512,7 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('species', 'Хозяин', 'ref', {ref: SPECIES}), col('flies', 'Летает', 'bool'), col('ground', 'Место'),
       col('radius', 'Владения', 'num', {min: 0}), col('density', 'Плотность', 'num', {min: 0}), col('max', 'Логов в мире', 'int', {min: 0}),
       col('breed', 'Плодится', 'num', {min: 0, max: 1}), col('rivals', 'Соперники', 'ids', {ref: 'lairs'}), col('color', 'Цвет', 'color'),
+      col('danger', 'Опасность', 'num', {min: 0, note: '× силы боя с его жителями в походе: в глуши, у логова, на штурме (campaign/land.js lairDanger)'}),
       col('tribe', 'Племя', 'bool'), col('riders', 'Верхом на', 'ref', {ref: SPECIES, note: 'на ком ездят налётчики племени'}), col('rotAt', 'Гниль для жизни', 'num', {min: 0, max: 1, note: 'мёртвым: сколько гнили нужно, чтобы держаться'}),
       col('spawn', 'Приходит сам', 'num', {min: 0, max: 1, note: 'шанс в год появиться в истории (мёртвые, разломы)'}), col('drinks', 'Пьёт город', 'num', {min: 0, max: 1, note: 'вампир: доля жителей за осень при полной силе'}), col('might', 'Сила набега', 'num', {min: 0}),
     ]},
@@ -551,6 +555,9 @@ TABLES.push(
   {id: 'landRules', label: 'Создание земли', group: 'Мир', note: 'Пределы руки на экране «Создать землю» (data/atlas.js SHAPE), эрозия и реки генератора (data/hydrology.js).',
     ...grp({shape: SHAPE, erosion: EROSION, rivers: RIVERS})},
   objectTable({id: 'soilsAuto', label: 'Почвы', group: 'Мир', note: 'Почвы карты мира (data/soils.js).', obj: () => Object.fromEntries(SOILS.all().map(x => [x.id, x]))}),
+  // Бой
+  {id: 'moraleRules', label: 'Мораль', group: 'Существа', note: 'Личная мораль в бою (data/morale.js MORALE; agents/morale.js): лестница состояний (уверен, стоек, колеблется, ломается, бежит) с числом 0…100 под ней; события (павшие, раны, убитые враги), перевес и окружение, офицеры, Решимость видов и их характер.',
+    ...grp({morale: MORALE})},
   // Поход
   {id: 'campaignRules', label: 'Правила похода', group: 'Караван', note: 'Поход каравана (data/campaign.js CAMPAIGN, GAME, MINE), ночные опасности (NIGHT), квест (data/quest.js QUEST).',
     ...grp({campaign: CAMP_RULES, game: GAME, mine: MINE, night: NIGHT, quest: QUEST})},
@@ -575,7 +582,28 @@ TABLES.push(
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
   autoTable({id: 'acts', label: 'Дела и опыт', group: 'Караван', note: 'За что участник похода получает опыт (data/experience.js ACTS): основа (ground) — всем, кто был, без буквы; дела — тому, кто сделал, с буквой SPECIAL (stat; skill — буква навыка, role — буквы роли), которую растит вечер нового уровня (campaign/experience.js).', rows: () => ACTS.all()}),
+  autoTable({id: 'errands', label: 'Поручения', group: 'Караван', note: 'Что столица поручает каравану (data/errands.js; docs/CAMPAIGN.md «Поручения»): tier — ступень I–V; how — crown (корона истории мира), epic (бедствие эпохи), lair (логово мира: lairs — какие виды, captives — где держат пленных, leader — с живым главарём); at — дальность в долях диагонали мира; clueAt — следы на пути (пусто — место известно); guard — × гарнизона логова (его сила в мире × опасность вида — ступень поручения, не расстояние); trophy — что несут в столицу; pursuit — погоня; years — срок; gold — плата столицы.', rows: () => ERRANDS.all()}),
   autoTable({id: 'perks', label: 'Перки', group: 'Караван', note: 'Приёмы, что участник похода берёт с уровнем (data/perks.js): req — что нужно (уровень, раса, роль, вещь в руках, буквы, дела any — хоть одно из, работа work), how — как работает (mods — тело, fight — бой, camp — день похода, aura — от своих рядом), pull — что в характере тянет к нему (campaign/perks.js).', rows: () => PERKS.all()}),
+  // the book of perks, by who may hold them (plan claude/bestiary-plan.md З-1): the classes of later are built of it
+  {id: 'perkAccess', label: 'Перки: кому можно', group: 'Существа', key: 'id',
+    note: 'Единый справочник перков (data/perks.js): и те, что берут за уровень, и врождённые, и выданные ролью. Пешка и монстр — колонки, а не виды тела: можно, условно (раса, роль, тело), только выдача (вид, роль, вещь — не выбирается за уровень), нельзя. Ранги — число профилей (у врождённых свой профиль на каждый ранг). У кого — какие виды и роли его несут и с каким рангом.',
+    rows: () => PERKS.all().map(P => { const A = perkAccess(P); return {id: P.id, label: P.label, kind: P.kind, pawn: A.pawn, monster: A.monster, learn: A.learn, from: A.from.map(f => PERK_FROM[f] || f).join(', '), ranks: perkRanks(P),
+      holders: [...SPECIES.all().flatMap(sp => speciesGrants(sp).filter(g => g.id === P.id).map(g => `${sp.label}${g.own ? '' : ` ${'I II III IV V'.split(' ')[(g.rank || 1) - 1]}`}`)),
+        ...COMBAT_ROLES.all().flatMap(R => (R.perks || []).filter(g => g.id === P.id).map(() => `роль: ${R.label}`)),
+        ...CLASSES.all().flatMap(C => C.path.filter(e => e.perk === P.id).map(e => `класс: ${C.label} (${e.level} ур.${e.how === 'grant' ? ', даётся' : ''})`))].join(', ')}; }),
+    target: (r, c) => (c.key === 'pawn' || c.key === 'monster' ? [(PERKS.get(r.id).who ||= {}), c.key] : null),
+    columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Перк', 'text', {edit: false}), col('kind', 'Группа', 'text', {edit: false}),
+      col('pawn', 'Пешке', 'enum', {values: PERK_WHO}), col('monster', 'Монстру', 'enum', {values: PERK_WHO}),
+      col('learn', 'За уровень', 'bool', {edit: false}), col('from', 'Откуда', 'text', {edit: false}), col('ranks', 'Рангов', 'int', {edit: false}), col('holders', 'У кого', 'text', {edit: false})]},
+  // classes (plan З-8): a role + a body + a way through the book of perks
+  {id: 'classes', label: 'Классы', group: 'Существа', key: 'id',
+    note: 'Класс — боевая роль (что несёт, где стоит) + тело (SPECIAL) + путь по справочнику перков (data/classes.js). Путь — по уровням: «даётся» — сам, «тянет» — при выборе перка за уровень класс тянет к нему (× PERK_PICK.path). Пешка берёт данное, остальное выбирает; монстр банды несёт весь путь до уровня банды (по угрозе: BAND_LEVEL). Не ниже «нужно» — подходит; «опора» — буквы, по которым меряется, насколько подходит.',
+    rows: () => CLASSES.all().map(C => ({id: C.id, label: C.label, role: COMBAT_ROLES.get(C.role)?.label || C.role, pawn: C.who.pawn, monster: C.who.monster,
+      needs: Object.entries(C.needs || {}).map(([L, v]) => `${L} ${v}`).join(', '), keys: C.keys.join(', '),
+      path: C.path.map(e => `${e.level}: ${PERKS.get(e.perk).label}${e.rank > 1 ? ' ' + 'I II III IV V'.split(' ')[e.rank - 1] : ''}${e.how === 'grant' ? ' (даётся)' : ''}`).join('; '), note: C.note})),
+    target: (r, c) => (c.key === 'label' || c.key === 'note' ? [CLASSES.get(r.id), c.key] : null),
+    columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Класс', 'text'), col('role', 'Роль', 'text', {edit: false}), col('pawn', 'Пешке', 'text', {edit: false}), col('monster', 'Монстру', 'text', {edit: false}),
+      col('needs', 'Нужно', 'text', {edit: false}), col('keys', 'Опора', 'text', {edit: false}), col('path', 'Путь', 'text', {edit: false}), col('note', 'Примечание', 'text')]},
   {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × (L − 1) × (L + lead) до потолка cap, доля бывшего в бою без своих дел (merit.present), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
   fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},

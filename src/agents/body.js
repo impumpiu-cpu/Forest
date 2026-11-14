@@ -16,7 +16,10 @@ import {lethal} from './wounds.js';
 import {quaff, drinkFor, stepPotionEffects} from './potions.js';
 import {thornedBy} from './movement.js';
 import {THORNS} from '../data/buildings.js';
-import {roleRow} from '../data/roles.js';
+import {heldOf} from '../data/perks.js';
+import {stepBurning} from './abilities.js';
+import {T} from '../data/terrain.js';
+const fireproofOf = a => heldOf(a, 'fireproof');
 
 // Lasting effects on any creature, whatever its brain: venom from a bite (agents/combat.js) hurts every
 // tick until it wears off; a spider's web only slows (agents/movement.js) and is dropped once it is over.
@@ -29,6 +32,7 @@ export function stepEffects(w, a) {
     else a.poison = null;
   }
   if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+  if (a.burning) stepBurning(w, a, w.grid.terr[cellOf(w, a)] === T.WATER);   // on fire (a breath: agents/abilities.js); water puts it out
   // a bleeding cut (a weapon with `bleed`, data/conditions.js): it hurts every tick until it stops
   if (a.bleeding) {
     // a cut that bleeds out is a wound like a blow's: luck may turn it into a fall (agents/wounds.js lethal)
@@ -58,7 +62,7 @@ function stepExhaustion(a) {
 // body's answer to fire (data/balance/combat.js resistTo) × a fire-ward potion at work; one burning with such a potion
 // in its belt drinks it (`w` given). → true if it burnt
 export function heatHarm(a, sp, T, who, w = null) {
-  if (!(T > sp.heatHarm) || roleRow(a)?.fireproof) return false;   // (the forge-master: data/roles.js)
+  if (!(T > sp.heatHarm) || fireproofOf(a)?.heat) return false;   // (the forge-master: data/roles.js, a perk «Огнестойкость»)
   const P = HEAT[who];
   if (w && a.belt?.length) drinkFor(w, a, 'fire');
   a.hp -= Math.min(P.max, (T - sp.heatHarm) * P.perDegree) * resistTo(sp, 'fire') * (a.effects ? effectResist(null, a, 'fire') : 1);

@@ -324,7 +324,26 @@ dd.q4{color:#c58cff;font-weight:600}
 .launch-card > span:last-child{color:var(--muted);font-size:14px;max-width:46ch}
 .launch-card:hover:not(:disabled){border-color:var(--ember)}
 .launch-card:disabled{opacity:.55;cursor:default}
-#launchResume{grid-column:1/-1;justify-self:start}
+#launchResume{grid-column:1/-1;justify-self:stretch;min-height:0;border-color:var(--ember)}
+#launchResume[hidden]{display:none}
+#launchResume > span:last-child{max-width:none}
+/* the main menu's groups: Играть on top, the workshop below and quieter */
+.menu-group{font-family:var(--font-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:400;margin:4px 0 10px}
+.launch.play{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width: 700px){ .launch.play{grid-template-columns:1fr} }
+.launch.workshop{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.launch.workshop .launch-card{min-height:0;padding:12px 16px;gap:4px}
+.launch.workshop .launch-card b{font-size:20px}
+.launch.workshop .launch-card > span:last-child{font-size:13px}
+/* «Новый поход»: a new world on the left, the library on the right */
+.newrun{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.newrun .menu-group{margin:0}
+.newrun .savelist{max-height:60vh;overflow:auto}
+@media (max-width: 900px){ .newrun{grid-template-columns:1fr} }
+/* «Настройки» */
+.card.prefs{display:flex;flex-direction:column;gap:14px;padding:16px}
+.card.prefs .row{align-items:center;gap:12px;flex-wrap:wrap}
+.card.prefs .row > small{color:var(--muted)}
 
 /* ───── the world map polygon ───── */
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
@@ -334,6 +353,46 @@ dd.q4{color:#c58cff;font-weight:600}
 #atlasMap.dragging,#campMap.dragging{cursor:grabbing}
 /* a camp of the caravan played on the local map, over the world map (ui/campaignView.js) */
 .camp-box{position:relative}
+/* the errands (data/errands.js): a row each, the unavailable greyed with why */
+.savelist.errands .sv{cursor:pointer;align-items:flex-start;font-family:var(--font-body,inherit);font-size:13.5px;letter-spacing:normal;text-transform:none;font-variant:normal;color:var(--fg);font-weight:400}
+.savelist.errands .sv b{font-weight:700}
+.savelist.errands .sv input{margin:3px 6px 0 0;accent-color:var(--ember)}
+.savelist.errands .sv.off{opacity:.5;cursor:default}
+.savelist.errands .risk.r-1{color:var(--good)} .savelist.errands .risk.r-2{color:#d8c070} .savelist.errands .risk.r-3{color:#e0a080} .savelist.errands .risk.r-4{color:var(--raider)}
+.savelist.errands .sv:hover,.savelist.errands .sv:focus-within{border-color:rgba(255,240,200,.5)}
+.savelist.errands .tier{display:inline-block;min-width:2.4em;font-family:var(--font-mono);font-size:11px;color:var(--ember)}
+/* the errand handed in: what next — over the map, the clock stopped (ui/campaignView.js offer) */
+.camp-offer{position:absolute;inset:6% 0 auto 0;margin:0 auto;width:min(92%,640px);max-height:88%;overflow:hidden;z-index:5;display:flex;flex-direction:column;gap:8px;padding:16px 18px;border:1px solid var(--ember);border-radius:8px;background:rgba(20,22,16,.96);color:var(--fg);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.camp-offer[hidden]{display:none}
+/* the adventurers' guild (ui/guildView.js): its panel in the rail, the people as rows with a tick, the door's list */
+.guild-panel{display:flex;flex-direction:column;gap:8px;min-width:0}
+.guild-panel[hidden]{display:none}
+.guild-panel .note{margin:0;font-size:12px;color:var(--muted)}
+.guild-panel h4.menu-group{margin:6px 0 2px}
+.guild-panel .savelist{max-height:none}
+.guild-people,.guild-pick{display:flex;flex-direction:column;gap:4px}
+.guild-people .gm-rest { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
+.guild-parties{display:flex;flex-direction:column;gap:2px;margin:4px 0}
+.guild-pick{max-height:220px;overflow:auto}
+.gm{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border:1px solid var(--line);border-radius:5px;font-size:13px;cursor:pointer}
+.gm .t{display:block;min-width:0;flex:1}
+.gm small{display:block;color:var(--muted);font-size:11px}
+.gm i{color:var(--muted);font-style:normal}
+.gm.busy{opacity:.7;cursor:default}
+.gm.dead{opacity:.45}
+.gm .hp,.gm .xp{display:block;height:5px;margin-top:3px;border-radius:3px;background:var(--line);overflow:hidden}
+.gm .xp{height:3px}
+.gm .hp i{display:block;height:100%;background:#8fbf6a}
+.gm .hp i.low{background:var(--ember)}
+.gm .xp i{display:block;height:100%;background:#c9a24a}
+.guild-log{display:flex;flex-direction:column;gap:4px;font-size:12px;max-height:60vh;overflow:auto}
+.guild-log small{color:var(--muted)}
+.guild-hire{width:min(94%,760px)}
+.savelist.hire .sv{display:flex;gap:8px;align-items:flex-start}
+.camp-offer .savelist{flex:1 1 auto;min-height:0;overflow:auto}
+.camp-offer h3{margin:0;font-family:var(--font-display);letter-spacing:.04em}
+.camp-offer p{margin:0}
+.camp-offer small{color:var(--muted)}
 #campLocal{position:absolute;inset:0;width:100%;height:100%;display:block}
 #campLocal[hidden],.camp-local-bar[hidden]{display:none}
 .camp-local-bar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:rgba(13,15,10,.82);color:var(--fg);font-size:13px}
@@ -417,3 +476,8 @@ dd.q4{color:#c58cff;font-weight:600}
 .pc ul{margin:0 0 4px 16px;padding:0}
 .fire-scene canvas{width:100%;height:280px;display:block;background:rgba(0,0,0,0.25);border-radius:6px}
 .fire-words{min-height:2.6em;margin:6px 0;font-style:italic}
+
+/* the muster of a guild's party (ui/guildView.js): who goes of himself and why */
+.guild-muster { display: grid; gap: 2px; margin: 4px 0; padding: 4px 6px; border-left: 2px solid var(--line, #666); }
+.guild-muster .go { color: inherit; }
+.guild-muster .no { opacity: 0.6; }

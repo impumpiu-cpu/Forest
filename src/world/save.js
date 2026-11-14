@@ -55,7 +55,7 @@ function externals() {
 
 export function saveWorld(w) {
   const nav = w.nav;
-  const tree = encode({world: w, nav: {dist: nav.dist, dirty: [...nav.dirtySet], last: nav.last}},
+  const tree = encode({world: w, nav: {dist: nav.dist, dirty: [...nav.dirtySet], last: nav.last, snow: nav.costSnow || 0}},
     {externals: externals(), skip: (path, k) => (path === 'world.world' && LIVE.has(k)) || (path === 'world.world.grid' && GRID_LIVE.has(k))});
   return {format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree};
 }
@@ -107,6 +107,9 @@ export function loadWorld(save) {
   // fields added since this game was saved start empty: build them first
   for (const id of w.nav.order) if (!(id in nav.dist)) w.nav.dirtySet.add(id);
   Object.assign(w.nav.last, nav.last);
+  // the snow the costs were last laid for (nav/navigation.js computeCost): without it a loaded game would rebuild every map at
+  // the next snowfall, a game played on — not
+  w.nav.costSnow = nav.snow ?? w.snow ?? 0;
   for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
   // deaths from before the bestiary: causes are «от …» now, beasts go by their plural name (settlement/chronicle.js)
   for (const k of Object.keys(w.chronicle.deaths || {})) {

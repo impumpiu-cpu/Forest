@@ -16,6 +16,7 @@ import {rest} from './rest.js';
 import {graze} from './graze.js';
 import {scare} from './scare.js';
 import {leaveHurt} from './leaveHurt.js';
+import {rout} from './rout.js';
 import {feed} from './feed.js';
 import {chase} from './chase.js';
 import {maul, defendLair} from './maul.js';
@@ -56,7 +57,7 @@ import {work} from './work.js';
 import {idle, council, trade, treat, pray, sulk, spellbound, douse, defend, watch, flags, muster, reserve, company, aid, rescue, bind, assist, keepIn} from './colony.js';
 import {campwork} from './campwork.js';
 
-export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart, led, downed, fleeFire, escape, retreat, capture, raid, withCaravan, peddle, defendCaravan, warband, escort,
+export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, rout, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart, led, downed, fleeFire, escape, retreat, capture, raid, withCaravan, peddle, defendCaravan, warband, escort,
   summoned, golem, needs, work, idle, council, trade, treat, pray, sulk, spellbound, douse, defend, watch, flags, muster, reserve, company, aid, rescue, bind, assist, keepIn, campwork};
 
 for (const d of BEHAVIOURS.all()) {

@@ -26,6 +26,7 @@ TAGS.registerAll([
   sp('resident', 'здешний', 'приход нечисти (data/neighbours.js, atlas/fauna.js)', 'дух места: живёт здесь, убитый возвращается'),
   sp('big', 'крупный', 'хищники: как бьют добычу (agents/behaviours/chase.js, agents/hunting.js)', 'крупный зверь: кабан, лось, медведь…'),
   sp('snowfoot', 'снежная лапа', 'шаг по снегу (agents/movement.js)', 'не вязнет в снегу'),
+  sp('catchable', 'ловится гильдией', 'поимка для клеток гильдии (campaign/cages.js, campaign/contracts.js captureDefs)', 'гильдия может поймать его живым: свои дела «Поймать…» на доске'),
   sp('nocturnal', 'ночной', 'когда выходит на охоту (agents/behaviours/leaveHurt.js)', 'днём спит, ночью охотится'),
   sp('hibernates', 'зимняя спячка', 'уходит с карты зимой (agents/behaviours/leave.js, data/migrations.js)', 'спит зимой'),
   sp('inventory', 'носит вещи', 'снаряжение (agents/agent.js), налётчики (data/raids.js)', 'держит оружие, броню и ношу'),

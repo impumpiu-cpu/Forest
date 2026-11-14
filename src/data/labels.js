@@ -40,4 +40,5 @@ export const STAGE_ERAS = {geology: 'Геология', climate: 'Климат',
 
 export const CAMP_KINDS = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка', guard: 'Штурм'};
 export const WALK_PHASES = {out: {label: 'ищут корону'}, back: {label: 'несут корону домой'}, won: {label: 'вернулись с короной', done: true},
-  lost: {label: 'погибли', done: true}, timeout: {label: 'не вернулись', done: true}};
+  lost: {label: 'погибли', done: true}, timeout: {label: 'не вернулись', done: true},
+  home: {label: 'сдали поручение — ждут в столице'}, empty: {label: 'возвращаются ни с чем'}};   // (a campaign of chapters: campaign/ending.js handIn)

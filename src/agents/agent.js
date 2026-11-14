@@ -1,5 +1,6 @@
 // Agent creation and death. An agent is a plain object:
 //   species / faction / brain ids, position, hp, needs, personality (colonists), memory, current task.
+import {moraleFell} from './morale.js';
 import {SPECIES, brainOf, isSentient} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
@@ -120,10 +121,12 @@ function takeBackLoot(w, a, by) {
 
 export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.dead) return;
+  const wasDown = !!a.downed;
   noteKill(a, by, a.hurtBy?.id === by?.id && !!a.hurtBy?.far, true);   // a caravan member's act (agents/acts.js): brought down (unless it lay downed already) and slain
   a.dead = true; a.hp = 0;
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
   noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)
+  if (!quiet && !wasDown) moraleFell(w, a, by);   // those who saw it shaken, its foes heartened (agents/morale.js; one fallen senseless was felt at the fall)
   noteHuntDeath(w, a);   // a pack hunting it stops (agents/carcass.js)
   noteBoardDeath(w, a);   // the colony's board remembers which foe fell (settlement/board.js)
   if (a.loot && by?.faction === 'colony' && !by.dead) takeBackLoot(w, a, by);

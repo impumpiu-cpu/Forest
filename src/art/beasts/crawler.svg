@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ползающий падальщик: длинное кольчатое тело на многих ножках, передний конец приподнят, пучок щупалец у пасти; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="42" ry="5" fill="shade"/>
+<g class="up" fill="none" stroke="ink" stroke-width="3" stroke-linecap="round"><path d="M10 76L8 86M18 78L17 88M26 78L26 88M34 78L35 88M42 78L44 88M50 76L53 86M58 72L62 82"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M2 72Q4 64 14 64Q30 62 46 64Q58 60 66 46Q72 36 82 36Q92 38 92 48Q90 58 80 60Q68 70 50 78Q30 82 12 80Q2 80 2 72Z"/>
+<path class="figure" fill="none" stroke="shade" stroke-width="3" stroke-linecap="round" d="M14 64V80M24 63V80M34 63V80M44 64V78M54 60L58 72M62 52L68 64M70 42L76 56"/>
+<g fill="none" stroke="ink" stroke-width="5" stroke-linecap="round"><path d="M86 58Q88 70 84 80"/><path d="M90 56Q96 66 94 78"/><path d="M82 58Q78 68 76 76"/></g>
+<g fill="none" stroke="#c9d28a" stroke-width="2.5" stroke-linecap="round"><path d="M86 58Q88 70 84 80"/><path d="M90 56Q96 66 94 78"/><path d="M82 58Q78 68 76 76"/></g>
+<circle class="figure" cx="84" cy="44" r="2.6" fill="ink"/><circle class="figure" cx="89" cy="46" r="2" fill="ink"/>
+</svg>

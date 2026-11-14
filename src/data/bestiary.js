@@ -8,9 +8,10 @@
 //   kind        — beast | monster | spirit (data/species.js KINDS): how the world map takes it in
 //   habitat     — {biome: rarity} (data/biomes.js): where it lives and how common it is
 //   special, hp, speed, attack — in data/balance/creatures.js; `relativeStats` (set for all of them): the row is the typical animal
-//   venom       — {dmg, ticks}: a bite poisons, the victim loses dmg health a tick for `ticks`
-//   web         — {slow, ticks}: a bite tangles, the victim moves at `slow` speed for `ticks`
-//   breath      — chance per blow to set the victim's ground on fire (agents/combat.js)
+//   venom       — {dmg, ticks}: a bite poisons, the victim loses dmg health a tick for `ticks` (read as the perk «Ядовитый укус»
+//                 with its own numbers; a new one names the perk's rank in `perks` instead)
+//   web         — {slow, ticks}: a bite tangles (as above: the perk «Паутина»)
+//   perks       — what it is born with, of the book of perks (data/perks.js): [{id, rank, own?}] — a breath, a tail, scales
 //   nocturnal   — comes and hunts by night, leaves the map by day
 //   hibernates  — leaves for its den when winter comes and does not come back till spring
 //   resident    — nechist (the spirits): lives here, comes back `respawn` days after it was killed;
@@ -42,10 +43,10 @@ const beast = b => ({needs: [], mind: 'beast', relativeStats: true, heatHarm: 60
 export const BESTIARY = [
   // ── beasts
   // Wargs: great wolves, half-witted; orcs and goblins ride them into raids (data/raids.js)
-  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  beast({id: 'varg', catchable: true, cr: 0.5, kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
     habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
-    look: {shape: 'wolf', size: 0.74, color: '#4b4b55'},
+    look: {shape: 'wolf', size: 0.74, color: '#4b4b55'}, perks: [{id: 'charge', rank: 1}],   // (runs one down and knocks it over)
     yields: {meat: 3, hide: 3, bone: 2}, tameWith: ['orc', 'goblin'],
     killMessage: name => `Варги разорвали поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['deer', 'goat', 'boar', 'hare', 'elk'], weakPrey: ['mule'], boldPeople: 0.35, groupFear: 4, meal: 2, bigMeal: 4})}),
@@ -102,26 +103,36 @@ export const BESTIARY = [
   beast({id: 'toad', kind: 'beast', label: 'гигантская жаба', labelAcc: 'гигантскую жабу', plural: 'гигантские жабы', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025,
     arrive: {group: [1, 2], every: [2, 3], chance: 0.6, cap: 3, first: 2},
     habitat: {swamp: 'common', jungle: 'usual', water: 'rare'},
-    look: {shape: 'toad', size: 0.55, color: '#6b7a3a'},
+    look: {shape: 'toad', size: 0.55, color: '#6b7a3a'}, perks: [{id: 'grab', rank: 1}, {id: 'swallow', rank: 1}],   // (the tongue takes hold; a small one it swallows)
     yields: {meat: 2, slime: 1}, trophies: [{res: 'slime', n: 1, chance: 0.3}],
     killMessage: name => `Жаба утянула поселенца в трясину: <b>${name}</b>.`,
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8})}),
 
   // ── monsters of the heights and the deep
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
-  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  beast({id: 'griffin', catchable: true, cr: 2, kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.86, color: '#b88a44'},
+    look: {shape: 'bird', size: 0.86, color: '#b88a44'}, perks: [{id: 'flight', rank: 2}, {id: 'charge', rank: 2}, {id: 'grab', rank: 1}],   // (it dives; it seizes)
     yields: {meat: 4, feathers: 3, bone: 2}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
     killMessage: name => `Грифон унёс поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
-  // Wyvern: dragon-kin without a mind; its sting poisons
-  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
+  // Manticore: a lion's body, a bat's wings, a tail of spikes; lairs in the crags and the dry hills (D&D: CR 3 — between the
+  // griffin and the wyvern). Caught by a guild for its cages (`catchable`), never sold
+  beast({id: 'manticore', kind: 'monster', label: 'мантикора', labelAcc: 'мантикору', plural: 'мантикоры', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, catchable: true, cr: 3,
+    arrive: {group: [1, 1], every: [6, 9], chance: 0.35, cap: 1, first: 6, message: 'на холмах видели мантикору. Хвост у неё — колючий'},
+    habitat: {highlands: 'usual', foothills: 'rare', desert: 'rare', steppe: 'rare'},
+    look: {shape: 'lion', size: 0.9, color: '#a0563a'}, perks: [{id: 'flight', rank: 2}, {id: 'spikes', rank: 2}],
+    yields: {meat: 4, hide: 2, bone: 2}, trophies: [{res: 'hide', n: 1, chance: 0.3}],
+    killMessage: name => `Мантикора пронзила поселенца шипами хвоста: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'horse'], weakBelow: 0.6, sight: 28, sprint: 1.4, boldPeople: 0.55, groupFear: 3, meal: 2.5, bigMeal: 4})}),
+
+  // Wyvern: dragon-kin without a mind; two legs and wings: it flies, its sting (not its bite) poisons
+  beast({id: 'wyvern', catchable: true, cr: 6, kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 6, message: 'с гор спустилась виверна. Её жало ядовито'},
     habitat: {highlands: 'usual', volcano: 'rare'},
-    look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, venom: {dmg: 0.0009, ticks: 240},
+    look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, perks: [{id: 'flight', rank: 2}, {id: 'sting', rank: 3}, {id: 'scales', rank: 2}],   // (the bite bites; the sting poisons)
     yields: {meat: 5, scales: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'scales', n: 1, chance: 0.2}],
     killMessage: name => `Виверна ужалила поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'elk'], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4})}),
@@ -132,17 +143,19 @@ export const BESTIARY = [
   // habitat only says where its lair may be: the dragon is a lair, not a field of beasts
   beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.dragon]}, heatHarm: 800,
     fearHeat: 800, habitat: {volcano: 'rare'},
-    look: {shape: 'bird', size: 1.4, color: '#8a2418'}, breath: 0.5,
+    look: {shape: 'bird', size: 1.4, color: '#8a2418'},
+    // (the expert's card, 13.11: a breath of the fifth rank, a tail behind it, a roar; scales and the fire's answer)
+    perks: [{id: 'fireBreath', rank: 5}, {id: 'flight', rank: 3}, {id: 'tailSweep', rank: 2}, {id: 'roar', rank: 3}, {id: 'scales', rank: 3}, {id: 'fireproof', rank: 3}],
     yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],
     killMessage: name => `Дракон сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
 
-  // Drake: a young dragon with no mind yet; its breath sets the grass on fire
+  // Drake: the dragon's beast-kin, no mind; its breath (third rank) sets the grass on fire
   beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
-    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, breath: 0.25,
+    look: {shape: 'bird', size: 0.95, color: '#a3432e'}, perks: [{id: 'fireBreath', rank: 3}, {id: 'flight', rank: 2}, {id: 'scales', rank: 2}, {id: 'fireproof', rank: 2}],
     yields: {meat: 6, scales: 4, gland: 1}, trophies: [{res: 'scales', n: 2, chance: 0.25, tier: 2}, {res: 'gland', n: 1, chance: 0.2, tier: 3}],
     killMessage: name => `Дрейк сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),
@@ -152,7 +165,7 @@ export const BESTIARY = [
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: 'в лесу видели гигантских пауков: {n}. Паутина держит крепко'},
     habitat: {underground: 'common', jungle: 'common', forest: 'rare', swamp: 'rare'},
     look: {shape: 'spider', size: 0.62, color: '#3a3530'},
-    web: {slow: 0.35, ticks: 120}, venom: {dmg: 0.0004, ticks: 160},
+    perks: [{id: 'venom', rank: 1}, {id: 'webShot', rank: 2}],   // (a bite that poisons; the web thrown, not bitten in)
     yields: {silk: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'silk', n: 2, chance: 0.3}],
     killMessage: name => `Паук опутал и загрыз поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.5, groupFear: 3, sight: 16})}),
@@ -161,7 +174,7 @@ export const BESTIARY = [
   beast({id: 'stoneworm', kind: 'monster', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', behaviours: [...WAYS.stander], heart: BEAT.stander, deeds: {lair: [...DEED_WAYS.lair]}, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 5, message: 'из-под скал выполз каменный червь'},
     habitat: {underground: 'usual', desert: 'rare', foothills: 'rare'},
-    look: {shape: 'worm', size: 0.9, color: '#7d6f5c'},
+    look: {shape: 'worm', size: 0.9, color: '#7d6f5c'}, perks: [{id: 'scales', rank: 3}, {id: 'burrow', rank: 2}],   // (a shell; it goes under the ground and comes up under one)
     yields: {meat: 8, hide: 4}, trophies: [{res: 'gems', n: 1, chance: 0.15}],
     killMessage: name => `Каменный червь раздавил поселенца: <b>${name}</b>.`,
     grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0004, mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15})}),
@@ -170,7 +183,7 @@ export const BESTIARY = [
   beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, nocturnal: true,
     arrive: {group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true},
     habitat: {underground: 'common', barrows: 'common', jungle: 'rare', swamp: 'rare'},
-    look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6,
+    look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6, perks: [{id: 'flight', rank: 1}],
     killMessage: name => `Летучие мыши обескровили поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'rat'], boldPeople: 0.4, groupFear: 4, sight: 18, meal: 0.8})}),
 
@@ -284,7 +297,7 @@ export const BESTIARY = [
   beast({id: 'crocodile', kind: 'beast', label: 'крокодил', labelAcc: 'крокодила', plural: 'крокодилы', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 2], every: [4, 6], chance: 0.4, cap: 2, first: 3, message: 'у воды залёг крокодил. К берегу — с оглядкой'},
     habitat: {swamp: 'common', jungle: 'usual', water: 'usual', savanna: 'rare'},
-    look: {shape: 'lizard', size: 1.0, color: '#4a5e36'},
+    look: {shape: 'lizard', size: 1.0, color: '#4a5e36'}, perks: [{id: 'grab', rank: 2}],   // (jaws that hold and drag)
     yields: {meat: 8, hide: 5, bone: 3}, trophies: [{res: 'scales', n: 2, chance: 0.2}],
     killMessage: name => `Крокодил утащил поселенца в воду: <b>${name}</b>.`,
     grazes: {terrain: ['water', 'grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 1.3, charge: 1.6, chargeHit: 2.0, chargeFrom: 1.5, grudge: 200, giveUp: 10, fleeBelow: 0.15})}),
@@ -302,15 +315,91 @@ export const BESTIARY = [
       names: petNames('camel'),
       effect: 'возит собранное (сбор +20%), даёт молоко и немного шерсти'}}),
 
-  // Giant scorpion: hunts by night among the sands; its sting is venom
+  // Giant scorpion: hunts by night among the sands; its claws hold, its sting is venom
   beast({id: 'scorpion', kind: 'beast', label: 'гигантский скорпион', labelAcc: 'гигантского скорпиона', plural: 'гигантские скорпионы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, nocturnal: true,
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 4, first: 3, night: true, message: 'ночью из песка выползли скорпионы: {n}'},
     habitat: {desert: 'common', shrubland: 'rare', savanna: 'rare', underground: 'rare'},
     look: {shape: 'spider', size: 0.5, color: '#b08a4a'},
-    venom: {dmg: 0.0005, ticks: 150},
+    perks: [{id: 'sting', rank: 2}, {id: 'grab', rank: 1}, {id: 'scales', rank: 1}],   // (the expert's: a heavy one — claws that hold, a sting that poisons, a shell)
     yields: {venom: 1, bone: 1}, trophies: [{res: 'venom', n: 1, chance: 0.35, tier: 2}],
     killMessage: name => `Скорпион ужалил поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'rat', 'fox'], weakPrey: ['saiga'], boldPeople: 0.5, groupFear: 2, sight: 14, meal: 1.2})}),
+
+  // ── chosen by the fight they bring (plan claude/bestiary-plan.md З-5, the expert's note 13.11; images of D&D, no magic)
+  // Owlbear: a great beast of the deep woods — an owl's head and beak on a bear's body; it presses on, it roars (D&D: owlbear)
+  beast({id: 'owlbear', kind: 'monster', label: 'совомед', labelAcc: 'совомеда', plural: 'совомеды', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true,
+    arrive: {group: [1, 1], every: [6, 9], chance: 0.35, cap: 1, first: 5, message: 'в чаще ухает совомед. Перья на растерзанной туше — его'},
+    habitat: {forest: 'rare', taiga: 'rare', jungle: 'rare'},
+    look: {shape: 'bear', size: 0.95, color: '#6e5a3c'}, perks: [{id: 'charge', rank: 1}, {id: 'roar', rank: 1}],
+    yields: {meat: 10, hide: 3, feathers: 2, bone: 3}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
+    killMessage: name => `Совомед разорвал поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['deer', 'boar', 'elk', 'goat'], weakPrey: ['mule'], boldPeople: 0.6, groupFear: 5, sight: 20, meal: 3, bigMeal: 5})}),
+  // Ankheg: a great burrowing insect under the fields; it comes up under the cattle, holds in its mandibles, spits acid (D&D)
+  beast({id: 'ankheg', kind: 'monster', label: 'анхег', labelAcc: 'анхега', plural: 'анхеги', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 2, first: 4, message: 'в поле просела земля, пропала скотина. Это анхег'},
+    habitat: {steppe: 'usual', meadow: 'rare', foothills: 'rare', savanna: 'rare'},
+    look: {shape: 'spider', size: 0.75, color: '#7a6a3a'}, perks: [{id: 'burrow', rank: 1}, {id: 'scales', rank: 1}, {id: 'grab', rank: 1}, {id: 'acidJet', rank: 2}],
+    yields: {meat: 3, bone: 2}, trophies: [{res: 'venom', n: 1, chance: 0.2, tier: 2}],
+    killMessage: name => `Анхег утащил поселенца под землю: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'deer', 'saiga', 'sheep'], weakPrey: ['mule'], boldPeople: 0.55, groupFear: 4, sight: 12, meal: 2})}),
+  // Giant constrictor: a snake of the marsh and the river bank; it takes one and squeezes, and its fellows must pull it free
+  beast({id: 'constrictor', kind: 'beast', label: 'гигантский удав', labelAcc: 'гигантского удава', plural: 'гигантские удавы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [1, 1], every: [4, 7], chance: 0.4, cap: 2, first: 3, message: 'у воды видели след волочения: здесь гигантский удав'},
+    habitat: {swamp: 'usual', jungle: 'usual', water: 'rare'},
+    look: {shape: 'worm', size: 0.8, color: '#556b2f'}, perks: [{id: 'grab', rank: 2}, {id: 'constrict', rank: 2}],
+    yields: {meat: 4, hide: 3}, trophies: [{res: 'hide', n: 1, chance: 0.3}],
+    killMessage: name => `Удав задушил поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['deer', 'goat', 'boar', 'hare'], boldPeople: 0.5, groupFear: 3, sight: 12, meal: 2.5, bigMeal: 4})}),
+  // Carrion crawler: a long many-legged scavenger of caves and battlefields; its feelers numb, then it drags one off (D&D)
+  beast({id: 'crawler', kind: 'monster', label: 'ползающий падальщик', labelAcc: 'ползающего падальщика', plural: 'ползающие падальщики', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [1, 2], every: [4, 6], chance: 0.45, cap: 3, first: 3, message: 'в темноте щёлкают челюсти: падальщики пришли на запах'},
+    habitat: {underground: 'usual', barrows: 'usual', swamp: 'rare'},
+    look: {shape: 'worm', size: 0.7, color: '#6d7a5a'}, perks: [{id: 'numbing', rank: 1}, {id: 'grab', rank: 1}],
+    yields: {meat: 2, bone: 1}, trophies: [{res: 'venom', n: 1, chance: 0.25, tier: 2}],
+    killMessage: name => `Падальщик сковал и уволок поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['rat', 'hare', 'goat'], boldPeople: 0.6, groupFear: 3, sight: 10, meal: 1.5})}),
+  // Rust beast: an armoured thing of the deep that eats iron; its feelers rust a blade and a mail (D&D: rust monster — as a
+  // corroding spittle, a wear a touch and only so much of it, never a mail gone at once)
+  beast({id: 'rustbeast', kind: 'monster', label: 'ржавник', labelAcc: 'ржавника', plural: 'ржавники', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [1, 2], every: [5, 8], chance: 0.4, cap: 2, first: 4, message: 'в тоннелях видели ржавника. Держите железо подальше'},
+    habitat: {underground: 'usual', foothills: 'rare', highlands: 'rare'},
+    look: {shape: 'lizard', size: 0.6, color: '#9a5a2a'}, perks: [{id: 'rust', rank: 2}, {id: 'scales', rank: 1}],
+    yields: {meat: 2, hide: 1}, trophies: [{res: 'iron', n: 1, chance: 0.3}],
+    killMessage: name => `Ржавник загрыз поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['rat', 'hare'], boldPeople: 0.5, groupFear: 3, sight: 10, meal: 1})}),
+  // Spitting cobra: a small hidden snake of the dry lands; it spits its venom in the face, and bites (no magic: a real one)
+  beast({id: 'cobra', kind: 'beast', label: 'плюющаяся кобра', labelAcc: 'плюющуюся кобру', plural: 'плюющиеся кобры', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [1, 2], every: [3, 5], chance: 0.5, cap: 3, first: 2, message: 'в траве шипит кобра. Она плюётся в глаза'},
+    habitat: {desert: 'common', savanna: 'common', jungle: 'usual', shrubland: 'common', steppe: 'rare'},
+    look: {shape: 'worm', size: 0.35, color: '#8a7a3a'}, perks: [{id: 'venom', rank: 2}, {id: 'venomSpit', rank: 2}],
+    yields: {venom: 1, hide: 1}, trophies: [{res: 'venom', n: 1, chance: 0.4, tier: 2}],
+    killMessage: name => `Кобра ужалила поселенца насмерть: <b>${name}</b>.`,
+    predator: hunts({prey: ['rat', 'hare'], boldPeople: 0.4, groupFear: 2, sight: 10, meal: 0.5})}),
+  // ── the second row (plan claude/bestiary-plan.md З-7)
+  // Bulette, the land shark: an armoured burrower of the hills; it comes up under one and leaps on a knot of people (D&D)
+  beast({id: 'bulette', kind: 'monster', label: 'панцирница', labelAcc: 'панцирницу', plural: 'панцирницы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true,
+    arrive: {group: [1, 1], every: [7, 10], chance: 0.3, cap: 1, first: 6, message: 'земля ходит волной, гребень режет дёрн — это панцирница'},
+    habitat: {steppe: 'rare', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
+    look: {shape: 'lizard', size: 0.95, color: '#6f7a86'}, perks: [{id: 'burrow', rank: 2}, {id: 'leap', rank: 2}, {id: 'scales', rank: 3}],
+    yields: {meat: 9, hide: 3, bone: 3}, trophies: [{res: 'bone', n: 2, chance: 0.3}],
+    killMessage: name => `Панцирница выпрыгнула из-под земли и задрала поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['deer', 'goat', 'boar', 'elk', 'saiga'], weakPrey: ['mule'], boldPeople: 0.7, groupFear: 6, sight: 16, meal: 3, bigMeal: 5})}),
+  // Hook horror: a tall armoured thing of the deep caves with hooks for hands; blind, it hunts by the echo of its clicks (D&D)
+  beast({id: 'hookhorror', kind: 'monster', label: 'крюкастый ужас', labelAcc: 'крюкастого ужаса', plural: 'крюкастые ужасы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+    arrive: {group: [2, 3], every: [6, 9], chance: 0.35, cap: 3, first: 5, message: 'из темноты — щёлканье, будто стучат по камню. Крюкастые ужасы'},
+    habitat: {underground: 'usual', barrows: 'rare'},
+    look: {shape: 'bird', size: 0.85, color: '#4e5560'}, perks: [{id: 'echo', rank: 2}, {id: 'grab', rank: 2}, {id: 'scales', rank: 2}],
+    yields: {meat: 4, bone: 2}, trophies: [{res: 'bone', n: 1, chance: 0.3}],
+    killMessage: name => `Крюкастый ужас утащил поселенца во тьму: <b>${name}</b>.`,
+    predator: hunts({prey: ['rat', 'goat', 'hare'], boldPeople: 0.7, groupFear: 5, sight: 12, meal: 2})}),
+  // Cyclops: a one-eyed giant of the high pastures; it throws rocks, but one eye judges the distance ill (D&D)
+  beast({id: 'cyclops', kind: 'monster', label: 'циклоп', labelAcc: 'циклопа', plural: 'циклопы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true,
+    arrive: {group: [1, 1], every: [8, 12], chance: 0.25, cap: 1, first: 7, message: 'по склону катятся валуны — наверху циклоп'},
+    habitat: {highlands: 'usual', foothills: 'rare', tundra: 'rare'},
+    look: {shape: 'golem', size: 1, color: '#b08a6a'}, perks: [{id: 'rockThrow', rank: 2}, {id: 'roar', rank: 1}],
+    yields: {meat: 12, hide: 4, bone: 4}, trophies: [{res: 'bone', n: 2, chance: 0.4}],
+    killMessage: name => `Циклоп раздавил поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'sheep', 'deer', 'aurochs'], weakPrey: ['mule'], boldPeople: 0.8, groupFear: 7, sight: 22, meal: 4, bigMeal: 6})}),
 
   // White bear: the lord of the ice; hunts seals, and anything else that walks the snow
   beast({id: 'polarbear', snowfoot: true, kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, big: true, heatHarm: 55,

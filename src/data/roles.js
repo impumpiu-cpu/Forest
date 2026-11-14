@@ -13,7 +13,8 @@
 //            flank (round the side) · back (behind them all)
 //   group  — линия · подвижные · дальний бой · поддержка (for the table)
 //   blows  — × its blows of a kind ({blunt: 1.3}: the dwarven hammer-smith, agents/combat.js damage)
-//   fireproof — fire and heat do not harm it (the forge-master: agents/body.js heatHarm)
+//   perks     — what the role gives of the book of perks (data/perks.js): [{id, rank, own?, hold?}] — the forge-master's breath
+//               (`hold`: only with that form in hand — the coal) and fireproof
 //   mount  — the beast it rides (agents/mount.js; RIDE below): one fighter of two bodies
 //   versus — × its blows on a kind of creature ({beast: 1.3, monster: 1.3}: the greenskins' beast-driver)
 //   lead   — the war beasts of the land it brings into its band, [from, to] (data/raids.js: the beast-driver)
@@ -87,8 +88,9 @@ COMBAT_ROLES.registerAll([
     hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
   // the dwarves' forge-master: no weapon and no armour; breathes the forge's fire at a javelin's reach, and fire does not
   // take him
-  {id: 'forgemaster', kit: {order: 5, forms: ['spitfire'], own: true}, group: 'дальний бой', label: 'мастер горна', note: 'без оружия и брони: плюёт огнём на дальность метания, поджигает цель и землю под ней; огонь его не берёт',
-    hands: [[['spitfire'], 1]], body: 'none', back: [], potions: 0, squad: 'shooter', place: 'mid', fireproof: true},
+  {id: 'forgemaster', kit: {order: 5, forms: ['spitfire'], own: true}, group: 'дальний бой', label: 'мастер горна', note: 'без оружия и брони: с углём в клещах дышит огнём (Огнедышащий I — конус в три клетки); огонь его не берёт',
+    hands: [[['spitfire'], 1]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front',
+    perks: [{id: 'fireBreath', rank: 1, hold: 'spitfire'}, {id: 'fireproof', rank: 3, own: {fire: 0, heat: true}}]},
   // ── support
   // the elves' caller of beasts: keeps back with a staff; once in a fight calls the forest beasts (agents/summon.js)
   {id: 'summoner', group: 'поддержка', label: 'призыватель зверей', note: 'посох; раз за бой зовёт лесных зверей на подмогу',

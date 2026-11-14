@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- циклоп: великан с одним глазом во лбу, косматая голова, набедренная повязка, валун в поднятой руке; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="34" ry="5" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M34 68L32 88H44L46 70Z"/><path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M54 70L56 88H68L66 68Z"/></g>
+<path fill="none" stroke="ink" stroke-width="12" stroke-linecap="round" d="M30 40Q20 52 22 66"/><path fill="none" stroke="fur" stroke-width="6" stroke-linecap="round" d="M30 40Q20 52 22 66"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M28 36Q30 26 50 26Q70 26 72 36L68 70Q50 74 32 70Z"/>
+<path fill="leather" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M32 60H68L66 72L58 68L50 74L42 68L34 72Z"/>
+<path fill="none" stroke="ink" stroke-width="12" stroke-linecap="round" d="M68 38Q78 30 80 18"/><path fill="none" stroke="fur" stroke-width="6" stroke-linecap="round" d="M68 38Q78 30 80 18"/>
+<path fill="stone" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M72 14Q72 4 82 4Q94 6 92 16Q90 24 80 22Q72 22 72 14Z"/>
+<path class="detail" fill="none" stroke="darkstone" stroke-width="2" stroke-linecap="round" d="M78 10L84 12M84 16L88 14"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M40 18Q40 6 52 6Q64 6 64 18Q64 28 52 30Q40 28 40 18Z"/>
+<path fill="hair" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M40 16Q38 4 52 2Q66 4 64 16Q60 8 52 8Q44 8 40 16Z"/>
+<ellipse class="figure" cx="53" cy="16" rx="5" ry="4" fill="light" stroke="ink" stroke-width="2"/>
+<circle class="figure" cx="54" cy="16" r="2.2" fill="ink"/>
+<path class="detail" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M48 24Q53 26 58 24"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- крокодил: длинное низкое тело, гребень пластин по спине, длинная зубастая морда, толстый хвост; смотрит вправо (игра зеркалит), флаги: up — на лапах, rest — лежит -->
+<ellipse cx="50" cy="90" rx="44" ry="5" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M28 72L22 84H32L36 74Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M60 72L56 84H66L68 72Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M0 74Q14 68 24 66Q40 60 58 62Q68 62 74 64L98 66Q98 72 90 74L74 76Q56 80 38 78Q20 80 0 74Z"/>
+<path fill="none" stroke="ink" stroke-width="3" stroke-linecap="round" d="M74 70L98 69"/>
+<g class="figure" fill="light" stroke="ink" stroke-width="1"><path d="M78 69L80 72L82 69Z"/><path d="M84 69L86 72L88 69Z"/><path d="M90 69L92 72L94 69Z"/></g>
+<path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M66 64Q70 56 76 60L74 64Z"/>
+<circle class="figure" cx="72" cy="61" r="2.2" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+<g fill="fur" stroke="ink" stroke-width="2.5" stroke-linejoin="round"><path d="M14 69L17 63L20 68Z"/><path d="M24 66L27 59L30 65Z"/><path d="M34 63L37 56L40 62Z"/><path d="M44 61L47 55L50 61Z"/><path d="M54 61L57 55L60 62Z"/></g>
+<path class="detail" fill="none" stroke="shade" stroke-width="2.5" stroke-linecap="round" d="M20 72H30M36 70H46M50 70H60"/>
+</svg>

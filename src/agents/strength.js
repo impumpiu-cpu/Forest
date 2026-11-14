@@ -13,6 +13,8 @@ import {COMBAT} from '../data/balance/combat.js';
 import {CRIT} from '../data/wounds.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
 import {STATS} from '../data/special.js';
+import {innateOf, heldOf} from '../data/perks.js';
+import {actsOf} from './abilities.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
@@ -33,7 +35,7 @@ export function strengthParts(a, {now = false} = {}) {
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
-  if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
+  const venom = innateOf(sp, 'venom'); if (venom) melee += venom.dmg * Math.min(1, venom.ticks / cd);
   // a sly weapon (quality `backstab`): the share of blows from the flank strikes deeper (COMBAT.flank)
   const sly = q => 1 + COMBAT.flank.share * (COMBAT.flank.dmg - 1) * traitOf(q, 'backstab');
   melee *= sly(g.melee.q) * pierceGain(g.melee.q);
@@ -48,8 +50,20 @@ export function strengthParts(a, {now = false} = {}) {
     // a bundle, not a quiverful; as it is now — what is left of it
     const throws = traitOf(g.ranged.q, 'thrown'); if (throws) shot *= Math.min(1, (now ? g.ranged.item?.ammo ?? throws : throws) / COMBAT.thrown.shots);
   }
+  // the acts (agents/abilities.js, the perks of `how: 'act'`): each rank's harm — at once, burning, poison — over the targets
+  // its shape takes (STRENGTH.acts: one, plus `crowd` a cell of its reach for a breath, a jet, a ring), × the share not
+  // dodged, every wind-up and wait; a grip's squeeze on top while it holds
+  const AC = STRENGTH.acts;
+  let acts = 0;
+  for (const {row} of actsOf(a)) {
+    const each = (row.dmg || 0) + (row.burn ? row.burn.dmg * row.burn.ticks : 0) + (row.venom ? row.venom.dmg * row.venom.ticks : 0) + (row.knock || row.numbFor ? AC.knock : 0) + (row.web ? AC.web : 0) + (row.grab ? AC.grab : 0) + (row.corrode ? AC.corrode : 0) + (row.fear ? row.fear * AC.fear : 0);
+    const many = row.shape === 'shot' || row.shape === 'touch' ? 1 : 1 + AC.crowd * (row.length || 0);
+    acts += each * many * AC.landed / ((row.prep || 0) + (row.wait || 0) || 1) * (row.ammo ? Math.min(1, row.ammo / AC.uses) : 1);
+  }
+  const C = heldOf(a, 'constrict');
+  if (C) acts += C.dmg / C.every * AC.held;
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
-  const offence = melee + shot;
+  const offence = melee + shot + acts;
   // staying power: health over the share of blows that land and hurt
   // against the average blow: armour and the body's resistance taken over the three kinds of blow
   const kinds = Object.keys(BLOWS), mean = f => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
@@ -57,7 +71,10 @@ export function strengthParts(a, {now = false} = {}) {
   staying /= mean(k => resistOf(sp, k, true));
   staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
   if (fearsSilver(sp)) staying /= COMBAT.silver.plain;   // against plain weapons
-  if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
+  const drink = innateOf(sp, 'bloodDrink'); if (drink) staying /= 1 - drink.share * STRENGTH.drinksWeight;
+  // high in the air most blades miss it; under the ground nothing does, till it comes up (agents/abilities.js)
+  const fly = heldOf(a, 'flight'); if (fly?.high) staying *= STRENGTH.acts.aloft;
+  if (heldOf(a, 'burrow')) staying *= STRENGTH.acts.under;
   return {offence, staying, raw: offence * staying};
 }
 

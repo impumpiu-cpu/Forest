@@ -9,7 +9,7 @@ import {capitals, newCampaign, runCampaign} from '../src/campaign/index.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {COMBAT_ROLES} from '../src/data/roles.js';
 import {ACTS} from '../src/data/experience.js';
-import {PERKS} from '../src/data/perks.js';
+import {PERKS, perkAccess} from '../src/data/perks.js';
 import {DEATHBLOW} from '../src/data/wounds.js';
 import {need} from '../src/campaign/experience.js';
 
@@ -71,7 +71,7 @@ for (const mode of modes) {
     byRole: Object.fromEntries(Object.entries(R.byRole).map(([k, v]) => [k, sumUp(v)])),
     byRace: Object.fromEntries(Object.entries(R.byRace).map(([k, v]) => [k, sumUp(v)])),
     cases: Object.fromEntries(Object.entries(R.cases).map(([k, v]) => [k, sumUp(v)])),
-    perks: Object.fromEntries(Object.entries(R.perks).sort((p, q) => q[1] - p[1])), neverTaken: PERKS.all().map(P => P.id).filter(id => !R.perks[id]),
+    perks: Object.fromEntries(Object.entries(R.perks).sort((p, q) => q[1] - p[1])), neverTaken: PERKS.all().filter(P => perkAccess(P).learn).map(P => P.id).filter(id => !R.perks[id]),
     firstPerkDay: median(R.firstPerk), perksBy130: median(R.perksAt130),
     maims: R.maims, maimedMembers: R.maimedMembers, maimsOverMax: R.overMax, dead: R.dead,
     at130: {core: R.core, deadShare: R.core ? Math.round(R.coreDead130 / R.core * 100) : 0, levelMedian: median(R.coreLv130)}, walksFinished: R.walksOver,

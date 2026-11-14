@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- белый медведь: длинная шея, узкая голова, мелкие уши, тёмный нос; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<g class="up"><rect x="20" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="32" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="60" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="72" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 58Q4 36 30 34Q50 32 62 36L74 44L78 68Q50 74 20 72Q6 70 6 58Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 42Q72 30 82 32Q94 34 98 44Q98 50 92 50L78 52Z"/>
+<circle cx="80" cy="32" r="3.5" fill="fur" stroke="ink" stroke-width="2.5"/>
+<circle class="figure" cx="86" cy="40" r="2.2" fill="ink"/>
+<path fill="ink" d="M95 43a2.4 2.4 0 1 0 .1 0Z"/>
+<path class="detail" fill="none" stroke="#c8ccd0" stroke-width="3" stroke-linecap="round" d="M20 50Q30 46 40 48M44 52Q54 48 62 52"/>
+<path class="tame" fill="none" stroke="#c8402e" stroke-width="4" stroke-linecap="round" d="M70 42L74 56"/>
+</svg>

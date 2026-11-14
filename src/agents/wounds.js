@@ -8,6 +8,7 @@
 // One check per fall: a creature lying senseless, or still healing the grave wound of its last fall, gets
 // no second chance — the next deadly blow kills. The checks use the combat stream, at the moment of the
 // blow, and their outcome is kept on the creature, so a save and a load never roll again.
+import {moraleFell} from './morale.js';
 import {SPECIES} from '../data/species.js';
 import {sunTicks} from '../core/time.js';
 import {NORM} from '../data/special.js';
@@ -88,6 +89,7 @@ function fall(w, a, cause, by, trauma) {
   // the old task is closed as interrupted by the brain's syncTask (agents/lifecycle.js), with this reason
   if (a.task) a.switchWhy = 'упал без сознания';
   releaseAll(w, a);
+  moraleFell(w, a, by);   // those who saw it fall shaken (agents/morale.js)
   noteHuntDeath(w, a);
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
   if (a.member != null) bloodPrice(w, a);   // one of the caravan down: the orcs who took the blood price rage (data/perks.js)

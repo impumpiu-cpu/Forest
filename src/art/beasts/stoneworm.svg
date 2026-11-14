@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- каменный червь: громадное тело в каменных пластинах вылезает из груды камня, круглая пасть с зубами; смотрит вправо (игра зеркалит), флаги: up — поднялся, rest — лежит -->
+<ellipse cx="50" cy="90" rx="40" ry="5" fill="shade"/>
+<path fill="stone" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M2 90L8 78L18 74L26 80L34 76L42 90Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M12 86Q12 42 46 30Q78 22 88 42Q94 56 82 62Q70 66 66 52Q60 44 48 50Q34 58 34 86Z"/>
+<g class="figure" fill="none" stroke="ink" stroke-width="3" stroke-linecap="round"><path d="M13 72H35"/><path d="M15 58L37 62"/><path d="M22 46L42 54"/><path d="M34 37L50 48"/><path d="M48 31L58 44"/><path d="M62 28L66 42"/></g>
+<g class="detail" fill="shine"><path d="M18 64L30 66L28 70L18 68Z"/><path d="M28 50L38 54L36 58L26 54Z"/></g>
+<path fill="#2a1a1a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M76 44Q92 36 96 50Q92 62 80 58Q74 52 76 44Z"/>
+<g fill="light" stroke="ink" stroke-width="1"><path d="M80 44L83 49L86 42Z"/><path d="M88 41L89 47L93 43Z"/><path d="M80 56L84 52L86 58Z"/><path d="M89 57L90 52L94 55Z"/></g>
+<circle class="detail" cx="22" cy="80" r="2.2" fill="darkstone"/>
+</svg>

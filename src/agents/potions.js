@@ -22,7 +22,7 @@ import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 import {FRENZY} from '../data/roles.js';
 import {onEdit} from '../data/schema/layer.js';
-import {perkMulA} from '../data/perks.js';
+import {perkMulA, innateOf} from '../data/perks.js';
 
 const able = a => !a.dead && !a.downed && !a.captive && a.hp > 0;
 // a blade in hand to rub a poison on: a weapon of blows, not a bow struck with
@@ -111,7 +111,7 @@ export function drinkFor(w, a, use, t = null) {
     for (let res; (res = forUse(w, a, 'fight')) && drink(w, a, res);) any = true;
     if (!a.coat) { const res = forBlade(a, t); if (res && drink(w, a, res)) any = true; }
     if (nightness(w) > POTION.dark && darkness(w, a) < 1 && drinkFor(w, a, 'dark')) any = true;   // (no use where the night hides nothing)
-    if (t && SPECIES.get(t.species).breath && drinkFor(w, a, 'fire')) any = true;
+    if (t && innateOf(SPECIES.get(t.species), 'fireBreath') && drinkFor(w, a, 'fire')) any = true;
     return any;
   }
   const res = forUse(w, a, use);
@@ -143,7 +143,7 @@ export function threatOf(counts) {
   for (const [id, k] of Object.entries(counts || {})) {
     if (!SPECIES.has(id) || !(k > 0)) continue;
     const sp = SPECIES.get(id), silver = fearsSilver(sp); n += k;
-    if (sp.venom) T.venom += k; if (silver) T.silver += k; if (sp.breath) T.breath += k; if (sp.undead) T.undead += k;
+    if (innateOf(sp, 'venom')) T.venom += k; if (silver) T.silver += k; if (innateOf(sp, 'fireBreath')) T.breath += k; if (sp.undead) T.undead += k;
     if (!sp.undead && !silver) T.living += k;
   }
   if (!n) return {...T, living: 1};   // nobody known: the living, as most are

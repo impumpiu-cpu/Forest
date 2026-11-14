@@ -35,6 +35,7 @@ export const raid = {
     if (plan) return [[plan, W.plan, () => `план отряда: ${plan.id}`]];
     const e = nearestHostile(w, a, radius);
     if (e) return [[a.task?.id === 'fight' && a.task.target === e ? a.task : {id: 'fight', target: e, since: w.tick}, W.fight, () => `враг рядом: ${e.name}`]];
+    if (sq?.goal === 'hold') return null;   // (a guard of its own home: no stores of the caravan's for it — agents/squad.js holdPlan)
     const id = a.looted ? 'leave' : mindless ? 'haunt' : 'assault';
     return [[a.task?.id === id ? a.task : {id}, W.go, () => (a.looted ? 'с добычей домой' : mindless ? 'бредёт к лагерю' : 'к складу')]];
   },

@@ -65,8 +65,9 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   const realm = a.realms.filter(r => r.people === 'orcs').find(r => relationsOf(a, r).some(x => x.r.border)) || a.realms.find(r => r.people === 'orcs');
   const rels = relationsOf(a, realm).filter(x => x.r.border); for (const x of rels) x.r.war = null;
   if (rels.length) {
-    const x = rels[0]; x.r.att = 3; x.r.peaceAt = -99;
+    for (const y of rels) { y.r.att = 3; y.r.peaceAt = -99; }
     const plan = warOn.want(a, realm, {r: () => 0})?.find(o => o[0].cult)?.[0];
+    const x = rels.find(y => y.kk === plan?.kk) || rels[0];   // (the neighbour the cult picks: any at peace may be it)
     const line = plan ? warOn.act(a, realm, plan, {r: () => 0}) : '';
     const war = x.r.war, until = war?.cult?.until, y0 = a.hist.year;
     a.hist.year = until; const peace = makePeace.want(a, realm)?.[0]?.[0], told = peace ? makePeace.act(a, realm, peace) : '';

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- бронзовый голем: литое тело, шестерня в груди, заклёпки по углам; смотрит вправо (игра зеркалит), флаги: up — стоит -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<g class="up"><path d="M29 66H41A3 3 0 0 1 44 69V85A3 3 0 0 1 41 88H29A3 3 0 0 1 26 85V69A3 3 0 0 1 29 66Z" fill="fur" stroke="ink" stroke-width="4"/><path d="M59 66H71A3 3 0 0 1 74 69V85A3 3 0 0 1 71 88H59A3 3 0 0 1 56 85V69A3 3 0 0 1 59 66Z" fill="fur" stroke="ink" stroke-width="4"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M24 30H76A6 6 0 0 1 82 36V64A6 6 0 0 1 76 70H24A6 6 0 0 1 18 64V36A6 6 0 0 1 24 30Z"/>
+<circle cx="12" cy="56" r="11" fill="fur" stroke="ink" stroke-width="4"/><circle cx="88" cy="56" r="11" fill="fur" stroke="ink" stroke-width="4"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M39 8H61A5 5 0 0 1 66 13V27A5 5 0 0 1 61 32H39A5 5 0 0 1 34 27V13A5 5 0 0 1 39 8Z"/>
+<path class="figure" fill="#ff8a2a" d="M40 17H60V22H40Z"/>
+<g class="figure" fill="#ffd36a" stroke="ink" stroke-width="1"><circle cx="26" cy="36" r="2"/><circle cx="74" cy="36" r="2"/><circle cx="26" cy="64" r="2"/><circle cx="74" cy="64" r="2"/></g><circle class="figure" cx="50" cy="50" r="9" fill="none" stroke="ink" stroke-width="3"/><path class="figure" fill="none" stroke="ink" stroke-width="3" d="M50 41V36M50 59V64M41 50H36M59 50H64"/>
+</svg>

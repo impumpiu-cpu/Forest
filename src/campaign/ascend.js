@@ -32,7 +32,7 @@ export function mayAscend(K) {
 // the values of a snapshot as a list: those written by the first build of Ver_E came as an object {0: …, 1: …} — read either way
 const valuesOf = v => (!v ? null : Array.isArray(v) ? [...v] : Object.values(v));
 
-const WORDS = {won: ['вернулся с короной', 'вернулась с короной'], lost: ['сгинул с караваном', 'сгинула с караваном'], timeout: ['не дождался конца пути', 'не дождалась конца пути']};
+const WORDS = {temple: ['ушёл в Храм всех богов', 'ушла в Храм всех богов'], won: ['вернулся с короной', 'вернулась с короной'], lost: ['сгинул с караваном', 'сгинула с караваном'], timeout: ['не дождался конца пути', 'не дождалась конца пути']};
 // one member as it goes up: what it is and what is on it (the gear: a word with marks, kept as it is — data/items.js)
 export function snapshotOf(a, K, m) {
   const was = m.summoned || null;
@@ -97,6 +97,13 @@ export function summonInto(a, K, snaps) {
     const core = K.members.filter(m => m.core && !used.has(m.id)), free = core.filter(m => !m.required);
     const at = core.find(m => m.required && closes(m.required)) || free.find(m => group && m.fight && COMBAT_ROLES.get(m.fight)?.group === group) || free.at(-1) || core.at(-1); if (!at) break;
     used.add(at.id);
+    applySnapshot(at, s);
+  }
+}
+// one of the ascended into the body of `at` (one of a new core, or a newcomer of the guild's — campaign/temple.js): all it was —
+// character, level, perks, maims, wounds — and the pieces of its gear this game still knows; the camp's tools `at` carried stay
+export function applySnapshot(at, s) {
+  {
     const own = s.gear.hand.filter(id => gearDef(id)), body = s.gear.body && gearDef(s.gear.body) ? s.gear.body : at.gear.body;
     // the camp's tools (RETINUE.tools) the one it replaces carried stay with the caravan: in its hands, unless it brings one of
     // the same form (an axe for an axe) — the core keeps what it builds and hunts with
@@ -115,6 +122,7 @@ export function summonInto(a, K, snaps) {
     });
     ensureXp(at);
   }
+  return at;
 }
 // the chronicle's line of the summoned, after the caravan's first line (campaign/start.js newCampaign)
 export function sayStart(a, K) {

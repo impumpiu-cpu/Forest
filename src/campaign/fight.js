@@ -22,7 +22,8 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
-import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
+import {campSetup, runCamp, campOutcome, outcomeHash, foeBudget, foeFielded, companyStrength} from './camp.js';
+import {AUTOFIGHT} from '../data/autofight.js';
 import {takeOnce, takeBonds, takeFacts, noteFate, welcome} from './social.js';
 import {say, die, alive, caravanMight, gainBeast, stopFood} from './march.js';
 import {shake} from './people.js';
@@ -62,7 +63,9 @@ export function fight(a, K, d, r, how = 'night') {
   // who the fallen fell to, for the balance (campaign-balance): a grave's guards, the lair's, the hunt
   K.fightSrc = d.boss?.mustDie ? 'lair' : d.boss ? 'grave' : d.pursuit || null;
   const before = alive(K).map(m => [m.id, m.hp]);
+  const shadow = K.shadow && K.mode !== 'auto' ? autoGuess(a, K, d, how) : null;   // (tools/autofight-calibrate.mjs --campaigns: the quick fight's word beside the map's)
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
+  if (shadow) K.shadow.push({...shadow, won: !!win, fell: K.members.filter(m => before.some(([id]) => id === m.id) && !m.alive).length, n: before.length, theirs: K.lastCamp?.foes?.might ?? null});
   delete K.fightSrc;
   const camp = K.lastCamp;
   recordFight(a, K, d, how, win, before);
@@ -86,7 +89,7 @@ function recordFight(a, K, d, how, win, before) {
   const fell = K.members.filter(m => ids.has(m.id) && !m.alive && !m.left?.escaped && !m.left?.taken).map(m => m.name);   // (a captive who ran, one led off: gone, not fallen)
   const hurt = K.members.filter(m => m.alive && ids.has(m.id) && m.hp < before.find(([id]) => id === m.id)[1] - CAMPAIGN.fight.wounded).map(m => m.name);
   const F = o?.foes, B = F?.boss;
-  const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
+  const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local', strength: d.strength ?? null,
     fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
     plundered: o ? !!o.plundered : null, foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, led: o ? o.led || 0 : null, species: F ? F.species : null,
     ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null, weight: F ? F.weight : A?.weight ?? null,
@@ -311,38 +314,78 @@ function spoilsRest(a, K, d, r) {
   }
 }
 
-// ── at once (the quick mode): the foe's might against the caravan's
+// ── at once (the quick mode; data/autofight.js — plan Г6, the author's word 13.11): what the map gives against this foe at this
+// ratio of strength, read a little worse (the table measured by tools/autofight-calibrate.mjs). The company's strength is the
+// map's own rating of it (campaign/camp.js companyStrength), the foe's — the budget the map would buy it by (foeBudget)
+// the kind of foe the table knows it by: how it came, and the band or the beast
+export const autoKey = (d, how) => `${how === 'guard' ? 'guard' : how === 'ambush' ? 'ambush' : 'night'}:${d.beast || d.band || d.kind}`;
+const HOWS_AUTO = ['guard', 'night', 'ambush'];
+function autoRow(d, how) {
+  const T = AUTOFIGHT.table, own = autoKey(d, how), [h, who] = own.split(':');
+  if (T[own]) return {row: T[own], how: h};
+  for (const x of HOWS_AUTO) if (T[`${x}:${who}`]) return {row: T[`${x}:${who}`], how: x};
+  for (const x of HOWS_AUTO) if (T[`${x}:${d.kind}`]) return {row: T[`${x}:${d.kind}`], how: x};
+  return {row: AUTOFIGHT.else, how: h};
+}
+// the row read at a ratio: between its points by the ratio's logarithm, held at the ends — and under the weakest, the chance to
+// win falling away (AUTOFIGHT.below)
+function readRow(R, x) {
+  const n = R.r.length; let i = 0, j = 0, t = 0;
+  if (x >= R.r[n - 1]) i = j = n - 1;
+  else if (x > R.r[0]) { j = R.r.findIndex(v => v >= x); i = j - 1; t = Math.log(x / R.r[i]) / Math.log(R.r[j] / R.r[i]); }
+  const o = Object.fromEntries(['win', 'dead', 'maim', 'hp', 'pot'].map(key => [key, R[key][i] + (R[key][j] - R[key][i]) * t]));
+  if (x < R.r[0]) o.win *= (x / R.r[0]) ** AUTOFIGHT.below;
+  return o;
+}
+// what the quick fight would read for this fight (no draw of the game's: the foe at its mean weight) — for the comparison
+export function autoGuess(a, K, d, how) {
+  const {row, how: measured} = autoRow(d, how), w = [AUTOFIGHT.mean];
+  const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
+  const P = companyStrength(a, K) * caught, E = foeFielded(d, how, foeBudget(() => w[0], d, how)), ratio = P / Math.max(1e-6, E);
+  const o = readRow(row, ratio / AUTOFIGHT.doubt);
+  return {key: autoKey(d, how), P, E, ratio, win: o.win ** AUTOFIGHT.sure, dead: o.dead * AUTOFIGHT.extra, maim: o.maim * AUTOFIGHT.extra};
+}
 function autoFight(a, K, d, r, how) {
-  // the foe is bought by the caravan's might × the fight's weight (campaign/camp.js foeWeight, data/camp.js CAMP.foe), as on the local map
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = caravanMight(K, true) * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
-  const share = P / (P + E), win = r() < share;
-  K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
-  // the blows: more when they lose, mostly on the first rank, who shield the rest
-  let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
-  const hit = [], out = new Set();
-  // the perks of the fight that tell in the quick fight too (Ver_E Э6; the local map plays them blow by blow — data/perks.js `fight`):
-  // a shield-bearer «Плечом к плечу» standing draws the blows off the others (the rest's share ÷ its cover), a healer with
-  // «Полевая перевязь» stands the one it saved up stronger (+ its dressHp)
+  const F = CAMPAIGN.fight, A = AUTOFIGHT, foe = FOES[d.kind];
+  const {row, how: measured} = autoRow(d, how);
+  // caught on the march when the table knows this foe only at night: the surprise the map would play (not caught napping — no)
+  const caught = how === 'ambush' && measured !== 'ambush' && K.alert !== K.day ? AMBUSH.surprise * paceOf(K).wary : 1;
+  const P = companyStrength(a, K) * caught, E = foeFielded(d, how, foeBudget(r, d, how)), ratio = P / Math.max(1e-6, E);
+  const o = readRow(row, ratio / A.doubt), win = r() < o.win ** A.sure;
+  K.lastAuto = {E: Math.round(E), P: Math.round(P), heads: Math.max(1, Math.ceil(E / CAMP.foe.unit * CAMP.foe.quickUnit * CAMP.quickHeads)), weight: Math.round(E / Math.max(1e-6, P) * 100) / 100};   // for the fight's record (the map's units)
+  const ms0 = alive(K).filter(m => !m.captive), n = ms0.length, hit = [], out = new Set();
   const standing = () => alive(K).filter(m => !m.captive && !out.has(m.id));
-  const cover = () => Math.max(1, ...standing().filter(inLine).map(m => perkMulA(m, 'cover'))), saved = who => F.saved + Math.max(0, ...standing().filter(m => m !== who).map(m => perkOf(m, 'dressHp')));   // (another's hands: a healer does not bind itself better — Р3)
-  while (hurt > 0 && alive(K).some(m => !out.has(m.id))) {
-    // one maimed in this fight lies senseless and out of it, as on the map (agents/wounds.js maimFall): no more blows for it
-    const ms = alive(K).filter(m => !out.has(m.id)), c = cover(), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1 / c));   // a captive keeps out of it
-    let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
-    for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
-    const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
-    if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;   // at the edge, a healing potion (campaign/potions.js)
-    if (!hit.includes(m)) hit.push(m);
-    // the blow's deadly chance: one not in the line, with a shield-bearer «Плечом к плечу» standing, is covered — ÷ its cover, as
-    // the map's shield saves lives, not bruises (Р3); the draw is the same one either way
-    const mortal = r() < F.mortal / (inLine(m) || m.captive ? 1 : c);
-    if (mortal || (m.hp <= 0 && !win)) { if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = saved(m); out.add(m.id); } else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }   // a maim instead of death (campaign/maims.js)
-    else if (m.hp <= 0 && spent(m)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);   // three maims borne: the fall that a won fight forgives others kills it, with no check (Р2-03)
-    else if (m.hp <= 0) { m.hp = saved(m); award(K, m, 'clean'); }   // fell and rose with no mark: «Везучий» (data/perks.js)
+  const saved = who => F.saved + Math.max(0, ...standing().filter(m => m !== who).map(m => perkOf(m, 'dressHp')));   // (another's hands: a healer does not bind itself better)
+  const where = `пал в ${WHERE[how] || 'бою'} (${foe.label})`;
+  // the dead and the maimed, as many as the map gives at this ratio (× extra), drawn one by one — the first rank more often
+  // (they shield the rest), a shield-bearer «Плечом к плечу» standing covering the others (data/perks.js `cover`)
+  const cover = () => Math.max(1, ...standing().filter(inLine).map(m => perkMulA(m, 'cover')));
+  const pickOne = () => {
+    const ms = standing(); if (!ms.length) return null;
+    const c = cover(), wts = ms.map(m => (inLine(m) ? F.shield : 1 / c));
+    let x = r() * wts.reduce((s, v) => s + v, 0);
+    for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) return ms[q]; }
+    return ms.at(-1);
+  };
+  const count = v => { const w = v * n * A.extra; return Math.floor(w) + (r() < w - Math.floor(w) ? 1 : 0); };
+  for (let k = count(o.dead); k > 0; k--) { const m = pickOne(); if (!m) break; if (!hit.includes(m)) hit.push(m); die(a, K, m, where); }
+  for (let k = count(o.maim); k > 0; k--) {
+    const m = pickOne(); if (!m) break; if (!hit.includes(m)) hit.push(m);
+    if (maimInstead(K, m, r, (text, who) => say(a, K, text, 'people', false, who))) { m.hp = Math.min(m.hp, saved(m)); out.add(m.id); } else die(a, K, m, where);   // (three maims borne: the next kills)
   }
-  // a lost fight with nobody left on its feet: the maimed lying senseless may be finished off, as on the map where no one is
-  // there to bind them (Р3; a draw for each only then)
-  if (!win && !standing().length) for (const m of alive(K).filter(x => out.has(x.id))) if (r() < F.finishOff) die(a, K, m, `${m.gender === 'f' ? 'добита' : 'добит'}, лёжа без сознания (${foe.label})`);
+  // the health lost: the blows, a share of a body each (CAMPAIGN.fight.blow), as much in all as the map takes (× extra); one at the
+  // edge drinks a potion (campaign/potions.js), one fallen with no mark rises («Везучий»: data/perks.js)
+  let hurt = o.hp * n * A.extra;
+  while (hurt > 0 && standing().length) {
+    const m = pickOne(), b = Math.min(hurt, between(r, F.blow)); m.hp -= b; hurt -= b;
+    if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;
+    if (!hit.includes(m)) hit.push(m);
+    // (the dead and the maimed of the fight are counted above, as the map counts them — a fall here is a fall: bound up and alive,
+    // but one with three maims borne, whom the next deadly blow kills)
+    if (m.hp <= 0 && spent(m)) die(a, K, m, where);
+    else if (m.hp <= 0) { m.hp = saved(m); if (win) award(K, m, 'clean'); }
+  }
+  // (a lost fight's finished-off are among the map's dead read above: no draw of their own)
   if (!alive(K).length) return win;
   if (win) {
     const loot = Math.round(between(r, F.loot)); K.food += loot;

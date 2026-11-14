@@ -26,6 +26,8 @@ ACTS.registerAll([
   {id: 'find',    ground: true, label: 'находка', xp: 10},
   {id: 'clue',    ground: true, label: 'подсказка', xp: 20},
   {id: 'crown',   ground: true, label: 'корона найдена', xp: 100},
+  {id: 'train',   ground: true, label: 'учёба у тренера', xp: 0, note: 'гильдия: тренировочный зал (data/rooms.js HOUSE.train) — опыт за сезон учёбы'},
+  {id: 'quest',   ground: true, label: 'поручение исполнено', xp: 0, note: 'гильдия: за поручение мира, сданное в столице, — каждому вернувшемуся XP.quest по тиру (не × XP.field)'},
   {id: 'town',    ground: true, label: 'новый город', xp: 2},
   // ── the acts of a fight
   {id: 'killBlow', stat: 'S', label: 'поверг в рукопашной', why: 'бил врага в рукопашной', whyF: 'била врага в рукопашной', xp: 3, note: 'счёт — поверженные враги (убит или сбит с ног: один враг — один раз); опыт — × вес врага (его КС / 100)'},
@@ -41,6 +43,7 @@ ACTS.registerAll([
   {id: 'role',    stat: 'role', label: 'бился в своей роли', why: 'держал своё место в строю', whyF: 'держала своё место в строю', xp: 0, note: 'без опыта: буква роли с весом XP.roleWeight — тому, кто бился, но своих дел в бою не набрал'},
   // ── the acts of the road
   {id: 'work',    stat: 'skill', captive: true, label: 'работа', why: 'трудился', whyF: 'трудилась', xp: 0.02, note: 'за единицу практики (agents/skills.js practice units): 100 единиц ≈ полдня работы'},
+  {id: 'chore',   stat: 'role', label: 'городское дело', why: 'брался за городские дела', whyF: 'бралась за городские дела', xp: 1, note: 'дело в городе гильдии (data/chores.js): опыт — из строки дела'},
   {id: 'game',    stat: 'P', label: 'добыл дичь', why: 'добывал дичь', whyF: 'добывала дичь', xp: 3},
   {id: 'escort',  stat: 'E', label: 'ходил провожатым', why: 'ходил рядом с теми, кто боится', whyF: 'ходила рядом с теми, кто боится', xp: 1},
   {id: 'watch',   stat: null, label: 'стоял в дозоре', xp: 2, note: 'без буквы: дозор идёт по кругу, иначе он тянул бы всех к одной букве'},
@@ -71,9 +74,14 @@ ACTS.registerAll([
 //            choice of the mode does not change a career
 //   roleWeight — what a fight without one's own acts writes into the role's letters (split between them): a weight, not
 //            experience — as one dressing of a wound; it points the way when nothing else does
+//   field    — the guild's expeditions (the author's word 12.11, as in a tabletop game: the experience is the errand's): what is
+//            earned on the road and in the fights × this; the acts still write their letters whole (the letter a level grows)
+//   quest    — by the errand's tier (data/errands.js; 0 — nothing): each one back home from an errand handed in gets this; one back
+//            with nothing — × `questFail`. Tier I lifts a 3rd level to the 6th in about four errands, II the 6th to the 9th, III
+//            the 9th to the 12th, IV the 12th to the 16th, V the 16th to the 20th in three (data/guild.js GUILD.rank)
 //   autoBy   — the skills a quick-mode stop's work is on, by the stop's purpose (campaign/march.js K.why): the member's best of
 //            them; none — its best skill outside the fight's (the fight's skills are trained only in a fight)
-export const XP = {need: 5, lead: 4, cap: 20, merit: {present: 0.25}, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270, roleWeight: 1.5,
+export const XP = {need: 5, lead: 4, cap: 20, merit: {present: 0.25}, danger: [0.5, 3], captive: 0.5, letters: ['S', 'P', 'E', 'C', 'I', 'A'], autoWork: 270, roleWeight: 1.5, field: 0.1, quest: [0, 45, 70, 90, 155, 260], questFail: 0.2,
   autoBy: {food: ['hunting', 'gathering', 'fishing', 'cooking'], heal: ['medicine', 'gathering', 'cooking'], build: ['construction', 'woodcutting', 'carpentry'], mine: ['mining', 'smithing'], tame: ['husbandry']},
   fightSkills: ['melee', 'ranged']};
 

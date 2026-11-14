@@ -59,7 +59,9 @@ export function award(K, m, id, n = 1, opt = {}) {
   const A = ACTS.get(id);
   if (m.captive && !A.captive) return 0;
   ensureXp(m);
-  const xp = (opt.xp ?? A.xp * n) * (m.captive ? XP.captive : 1);
+  const raw = (opt.xp ?? A.xp * n) * (m.captive ? XP.captive : 1);
+  // a guild's expedition: the road's and the fights' experience × XP.field, the errand's whole (XP.quest); the letters by the raw
+  const xp = K?.guild && id !== 'quest' ? raw * XP.field : raw;
   m.acts[id] = r2((m.acts[id] || 0) + n);
   if (!(xp > 0)) {   // an act with no experience: a count (slew); the role's still points the way, by its weight
     if (A.stat === 'role') { const ls = lettersOf(m, A, opt); for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + XP.roleWeight * n / ls.length); m.lvOf[id] = r2((m.lvOf[id] || 0) + XP.roleWeight * n); }
@@ -68,7 +70,7 @@ export function award(K, m, id, n = 1, opt = {}) {
   m.xp = r2(m.xp + xp); m.xpOf[id] = r2((m.xpOf[id] || 0) + xp); m.lvOf[id] = r2((m.lvOf[id] || 0) + xp);
   if (id === 'work' && opt.skill) noteWork(m, opt.skill, xp);
   const ls = lettersOf(m, A, opt);
-  for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + xp / ls.length);
+  for (const s of ls) m.xpBy[s] = r2((m.xpBy[s] || 0) + raw / ls.length);
   return xp;
 }
 // everyone free and living who was there

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гигантский удав: толстое тело кольцами, голова поднята, ромбы по спине, язык; смотрит вправо (игра зеркалит), флаги: up — поднял голову, rest — лежит -->
+<ellipse cx="50" cy="90" rx="40" ry="5" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="17" stroke-linecap="round" d="M8 80Q8 66 26 66Q44 66 44 78Q44 88 60 86Q76 84 74 70"/>
+<path fill="none" stroke="fur" stroke-width="10" stroke-linecap="round" d="M8 80Q8 66 26 66Q44 66 44 78Q44 88 60 86Q76 84 74 70"/>
+<g class="up"><path fill="none" stroke="ink" stroke-width="15" stroke-linecap="round" d="M74 70Q72 52 80 42"/><path fill="none" stroke="fur" stroke-width="8" stroke-linecap="round" d="M74 70Q72 52 80 42"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M74 42Q76 32 86 32Q96 34 98 40Q96 46 86 48Q76 48 74 42Z"/><circle class="figure" cx="86" cy="38" r="2.4" fill="ink"/>
+<path class="detail" fill="none" stroke="#c8402e" stroke-width="2" stroke-linecap="round" d="M98 41L100 38M98 41L100 44"/></g>
+<g class="no-up"><path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M70 66Q76 58 86 60Q96 62 96 68Q94 72 84 72Q74 72 70 66Z"/><circle class="figure" cx="86" cy="65" r="2.2" fill="ink"/></g>
+<g class="figure" fill="shade"><path d="M18 66L22 63L26 66L22 69Z"/><path d="M34 70L38 67L42 70L38 73Z"/><path d="M50 86L54 83L58 86L54 89Z"/><path d="M66 82L70 79L74 82L70 85Z"/></g>
+</svg>

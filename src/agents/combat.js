@@ -1,6 +1,7 @@
 // Fighting: melee blows, shots from bows and slings, armour and shields.
 // The numbers of the fight (base blow, hit chance, skill, reach, silver): data/balance/combat.js.
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
+import {moraleWound, moraleBlow, moraleGuard, fleeing} from './morale.js';
 import {noteAct} from './acts.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES, fearsSilver} from '../data/species.js';
@@ -36,7 +37,8 @@ import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
 import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
-import {perkMulA, perkOf} from '../data/perks.js';
+import {perkMulA, perkOf, innateOf, heldOf} from '../data/perks.js';
+import {FLIGHT} from '../data/abilities.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -55,8 +57,11 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 // Finding a foe, keeping after one and striking one all go by this.
 // how close one who creeps is seen (COMBAT.sneak): heavier armour is heard further
 export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
+// echolocation (the perk «Эхолокация», data/perks.js): within its `range` one hears what creeps and sees in the dark
+const echoOf = a => (a.echoRow !== undefined ? a.echoRow : (a.echoRow = heldOf(a, 'echo')));
 export function canSee(w, a, t) {
-  if (t.hiddenUntil > w.tick) return false;
+  if (t.hiddenUntil > w.tick || t.under || t.swallowed) return false;   // (under the ground, inside a beast: agents/abilities.js)
+  const E = echoOf(a); if (E && Math.hypot(t.x - a.x, t.y - a.y) <= E.range) return true;
   if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;   // the fallen and the bound creep no more
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
@@ -67,7 +72,7 @@ export function canSee(w, a, t) {
 // only WATCH.torch of it
 export function darkness(w, a) {
   const night = nightness(w);
-  if (!(night > 0) || !(NIGHT.loss > 0)) return 1;
+  if (!(night > 0) || !(NIGHT.loss > 0) || echoOf(a)) return 1;
   if (w.campLit && w.camp && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight) return 1;
   const k = nightSight(a.species, night, a);
   return k < 1 && carriesTorch(a) ? 1 - (1 - k) * (1 - WATCH.torch) : k;   // (a torch: half of what the night takes, as the watchman's)
@@ -99,7 +104,12 @@ export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
 // A parrying weapon in hand (quality `parry`) adds to the block against blows, never past CAPS.block
 export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.max(against(g.block, g.blockVs, type), Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry)) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
-export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
+// natural armour (a perk «Чешуя и панцирь», data/perks.js) stands in the place of the body's own answer to that kind, never on top
+export const resistOf = (sp, type, melee) => {
+  const sc = innateOf(sp, 'scales')?.[type];
+  const by = sc ?? sp.resist?.[type] ?? 1;
+  return by * (sp.resist?.[melee ? 'melee' : 'ranged'] ?? 1);
+};
 
 // Apply a hit: a shield may stop a blow or a shot (a parry only a blow), armour absorbs part of the rest.
 // Inside the settlement zone colonists fight harder and a palisade shields them.
@@ -162,20 +172,24 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
+  dmg *= moraleGuard(t);   // a shaken one guards itself worse (agents/morale.js)
   t.hp -= dmg;
+  moraleWound(w, t, dmg);
   // creatures that drink blood heal by what they draw
   const bsp = SPECIES.get(by.species);
-  if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
-  // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
-  if (melee && bsp.venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
+  const drink = melee && innateOf(bsp, 'bloodDrink');
+  if (drink && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * drink.share);
+  // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js); a breath is an act of its own (agents/abilities.js)
+  const venom = melee && innateOf(bsp, 'venom');   // (the book of perks: «Ядовитый укус», its rank's profile or the species' own numbers)
+  if (venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
   if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead || !!tsp.mechanism);
-  if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
+  const web = melee && innateOf(bsp, 'web');
+  if (web) t.webbed = {slow: web.slow, until: w.tick + web.ticks};
   // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall; so does a
   // burning throw that struck home (the forge-master's fire: data/balance/forms.js spitfire)
   const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
-  if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp > 0 && hpShare(t) < MIND.woundedBelow) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   // what the fight is remembered as (species `remembers`: a wolf, a mule); the striker's kind before the struck one's
   const rb = bsp.remembers, rt = tsp.remembers;
@@ -201,17 +215,6 @@ const silverFactor = (t, item, by = null) => {
 export function kindle(w, i) {
   if (w.grid.terr[i] === T.WATER || w.grid.terr[i] === T.ROCK) return;   // nothing there to catch
   const K = KINDLE.torch; w.grid.fire[i] = Math.max(w.grid.fire[i], K.fire); heatTo(w, i, K.heat); w.grid.fuel[i] = Math.max(w.grid.fuel[i], K.fuel);
-  w.nav.dirty('fire');
-}
-
-// a drake's breath: the ground under the victim catches fire (only where there is something to burn)
-function scorch(w, t) {
-  const cx = t.x | 0, cy = t.y | 0;
-  for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
-    if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
-    const i = y * w.w + x;
-    const B = KINDLE.breath; if (w.grid.fuel[i] > B.fuel) { w.grid.fire[i] = Math.max(w.grid.fire[i], B.fire); heatTo(w, i, B.heat); }
-  }
   w.nav.dirty('fire');
 }
 
@@ -265,9 +268,13 @@ export function stanceOf(w, a, t) {
 // × the blow from there: the stance's own, its share over 1 × (1 + the weapon's `backstab`)
 export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance === 'back' ? COMBAT.back.dmg : COMBAT.flank.dmg) - 1) * (1 + traitOf(q, 'backstab')));
 export function attack(w, a, t) {
-  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
+  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a) || fleeing(a)) return false;   // (one who flees strikes nothing: agents/morale.js)
   const BLOW = COMBAT.blow;   // (read at the blow: an edit of the table reaches it)
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+  // high in the air (a perk «Полёт», agents/abilities.js): a short blade does not reach it, and it strikes only once down
+  if ((t.aloft && t.flightRow?.high && reachOf(a) < FLIGHT.hitUp) || (a.aloft && a.flightRow?.high)) return false;
+  // held, one strikes only at the holder; the holder holds and strikes nothing else (agents/abilities.js)
+  if ((a.held && t.id !== a.held.by) || a.swallowed || (a.holding != null && a.holding !== t.id)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
   if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
@@ -284,12 +291,16 @@ export function attack(w, a, t) {
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
   const stance = stanceOf(w, a, t);   // read before the blow: a hurt target knows of it after
-  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
+  // a run at it, or come down on it from the air (a perk «Таран и пикирование»): the blow harder, the struck knocked down
+  const R = a.chargeRow, run = R && a.run?.len >= R.from ? R : null; if (a.run) a.run.len = 0;
+  if (run) full *= run.mul;
+  damage(w, a, t, moraleBlow(a) * full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
+  if (run && !t.dead && !t.downed && !SPECIES.get(t.species).mechanism) t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + run.knock)};
   // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
   // the target's dodge, block and armour as any
   const off = g.offhand;
   if (off && !t.dead && !t.downed) {
-    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
+    damage(w, a, t, moraleBlow(a) * (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
     wear(w, a, off.item);
   }
   // a rider's mount bites at its rider's blow (agents/mount.js)
@@ -319,7 +330,7 @@ function coverFor(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a) || fleeing(a)) return null;
   const SHOT = COMBAT.shot, HIT = COMBAT.hit;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
@@ -352,7 +363,7 @@ export function shoot(w, a, t) {
   if (ground > 0 && deg !== 'critSuccess' && w.rngs.combat() < ground) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
+  const res = damage(w, a, t, moraleBlow(a) * (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, r.item && def(r.item).silver ? r.item : null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
   const out = t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
   if (out !== 'miss' && (isHostile(a, t) || aggressor(a, t))) noteAct(a, 'hit');   // a shot that landed on a foe: an act (agents/acts.js)
   return out;

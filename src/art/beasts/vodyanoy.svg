@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- водяной: грузный старик-лягушка в тине, зелёная борода, перепонки, сидит в воде; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="88" rx="42" ry="7" fill="water" opacity="0.8"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 84Q14 56 34 44Q50 36 66 44Q86 56 82 84Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 34Q30 16 50 14Q70 16 70 34Q70 46 50 48Q30 46 32 34Z"/>
+<circle cx="40" cy="18" r="6" fill="fur" stroke="ink" stroke-width="3"/><circle cx="60" cy="18" r="6" fill="fur" stroke="ink" stroke-width="3"/>
+<circle class="figure" cx="41" cy="18" r="2.6" fill="ink"/><circle class="figure" cx="61" cy="18" r="2.6" fill="ink"/>
+<path fill="#3f5a3a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 38Q50 44 64 38L62 60L56 52L54 66L50 54L46 66L44 52L38 60Z"/>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M70 56Q82 62 88 74"/>
+<path fill="fur" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M84 72L94 72L90 80L86 76L82 80Z"/>
+<g class="detail" fill="#5a7a3a"><path d="M22 60Q26 66 22 72Z"/><path d="M76 60Q72 66 76 72Z"/></g>
+<path class="figure" fill="none" stroke="#e8f4ff" stroke-width="2" stroke-linecap="round" d="M8 86Q16 82 24 86M74 86Q84 82 94 86"/>
+</svg>

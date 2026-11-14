@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- крюкастый ужас: высокий двуногий в хитиновом панцире, голова-клюв стервятника, вместо кистей — костяные крюки; слеп, щёлкает; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="30" ry="5" fill="shade"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 66L34 88H44L46 68Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M54 68L56 88H66L62 66Z"/></g>
+<path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M36 40Q22 48 20 62"/><path fill="none" stroke="fur" stroke-width="3" stroke-linecap="round" d="M36 40Q22 48 20 62"/>
+<path fill="bone" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M20 60Q12 66 16 76Q18 70 24 68Q22 64 24 62Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 34Q34 26 50 26Q66 26 68 36L64 70Q50 74 36 70Z"/>
+<g class="figure" fill="none" stroke="ink" stroke-width="2.5" stroke-linecap="round"><path d="M38 44H62"/><path d="M38 54H62"/><path d="M40 63H60"/></g>
+<path fill="none" stroke="ink" stroke-width="8" stroke-linecap="round" d="M64 38Q78 42 82 54"/><path fill="none" stroke="fur" stroke-width="3" stroke-linecap="round" d="M64 38Q78 42 82 54"/>
+<path fill="bone" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M82 52Q92 56 90 68Q86 62 80 62Q82 58 80 56Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M42 22Q42 10 54 10Q66 12 66 22Q66 28 60 30H46Z"/>
+<path fill="bone" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M62 16Q76 16 82 24Q74 26 64 26Z"/>
+<path class="figure" fill="none" stroke="ink" stroke-width="2" stroke-linecap="round" d="M54 18L58 18"/>
+<path class="detail" fill="none" stroke="light" stroke-width="1.6" stroke-linecap="round" d="M86 14Q90 18 86 22M90 10Q96 18 90 26"/>
+</svg>

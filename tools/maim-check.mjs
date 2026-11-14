@@ -73,7 +73,7 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
 {
   const {K} = fresh(), m = K.members[0], lines = [];
   const id = maimInstead(K, m, () => 0.3, t => lines.push(t));
-  ok(id && m.maims === 1 && m.wounds.some(x => x.id === id && x.day == null) && /увечным: .*увечий: 1 из 3/.test(lines[0]) && K.social.facts.some(f => f.kind === 'maimed' && f.to === m.id), 'быстрый режим: смертельный удар — увечье, строка и факт', lines[0]);
+  ok(id && m.maims === 1 && m.wounds.some(x => x.id === id && x.day == null) && /увечн(?:ым|ой): .*увечий: 1 из 3/.test(lines[0]) && K.social.facts.some(f => f.kind === 'maimed' && f.to === m.id), 'быстрый режим: смертельный удар — увечье, строка и факт', lines[0]);
   m.maims = 3;
   ok(maimInstead(K, m, () => 0.3) === null, 'с тремя увечьями быстрый режим убивает');
   const c = K.members[1]; c.captive = {since: 0};
@@ -103,7 +103,7 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(pickPerk(K, m)?.id === 'oneEyed', 'ответ на рану берётся первым, хотя открыт и «Второе дыхание»');
   const f = ensureXp(K.members[4]); f.level = 5; f.wounds = [{id: 'dread', day: null}]; noteScars(f); f.acts.fight = (f.acts.fight || 0) + 3;
   ok(pickPerk(K, f)?.id === 'overcame' && !hasWound(f, 'dread') && K.social.facts.some(x => x.kind === 'overcame' && x.by === f.id), '«Переболел»: страх смерти снят, факт');
-  const l = ensureXp(K.members[5]); l.level = 3; l.acts.clean = 1; const cap5 = SPECIES.get(l.race).special.L[1];
+  const l = ensureXp(K.members[5]); l.level = 2; l.acts.clean = 1; const cap5 = SPECIES.get(l.race).special.L[1];   // (level 2: below the classes' own perks, data/classes.js — from the third)
   l.special.L = cap5 - 1; const L0 = l.special.L;
   ok(pickPerk(K, l)?.id === 'lucky' && l.special.L === L0 + 1, '«Везучий»: Удача +1');
   const l2 = ensureXp(K.members[6]); l2.level = 3; l2.acts = {clean: 1}; l2.special.L = cap5;
@@ -163,9 +163,9 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   let won = 0, lost = 0, bad = 0, n = 0, deadWon = 0, deadLost = 0;
   for (let s = 0; s < 40 && (won < 2 || lost < 2); s++) {
     const {a, K} = fresh();
-    for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.02; }
+    for (const m of K.members) { ensureXp(m); m.maims = 3; m.hp = 0.3; }
     let k = s * 7919 + 1; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
-    const win = fight(a, K, {kind: 'raiders', strength: 1.5, label: 'налётчики'}, r, 'night'); n++;
+    const win = fight(a, K, {kind: 'raiders', strength: 1.2, label: 'налётчики'}, r, 'night'); n++;
     const dead = K.members.filter(m => !m.alive).length;
     if (win) { won++; deadWon += dead; } else { lost++; deadLost += dead; }
     bad += K.members.filter(m => m.alive && (m.acts?.clean || 0) > 0).length;
@@ -243,18 +243,16 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(n > 0 && most === 1, 'быстрый бой: увечный выбывает из боя — за один бой не больше одного увечья', `увечий ${n}, больше всего у одного ${most}`);
 }
 
-// Р3: a lost quick fight with nobody left on its feet — the maimed lying there may be finished off (as on the map); won — never
+// Р3 (Г6): the quick fight's dead are the map's (data/autofight.js — the finished-off of a lost fight among them): a hopeless fight
+// kills, an easy one does not
 {
-  let fin = 0, won = 0;
-  for (let s = 1; s <= 40; s++) {
-    // (two left of the company, worn to nothing: the quick fight's blows run out before eight are down — campaign/fight.js)
-    const {a, K} = fresh(); for (const m of K.members) { ensureXp(m); m.hp = 0.03; } for (const m of K.members.slice(2)) m.alive = false;
+  let hopeless = 0, easy = 0;
+  for (let s = 1; s <= 30; s++) {
     let k = s * 104729 + 11; const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
-    const win = fight(a, K, {kind: 'raiders', strength: 4, label: 'налётчики'}, r, 'night');
-    const f = K.members.filter(m => /лёжа без сознания/.test(m.died?.why || '')).length;
-    if (win) won += f; else fin += f;
+    { const {a, K} = fresh(); for (const m of K.members) ensureXp(m); fight(a, K, {kind: 'raiders', strength: 6, label: 'налётчики'}, r, 'night'); hopeless += K.members.filter(m => !m.alive).length; }
+    { const {a, K} = fresh(); for (const m of K.members) ensureXp(m); fight(a, K, {kind: 'raiders', strength: 0.2, label: 'налётчики'}, r, 'night'); easy += K.members.filter(m => !m.alive).length; }
   }
-  ok(fin > 0 && won === 0, 'проигранный быстрый бой, когда стоять некому: увечных добивают; в выигранном — никогда', `добитых ${fin}, в победах ${won}`);
+  ok(hopeless > 30 && easy === 0, 'быстрый бой: безнадёжный бой уносит жизни, лёгкий — нет', `павших за 30 боёв: безнадёжных ${hopeless}, лёгких ${easy}`);
 }
 
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }

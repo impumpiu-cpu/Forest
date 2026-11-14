@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- сайгак: лёгкая антилопа, большой горбатый хобот-нос, светлое брюхо, янтарные рожки; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, no-doe — с рогами -->
+<ellipse cx="50" cy="90" rx="32" ry="5" fill="shade"/>
+<g class="up"><rect x="30" y="60" width="4" height="28" rx="2" fill="fur" stroke="ink" stroke-width="3"/><rect x="38" y="60" width="4" height="28" rx="2" fill="fur" stroke="ink" stroke-width="3"/><rect x="60" y="60" width="4" height="28" rx="2" fill="fur" stroke="ink" stroke-width="3"/><rect x="68" y="60" width="4" height="28" rx="2" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M22 50Q22 40 38 40H60Q70 40 72 50L70 64Q54 68 38 66Q22 64 22 50Z"/>
+<path fill="light" d="M30 58Q50 64 66 58L66 62Q50 66 32 62Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M62 46L70 30Q80 28 84 34Q94 36 96 44Q96 52 88 50L82 48L72 50Z"/>
+<path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M86 36Q98 38 96 48Q92 44 88 44Z"/>
+<circle class="figure" cx="78" cy="36" r="2.2" fill="ink"/>
+<path class="no-doe" fill="#e3c88a" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M74 30L72 14L76 16L78 30Z"/>
+</svg>

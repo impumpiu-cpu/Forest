@@ -9,7 +9,7 @@
 //   aura  — on the local map, from those around (here: a goblin among its own, campaign/camp.js)
 //
 // A requirement (req), all of which must hold:
-//   level — the level it may be taken from (each further rank: + RANK_LEVEL)
+//   level — the level it may be taken from
 //   race, group, role — the member's race; its role's group (data/roles.js); its fighting role (or a hired one)
 //   notRole — not for these roles (a perk that is a role's own knack: the summoner has the call already)
 //   hand — something of these forms in its hands (data/items.js `form`)
@@ -22,18 +22,26 @@
 //   scar, since — a wound it bears, and the deeds done after it (the answers to a wound)
 // grant — letters it raises at once, inside the race's limits (Luck); cure — a wound it takes off
 // pull — what in its character draws it to this perk: {leans: {id: w}, values: [ids], traits: [ids]} (PERK_PICK)
-// ranks — how many times it may be taken (default 1)
+// rank — each rank written out whole (the author's word 13.11: a rank is its own row, never «× the rank»): what that rank
+//         asks (its own `req`), what it does (its own `fight`, `camp`, `mods`, or a profile's numbers — a reach, a shape, a
+//         wait); a row's keys stand over the perk's own, an empty row is the perk as written. Its number of rows is its ranks
+//         (default 1). The numbers may lean on the holder's letters, never on the rank
 import {Registry} from '../core/registry.js';
+import {SPECIES} from './species.js';
+import {roleRow} from './roles.js';
+import {classOfRole} from './classes.js';
 
 export const PERKS = new Registry('perk');
 PERKS.registerAll([
   // ── for anyone
   {id: 'secondWind', label: 'Второе дыхание', kind: 'общие', how: 'camp', about: 'в дозоре устаёт на четверть меньше',
     req: {level: 2, any: [['watch', 5]]}, camp: {watchTired: 0.75}, pull: {leans: {persist: 1}, traits: ['diligent', 'hardy']}},
-  {id: 'strongBack', label: 'Крепкая спина', kind: 'общие', how: 'camp', ranks: 2, about: 'несёт на четверть больше (за ранг)',
-    req: {level: 2, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.25}, pull: {values: ['work', 'strength'], traits: ['diligent']}},
-  {id: 'fieldDressing', label: 'Полевая перевязь', kind: 'общие', how: 'fight', ranks: 2, about: 'вытащенный им с того света встаёт крепче: здоровье после перевязки +10% (за ранг)',
-    req: {level: 2, any: [['dress', 1], ['tend', 3], ['work:medicine', 10]]}, fight: {dressHp: 0.1}, pull: {values: ['family', 'faith'], leans: {social: 1}}},
+  {id: 'strongBack', label: 'Крепкая спина', kind: 'общие', how: 'camp', about: 'несёт больше: I — на четверть, II — вполовину',
+    req: {level: 2, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.25}, pull: {values: ['work', 'strength'], traits: ['diligent']},
+    rank: [{}, {req: {level: 5, stat: {S: 5}, work: {woodcutting: 10, mining: 10, construction: 10}}, camp: {carry: 0.5}}]},
+  {id: 'fieldDressing', label: 'Полевая перевязь', kind: 'общие', how: 'fight', about: 'вытащенный им с того света встаёт крепче: здоровье после перевязки I — +10%, II — +20%',
+    req: {level: 2, any: [['dress', 1], ['tend', 3], ['work:medicine', 10]]}, fight: {dressHp: 0.1}, pull: {values: ['family', 'faith'], leans: {social: 1}},
+    rank: [{}, {req: {level: 5, any: [['dress', 2], ['tend', 6], ['work:medicine', 20]]}, fight: {dressHp: 0.2}}]},
   {id: 'relief', label: 'Сменщик', kind: 'общие', how: 'camp', about: 'охотнее соглашается отстоять дозор за уставшего',
     req: {level: 2, any: [['swap', 1]]}, camp: {swapYes: 0.3}, pull: {leans: {social: 1}, values: ['family']}},
   {id: 'pathfinder', label: 'Следопыт', kind: 'общие', how: 'camp', about: 'видит путь дальше: туман над картой поднимается шире, погоню замечают раньше',
@@ -42,8 +50,9 @@ PERKS.registerAll([
     req: {level: 6, any: [['fight', 6]]}, mods: {bravery: 0.2}, pull: {leans: {persist: 1}, values: ['strength'], traits: ['brave']}},
   {id: 'kinAmong', label: 'Свой среди чужих', kind: 'общие', how: 'camp', about: 'связи с иноплеменниками отряда крепнут в полтора раза быстрее',
     req: {level: 3, any: [['beside', 3]]}, camp: {bondOther: 1.5}, pull: {leans: {social: 1, curious: 0.5}}},
-  {id: 'haggler', label: 'Торгаш', kind: 'общие', how: 'camp', ranks: 2, about: 'цены в городе на десятую лучше (за ранг) — продаёт дороже, покупает дешевле',
-    req: {level: 3, stat: {C: 5}, any: [['trade', 3]]}, camp: {trade: 0.1}, pull: {values: ['gold'], leans: {social: 0.5}}},
+  {id: 'haggler', label: 'Торгаш', kind: 'общие', how: 'camp', about: 'цены в городе лучше — продаёт дороже, покупает дешевле: I — на десятую, II — на пятую',
+    req: {level: 3, stat: {C: 5}, any: [['trade', 3]]}, camp: {trade: 0.1}, pull: {values: ['gold'], leans: {social: 0.5}},
+    rank: [{}, {req: {level: 6, stat: {C: 5}, any: [['trade', 6]]}, camp: {trade: 0.2}}]},
   // ── the line
   {id: 'shoulder', label: 'Плечом к плечу', kind: 'линия', how: 'fight', about: 'щитом закрывает соседей от стрел в полтора раза чаще',
     req: {level: 2, hand: ['shield'], any: [['shield', 3], ['fight:линия', 3]]}, fight: {cover: 1.5}, pull: {values: ['family', 'faith'], leans: {social: 1}}},
@@ -90,22 +99,280 @@ PERKS.registerAll([
     req: {level: 3, race: ['gnoll']}, camp: {evade: 0.15}, pull: {values: ['nature', 'strength']}},
 ]);
 
-// each further rank of a perk asks this many more levels (as the book of rules: +3 a rank)
-export const RANK_LEVEL = 3;
-// the pull of one's character (campaign/perks.js pickPerk): weight = base + Σ lean × w + value + trait
-export const PERK_PICK = {base: 1, value: 1, trait: 1};
+// ── a class's own (data/classes.js; plan З-8): only one of that class may take them (`req.cls`); each rank its own row
+PERKS.registerAll([
+  {id: 'stalwart', label: 'Несокрушимый', kind: 'классовые', how: 'mods', about: 'здоровье: I — +10 %, II — +20 %',
+    req: {level: 3, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.1, pull: {leans: {persist: 1}, values: ['strength']},
+    rank: [{}, {req: {level: 7, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.2}]},
+  {id: 'spearDrill', label: 'Выучка копейщика', kind: 'классовые', how: 'fight', about: 'колющий удар копьём сильнее: I — на десятую, II — на пятую',
+    req: {level: 3, cls: ['pikeman']}, fight: {blows: {pierce: 1.1}}, pull: {leans: {persist: 1}},
+    rank: [{}, {req: {level: 7, cls: ['pikeman']}, fight: {blows: {pierce: 1.2}}}]},
+  {id: 'heavySwing', label: 'Тяжёлый размах', kind: 'классовые', how: 'fight', about: 'рубящий удар сильнее: I — на десятую, II — на пятую',
+    req: {level: 3, cls: ['cleaver', 'brute']}, fight: {blows: {slash: 1.1}}, pull: {values: ['strength']},
+    rank: [{}, {req: {level: 7, cls: ['cleaver', 'brute']}, fight: {blows: {slash: 1.2}}}]},
+  {id: 'deadEye', label: 'Верный глаз', kind: 'классовые', how: 'mods', about: 'меткость: I — +0,05, II — +0,1',
+    req: {level: 4, cls: ['archer', 'skirmisher']}, mods: {aim: 0.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 8, cls: ['archer', 'skirmisher']}, mods: {aim: 0.1}}]},
+  {id: 'shadowStep', label: 'Тень', kind: 'классовые', how: 'mods', about: 'уклонение: I — +0,05, II — +0,1',
+    req: {level: 3, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 7, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.1}}]},
+  {id: 'fleet', label: 'Лёгкая нога', kind: 'классовые', how: 'mods', about: 'шаг: I — ×1,05, II — ×1,1',
+    req: {level: 3, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 8, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.1}}]},
+  {id: 'fury', label: 'Ярость боя', kind: 'классовые', how: 'mods', about: 'храбрость: I — +0,2, II — +0,4',
+    req: {level: 3, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.2}, pull: {values: ['strength'], traits: ['brave']},
+    rank: [{}, {req: {level: 7, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.4}}]},
+]);
 
-// ── a creature's perks on the local map (a.perks: [{id, rank}], given by campaign/camp.js from its member)
-// the sum of a fight effect over its perks, × rank (for a factor: `mul`); 0 / 1 — none
+// ── what a creature is born with, or given by its role (plan claude/bestiary-plan.md З-1, the expert's note 13.11): the same
+// book as the learned ones, one id and one effect for all — whoever holds it. Each rank its own profile (`rank`: [I, II, …]),
+// not × the rank; a grant may carry its own numbers (`own`: a species' venom as it was). Never chosen at a level (learn: false)
+PERKS.registerAll([
+  {id: 'venom', label: 'Ядовитый укус', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'прошедший рукопашный удар травит: hp за тик × тиков (агенты/combat.js); нежить и механизмы не травятся',
+    rank: [{dmg: 0.0004, ticks: 150}, {dmg: 0.0007, ticks: 180}, {dmg: 0.001, ticks: 220}, {dmg: 0.0015, ticks: 240}, {dmg: 0.002, ticks: 280}]},
+  {id: 'web', label: 'Паутина', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'прошедший укус опутывает: шаг × slow на ticks тиков',
+    rank: [{slow: 0.75, ticks: 80}, {slow: 0.6, ticks: 100}, {slow: 0.45, ticks: 120}, {slow: 0.3, ticks: 140}, {slow: 0.2, ticks: 160}]},
+  {id: 'bloodDrink', label: 'Пьёт кровь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'лечится долей урона прошедшего рукопашного удара',
+    rank: [{share: 0.25}, {share: 0.5}, {share: 0.75}]},
+  // ── the acts (agents/abilities.js): a rank is a whole act — its shape (cone: `angle`° and `length` cells from the body's
+  // edge; rear: a sector behind; aura: a ring of `length` about it), what it does (dmg — health lost at once, by `type`;
+  // burn — {dmg, ticks} it keeps burning; kindle — the ground in it catches where there is something to burn; knock — stunned
+  // ticks; fear — morale points, felt once in `calm` ticks), `prep` — ticks of a plain wind-up (its direction fixed: one
+  // who steps out takes nothing), `wait` — ticks after it, `dodge` — one still inside dodges at A / (A + dodge): half the
+  // harm, no burning. Walls and rock shut it off. It strikes whoever stands in it, its own side too (its AI aims past them)
+  {id: 'fireBreath', label: 'Огнедышащий', kind: 'врождённые', how: 'act', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'выдох огня конусом; ранг — своя длина, урон, подготовка и пауза; со II ранга — горение, с III — поджигает землю',
+    rank: [
+      {shape: 'cone', angle: 45, length: 3, type: 'fire', dmg: 0.18, prep: 12, wait: 100, dodge: 12, burn: null, kindle: false},
+      {shape: 'cone', angle: 60, length: 5, type: 'fire', dmg: 0.3, prep: 16, wait: 130, dodge: 14, burn: {dmg: 0.001, ticks: 60}, kindle: false},
+      {shape: 'cone', angle: 60, length: 7, type: 'fire', dmg: 0.48, prep: 20, wait: 170, dodge: 16, burn: {dmg: 0.0015, ticks: 80}, kindle: true},
+      {shape: 'cone', angle: 60, length: 9, type: 'fire', dmg: 0.72, prep: 25, wait: 220, dodge: 18, burn: {dmg: 0.002, ticks: 100}, kindle: true},
+      {shape: 'cone', angle: 60, length: 11, type: 'fire', dmg: 1, prep: 30, wait: 280, dodge: 20, burn: {dmg: 0.0025, ticks: 120}, kindle: true},
+    ]},
+  {id: 'tailSweep', label: 'Удар хвостом', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'хвостом по тем, кто зашёл за спину: сбивает с ног',
+    rank: [
+      {shape: 'rear', angle: 120, length: 1.5, type: 'blunt', dmg: 0.12, knock: 12, prep: 6, wait: 80, dodge: 10},
+      {shape: 'rear', angle: 120, length: 2, type: 'blunt', dmg: 0.2, knock: 16, prep: 6, wait: 80, dodge: 12},
+      {shape: 'rear', angle: 140, length: 2.5, type: 'blunt', dmg: 0.3, knock: 20, prep: 8, wait: 80, dodge: 14},
+    ]},
+  {id: 'roar', label: 'Устрашение', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'рёв: мораль врагов вокруг падает — раз при встрече и после тяжёлой раны, не чаще раза в calm тиков на каждого',
+    rank: [
+      {shape: 'aura', length: 4, fear: 15, calm: 200, prep: 8, wait: 240, again: 0.25},
+      {shape: 'aura', length: 7, fear: 25, calm: 200, prep: 10, wait: 260, again: 0.25},
+      {shape: 'aura', length: 10, fear: 35, calm: 200, prep: 12, wait: 280, again: 0.25},
+    ]},
+  // single-target acts: `shot` — at one foe within `range` cells it sees, the way clear; `touch` — at one within `range` (a
+  // sting from over the head). `venom`, `web` — what a hit leaves (a poison's {dmg, ticks}, a web's {slow, ticks}); `ammo` —
+  // how many a fight (the manticore's spikes); `shield` — a shield's cover may catch it (spit in the face); `high` — may be
+  // loosed from the air (agents/abilities.js: one aloft, out of a short blade's reach)
+  {id: 'spikes', label: 'Шипы', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'мечет шипы хвоста — и с земли, и сверху, пока есть шипы',
+    rank: [
+      {shape: 'shot', range: 5, type: 'pierce', dmg: 0.12, prep: 6, wait: 40, dodge: 10, ammo: 8, high: true},
+      {shape: 'shot', range: 7, type: 'pierce', dmg: 0.18, prep: 6, wait: 32, dodge: 12, ammo: 12, high: true},
+    ]},
+  {id: 'sting', label: 'Ядовитое жало', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'жало через голову: свой удар и своя пауза, яд — свой (укус не травит)',
+    rank: [
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.08, venom: {dmg: 0.0004, ticks: 150}, prep: 4, wait: 70, dodge: 10},
+      {shape: 'touch', range: 1.8, type: 'pierce', dmg: 0.12, venom: {dmg: 0.0007, ticks: 180}, prep: 5, wait: 65, dodge: 12},
+      {shape: 'touch', range: 2, type: 'pierce', dmg: 0.16, venom: {dmg: 0.001, ticks: 220}, prep: 6, wait: 60, dodge: 14},
+    ]},
+  {id: 'webShot', label: 'Выстрел паутиной', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'бросает паутину: опутанный идёт медленно; режут её сами, огонь снимает',
+    rank: [
+      {shape: 'shot', range: 3, web: {slow: 0.75, ticks: 80}, prep: 10, wait: 100, dodge: 10},
+      {shape: 'shot', range: 4, web: {slow: 0.6, ticks: 100}, prep: 10, wait: 90, dodge: 12},
+      {shape: 'shot', range: 5, web: {slow: 0.45, ticks: 120}, prep: 10, wait: 90, dodge: 14},
+    ]},
+  {id: 'venomSpit', label: 'Ядовитый плевок', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'плюёт ядом в лицо; щит, вовремя поднятый, ловит плевок',
+    rank: [
+      {shape: 'shot', range: 3, venom: {dmg: 0.0004, ticks: 150}, prep: 12, wait: 120, dodge: 10, shield: true},
+      {shape: 'shot', range: 4, venom: {dmg: 0.0007, ticks: 180}, prep: 12, wait: 120, dodge: 12, shield: true},
+      {shape: 'shot', range: 5, venom: {dmg: 0.001, ticks: 220}, prep: 12, wait: 120, dodge: 14, shield: true},
+    ]},
+  {id: 'acidJet', label: 'Кислотная струя', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'струя кислоты линией: жжёт мимо брони и портит вещи; не яд — противоядие её не берёт',
+    rank: [
+      {shape: 'line', width: 1, length: 4, type: 'acid', dmg: 0.15, corrode: {wear: 1}, prep: 18, wait: 150, dodge: 10},
+      {shape: 'line', width: 1, length: 5, type: 'acid', dmg: 0.3, corrode: {wear: 2}, prep: 18, wait: 150, dodge: 12},
+      {shape: 'line', width: 1, length: 6, type: 'acid', dmg: 0.45, corrode: {wear: 3}, prep: 20, wait: 150, dodge: 14},
+    ]},
+  {id: 'rust', label: 'Ржа', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'касание усиками: железо на теле и в руках ржавеет — изнашивается на wear за касание; ржи на бой — ammo',
+    rank: [
+      {shape: 'touch', range: 1.4, corrode: {wear: 2, iron: true}, ammo: 6, prep: 4, wait: 60, dodge: 10},
+      {shape: 'touch', range: 1.5, corrode: {wear: 4, iron: true}, ammo: 8, prep: 4, wait: 60, dodge: 12},
+      {shape: 'touch', range: 1.6, corrode: {wear: 6, iron: true}, ammo: 10, prep: 4, wait: 60, dodge: 14},
+    ]},
+  {id: 'numbing', label: 'Сковывающий яд', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'щупальца сковывают: оглушён numbFor тиков, потом numb тиков к нему стоек (не паралич на минуты)',
+    rank: [
+      {shape: 'touch', range: 1.5, type: 'pierce', dmg: 0.04, numbFor: 24, numb: 100, prep: 4, wait: 80, dodge: 10},
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.06, numbFor: 30, numb: 100, prep: 4, wait: 80, dodge: 12},
+    ]},
+  // a leap (agents/abilities.js `leap`): onto a foe between `from` and `range` cells off, the landing plain to see the wind-up
+  // long (`prep`); where it comes down a ring of `length` takes the harm and is knocked down; its own not there
+  {id: 'leap', label: 'Прыжок', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'прыгает на врага издали и бьёт всех, кто рядом с местом приземления',
+    rank: [
+      {shape: 'leap', from: 2.5, range: 4, length: 1.2, type: 'blunt', dmg: 0.25, knock: 14, prep: 14, wait: 140, dodge: 10},
+      {shape: 'leap', from: 2.5, range: 6, length: 1.6, type: 'blunt', dmg: 0.4, knock: 18, prep: 16, wait: 140, dodge: 12},
+    ]},
+  // a rock thrown (one target): a heavy blow that knocks one down; a one-eyed thrower's aim is poor — its foes dodge more
+  {id: 'rockThrow', label: 'Бросок камня', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'швыряет валун: тяжёлый удар и сбивает с ног',
+    rank: [
+      {shape: 'shot', range: 8, type: 'blunt', dmg: 0.5, knock: 12, prep: 14, wait: 120, dodge: 12},
+      {shape: 'shot', range: 10, type: 'blunt', dmg: 0.7, knock: 16, prep: 16, wait: 120, dodge: 14},
+    ]},
+  // ── holding (agents/abilities.js): `grab` — a hit takes hold of one no bigger than `size` (a body's: data/abilities.js GRIP);
+  // it holds while it can: each `every` ticks the held one breaks free at its max(S, A) (+ GRIP.help for each of its own close
+  // by, pulling) against `hold`; the holder does nothing else, the held one strikes only at the holder. Its death, a stun,
+  // its flight free the held
+  {id: 'grab', label: 'Захват', kind: 'врождённые', how: 'act', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'хватает и держит одного не крупнее size (человек — 0,62, огр — 0,86): пока держит — больше ничего; вырваться — Сила или Ловкость против хватки, свои рядом помогают',
+    rank: [
+      {shape: 'touch', range: 1.4, type: 'pierce', dmg: 0.06, grab: {hold: 6, size: 0.65, every: 24}, prep: 4, wait: 60, dodge: 10},
+      {shape: 'touch', range: 1.6, type: 'pierce', dmg: 0.1, grab: {hold: 10, size: 0.9, every: 24}, prep: 5, wait: 60, dodge: 12},
+      {shape: 'touch', range: 2, type: 'pierce', dmg: 0.14, grab: {hold: 14, size: 1.1, every: 24}, prep: 6, wait: 60, dodge: 14},
+    ]},
+  {id: 'constrict', label: 'Сдавливание', kind: 'врождённые', how: 'hold', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'держа — душит: здоровье каждые every тиков, мимо брони',
+    rank: [{dmg: 0.08, every: 30}, {dmg: 0.12, every: 30}, {dmg: 0.18, every: 30}]},
+  {id: 'swallow', label: 'Проглатывание', kind: 'врождённые', how: 'hold', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'держа малого `after` тиков — глотает: внутри его переваривает, вырваться труднее; смерть носителя освобождает',
+    rank: [{size: 0.5, after: 40, digest: 0.002, hold: 12}, {size: 0.65, after: 40, digest: 0.003, hold: 14}, {size: 0.9, after: 50, digest: 0.004, hold: 16}]},
+  // a run at it (the perk «Таран и пикирование», agents/combat.js): a blow after `from` cells straight at the foe — or the first
+  // after coming down from the air — × `mul`, and the struck is knocked down `knock` ticks
+  {id: 'charge', label: 'Таран и пикирование', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'удар с разбега (или с неба) сильнее и сбивает с ног',
+    rank: [{from: 3, mul: 1.15, knock: 10}, {from: 3, mul: 1.3, knock: 14}, {from: 3, mul: 1.45, knock: 18}]},
+  // under the ground (agents/abilities.js): unseen and out of reach, it goes `dig` cells a tick (I — soft ground only: not a
+  // road, not a ford, not a stone floor); a foe within `sense` it feels through the ground and comes under; within `strike`
+  // the ground heaves (`prep` ticks — plain to see, one may step off) and it bursts out (`emerge`: its own shape and harm);
+  // `stay` ticks above before it goes down again
+  {id: 'burrow', label: 'Рытьё', kind: 'врождённые', how: 'move', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'ходит под землёй, чует шаги, выныривает под ногами',
+    rank: [
+      {dig: 0.08, soft: true, sense: 10, strike: 1.4, prep: 16, stay: 120, emerge: {shape: 'aura', length: 1.2, type: 'pierce', dmg: 0.22, knock: 12, dodge: 10}},
+      {dig: 0.1, soft: false, sense: 12, strike: 1.4, prep: 14, stay: 100, emerge: {shape: 'aura', length: 1.4, type: 'pierce', dmg: 0.3, knock: 14, dodge: 12}},
+    ]},
+  // ── moving (agents/abilities.js stepFlight; agents/movement.js): in the air one goes straight over water, walls and
+  // thickets (never through rock) at `air` cells a tick; `high` — out of a short blade's reach (FLIGHT.hitUp) while it is
+  // up: it comes down to strike and stays `ground` ticks (the answer's window), then rises and keeps up `rise` ticks before
+  // it may come down again; below `grounded` of its health its wings no longer lift it
+  {id: 'flight', label: 'Полёт', kind: 'врождённые', how: 'move', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'летает: I — низко, над водой и кустами, в досягаемости клинка; II — высоко, садится для удара; III — сильный полёт',
+    rank: [
+      {air: 0.18, high: false, ground: 0, rise: 0, grounded: 0.3},
+      {air: 0.22, high: true, ground: 40, rise: 30, grounded: 0.3},
+      {air: 0.24, high: true, ground: 50, rise: 30, grounded: 0.25},
+    ]},
+  // ── senses (agents/combat.js canSee, darkness): within `range` it hears what creeps and «sees» in the dark
+  {id: 'echo', label: 'Эхолокация', kind: 'врождённые', how: 'sense', learn: false, from: ['species'], who: {pawn: 'no', monster: 'cond'},
+    about: 'щёлкает и слушает эхо: в темноте видит как днём, крадущегося слышит в пределах range',
+    rank: [{range: 8}, {range: 12}]},
+  // ── a body's guard: × the harm by kind (the natural armour stands in the place of a `resist` of the same kinds, never on top)
+  {id: 'scales', label: 'Чешуя и панцирь', kind: 'врождённые', how: 'fight', learn: false, from: ['species'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'колющий и рубящий удар слабее, дробящий — чуть слабее',
+    rank: [{pierce: 0.9, slash: 0.9, blunt: 0.95}, {pierce: 0.8, slash: 0.8, blunt: 0.9}, {pierce: 0.7, slash: 0.7, blunt: 0.85}]},
+  {id: 'fireproof', label: 'Огнестойкость', kind: 'врождённые', how: 'fight', learn: false, from: ['species', 'role'], who: {pawn: 'cond', monster: 'cond'},
+    about: 'огонь × fire; heat — жар земли не берёт вовсе (мастер горна)',
+    rank: [{fire: 0.75}, {fire: 0.4}, {fire: 0.1}]},
+]);
+
+// ── who may hold a perk (the table «Перки», the expert's: a pawn and a monster are an editor's columns, not kinds of body —
+// a gnoll may be of the guild or the foe; the rule is by species, mind and body):
+//   yes   — may (by its requirement)        cond  — on a condition (a race, a role, a body)
+//   grant — only given (by species, role, item; never chosen at a level)     no — never
+// from — where it comes from: learned (chosen at a level), species, role, item; learn — chosen at a level at all
+export const PERK_WHO = {yes: 'можно', cond: 'условно', grant: 'только выдача', no: 'нельзя'};
+export const PERK_FROM = {learned: 'за уровень', species: 'вид', role: 'роль', item: 'вещь', class: 'класс'};
+export function perkAccess(P) {
+  const from = P.from || ['learned'], learn = P.learn ?? from.includes('learned');
+  const R = P.req || {}, cond = !!(R.race || R.role || R.group || R.hand || R.scar);
+  const pawn = P.who?.pawn ?? (learn ? (cond ? 'cond' : 'yes') : 'grant');
+  // a camp's knack is a caravan's day: no monster has one; an answer to a wound is the caravan's own
+  const monster = P.who?.monster ?? (P.how === 'camp' || P.answer || P.how === 'grant' ? 'no' : 'cond');
+  return {pawn, monster, learn, from};
+}
+// a rank's profile: a grant's own numbers, else the perk's row for that rank (the last one past the end)
+export function perkProfile(id, rank = 1, own = null) {
+  if (own) return own;
+  const P = PERKS.has(id) ? PERKS.get(id) : null; if (!P?.rank) return null;
+  return P.rank[Math.max(0, Math.min(P.rank.length, rank) - 1)];
+}
+export const perkRanks = P => P.rank?.length ?? 1;
+// a rank of a perk, whole: its row over the perk's own keys
+export function rowOf(P, rank = 1) {
+  const r = P?.rank?.[Math.max(0, Math.min(P.rank.length, rank || 1) - 1)];
+  return r ? {...P, ...r} : P;
+}
+
+// what a species is born with: its `perks` ([{id, rank, own?}]) and, read as grants, the old fields (venom, web, drinks —
+// the numbers kept as they were: `own`)
+export function speciesGrants(sp) {
+  if (!sp) return [];
+  const out = (sp.perks || []).map(g => ({...g, from: 'species'}));
+  const legacy = (id, own) => { if (own && !out.some(g => g.id === id)) out.push({id, rank: 1, own, from: 'species'}); };
+  legacy('venom', sp.venom); legacy('web', sp.web); legacy('bloodDrink', sp.drinks ? {share: sp.drinks} : null);
+  return out;
+}
+// a species' innate profile of a perk, or null (combat, the rating: a venomous bite, a web, blood drunk)
+export function innateOf(sp, id) {
+  const g = speciesGrants(sp).find(x => x.id === id);
+  return g ? perkProfile(id, g.rank, g.own) : null;
+}
+
+// the pull of one's character (campaign/perks.js pickPerk): weight = base + Σ lean × w + value + trait
+// path — × the pull of a perk on its class's way, from the way's level (data/classes.js)
+export const PERK_PICK = {base: 1, value: 1, trait: 1, path: 4};
+
+// ── a creature's perks on the local map: learned (a.perks: [{id, rank}], given by campaign/camp.js from its member), its
+// species' and its role's grants (data/roles.js `perks`) — one list, the same id at the highest rank
+export function perksOf(a) {
+  const sp = SPECIES.has(a?.species ?? a?.race) ? SPECIES.get(a.species ?? a.race) : null, role = roleRow(a);
+  const out = (a?.perks || []).slice();
+  const add = g => { const i = out.findIndex(p => p.id === g.id); if (i < 0) out.push(g); else if ((g.rank || 1) > (out[i].rank || 1)) out[i] = g; };
+  for (const g of speciesGrants(sp)) add(g);
+  for (const g of role?.perks || []) add({...g, from: 'role'});
+  // its class's way (data/classes.js): what it gives at one's level; a monster of a band carries the whole way to its level
+  // (it chooses nothing), a pawn of the caravan or the guild only the given — the rest it draws to at a level's pick
+  const C = classOfRole(a?.fightRole || a?.fight), pawn = a?.faction === 'colony' || a?.member != null || a?.acts != null;
+  for (const e of C?.path || []) if ((a.level || 1) >= e.level && (e.how === 'grant' || !pawn)) add({id: e.perk, rank: e.rank, from: 'class', ...(e.hold ? {hold: e.hold} : {})});
+  return out;
+}
+// perksOf kept by its signature (what it learned and at which ranks, its role, its level, its kind): read at every blow
+const HELD = new WeakMap();
+export function heldPerks(a) {
+  if (!a || typeof a !== 'object') return [];
+  let r = 0; for (const p of a.perks || []) r += p.rank || 1;
+  const k = `${a.perks?.length || 0}:${r}|${a.fightRole || a.fight || ''}|${a.level || 1}|${a.species || a.race}`;
+  let c = HELD.get(a); if (!c || c.k !== k) { c = {k, v: perksOf(a)}; HELD.set(a, c); }
+  return c.v;
+}
+// the profile of a perk one holds (any source), or null: {…rank's numbers}
+export function heldOf(a, id) {
+  const g = heldPerks(a).find(p => p.id === id);
+  return g ? perkProfile(id, g.rank || 1, g.own) : null;
+}
+// the sum of a fight effect over its learned perks, each at its rank's row (for a factor: `mul`); 0 / 1 — none
 export function perkOf(a, key) {
   let v = 0;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P?.fight?.[key]; if (typeof x === 'number') v += x * (p.rank || 1); }
+  for (const p of heldPerks(a)) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P && rowOf(P, p.rank).fight?.[key]; if (typeof x === 'number') v += x; }
   return v;
 }
 export const hasPerkA = (a, id) => !!a?.perks?.some(p => p.id === id);
 // a factor of a fight effect (cover 1.5): the product over its perks; blows by type: {blunt: 1.15}
 export function perkMulA(a, key, sub = null) {
   let v = 1;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P?.fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x ** (p.rank || 1); }
+  for (const p of heldPerks(a)) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P && rowOf(P, p.rank).fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x; }
   return v;
 }

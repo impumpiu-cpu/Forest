@@ -25,6 +25,19 @@ export function raidTasks() {
       if (took > 0) a.loot = got;   // carried off on its back: whoever brings it down takes it back
       w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
     }},
+    // a guard at its spot by the post of a place stormed (agents/squad.js holdPlan): walks there and stands
+    {id: 'holdPost', label: () => 'держит логово', step(w, a, t) {
+      if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.hold.slack) { recover(a); return; }
+      if (approach(w, a, t.x, t.y) === null) { t.x = a.x; t.y = a.y; }   // (no way there: here is its spot)
+    }},
+    // one of an ambush creeping up (agents/squad.js lurkPlan): slow, unseen till close
+    {id: 'creep', label: () => 'подкрадывается', step(w, a, t) {
+      if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.hold.slack || approach(w, a, t.x, t.y, SQUAD.creep) === null) done(w, a);
+    }},
+    // a flanker on its way round the foe's line (agents/squad.js flankPlan): walks there
+    {id: 'flankMove', label: () => 'заходит с фланга', step(w, a, t) {
+      if (Math.hypot(t.x - a.x, t.y - a.y) <= SQUAD.flank.near || approach(w, a, t.x, t.y) === null) done(w, a);
+    }},
     // leaving the map for good: raiders with their loot, and any beast that wanders off (agents/behaviours/leave.js)
     {id: 'leave', label: () => 'уходит', step(w, a, t) {
       recover(a);

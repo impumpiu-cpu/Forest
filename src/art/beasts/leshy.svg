@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- леший: высокий лесной дед из коры и мха, борода-лишайник, рога-сучья, глаза-светляки; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="34" ry="5" fill="shade"/>
+<path fill="darkwood" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 70L32 88H42L44 72ZM56 72L58 88H68L64 70Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M30 44Q30 30 50 28Q70 30 70 44L68 76Q50 80 32 76Z"/>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M32 48Q18 56 16 72M68 48Q82 54 86 70"/>
+<path fill="none" stroke="fur" stroke-width="2" stroke-linecap="round" d="M32 48Q18 56 16 72M68 48Q82 54 86 70"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M38 26Q38 12 50 12Q62 12 62 26Q62 34 50 36Q38 34 38 26Z"/>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M42 14L34 4M38 9L32 10M58 14L66 4M62 9L70 8"/>
+<path fill="none" stroke="darkwood" stroke-width="2" stroke-linecap="round" d="M42 14L34 4M38 9L32 10M58 14L66 4M62 9L70 8"/>
+<path fill="#a8b86a" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M42 30Q50 36 58 30L56 50L52 44L50 54L48 44L44 50Z"/>
+<g class="figure" fill="#d8f07a"><circle cx="45" cy="22" r="2.6"/><circle cx="55" cy="22" r="2.6"/></g>
+<g class="detail" fill="leaf"><circle cx="34" cy="40" r="3"/><circle cx="66" cy="42" r="3"/><circle cx="60" cy="62" r="2.5"/></g>
+<path class="detail" fill="none" stroke="shade" stroke-width="2.5" stroke-linecap="round" d="M40 52V70M50 58V74M60 52V68"/>
+</svg>
