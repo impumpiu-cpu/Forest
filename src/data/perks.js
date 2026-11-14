@@ -29,6 +29,7 @@
 import {Registry} from '../core/registry.js';
 import {SPECIES} from './species.js';
 import {roleRow} from './roles.js';
+import {classOfRole} from './classes.js';
 
 export const PERKS = new Registry('perk');
 PERKS.registerAll([
@@ -96,6 +97,31 @@ PERKS.registerAll([
     req: {level: 3, race: ['goblin'], any: [['fight', 3]]}, aura: {kin: 3, mods: {bravery: 0.3}}, pull: {leans: {social: 1}}},
   {id: 'smellAmbush', label: 'Чует засаду', kind: 'расовые', how: 'camp', about: 'гнолл чует погоню: караван замечает её раньше и уходит чаще',
     req: {level: 3, race: ['gnoll']}, camp: {evade: 0.15}, pull: {values: ['nature', 'strength']}},
+]);
+
+// ── a class's own (data/classes.js; plan З-8): only one of that class may take them (`req.cls`); each rank its own row
+PERKS.registerAll([
+  {id: 'stalwart', label: 'Несокрушимый', kind: 'классовые', how: 'mods', about: 'здоровье: I — +10 %, II — +20 %',
+    req: {level: 3, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.1, pull: {leans: {persist: 1}, values: ['strength']},
+    rank: [{}, {req: {level: 7, cls: ['warden', 'smith', 'knight', 'forgemaster']}, hp: 1.2}]},
+  {id: 'spearDrill', label: 'Выучка копейщика', kind: 'классовые', how: 'fight', about: 'колющий удар копьём сильнее: I — на десятую, II — на пятую',
+    req: {level: 3, cls: ['pikeman']}, fight: {blows: {pierce: 1.1}}, pull: {leans: {persist: 1}},
+    rank: [{}, {req: {level: 7, cls: ['pikeman']}, fight: {blows: {pierce: 1.2}}}]},
+  {id: 'heavySwing', label: 'Тяжёлый размах', kind: 'классовые', how: 'fight', about: 'рубящий удар сильнее: I — на десятую, II — на пятую',
+    req: {level: 3, cls: ['cleaver', 'brute']}, fight: {blows: {slash: 1.1}}, pull: {values: ['strength']},
+    rank: [{}, {req: {level: 7, cls: ['cleaver', 'brute']}, fight: {blows: {slash: 1.2}}}]},
+  {id: 'deadEye', label: 'Верный глаз', kind: 'классовые', how: 'mods', about: 'меткость: I — +0,05, II — +0,1',
+    req: {level: 4, cls: ['archer', 'skirmisher']}, mods: {aim: 0.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 8, cls: ['archer', 'skirmisher']}, mods: {aim: 0.1}}]},
+  {id: 'shadowStep', label: 'Тень', kind: 'классовые', how: 'mods', about: 'уклонение: I — +0,05, II — +0,1',
+    req: {level: 3, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 7, cls: ['cutthroat', 'catcher']}, mods: {dodge: 0.1}}]},
+  {id: 'fleet', label: 'Лёгкая нога', kind: 'классовые', how: 'mods', about: 'шаг: I — ×1,05, II — ×1,1',
+    req: {level: 3, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.05}, pull: {leans: {curious: 0.5}},
+    rank: [{}, {req: {level: 8, cls: ['skirmisher', 'catcher', 'beastmaster']}, mods: {speed: 1.1}}]},
+  {id: 'fury', label: 'Ярость боя', kind: 'классовые', how: 'mods', about: 'храбрость: I — +0,2, II — +0,4',
+    req: {level: 3, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.2}, pull: {values: ['strength'], traits: ['brave']},
+    rank: [{}, {req: {level: 7, cls: ['berserker', 'knight', 'beastmaster']}, mods: {bravery: 0.4}}]},
 ]);
 
 // ── what a creature is born with, or given by its role (plan claude/bestiary-plan.md З-1, the expert's note 13.11): the same
@@ -268,7 +294,7 @@ PERKS.registerAll([
 //   grant — only given (by species, role, item; never chosen at a level)     no — never
 // from — where it comes from: learned (chosen at a level), species, role, item; learn — chosen at a level at all
 export const PERK_WHO = {yes: 'можно', cond: 'условно', grant: 'только выдача', no: 'нельзя'};
-export const PERK_FROM = {learned: 'за уровень', species: 'вид', role: 'роль', item: 'вещь'};
+export const PERK_FROM = {learned: 'за уровень', species: 'вид', role: 'роль', item: 'вещь', class: 'класс'};
 export function perkAccess(P) {
   const from = P.from || ['learned'], learn = P.learn ?? from.includes('learned');
   const R = P.req || {}, cond = !!(R.race || R.role || R.group || R.hand || R.scar);
@@ -306,7 +332,8 @@ export function innateOf(sp, id) {
 }
 
 // the pull of one's character (campaign/perks.js pickPerk): weight = base + Σ lean × w + value + trait
-export const PERK_PICK = {base: 1, value: 1, trait: 1};
+// path — × the pull of a perk on its class's way, from the way's level (data/classes.js)
+export const PERK_PICK = {base: 1, value: 1, trait: 1, path: 4};
 
 // ── a creature's perks on the local map: learned (a.perks: [{id, rank}], given by campaign/camp.js from its member), its
 // species' and its role's grants (data/roles.js `perks`) — one list, the same id at the highest rank
@@ -316,23 +343,36 @@ export function perksOf(a) {
   const add = g => { const i = out.findIndex(p => p.id === g.id); if (i < 0) out.push(g); else if ((g.rank || 1) > (out[i].rank || 1)) out[i] = g; };
   for (const g of speciesGrants(sp)) add(g);
   for (const g of role?.perks || []) add({...g, from: 'role'});
+  // its class's way (data/classes.js): what it gives at one's level; a monster of a band carries the whole way to its level
+  // (it chooses nothing), a pawn of the caravan or the guild only the given — the rest it draws to at a level's pick
+  const C = classOfRole(a?.fightRole || a?.fight), pawn = a?.faction === 'colony' || a?.member != null || a?.acts != null;
+  for (const e of C?.path || []) if ((a.level || 1) >= e.level && (e.how === 'grant' || !pawn)) add({id: e.perk, rank: e.rank, from: 'class', ...(e.hold ? {hold: e.hold} : {})});
   return out;
+}
+// perksOf kept by its signature (what it learned and at which ranks, its role, its level, its kind): read at every blow
+const HELD = new WeakMap();
+export function heldPerks(a) {
+  if (!a || typeof a !== 'object') return [];
+  let r = 0; for (const p of a.perks || []) r += p.rank || 1;
+  const k = `${a.perks?.length || 0}:${r}|${a.fightRole || a.fight || ''}|${a.level || 1}|${a.species || a.race}`;
+  let c = HELD.get(a); if (!c || c.k !== k) { c = {k, v: perksOf(a)}; HELD.set(a, c); }
+  return c.v;
 }
 // the profile of a perk one holds (any source), or null: {…rank's numbers}
 export function heldOf(a, id) {
-  const g = perksOf(a).find(p => p.id === id);
+  const g = heldPerks(a).find(p => p.id === id);
   return g ? perkProfile(id, g.rank || 1, g.own) : null;
 }
 // the sum of a fight effect over its learned perks, each at its rank's row (for a factor: `mul`); 0 / 1 — none
 export function perkOf(a, key) {
   let v = 0;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P && rowOf(P, p.rank).fight?.[key]; if (typeof x === 'number') v += x; }
+  for (const p of heldPerks(a)) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; const x = P && rowOf(P, p.rank).fight?.[key]; if (typeof x === 'number') v += x; }
   return v;
 }
 export const hasPerkA = (a, id) => !!a?.perks?.some(p => p.id === id);
 // a factor of a fight effect (cover 1.5): the product over its perks; blows by type: {blunt: 1.15}
 export function perkMulA(a, key, sub = null) {
   let v = 1;
-  for (const p of a?.perks || []) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P && rowOf(P, p.rank).fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x; }
+  for (const p of heldPerks(a)) { const P = PERKS.has(p.id) ? PERKS.get(p.id) : null; let x = P && rowOf(P, p.rank).fight?.[key]; if (sub != null) x = x?.[sub]; if (typeof x === 'number') v *= x; }
   return v;
 }

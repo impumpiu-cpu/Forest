@@ -135,6 +135,7 @@ import {FOLK_RAIDS} from '../seam.js';
 import {LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../traits.js';
 import {ACTS, XP} from '../experience.js';
 import {PERKS, PERK_WHO, PERK_FROM, perkAccess, speciesGrants, perkRanks} from '../perks.js';
+import {CLASSES} from '../classes.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -588,11 +589,21 @@ TABLES.push(
     note: 'Единый справочник перков (data/perks.js): и те, что берут за уровень, и врождённые, и выданные ролью. Пешка и монстр — колонки, а не виды тела: можно, условно (раса, роль, тело), только выдача (вид, роль, вещь — не выбирается за уровень), нельзя. Ранги — число профилей (у врождённых свой профиль на каждый ранг). У кого — какие виды и роли его несут и с каким рангом.',
     rows: () => PERKS.all().map(P => { const A = perkAccess(P); return {id: P.id, label: P.label, kind: P.kind, pawn: A.pawn, monster: A.monster, learn: A.learn, from: A.from.map(f => PERK_FROM[f] || f).join(', '), ranks: perkRanks(P),
       holders: [...SPECIES.all().flatMap(sp => speciesGrants(sp).filter(g => g.id === P.id).map(g => `${sp.label}${g.own ? '' : ` ${'I II III IV V'.split(' ')[(g.rank || 1) - 1]}`}`)),
-        ...COMBAT_ROLES.all().flatMap(R => (R.perks || []).filter(g => g.id === P.id).map(() => `роль: ${R.label}`))].join(', ')}; }),
+        ...COMBAT_ROLES.all().flatMap(R => (R.perks || []).filter(g => g.id === P.id).map(() => `роль: ${R.label}`)),
+        ...CLASSES.all().flatMap(C => C.path.filter(e => e.perk === P.id).map(e => `класс: ${C.label} (${e.level} ур.${e.how === 'grant' ? ', даётся' : ''})`))].join(', ')}; }),
     target: (r, c) => (c.key === 'pawn' || c.key === 'monster' ? [(PERKS.get(r.id).who ||= {}), c.key] : null),
     columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Перк', 'text', {edit: false}), col('kind', 'Группа', 'text', {edit: false}),
       col('pawn', 'Пешке', 'enum', {values: PERK_WHO}), col('monster', 'Монстру', 'enum', {values: PERK_WHO}),
       col('learn', 'За уровень', 'bool', {edit: false}), col('from', 'Откуда', 'text', {edit: false}), col('ranks', 'Рангов', 'int', {edit: false}), col('holders', 'У кого', 'text', {edit: false})]},
+  // classes (plan З-8): a role + a body + a way through the book of perks
+  {id: 'classes', label: 'Классы', group: 'Существа', key: 'id',
+    note: 'Класс — боевая роль (что несёт, где стоит) + тело (SPECIAL) + путь по справочнику перков (data/classes.js). Путь — по уровням: «даётся» — сам, «тянет» — при выборе перка за уровень класс тянет к нему (× PERK_PICK.path). Пешка берёт данное, остальное выбирает; монстр банды несёт весь путь до уровня банды (по угрозе: BAND_LEVEL). Не ниже «нужно» — подходит; «опора» — буквы, по которым меряется, насколько подходит.',
+    rows: () => CLASSES.all().map(C => ({id: C.id, label: C.label, role: COMBAT_ROLES.get(C.role)?.label || C.role, pawn: C.who.pawn, monster: C.who.monster,
+      needs: Object.entries(C.needs || {}).map(([L, v]) => `${L} ${v}`).join(', '), keys: C.keys.join(', '),
+      path: C.path.map(e => `${e.level}: ${PERKS.get(e.perk).label}${e.rank > 1 ? ' ' + 'I II III IV V'.split(' ')[e.rank - 1] : ''}${e.how === 'grant' ? ' (даётся)' : ''}`).join('; '), note: C.note})),
+    target: (r, c) => (c.key === 'label' || c.key === 'note' ? [CLASSES.get(r.id), c.key] : null),
+    columns: [col('id', 'id', 'text', {edit: false}), col('label', 'Класс', 'text'), col('role', 'Роль', 'text', {edit: false}), col('pawn', 'Пешке', 'text', {edit: false}), col('monster', 'Монстру', 'text', {edit: false}),
+      col('needs', 'Нужно', 'text', {edit: false}), col('keys', 'Опора', 'text', {edit: false}), col('path', 'Путь', 'text', {edit: false}), col('note', 'Примечание', 'text')]},
   {id: 'xpRules', label: 'Опыт: правила', group: 'Караван', note: 'Кривая уровней need × (L − 1) × (L + lead) до потолка cap, доля бывшего в бою без своих дел (merit.present), пределы опасности боя, доля пленного, буквы, что растут (data/experience.js XP).', ...params(() => paramRows(XP))},
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
   fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},

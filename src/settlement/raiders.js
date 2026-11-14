@@ -1,6 +1,7 @@
 // A band from the hostile lands on the local map (data/migrations.js `raiders`; the bands: data/raids.js, their make-up:
 // outside/bands.js): who comes — each member with its kit, fighting role, link, mount, potions and the trained mark of a war
 // beast — and what is done as the band arrives: its toughness and aim by the threat, its champion, its squad and its ranks.
+import {bandLevel} from '../data/classes.js';
 import {mountUp} from '../agents/mount.js';
 import {POTION, FOE_BELTS} from '../data/potions.js';
 import {raidThreat} from './threat.js';
@@ -30,7 +31,7 @@ export function raidMembers(w, rng, n, opts) {
     init: (a, w) => {
       a.band = band.id;
       if (m.role && COMBAT_ROLES.get(m.role).mount) mountUp(a, COMBAT_ROLES.get(m.role).mount);   // a rider on its beast (agents/mount.js)
-      if (m.role) a.fightRole = m.role;   // its fighting role (data/roles.js): what it carries, where it stands in the band
+      if (m.role) { a.fightRole = m.role; a.level = Math.max(a.level || 1, bandLevel(t)); }   // its fighting role (data/roles.js): what it carries, where it stands in the band; its band's level — its class's way (data/classes.js)
       if (m.linkNo != null) { a.linkNo = m.linkNo; a.linkKind = m.linkKind; }   // the link of the band it came in (data/roles.js LINKS)
       if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
       const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt

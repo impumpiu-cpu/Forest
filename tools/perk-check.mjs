@@ -7,6 +7,7 @@
 //   first shot, the dressing, the blood price, the frenzy's weariness), the day (the watch, the load, the prices, the better
 //   ware, the spoils, the sight, the pursuit, the bonds).
 //   node tools/perk-check.mjs
+import {CLASSES} from '../src/data/classes.js';
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign} from '../src/campaign/index.js';
@@ -53,6 +54,7 @@ function bothModes(P) {
   const R = P.req || {}, o = {acts: {}, work: {}, special: {...(R.stat || {})}, level: (R.level || 1) + 6};
   if (R.race) o.race = R.race[0];
   if (R.role) { o.fight = R.role[0]; }
+  if (R.cls) o.fight = CLASSES.get(R.cls[0]).role;   // (a class's own: its role — data/classes.js)
   if (R.group) o.fight = {'линия': 'shieldman', 'дальний бой': 'archer'}[R.group[0]] || o.fight;
   if (R.hand) o.hand = [R.hand.find(f => FORMS[f]) || R.hand[0]];
   if (R.work) { const [sk, v] = Object.entries(R.work)[0]; o.work[sk] = v; }

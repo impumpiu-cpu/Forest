@@ -4,6 +4,7 @@
 // rank; one is taken — by its own character, from its own stream of the campaign's lots (`perks`), never by the player.
 // The hooks of the campaign's day read a member's perk (perkRank, perkVal) or the company's best (companyVal); the local map
 // reads them from the agent (data/perks.js perkOf: campaign/camp.js gives the agent its member's perks).
+import {CLASSES, classOfRole} from '../data/classes.js';
 import {PERKS, PERK_PICK, perkAccess, perkRanks, rowOf} from '../data/perks.js';
 import {COMBAT_ROLES} from '../data/roles.js';
 import {gearDef} from '../local/index.js';
@@ -45,6 +46,7 @@ export function meets(m, P, rank = 1) {
   if (R.group && !R.group.includes(groupOfM(m))) return null;
   if (R.role && !R.role.includes(m.fight) && !R.role.includes(m.role)) return null;
   if (R.notRole && (R.notRole.includes(m.fight) || R.notRole.includes(m.role))) return null;
+  if (R.cls && !R.cls.includes(classOfRole(m.fight)?.id)) return null;   // (a class's own: data/classes.js)
   if (R.hand && !(m.gear?.hand || []).some(id => R.hand.includes(gearDef(id)?.form))) return null;
   for (const [s, v] of Object.entries(R.stat || {})) if ((m.special?.[s] ?? 0) < v) return null;
   if (R.crafts && Object.keys(m.workBy || {}).length < R.crafts) return null;
@@ -78,6 +80,8 @@ export function pullOf(m, P) {
   for (const [id, k] of Object.entries(Q.leans || {})) w += k * (L[id] || 0);
   for (const v of Q.values || []) if ((m.values || []).includes(v)) w += PERK_PICK.value;
   for (const t of Q.traits || []) if ((m.local?.traits || []).includes(t)) w += PERK_PICK.trait;
+  const C = classOfRole(m.fight);   // its class's way draws it (data/classes.js `path`)
+  if (C?.path.some(e => e.perk === P.id && e.how === 'learn' && (m.level || 1) >= e.level)) w *= PERK_PICK.path;
   return w;
 }
 // A level's perk: one of those offered, by its character's pull, from the campaign's own stream; taken, it is a fact. → the
@@ -113,3 +117,13 @@ export function perkWhy(why) {
   if (why.startsWith('fight:')) return `бои в строю: ${why.slice(6)}`;
   return WHY[why] || why;
 }
+
+// how a member's body suits a class (data/classes.js): below its `needs` — null (it does not suit); else the mean of its `keys`
+// letters over the race's middle (1 — as its kind is; above — it suits better)
+export function classFit(m, C) {
+  if (Object.entries(C.needs || {}).some(([L, v]) => (m.special?.[L] ?? 0) < v)) return null;
+  const sp = SPECIES.get(m.race), mid = L => { const r = sp.special?.[L]; return r ? (r[0] + r[1]) / 2 : 5; };
+  return C.keys.reduce((s, L) => s + (m.special?.[L] ?? 0) / Math.max(1, mid(L)), 0) / C.keys.length;
+}
+// the classes a member suits, best first: [{C, fit}]
+export const classesFor = m => CLASSES.all().filter(C => C.who.pawn === 'yes').map(C => ({C, fit: classFit(m, C)})).filter(x => x.fit != null).sort((x, y) => y.fit - x.fit);
