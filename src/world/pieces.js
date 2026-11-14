@@ -158,7 +158,7 @@ export function sceneFor(foe) {
 export function layPieces(t, P) {
   const L = P.L, r = P.rnd, R = PIECE_RULES;
   const reach0 = P.reach0 = reachFrom(t, t.cy * t.w + t.cx);
-  const sceneId = L.scene ? sceneFor(L.foe) : null;
+  const sceneId = L.scene ? (L.force && SCENES[L.force] ? L.force : sceneFor(L.foe)) : null;   // (`force`: a scene named outright — the arena's vault)
   if (sceneId && SCENES[sceneId]) layScene(t, P, sceneId);
   else {
     // the land: what the world says is here, each mark with its chance, at most `land.max` of them

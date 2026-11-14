@@ -41,6 +41,8 @@ export const COMBAT = {
   // a net that falls on someone (quality `ensnare`): its step × slow for `ticks`, and it cannot strike for `hold`; both × what
   // its body makes of a net (agents/combat.js netGrip): scales or spikes shed it × `shed`, a body of `tear.size` and more tears
   // it × `tear.k`, a swarm (species `swarm`) is not caught at all
+  // a split (the perk «Деление», agents/combat.js splitOff): the new half comes this far beside the old
+  split: {beside: 0.4},
   net: {slow: 0.25, ticks: 240, hold: 90, shed: 0.4, tear: {size: 0.75, k: 0.5}},
   // one who creeps (a.sneaking: a cutthroat, a scout) is seen only this close: `seen` cells + `armour` × its armour (mail
   // clinks); its first blow or shot gives it away

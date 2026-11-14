@@ -230,7 +230,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
 export function splitOff(w, t, dmg) {
   const S = heldOf(t, 'split'), full = maxHp(t);
   if (!S || dmg < S.at * full || t.hp <= S.least * full || (t.splitGen || 0) >= S.most) return null;
-  const c = createAgent(w, t.species, t.faction, Math.min(w.w - 1, t.x + 0.4), t.y);
+  const c = createAgent(w, t.species, t.faction, Math.min(w.w - 1, t.x + COMBAT.split.beside), t.y);
   for (const k of ['special', 'level', 'perks', 'band', 'side', 'brain', 'marks', 'defend', 'warBeast', 'hunger', 'master', 'name'])
     if (t[k] !== undefined) c[k] = Array.isArray(t[k]) ? [...t[k]] : t[k] && typeof t[k] === 'object' ? {...t[k]} : t[k];
   c.needs = {...t.needs};

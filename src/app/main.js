@@ -10,6 +10,7 @@ import {EPIC_SIZES} from '../data/campaign.js';
 import {VERSION} from '../version.js';
 import {TablesView} from './tablesView.js';
 import {BeastView} from './beastView.js';
+import {ArenaView} from './arenaView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
 import {worldRow} from '../ui/campaignView.js';
@@ -25,15 +26,15 @@ import {listWorlds} from '../ui/worlds.js';
 import {plural, esc} from '../core/util.js';
 
 import {$, seg, press} from '../ui/dom.js';
-const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'settings', 'prefs', 'bestiary', 'about'];   // (#quick — «Новый поход», #settings — «Таблицы», #prefs — «Настройки»)
-const OBSERVER = new Set(['settle', 'campaign']);   // the screens laid out as the observer's: no page scroll, the map fills the window
+const SCREENS = ['home', 'quick', 'land', 'settle', 'campaign', 'arena', 'settings', 'prefs', 'bestiary', 'about'];   // (#quick — «Новый поход», #settings — «Таблицы», #prefs — «Настройки»)
+const OBSERVER = new Set(['settle', 'campaign', 'arena']);   // the screens laid out as the observer's: no page scroll, the map fills the window
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 
-let screen = 'home', land = null, settle = null, campaign = null, beasts = null, quickShell = null;
+let screen = 'home', land = null, settle = null, campaign = null, beasts = null, quickShell = null, arena = null;
 function show(id) {
   // the screen left halts its clock between frames (it goes on when the screen is back)
-  if (screen !== id) { if (screen === 'land') { land?.stop(); land?.hide(); } if (screen === 'settle') { settle?.stop(); settle?.hide(); } if (screen === 'campaign') campaign?.halt(); if (screen === 'quick') quickShell?.leave(); }
+  if (screen !== id) { if (screen === 'land') { land?.stop(); land?.hide(); } if (screen === 'settle') { settle?.stop(); settle?.hide(); } if (screen === 'campaign') campaign?.halt(); if (screen === 'arena') arena?.stop(); if (screen === 'quick') quickShell?.leave(); }
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   document.body.classList.toggle('observer', OBSERVER.has(id));
@@ -41,6 +42,7 @@ function show(id) {
   if (id === 'quick') renderLibrary();
   if (id === 'settings') tables.show();
   if (id === 'bestiary') (beasts ||= new BeastView()).show();
+  if (id === 'arena') (arena ||= new ArenaView()).show();
   if (id === 'land') (land ||= new LandView()).show();
   if (id === 'quick') (quickShell ||= new QuickShell({})).enter();   // (the form in the shell's frame: ui/shell/landShell.js)
   if (id === 'settle') (settle ||= new SettleView()).show();
@@ -163,6 +165,7 @@ function newGame(mode) {
 }
 $('launchGuild').addEventListener('click', () => newGame('guild'));
 $('launchCampaign').addEventListener('click', () => newGame('campaign'));
+$('launchArena').addEventListener('click', () => show('arena'));
 
 // ── settings: the tables of src/data/schema/
 const tables = new TablesView();

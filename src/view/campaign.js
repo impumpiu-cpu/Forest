@@ -10,3 +10,4 @@ export {branchesOf, branchAt, branchesMost, branchCost, houseTown, managerOf, br
 export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, sellItem, lockItem, forgeCost, forgeWhy, forgeItem, buyBeast} from '../campaign/index.js';
 export {cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, releaseBeast, keepHome, beastLabel, beastStrength} from '../campaign/index.js';
 export {kinOf, relWord, moodOf, restMember, restWhy, retireWhy, unretireWhy, dismissWhy, giftOf} from '../campaign/index.js';
+export {arenaAtlas, arenaCatalog, arenaSetup, arenaSides, arenaRandom, arenaFoesFor, darkFoes, foeRowStrength} from '../campaign/index.js';

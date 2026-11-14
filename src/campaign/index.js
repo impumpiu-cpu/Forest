@@ -136,3 +136,4 @@ export {armoryOf, racks, stalls, shopOf, buyPrice, sellPrice, buyWhy, buyItem, s
 export {cagesOf, cageRoom, beastMarket, buyWarWhy, buyWarBeast, release as releaseBeast, keepHome, beastLabel, beastStrength} from './cages.js';
 export {kinOf, relWord, moodOf} from './kin.js';
 export {restWhy, retireWhy, unretireWhy, dismissWhy, giftOf} from './retire.js';
+export {arenaAtlas, arenaCatalog, arenaSetup, arenaSides, arenaRandom, arenaFoesFor, darkFoes, foeRowStrength, shunsSun} from './arena.js';

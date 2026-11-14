@@ -9,6 +9,7 @@
 //   campSetup(a, K, ev)  → setup: everything the camp is made of (saved in K.camps to be watched again);
 //   openCamp(setup)      → the local world, at the hour the camp begins;  stepCamp(w) — a tick;  campDone(w);
 //   campOutcome(w)       → what came out of it, for the campaign to take back (campaign/march.js).
+import {ARENA} from '../data/arena.js';
 import {SQUAD as SQUAD_RULES} from '../data/behaviour.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {createWorld} from '../local/index.js';
@@ -149,6 +150,8 @@ export function companyStrength(a, K) {
 // (in the camp's own ticks: its sun is slower than a settlement's, CAMP.clock — core/time.js dayScale)
 function hours(S, r) {
   const H = CAMP[S.kind] && S.kind !== 'night' ? CAMP[S.kind] : CAMP.night, h = HOUR * CAMP.clock.scale;
+  // the arena (campaign/arena.js): its own hour, the foe at once, a long day of it
+  if (S.arena?.hour != null) { const A = ARENA.clock, t0 = Math.round(S.arena.hour * h); return {t0, come: t0 + Math.round(A.come * h), until: t0 + Math.round(A.until * h)}; }
   const t0 = Math.round(H.from * h), wrap = x => (x < H.from ? x + 24 : x);
   const until = Math.round(wrap(H.until) * h);
   const come = H.come ? Math.round(wrap(H.come[0] + r() * (H.come[1] - H.come[0] + (H.come[1] < H.come[0] ? 24 : 0))) * h) : null;
@@ -310,8 +313,8 @@ function spawnFoe(w) {
   // the foe is bought by its own strength (foeBudget: the land's, the lair's, the errand's), never by the caravan's: the same
   // guards stand against a company in copper and one in steel, and the steel wins more often. The heads are rounded up
   // (outside/bands.js fill `up`)
-  const t = raidThreat(w), budget = foeBudget(r, F, S.kind);
-  C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record: the foe over the caravan
+  const t = raidThreat(w), budget = S.arena ? Infinity : foeBudget(r, F, S.kind);   // (the arena's foes are counted out by hand: nothing trimmed)
+  C.weight = S.arena ? 1 : Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record: the foe over the caravan
   // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
   const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);   // (a second kind with no arrival stays home)
   const part = (who, b, first) => {
@@ -332,7 +335,8 @@ function spawnFoe(w) {
   // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain
   const bandMain = !(beast && MIGRATIONS.has(beast)), joined = W && W.beast && bandMain ? W : null;
   let group;
-  if (joined) {
+  if (S.arena) group = arenaFoes(w, S.arena.foes, opts);
+  else if (joined) {
     // they come as the band's war beasts, trained (data/conditions.js): bought at that price, not at a wild one's
     const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(S.kind === 'guard' ? CAMP.foe.mostGuard : CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / memberStrength(sp, t))));
     const want = CAMP.threat * F.strength * (map.threat || 1);
@@ -356,6 +360,7 @@ function spawnFoe(w) {
   // SQUAD.line) — plan claude/combat-plan.md Бой-4
   for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (!sq || sq.kind !== 'living') continue;
+    if (S.arena?.meet) { if (sq.size >= SQUAD_RULES.line.least) sq.line = {until: w.tick + SQUAD_RULES.line.wait}; continue; }   // (the arena's meeting: wall on wall, nobody creeps)
     if (S.kind === 'ambush') { sq.lurk = {until: w.tick + SQUAD_RULES.lurk.wait}; for (const g of group) if (g.squad === id) g.sneaking = true; }   // (hidden from the first: seen only close)
     else if (S.kind !== 'guard' && sq.goal !== 'scout' && sq.size >= SQUAD_RULES.line.least && (['kill', 'slaughter'].includes(sq.goal) || RAID_BANDS.get(sq.band)?.ranks)) sq.line = {until: w.tick + SQUAD_RULES.line.wait};   // (a band with ranks keeps order: data/raids.js)
   }
@@ -389,6 +394,25 @@ function spawnFoe(w) {
   if (ranked) trimBand(w, group, budget * RANK_RULES.pay.camp, F.boss ? CAMP.boss.atLeast : 1);
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
   C.foeMight = sideStrength(group, {now: true});   // the foe's strength as it came (the fight's record)
+}
+
+// the arena's foes (campaign/arena.js), each row as asked: beasts of a kind by the head (`beast`: an arrival of
+// data/migrations.js, `n`), a band by its strength (`band`, `s` in КС, its gear by `threat`); each at its own `level`
+function arenaFoes(w, rows, opts) {
+  const out = [];
+  for (const e of rows || []) {
+    let g = [];
+    if (e.beast && MIGRATIONS.has(e.beast)) {
+      g = spawnGroup(w, e.beast, Math.max(1, e.n | 0), opts);
+      for (const x of g) { x.needs.food = Math.min(x.needs.food ?? 1, CAMP.foe.hungry); x.hunger = true; }
+    } else if (e.band) {
+      w.fame = 0; w.fame = (e.threat ?? 0) - raidThreat(w);   // (the threat its gear and its class's way are drawn by)
+      g = spawnGroup(w, 'raiders', Math.max(1, e.s || 100), {...opts, band: e.band, fill: {up: true, max: {}}});
+    }
+    if (e.level) for (const x of g) { x.level = e.level; refreshBody(x); x.hp = maxHp(x); }
+    out.push(...g);
+  }
+  return out;
 }
 
 // a cell this far from the camp that can be walked to from it
