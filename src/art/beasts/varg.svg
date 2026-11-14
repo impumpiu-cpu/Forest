@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- варг: громадный волк, горбатая холка, вздыбленная шерсть, оскал; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="38" ry="5" fill="shade"/>
+<g class="up"><rect x="24" y="62" width="8" height="26" rx="4" fill="fur" stroke="ink" stroke-width="3"/><rect x="35" y="62" width="8" height="26" rx="4" fill="fur" stroke="ink" stroke-width="3"/><rect x="62" y="62" width="8" height="26" rx="4" fill="fur" stroke="ink" stroke-width="3"/><rect x="73" y="62" width="8" height="26" rx="4" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M8 54Q0 42 4 30Q12 42 20 48Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M16 52Q16 40 30 38L36 30L40 36L46 26L50 34L56 26L60 36Q72 36 76 46L78 68Q60 72 40 70Q18 70 16 52Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 48L70 28L78 36L84 28L88 42Q98 46 98 54L90 60Q80 62 74 58Z"/>
+<path fill="#3a1a1a" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M84 54L98 54L92 60Z"/>
+<path class="figure" fill="light" d="M88 54L89 57L90 54ZM93 54L94 57L95 54Z"/>
+<circle class="figure" cx="82" cy="44" r="2.6" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+<path class="tame" fill="none" stroke="#c8402e" stroke-width="4" stroke-linecap="round" d="M70 46L76 60"/>
+</svg>

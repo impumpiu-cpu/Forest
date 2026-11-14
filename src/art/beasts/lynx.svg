@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- рысь: кошка с коротким хвостом-обрубком, кисточки на ушах, бакенбарды, пятна; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="34" ry="5" fill="shade"/>
+<g class="up"><rect x="28" y="64" width="7" height="24" rx="3.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="38" y="64" width="7" height="24" rx="3.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="60" y="64" width="7" height="24" rx="3.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="70" y="64" width="7" height="24" rx="3.5" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M20 52L12 46L14 56Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 56Q20 44 38 44H60Q72 44 74 54L74 68Q56 72 38 70Q18 70 18 56Z"/>
+<g class="figure" fill="shade"><circle cx="30" cy="54" r="2.5"/><circle cx="42" cy="50" r="2.5"/><circle cx="52" cy="58" r="2.5"/><circle cx="62" cy="52" r="2.5"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M66 48L70 30L76 38L82 38L88 30L90 46Q96 52 92 58Q84 64 74 62Q66 58 66 48Z"/>
+<path fill="none" stroke="ink" stroke-width="2.5" stroke-linecap="round" d="M70 30L69 22M88 30L89 22"/>
+<path fill="light" stroke="ink" stroke-width="2" stroke-linejoin="round" d="M70 56L64 64L74 60ZM90 56L96 62L88 60Z"/>
+<circle class="figure" cx="84" cy="46" r="2.4" fill="ink"/>
+<path class="detail" fill="ink" d="M91 51a1.8 1.8 0 1 0 .1 0Z"/>
+<path class="tame" fill="none" stroke="#c8402e" stroke-width="4" stroke-linecap="round" d="M68 48L72 60"/>
+</svg>

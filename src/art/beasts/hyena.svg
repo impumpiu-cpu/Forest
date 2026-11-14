@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- гиена: покатая спина, высокая холка, пятна, круглые уши, короткий хвост; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<g class="up"><rect x="24" y="66" width="6" height="22" rx="3" fill="fur" stroke="ink" stroke-width="3"/><rect x="34" y="66" width="6" height="22" rx="3" fill="fur" stroke="ink" stroke-width="3"/><rect x="62" y="58" width="6" height="30" rx="3" fill="fur" stroke="ink" stroke-width="3"/><rect x="72" y="58" width="6" height="30" rx="3" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M20 62Q10 66 8 74"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M18 64Q20 52 40 48L60 38Q74 36 78 46L78 66Q60 72 40 72Q20 72 18 64Z"/>
+<path fill="hair" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M44 46L52 36L56 40L62 34L66 40L60 42Z"/>
+<g class="figure" fill="shade"><circle cx="34" cy="60" r="3"/><circle cx="46" cy="56" r="3"/><circle cx="56" cy="62" r="3"/><circle cx="66" cy="52" r="3"/><circle cx="28" cy="66" r="2.5"/></g>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M68 46Q70 34 82 34Q96 38 98 50L88 56Q76 58 70 54Z"/>
+<circle cx="74" cy="34" r="4.5" fill="fur" stroke="ink" stroke-width="3"/>
+<path class="figure" fill="ink" d="M92 50L98 50L96 54Z"/>
+<circle class="figure" cx="84" cy="44" r="2.4" fill="ink"/>
+<path class="tame" fill="none" stroke="#c8402e" stroke-width="4" stroke-linecap="round" d="M70 46L74 58"/>
+</svg>

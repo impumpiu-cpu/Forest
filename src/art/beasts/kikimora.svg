@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- кикимора: крошечная сгорбленная болотная старушонка, длинный нос, космы из тины, прялка-веретено; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="26" ry="4" fill="shade"/>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M44 82L42 88M54 82L56 88"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M32 60Q30 46 46 42Q60 40 64 52L62 84H36Q32 76 32 60Z"/>
+<path fill="#5a6a3a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 44Q40 30 52 30Q64 32 64 44Q60 40 56 42L54 58L50 48L46 60L42 48L38 56Z"/>
+<path fill="fur" stroke="ink" stroke-width="3.5" stroke-linejoin="round" d="M48 40Q50 34 58 34Q64 36 64 42L76 46L64 48Q56 50 50 46Z"/>
+<circle class="figure" cx="60" cy="40" r="2.2" fill="#e8d84a" stroke="ink" stroke-width="1"/>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M60 60L74 62"/>
+<path fill="wood" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M74 52L78 52L77 74L75 74Z"/>
+<path class="detail" fill="#d8d0b0" d="M73 58Q76 54 79 58Q76 62 73 58Z"/>
+</svg>

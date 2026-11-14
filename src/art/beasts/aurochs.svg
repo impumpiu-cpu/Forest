@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- тур: могучий дикий бык, высокий горб, светлая полоса по хребту, длинные рога вперёд-вверх; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит, tame — ручной -->
+<ellipse cx="50" cy="90" rx="40" ry="5" fill="shade"/>
+<g class="up"><rect x="22" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="34" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="60" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/><rect x="72" y="62" width="9" height="26" rx="4.5" fill="fur" stroke="ink" stroke-width="3"/></g>
+<path fill="none" stroke="ink" stroke-width="4" stroke-linecap="round" d="M10 46Q2 56 6 68"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M8 50Q8 32 30 30L50 22Q64 20 70 30Q80 32 80 46L78 68Q54 72 30 70Q8 68 8 50Z"/>
+<path class="figure" fill="none" stroke="#c9a878" stroke-width="3" stroke-linecap="round" d="M14 36Q30 30 46 24Q58 20 66 26"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M70 40Q72 30 84 30Q96 32 96 46Q96 56 86 58L74 56Z"/>
+<path fill="light" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M86 50Q96 50 96 54Q92 58 86 58Z"/>
+<path fill="none" stroke="ink" stroke-width="7" stroke-linecap="round" d="M76 32Q68 20 80 10M90 30Q100 22 96 10"/>
+<path fill="none" stroke="bone" stroke-width="3.5" stroke-linecap="round" d="M76 32Q68 20 80 10M90 30Q100 22 96 10"/>
+<circle class="figure" cx="84" cy="40" r="2.6" fill="ink"/>
+<path class="tame" fill="none" stroke="#c8402e" stroke-width="4" stroke-linecap="round" d="M72 38L74 56"/>
+</svg>

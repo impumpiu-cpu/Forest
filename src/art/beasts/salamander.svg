@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- огненная саламандра: гибкая ящерица с огненным гребнем, тлеющие пятна, язычки пламени у хвоста; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="90" rx="36" ry="5" fill="shade"/>
+<path class="figure" fill="fire" stroke="ink" stroke-width="2" stroke-linejoin="round" d="M6 70Q2 60 8 56Q8 62 12 62Q10 54 16 50Q16 60 20 62Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M6 72Q20 66 30 66Q44 58 64 60Q82 60 94 66Q86 74 66 74Q44 76 30 72Q18 74 6 72Z"/>
+<path fill="fire" stroke="ink" stroke-width="2.5" stroke-linejoin="round" d="M34 62L38 52L42 60L46 50L50 59L54 50L58 59L62 52L64 60Z"/>
+<g class="up"><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M36 70L30 86L40 86L42 72Z"/><path fill="fur" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M60 72L58 88L68 88L66 72Z"/></g>
+<g class="figure" fill="#ffd36a"><circle cx="40" cy="68" r="2.2"/><circle cx="52" cy="66" r="2.2"/><circle cx="64" cy="66" r="2.2"/><circle cx="24" cy="70" r="1.8"/></g>
+<circle class="figure" cx="84" cy="63" r="2.4" fill="#ffd36a" stroke="ink" stroke-width="1.2"/>
+</svg>

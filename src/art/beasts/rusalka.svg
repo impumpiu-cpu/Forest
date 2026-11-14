@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- русалка: бледная дева в воде по пояс, длинные зелёные волосы, тянет руку; смотрит вправо (игра зеркалит), флаги: up — стоит, rest — лежит -->
+<ellipse cx="50" cy="88" rx="40" ry="7" fill="water" opacity="0.8"/>
+<path fill="#3f6a4a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 22Q30 40 28 64Q26 80 22 86L40 84Q40 60 46 40Z"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M40 50Q40 40 50 38Q60 40 60 50L62 84H38Z"/>
+<path fill="none" stroke="ink" stroke-width="5" stroke-linecap="round" d="M58 48Q72 46 84 38"/>
+<path fill="none" stroke="fur" stroke-width="2" stroke-linecap="round" d="M58 48Q72 46 84 38"/>
+<path fill="fur" stroke="ink" stroke-width="4" stroke-linejoin="round" d="M40 24Q40 12 51 12Q62 12 62 24Q62 34 51 36Q40 34 40 24Z"/>
+<path fill="#3f6a4a" stroke="ink" stroke-width="3" stroke-linejoin="round" d="M38 26Q36 10 50 8Q64 8 64 22Q56 14 46 18Q42 22 42 30Z"/>
+<g class="figure" fill="#e8f4ff"><circle cx="50" cy="24" r="2.4"/><circle cx="58" cy="24" r="2.4"/></g>
+<path class="detail" fill="none" stroke="ink" stroke-width="1.6" stroke-linecap="round" d="M50 30Q54 32 58 30"/>
+<path class="figure" fill="none" stroke="#e8f4ff" stroke-width="2" stroke-linecap="round" d="M14 86Q22 82 30 86M66 86Q74 82 84 86"/>
+</svg>
