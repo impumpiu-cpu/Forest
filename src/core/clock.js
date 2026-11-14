@@ -13,6 +13,8 @@ import {TICK_MS} from './time.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 
 export const PACE = [
+  // the guild's slowest (the author's word 14.11: its first deeds last a day): a day a second; only on a screen that asks for it (`slow`)
+  {id: 'day', label: 'По дням', season: SEASON_DAYS * 1000, local: 1, slow: true, title: 'День в секунду: сезон за 30 с'},
   {id: 'watch', label: 'Наблюдатель', season: 6000, local: 1, title: 'Полмесяца в секунду: сезон за 6 с, 2,5 года в минуту. На локальной карте — час стоянки за 10 с; ночь без врага мотается сама'},
   {id: 'x4', label: '×4', season: 1500, local: 4, title: 'Сезон за 1,5 с, 10 лет в минуту'},
   {id: 'x16', label: '×16', season: 375, local: 16, title: 'Сезон за 0,4 с, 40 лет в минуту'},

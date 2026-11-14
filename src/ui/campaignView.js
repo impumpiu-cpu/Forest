@@ -108,7 +108,15 @@ function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('fo
 function saveHidden(set) { try { localStorage.setItem('forest.campTopics', JSON.stringify([...set])); } catch (e) { /* storage unavailable */ } }
 
 export class CampaignView extends campStats(campLocal(MapView)) {
-  setup({onBack} = {}) { this.onBack = onBack; }   // («← Главное меню»: app/main.js)
+  setup({onBack} = {}) { this.onBack = onBack; }
+  // the pause (the button, the space bar): the walk's season or the camp watched; going on, the rest of the season plays out
+  togglePause() {
+    if (this.making) { this.genPaused = !this.genPaused; this.syncRun(); return; }
+    const K = this.atlas?.campaign; if (!K || finished(K) || K.phase === 'home') return;
+    this.flipClock();
+  }
+  flipClock() { if (this.local) this.ticks.paused = !this.ticks.paused; else { this.clock.toggle(); if (!this.clock.paused) this.animate(); else this.renderSide(); } this.syncRun(); }
+  paceShown(P) { return !P.slow; }   // (the walk: no «По дням» — ui/guildView.js offers it)   // («← Главное меню»: app/main.js)
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
@@ -127,7 +135,7 @@ export class CampaignView extends campStats(campLocal(MapView)) {
         if (this.clock.paused && !this.local) { this.clock.resume(); this.animate(); }
         this.syncRun();
       },
-      onPause: () => { if (this.making) { this.genPaused = !this.genPaused; this.syncRun(); return; } const K = this.atlas?.campaign; if (!K || finished(K) || K.phase === 'home') return; if (this.local) this.ticks.paused = !this.ticks.paused; else { this.clock.toggle(); if (!this.clock.paused) this.animate(); else this.renderSide(); } this.syncRun(); }});   // (going on: the rest of the season plays out)
+      onPause: () => this.togglePause(), shown: P => this.paceShown(P)});
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
     $('campCaps').addEventListener('click', e => {

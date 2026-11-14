@@ -14,7 +14,7 @@ import {mindAt, mindCard} from '../render/minds.js';
 
 // the camps watched on the local map by the pace (core/clock.js PACE): at the observer's pace the day stops too, at
 // `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
-export const WATCH = {watch: {stops: true}, x4: {}, x16: {}};
+export const WATCH = {day: {stops: true}, watch: {stops: true}, x4: {}, x16: {}};
 
 export const campLocal = Base => class extends Base {
   // ── a camp on the local map: played again from its setup over the world map, then the season goes on

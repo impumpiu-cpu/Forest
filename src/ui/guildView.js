@@ -180,14 +180,35 @@ export class GuildView extends CampaignView {
   }
 
   // the clock: the world's season with the guild in it; an expedition out — its camps to watch, as the walk's (campaignView)
-  run() { if (!this.G) return super.run(); if (this.G.phase === 'open') this.clock.start(); this.syncRun(); }
+  // the guild's clock runs with no expedition out (no a.campaign): its pause is its own (the walk's asks for a walk)
+  togglePause() {
+    if (!this.G || this.making) return super.togglePause();
+    if (this.G.phase !== 'open') return;
+    if (!this.local && !this.clock.running && !this.clock.paused) { this.run(); return; }
+    this.flipClock();
+  }
+  paceShown(P) { return !P.slow || !!this.G; }
+  run() { if (!this.G) return super.run(); if (this.G.phase === 'open') this.clock.start(); this.syncRun(); this.dayTick(); }
+  // the date's day follows the playback with no expedition out too (the walk's animate() draws only with one): a few times a second
+  dayTick() {
+    if (this.dayTimer) return;
+    const go = () => {
+      this.dayTimer = 0;
+      if (!this.G || $('campaign').hidden || !this.clock.running || this.clock.paused) return;
+      if (!this.atlas?.campaign) this.frame();
+      this.dayTimer = setTimeout(go, 250);
+    };
+    this.dayTimer = setTimeout(go, 250);
+  }
+  flipClock() { super.flipClock(); if (this.G) this.dayTick(); }
   syncRun() {
     if (!this.G) return super.syncRun();
     const open = this.G.phase === 'open';
     $('campAgain').hidden = true; $('campAscend').hidden = true;
     $('campPause').hidden = !open; $('campSpeed').hidden = !open;
     this.syncPaceBox?.();
-    if (this.local) $('campPause').textContent = this.ticks.paused ? 'Дальше' : 'Пауза';
+    // (the guild's clock may stand with no pause pressed — after the hiring, before the first «Дальше»: the button says what it will do)
+    $('campPause').textContent = this.local ? (this.ticks.paused ? 'Дальше' : 'Пауза') : this.clock.running && !this.clock.paused ? 'Пауза' : 'Дальше';
   }
   stepSeason() {
     const a = this.atlas, G = this.G; if (!G) return super.stepSeason();
