@@ -103,7 +103,7 @@ const fresh = () => { const a = loadAtlas(JSON.parse(fz)); return {a, K: newCamp
   ok(pickPerk(K, m)?.id === 'oneEyed', 'ответ на рану берётся первым, хотя открыт и «Второе дыхание»');
   const f = ensureXp(K.members[4]); f.level = 5; f.wounds = [{id: 'dread', day: null}]; noteScars(f); f.acts.fight = (f.acts.fight || 0) + 3;
   ok(pickPerk(K, f)?.id === 'overcame' && !hasWound(f, 'dread') && K.social.facts.some(x => x.kind === 'overcame' && x.by === f.id), '«Переболел»: страх смерти снят, факт');
-  const l = ensureXp(K.members[5]); l.level = 2;   // (below the classes' own perks: data/classes.js, from the third) l.acts.clean = 1; const cap5 = SPECIES.get(l.race).special.L[1];
+  const l = ensureXp(K.members[5]); l.level = 2; l.acts.clean = 1; const cap5 = SPECIES.get(l.race).special.L[1];   // (level 2: below the classes' own perks, data/classes.js — from the third)
   l.special.L = cap5 - 1; const L0 = l.special.L;
   ok(pickPerk(K, l)?.id === 'lucky' && l.special.L === L0 + 1, '«Везучий»: Удача +1');
   const l2 = ensureXp(K.members[6]); l2.level = 3; l2.acts = {clean: 1}; l2.special.L = cap5;
