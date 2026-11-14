@@ -4,6 +4,7 @@
 // with a party (K.beasts: {kind: 'war', species}) and fights at its side on the local map (campaign/camp.js), counted in its
 // might in the quick mode (campaign/march.js caravanMight); the living come back to the cages.
 //   G.cages = {beasts: [{id, species, hp}], nextId}
+import {refuse} from '../core/util.js';
 import {HOUSE} from '../data/rooms.js';
 import {SPECIES} from '../data/species.js';
 import {LAIRS} from '../data/lairs.js';
@@ -44,7 +45,7 @@ export function buyWarWhy(a, G, sp) {
   return null;
 }
 export function buyWarBeast(a, G, sp, pay) {
-  const why = buyWarWhy(a, G, sp); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const why = buyWarWhy(a, G, sp); refuse(why);
   const p = beastPrice(sp); pay(G, -p, `клетки: куплен — ${beastLabel(sp)}`); toTown(a.towns.find(x => x.id === G.town), p);
   return cage(G, sp);
 }

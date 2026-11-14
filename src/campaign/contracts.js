@@ -13,7 +13,7 @@ import {CONTRACT, CONTRACTS, CHAINS} from '../data/contracts.js';
 import {GUILD} from '../data/guild.js';
 import {roomBy} from './house.js';
 import {cagesOf, cageRoom, cage, beastLabel} from './cages.js';
-import {ERRANDS} from '../data/errands.js';
+import {ERRANDS, TIER_LABEL} from '../data/errands.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {MIGRATIONS} from '../data/migrations.js';
@@ -21,7 +21,7 @@ import {QUEST} from '../data/quest.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {CAMP} from '../data/camp.js';
 import {scaleOf, wherePhrase, cultPool, townLabel} from '../atlas/index.js';
-import {cellDist} from '../core/util.js';
+import {cellDist, refuse} from '../core/util.js';
 import {reachable, places, layClues, circle} from './quest.js';
 import {lairTargets, lairErrand, riskWord, lairFacts} from './errands.js';
 import {lairGuard, garrison, lairDanger} from './land.js';
@@ -158,7 +158,7 @@ export function stepContracts(a, G, io) {
     if (rec.state !== 'open') continue;
     if (!holder(a, rec.issuer)) { rec.escrow = 0; close(a, G, rec, 'заказчик пал — резерв пропал с его казной', io); }
     else if (!liveTarget(a, rec)) close(a, G, rec, 'цель уничтожена другими', io);
-    else if (G.day >= rec.until) close(a, G, rec, 'срок предложения вышел', io);
+    else if (G.day >= rec.until && !(G.moving && rec.chain)) close(a, G, rec, 'срок предложения вышел', io);   // (the guild moving: its stories wait for it — campaign/branches.js)
   }
   if (G.moving) return;   // (the guild moving: nothing new on its board — campaign/branches.js)
   for (const H of CHAINS.all()) {
@@ -213,10 +213,10 @@ export function fameBy(G, d, tell) {
   const L0 = levelOf(G);
   G.fame = Math.max(0, Math.round(((G.fame || 0) + d) * 10) / 10);
   const L = levelOf(G);
-  if (L > L0) tell(`Гильдия выросла до ${L}-го уровня${tierOf(G) > GUILD.level.tier[L0] ? `: теперь ей доверяют договоры тира ${['', 'I', 'II', 'III', 'IV', 'V'][tierOf(G)]}` : ''}.`, 'level');
-  else if (L < L0) tell(`Слава гильдии упала: она снова ${L}-го уровня${tierOf(G) < GUILD.level.tier[L0] ? ` — договоров тира ${['', 'I', 'II', 'III', 'IV', 'V'][GUILD.level.tier[L0]]} ей больше не дают` : ''}.`, 'level');
+  if (L > L0) tell(`Гильдия выросла до ${L}-го уровня${tierOf(G) > GUILD.level.tier[L0] ? `: теперь ей доверяют договоры тира ${TIER_LABEL[tierOf(G)]}` : ''}.`, 'level');
+  else if (L < L0) tell(`Слава гильдии упала: она снова ${L}-го уровня${tierOf(G) < GUILD.level.tier[L0] ? ` — договоров тира ${TIER_LABEL[GUILD.level.tier[L0]]} ей больше не дают` : ''}.`, 'level');
 }
-const tierWord = t => `тир ${['', 'I', 'II', 'III', 'IV', 'V'][t]}`;
+const tierWord = t => `тир ${TIER_LABEL[t]}`;
 
 // closed without the guild's pay: the reserve back to its issuer, the camp struck, the story told on
 function close(a, G, rec, why, io, failed = true) {
@@ -236,6 +236,8 @@ export function takeContract(a, G, uid, n) {
   rec.completeBy = G.day + Math.round((CONTRACT.time.base[rec.tier] + CONTRACT.time.road * 2 * (rec.days || 0)) * (rec.known ? 1 : roomBy(G, 'maps', 'time') ?? 1));   // (the maps room: more time where the goal is sought by its traces)
   return rec;
 }
+// (campaign/guild.js launch: no party could be made of it — as it stood)
+export function untakeContract(rec) { rec.state = 'open'; rec.by = null; rec.takenAt = null; rec.completeBy = null; }
 export const contractWhy = (a, uid) => { const rec = contractOf(a, uid); return !rec || rec.state !== 'open' ? 'этого договора на доске больше нет' : !liveTarget(a, rec) ? 'цели договора больше нет' : null; };
 
 // the guild calls its party back (campaign/guild.js recall): the contract let go — early it costs a little fame, in the last
@@ -245,7 +247,7 @@ export function abortWhy(a, G, K) {
   return !rec || rec.state !== 'accepted' ? 'отряд не на договоре' : K.phase !== 'out' ? 'отряд уже идёт домой' : null;
 }
 export function abortContract(a, G, K, giveUp, say) {
-  const rec = contractOf(a, K.contract), why = abortWhy(a, G, K); if (why) throw new Error(why[0].toUpperCase() + why.slice(1) + '.');
+  const rec = contractOf(a, K.contract), why = abortWhy(a, G, K); refuse(why);
   rec.abortedAt = G.day;
   const late = (G.day - (rec.takenAt ?? 0)) >= (1 - CONTRACT.fame.late) * Math.max(1, rec.completeBy - (rec.takenAt ?? 0));
   giveUp(a, K, 'отозван', `Гильдия отозвала отряд: договор «${rec.label}» брошен${late ? ' в последний срок' : ''}. Отряд возвращается ни с чем.`, (t, k, w) => say(a, K, t, k, w));
